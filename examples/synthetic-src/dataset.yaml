@@ -1,0 +1,65 @@
+id: synthetic
+name: Synthetic demo
+description: Two fake tissue sections plus an embedding, for tests and the hosted
+  demo.
+default_gene: G001
+default_color:
+  field: cluster
+layout:
+  mode: grid
+fields:
+- id: cluster
+  name: Cluster
+  type: categorical
+  categories:
+  - Astro
+  - Excit_L2
+  - Excit_L5
+  - Inhib_PV
+  - Oligo
+  - Micro
+- id: total_counts
+  name: Total counts
+  type: continuous
+samples:
+- id: sampleA
+  name: Sample A (lognorm)
+  platform: visium
+  group: donor1
+  path: sampleA.h5ad
+  fields:
+    cluster: cluster
+    total_counts: total_counts
+  images:
+  - id: he
+    name: H&E
+    path: sampleA.png
+  polygons:
+    path: sampleA.polygons.parquet
+- id: sampleB
+  name: Sample B (counts, flipped)
+  platform: visium
+  group: donor2
+  path: sampleB.h5ad
+  transform:
+    flip: x
+    rotate: 90
+  fields:
+    cluster: cluster
+    total_counts: total_counts
+  images:
+  - id: he
+    name: H&E
+    path: sampleB.png
+  polygons:
+    path: sampleB.polygons.parquet
+- id: umapA
+  name: Sample A UMAP
+  platform: snrnaseq
+  kind: embedding
+  group: donor1
+  path: sampleA.h5ad
+  coords: obsm/X_umap
+  fields:
+    cluster: cluster
+    total_counts: total_counts

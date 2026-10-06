@@ -1,0 +1,33 @@
+name: pages
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+permissions: { contents: read, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: npm ci
+      - run: npm test
+      - run: pip install -e python
+      - name: Rebuild the synthetic demo bundle (unsharded for GitHub Pages)
+        run: |
+          spatialscape synth /tmp/synth
+          spatialscape build /tmp/synth/dataset.yaml -o /tmp/site/examples/synthetic --no-shard
+      - run: npm run build
+      - run: cp -r app/dist/* /tmp/site/
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: /tmp/site }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.deployment.outputs.page_url }}" }
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

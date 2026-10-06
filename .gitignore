@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+examples/amygdala/
+app/test-results/
+app/playwright-report/
+.DS_Store
+.npmrc
+examples/amygdala-src/
+.claude/

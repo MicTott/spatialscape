@@ -1,0 +1,231 @@
+id: amygdala
+name: Human amygdala
+description: Visium, Visium HD and Xenium sections of human amygdala with spatial domains and cell types.
+default_gene: PENK
+default_color:
+  field: domain
+palette: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/build/handoff/palette.json
+layout:
+  mode: grid
+feature_groups:
+- id: rctd
+  name: Cell type weights (RCTD)
+  pattern: '^RCTD: '
+  units: weight
+fields:
+- id: domain
+  name: Spatial domain
+  type: categorical
+  palette_key: visium_semisupervised,xenium_banksy_domain,visium_hd_domain,domain
+  aliases:
+    AI: IA
+- id: celltype_xenium
+  name: Cell type
+  type: categorical
+  palette_key: cell_type
+- id: broad_xenium
+  name: Broad class
+  type: categorical
+  palette_key: broad_class
+- id: total_counts
+  name: Total transcripts
+  type: continuous
+- id: nucleus_area
+  name: "Nucleus area (\xB5m\xB2)"
+  type: continuous
+- id: total_umi
+  name: Total UMI (Visium)
+  type: continuous
+- id: detected_genes
+  name: Detected genes
+  type: continuous
+- id: mito_ratio
+  name: Mito ratio
+  type: continuous
+samples:
+- id: xen_Br9017
+  name: Br9017 (Xenium)
+  platform: xenium
+  group: Br9017
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9017/adata.zarr
+  fields:
+    domain: Banksy_domains
+    celltype_xenium: first_type
+    broad_xenium: first_type_broad
+    total_counts: total_counts
+    nucleus_area: nucleus_area
+- id: xen_Br9192
+  name: Br9192 (Xenium)
+  platform: xenium
+  group: Br9192
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9192/adata.zarr
+  fields:
+    domain: Banksy_domains
+    celltype_xenium: first_type
+    broad_xenium: first_type_broad
+    total_counts: total_counts
+    nucleus_area: nucleus_area
+- id: xen_Br9206
+  name: Br9206 (Xenium)
+  platform: xenium
+  group: Br9206
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9206/adata.zarr
+  fields:
+    domain: Banksy_domains
+    celltype_xenium: first_type
+    broad_xenium: first_type_broad
+    total_counts: total_counts
+    nucleus_area: nucleus_area
+- id: xen_Br9280
+  name: Br9280 (Xenium)
+  platform: xenium
+  group: Br9280
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9280/adata.zarr
+  fields:
+    domain: Banksy_domains
+    celltype_xenium: first_type
+    broad_xenium: first_type_broad
+    total_counts: total_counts
+    nucleus_area: nucleus_area
+- id: vis_Br2743
+  name: Br2743 (Visium)
+  platform: visium
+  group: Br2743
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br2743/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br2743/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: vis_Br6423
+  name: Br6423 (Visium)
+  platform: visium
+  group: Br6423
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br6423/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br6423/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: vis_Br6471
+  name: Br6471 (Visium)
+  platform: visium
+  group: Br6471
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br6471/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br6471/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: vis_Br6660
+  name: Br6660 (Visium)
+  platform: visium
+  group: Br6660
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br6660/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br6660/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: vis_Br8325
+  name: Br8325 (Visium)
+  platform: visium
+  group: Br8325
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br8325/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br8325/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: vis_Br9192
+  name: Br9192 (Visium)
+  platform: visium
+  group: Br9192
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br9192/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br9192/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: vis_Br9280
+  name: Br9280 (Visium)
+  platform: visium
+  group: Br9280
+  path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br9280/adata.zarr
+  fields:
+    domain: BS_k16_Semisupervised_wAI
+    total_umi: sum_umi
+    detected_genes: sum_gene
+    mito_ratio: expr_chrM_ratio
+  images:
+  - id: he
+    name: H&E
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br9280/image.ome.zarr
+    kind: rgb
+    pixel_size: auto
+- id: sn_amy
+  name: snRNA-seq (BLA, 5 donors)
+  platform: snrnaseq
+  kind: embedding
+  group: snRNA-seq
+  path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/sce_amy_human.h5ad
+  coords: obsm/X_umap
+  extent: 5000
+  expression:
+    layer: X
+    normalized: lognorm
+  fields:
+    celltype_xenium: fine_celltype
+    broad_xenium: broad_celltype
+    total_umi: sum
+    detected_genes: detected
+
+# Visium HD crops (Br8325_CeA, Br8325_MeA, Br9280_CeA, Br9280_ITC, Br9280_MeA) are not built yet:
+# obsm/spatial is in level-0 pixels of the cropped hires H&E and the SpaceRanger scalefactors
+# (microns_per_pixel) are not in the repo. To add them, uncomment and fill `microns.microns_per_unit`
+# with  microns_per_pixel / scale_factor  (scale_factor per crop: Br9280_CeA 0.10383, Br8325_MeA 0.05848,
+# Br8325_CeA 0.06173, Br9280_ITC 0.08843, Br9280_MeA 0.07726; from build/handoff/manifest_visium_hd.json).
+#  - id: hd_Br9280_CeA
+#    name: Br9280 CeA (Visium HD)
+#    platform: visium_hd
+#    group: Br9280
+#    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_CeA/adata.zarr
+#    microns: { microns_per_unit: <microns_per_pixel / 0.10383> }
+#    fields: { domain: spatial_domain, celltype_hd: first_type, total_umi: sum, detected_genes: detected }
+#    images: [{ id: he, name: H&E, path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_CeA/image.ome.zarr, pixel_size: auto }]

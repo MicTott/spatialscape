@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use spatialscape, please cite it as below."
+title: "spatialscape: a static, reactive browser for spatial transcriptomics and snRNA-seq"
+type: software
+authors:
+  - family-names: Totty
+    given-names: Michael
+    email: mictott@gmail.com
+repository-code: "https://github.com/mictott/spatialscape"
+license: MIT
+version: 0.1.0
+date-released: 2026-10-06

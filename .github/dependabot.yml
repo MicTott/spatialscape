@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule: { interval: monthly }
+    groups:
+      deck: { patterns: ["@deck.gl/*", "@luma.gl/*", "@math.gl/*", "@hms-dbmi/viv"] }
+      tooling: { patterns: ["vite", "vitest", "@vitejs/*", "typescript", "@playwright/*"] }
+  - package-ecosystem: pip
+    directory: "/python"
+    schedule: { interval: monthly }
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: monthly }

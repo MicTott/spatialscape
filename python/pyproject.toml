@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spatialscape"
+version = "0.1.0"
+description = "Build static spatialscape viewer bundles from AnnData / SpatialData"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Michael Totty", email = "mictott@gmail.com" }]
+keywords = ["spatial-transcriptomics", "visium", "xenium", "single-cell", "visualization", "zarr", "deck.gl"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+  "anndata>=0.12",
+  "zarr>=3.0",
+  "numcodecs>=0.15",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pandas>=2.0",
+  "pyarrow>=15",
+  "typer>=0.12",
+  "pydantic>=2.6",
+  "pyyaml>=6",
+  "imageio>=2.34",
+  "tifffile>=2024.1",
+  "scikit-image>=0.22",
+]
+
+[project.urls]
+Homepage = "https://github.com/mictott/spatialscape"
+Documentation = "https://github.com/mictott/spatialscape/tree/main/docs"
+Issues = "https://github.com/mictott/spatialscape/issues"
+
+[project.optional-dependencies]
+spatialdata = ["spatialdata>=0.4"]
+dev = ["pytest>=8", "ruff>=0.5", "h5py>=3.10", "build>=1.2"]
+
+[project.scripts]
+spatialscape = "spatialscape.cli:app"
+sscape = "spatialscape.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spatialscape"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "PIE", "C4", "RUF"]
+ignore = ["E501", "B008", "SIM108", "RUF012", "RUF005"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

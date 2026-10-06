@@ -1,0 +1,238 @@
+{
+ "formatVersion": 1,
+ "id": "synthetic",
+ "name": "Synthetic demo",
+ "description": "Two fake tissue sections plus an embedding, for tests and the hosted demo.",
+ "defaultGene": "G001",
+ "defaultColor": {
+  "kind": "field",
+  "field": "cluster"
+ },
+ "layout": {
+  "mode": "grid",
+  "gutterFraction": 0.1,
+  "order": [
+   "sampleA",
+   "sampleB",
+   "umapA"
+  ]
+ },
+ "colormaps": [
+  "viridis",
+  "magma",
+  "inferno",
+  "plasma",
+  "cividis",
+  "turbo",
+  "greys"
+ ],
+ "vocabularies": {
+  "cluster": {
+   "categories": [
+    "Astro",
+    "Excit_L2",
+    "Excit_L5",
+    "Inhib_PV",
+    "Oligo",
+    "Micro",
+    "NA"
+   ],
+   "colors": [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#c8c8c8"
+   ],
+   "aliases": {}
+  }
+ },
+ "fields": [
+  {
+   "id": "cluster",
+   "name": "Cluster",
+   "type": "categorical",
+   "vocabulary": "cluster"
+  },
+  {
+   "id": "total_counts",
+   "name": "Total counts",
+   "type": "continuous"
+  }
+ ],
+ "featureGroups": [],
+ "samples": [
+  {
+   "id": "sampleA",
+   "name": "Sample A (lognorm)",
+   "platform": "visium",
+   "kind": "spatial",
+   "group": "donor1",
+   "nObs": 2000,
+   "nGenes": 50,
+   "bbox": [
+    0.0,
+    0.0,
+    4632.147558242021,
+    3518.386656042098
+   ],
+   "toDataset": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "pointRadius": 27.5,
+   "expr": {
+    "kind": "u8",
+    "sharded": true,
+    "shardGenes": 512
+   },
+   "hasF16": false,
+   "fields": [
+    "cluster",
+    "total_counts"
+   ],
+   "images": [
+    {
+     "id": "he",
+     "name": "H&E",
+     "path": "he.ome.zarr",
+     "kind": "rgb",
+     "pixelSize": 10.0,
+     "translate": [
+      -213.70609913160592,
+      -170.48936318106897
+     ],
+     "size": [
+      384,
+      512
+     ],
+     "defaultOpacity": 1.0
+    }
+   ],
+   "outlines": [
+    "cluster"
+   ],
+   "polygons": {
+    "path": "polygons",
+    "cells": 2000,
+    "vertices": 12000,
+    "scale": 0.1
+   },
+   "idBlock": 65536
+  },
+  {
+   "id": "sampleB",
+   "name": "Sample B (counts, flipped)",
+   "platform": "visium",
+   "kind": "spatial",
+   "group": "donor2",
+   "nObs": 2800,
+   "nGenes": 50,
+   "bbox": [
+    0.0,
+    0.0,
+    3528.189651502943,
+    4662.111112754473
+   ],
+   "toDataset": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "pointRadius": 27.5,
+   "expr": {
+    "kind": "u8",
+    "sharded": true,
+    "shardGenes": 512
+   },
+   "hasF16": false,
+   "fields": [
+    "cluster",
+    "total_counts"
+   ],
+   "images": [
+    {
+     "id": "he",
+     "name": "H&E",
+     "path": "he.ome.zarr",
+     "kind": "rgb",
+     "pixelSize": 10.0,
+     "translate": [
+      -150.42766070469767,
+      -210.94160254950907
+     ],
+     "size": [
+      512,
+      384
+     ],
+     "defaultOpacity": 1.0
+    }
+   ],
+   "outlines": [
+    "cluster"
+   ],
+   "polygons": {
+    "path": "polygons",
+    "cells": 2800,
+    "vertices": 16800,
+    "scale": 0.1
+   },
+   "idBlock": 65536
+  },
+  {
+   "id": "umapA",
+   "name": "Sample A UMAP",
+   "platform": "snrnaseq",
+   "kind": "embedding",
+   "group": "donor1",
+   "nObs": 2000,
+   "nGenes": 50,
+   "bbox": [
+    0.0,
+    0.0,
+    4944.569470213498,
+    5000.0
+   ],
+   "toDataset": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "pointRadius": 20.0,
+   "expr": {
+    "kind": "u8",
+    "sharded": true,
+    "shardGenes": 512
+   },
+   "hasF16": false,
+   "fields": [
+    "cluster",
+    "total_counts"
+   ],
+   "images": [],
+   "outlines": [],
+   "idBlock": 65536
+  }
+ ]
+}

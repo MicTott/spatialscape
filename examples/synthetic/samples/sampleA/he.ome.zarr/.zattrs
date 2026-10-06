@@ -1,0 +1,96 @@
+{
+  "multiscales": [
+    {
+      "version": "0.4",
+      "name": "he.ome",
+      "axes": [
+        {
+          "name": "c",
+          "type": "channel"
+        },
+        {
+          "name": "y",
+          "type": "space"
+        },
+        {
+          "name": "x",
+          "type": "space"
+        }
+      ],
+      "datasets": [
+        {
+          "path": "0",
+          "coordinateTransformations": [
+            {
+              "type": "scale",
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "path": "1",
+          "coordinateTransformations": [
+            {
+              "type": "scale",
+              "scale": [
+                1,
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ],
+      "type": "mean"
+    }
+  ],
+  "omero": {
+    "id": 1,
+    "name": "he.ome",
+    "version": "0.4",
+    "rdefs": {
+      "model": "color",
+      "defaultT": 0,
+      "defaultZ": 0
+    },
+    "channels": [
+      {
+        "label": "R",
+        "color": "ff0000",
+        "active": true,
+        "window": {
+          "min": 0,
+          "max": 255,
+          "start": 0,
+          "end": 255
+        }
+      },
+      {
+        "label": "G",
+        "color": "00ff00",
+        "active": true,
+        "window": {
+          "min": 0,
+          "max": 255,
+          "start": 0,
+          "end": 255
+        }
+      },
+      {
+        "label": "B",
+        "color": "0000ff",
+        "active": true,
+        "window": {
+          "min": 0,
+          "max": 255,
+          "start": 0,
+          "end": 255
+        }
+      }
+    ]
+  }
+}
