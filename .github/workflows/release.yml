@@ -14,5 +14,5 @@ jobs:
       - run: pip install build && python -m build python --outdir dist
       - name: Publish to PyPI (trusted publishing; configure the publisher at pypi.org for mictott/spatialscape, workflow release.yml, environment pypi)
         uses: pypa/gh-action-pypi-publish@release/v1
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with: { files: dist/*, generate_release_notes: true }
