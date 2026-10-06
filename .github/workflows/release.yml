@@ -9,7 +9,7 @@ jobs:
     environment: pypi
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       - run: pip install build && python -m build python --outdir dist
       - name: Publish to PyPI (trusted publishing; configure the publisher at pypi.org for mictott/spatialscape, workflow release.yml, environment pypi)
