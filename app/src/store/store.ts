@@ -2,7 +2,8 @@ import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import type { FeatureList, LayoutMode, Manifest } from "../data/manifest";
 
-export type ColorSpec = { kind: "gene"; gene: string } | { kind: "field"; field: string };
+export type BlendScheme = "yb" | "cm" | "rg";
+export type ColorSpec = { kind: "gene"; gene: string } | { kind: "field"; field: string } | { kind: "blend"; a: string[]; b: string[]; scheme: BlendScheme };
 export type FilterSpec =
   | { kind: "gene"; gene: string; range: [number, number] }
   | { kind: "field"; field: string; range: [number, number] }
@@ -62,8 +63,11 @@ export interface ViewerState {
   groupStats: GroupStats | null;
   tool: "pan" | "lasso";
   showPolygons: boolean;
+  viewPx: Partial<Record<ViewId, number>>; // px per µm per view (scale bar)
+  viewRects: Partial<Record<ViewId, { x: number; w: number }>>;
   selectionSummary: SelectionSummary | null;
   datasetUrl: string | null;
+  datasetRef: string | null; // what the user typed / the registry id; kept in the URL
   manifest: Manifest | null;
   features: FeatureList | null;
   platforms: string[] | null; // null = all platforms visible
@@ -117,6 +121,7 @@ export const DEFAULTS = {
 
 export const store = createStore<ViewerState>((set, get) => ({
   datasetUrl: null,
+  datasetRef: null,
   manifest: null,
   status: "idle",
   error: null,
@@ -140,6 +145,8 @@ export const store = createStore<ViewerState>((set, get) => ({
   groupStats: null,
   tool: "pan",
   showPolygons: true,
+  viewPx: {},
+  viewRects: {},
   selectionSummary: null,
   focus: null,
   selected: null,

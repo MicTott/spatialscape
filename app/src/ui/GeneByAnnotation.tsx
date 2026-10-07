@@ -10,7 +10,7 @@ export function GeneByAnnotation() {
   const stats = useViewer((s) => s.groupStats);
   const filter = useViewer((s) => s.filter);
   const [perSample, setPerSample] = useState(false);
-  if (!manifest || color?.kind !== "gene") return null;
+  if (!manifest || !color || color.kind === "field") return null;
   const catFields = manifest.fields.filter((f) => f.type === "categorical");
   if (!catFields.length) return null;
   const set = store.getState().set;

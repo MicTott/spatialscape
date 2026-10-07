@@ -5,6 +5,12 @@ const num = (s: string | null, d: number) => (s == null || s === "" || Number.is
 
 function parseColor(s: string | null): ColorSpec | null {
   if (!s) return null;
+  if (s.startsWith("b:")) {
+    // b:<scheme>:GENE,GENE|GENE,GENE  ("+" would decode as a space in a query string)
+    const m = /^b:(yb|cm|rg):([^|]*)\|(.*)$/.exec(s);
+    if (m) return { kind: "blend", scheme: m[1] as "yb" | "cm" | "rg", a: m[2].split(/[,+ ]/).filter(Boolean), b: m[3].split(/[,+ ]/).filter(Boolean) };
+    return null;
+  }
   if (s.startsWith("g:")) return { kind: "gene", gene: s.slice(2) };
   if (s.startsWith("f:")) return { kind: "field", field: s.slice(2) };
   return null;
@@ -32,7 +38,10 @@ export function readUrl(): Partial<ViewerState> {
   const q = new URLSearchParams(window.location.search);
   const out: Partial<ViewerState> = {};
   const d = q.get("d");
-  if (d) out.datasetUrl = d;
+  if (d) {
+    out.datasetUrl = d;
+    out.datasetRef = d;
+  }
   const c = parseColor(q.get("c"));
   if (c) out.color = c;
   if (q.get("cm")) out.colormap = q.get("cm")!;
@@ -77,9 +86,9 @@ export function readUrl(): Partial<ViewerState> {
 
 export function serialize(s: ViewerState): string {
   const q = new URLSearchParams();
-  if (s.datasetUrl) q.set("d", s.datasetUrl);
+  if (s.datasetRef ?? s.datasetUrl) q.set("d", (s.datasetRef ?? s.datasetUrl)!);
   if (s.focus) q.set("s", s.focus);
-  if (s.color) q.set("c", s.color.kind === "gene" ? `g:${s.color.gene}` : `f:${s.color.field}`);
+  if (s.color) q.set("c", s.color.kind === "gene" ? `g:${s.color.gene}` : s.color.kind === "blend" ? `b:${s.color.scheme}:${s.color.a.join(",")}|${s.color.b.join(",")}` : `f:${s.color.field}`);
   if (s.colormap !== DEFAULTS.colormap) q.set("cm", s.colormap);
   if (s.vrange[0] !== 0 || s.vrange[1] !== 1) q.set("vr", `${s.vrange[0].toFixed(3)},${s.vrange[1].toFixed(3)}`);
   if (s.hideZeros) q.set("z", "1");

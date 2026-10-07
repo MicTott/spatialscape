@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { store, useViewer, type FilterSpec } from "../store/store";
 import { GeneSearch } from "./GeneSearch";
+import { BlendPanel } from "./BlendPanel";
 import { GeneByAnnotation } from "./GeneByAnnotation";
 import { SelectionPanel } from "./SelectionPanel";
 import { Legend } from "./Legend";
@@ -49,6 +50,7 @@ function ColorPanel({ genes }: { genes: string[] }) {
   const groups = features?.groups ?? [];
   const groupOf = (id: string) => groups.find((g) => g.features.some((f) => f.id === id));
   const isGene = color?.kind === "gene";
+  const isBlend = color?.kind === "blend";
   const activeGroup = isGene ? groupOf(color.gene) : undefined;
   const fields = manifest.fields;
   const plainGene = isGene && !activeGroup ? color.gene : undefined;
@@ -67,11 +69,16 @@ function ColorPanel({ genes }: { genes: string[] }) {
             {g.name.replace(/\s*\(.*\)$/, "")}
           </button>
         ))}
-        <button className={!isGene ? "on" : ""} onClick={() => fields[0] && store.getState().setColor({ kind: "field", field: color?.kind === "field" ? color.field : fields[0].id })}>
+        <button className={isBlend ? "on" : ""} onClick={() => store.getState().setColor({ kind: "blend", a: isGene && !activeGroup ? [color.gene] : [], b: [], scheme: "yb" })} title="two gene sets, blended colors">
+          Blend
+        </button>
+        <button className={color?.kind === "field" ? "on" : ""} onClick={() => fields[0] && store.getState().setColor({ kind: "field", field: color?.kind === "field" ? color.field : fields[0].id })}>
           Annotation
         </button>
       </div>
-      {isGene && activeGroup ? (
+      {isBlend ? (
+        <BlendPanel genes={genes} />
+      ) : isGene && activeGroup ? (
         <div className="grouplist">
           <input placeholder={`search ${activeGroup.name.toLowerCase()}…`} value={groupQuery} onChange={(e) => setGroupQuery(e.target.value)} spellCheck={false} />
           <ul>
@@ -115,16 +122,18 @@ function ColorPanel({ genes }: { genes: string[] }) {
           })()}
         </select>
       )}
-      {(isGene || (color?.kind === "field" && manifest.fields.find((f) => f.id === color.field)?.type === "continuous")) && (
+      {(isGene || isBlend || (color?.kind === "field" && manifest.fields.find((f) => f.id === color.field)?.type === "continuous")) && (
         <div className="controls">
-          <label>
-            colormap
-            <select value={colormap} onChange={(e) => set({ colormap: e.target.value })}>
-              {manifest.colormaps.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
+          {!isBlend && (
+            <label>
+              colormap
+              <select value={colormap} onChange={(e) => set({ colormap: e.target.value })}>
+                {manifest.colormaps.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <RangeSlider value={vrange} onChange={(v) => set({ vrange: v })} label="range" />
           <label className="check">
             <input type="checkbox" checked={hideZeros} onChange={(e) => set({ hideZeros: e.target.checked })} /> hide zeros

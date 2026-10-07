@@ -6,9 +6,10 @@ import { installTestHooks } from "./testHooks";
 import { Sidebar } from "./ui/Sidebar";
 import { Tooltip } from "./ui/Tooltip";
 import { StatusBar } from "./ui/StatusBar";
-import { Landing } from "./ui/Landing";
+import { Landing, resolveDataset } from "./ui/Landing";
 import { PlatformBar } from "./ui/PlatformBar";
 import { SplitDivider } from "./ui/SplitDivider";
+import { ScaleBar } from "./ui/ScaleBar";
 
 
 export function App() {
@@ -28,7 +29,7 @@ export function App() {
     ctrlRef.current = ctrl;
     installTestHooks(ctrl);
     const unbind = bindUrl();
-    if (initial.datasetUrl) void ctrl.load(initial.datasetUrl);
+    if (initial.datasetUrl) void resolveDataset(initial.datasetUrl).then((u) => ctrl.load(u));
     return () => {
       unbind();
       ctrl.destroy();
@@ -38,20 +39,21 @@ export function App() {
 
   useEffect(() => {
     const ctrl = ctrlRef.current;
-    if (ctrl && datasetUrl && status === "idle") void ctrl.load(datasetUrl);
+    if (ctrl && datasetUrl && status === "idle") void resolveDataset(datasetUrl).then((u) => ctrl.load(u));
   }, [datasetUrl, status]);
 
   return (
     <div className="app">
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}`} ref={mapRef}>
         <SplitDivider mapRef={mapRef} />
+        <ScaleBar />
       </div>
       {status === "idle" && !datasetUrl && <Landing />}
       {status === "error" && (
         <div className="overlay error">
           <h2>Could not load dataset</h2>
           <p>{error}</p>
-          <button onClick={() => store.getState().set({ status: "idle", datasetUrl: null, manifest: null })}>Back</button>
+          <button onClick={() => store.getState().set({ status: "idle", datasetUrl: null, datasetRef: null, manifest: null })}>Back</button>
         </div>
       )}
       <PlatformBar />

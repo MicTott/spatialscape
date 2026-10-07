@@ -120,6 +120,38 @@ export function categoryPalette(colors: string[], hidden: ReadonlySet<number> | 
   return out;
 }
 
+/** Two-channel blend schemes: corner colors for (A=0,B=0), (A=1,B=0), (A=0,B=1), (A=1,B=1). */
+export const BLEND_SCHEMES: Record<string, { name: string; a: string; b: string; both: string; none: string }> = {
+  yb: { name: "yellow / blue → green", none: "#2a2e35", a: "#f5d324", b: "#3d7fe0", both: "#35c46a" },
+  cm: { name: "cyan / magenta → white", none: "#2a2e35", a: "#28c8ea", b: "#ea4fc3", both: "#f7f7f7" },
+  rg: { name: "red / green → yellow", none: "#2a2e35", a: "#e8484e", b: "#34c25e", both: "#f3e24a" },
+};
+export const BLEND_SIZE = 32;
+
+/** BLEND_SIZE x BLEND_SIZE RGBA8 texture: x = channel A, y = channel B, bilinear mix of the four corners. */
+export function blendLUT(scheme: string): Uint8Array {
+  const sc = BLEND_SCHEMES[scheme] ?? BLEND_SCHEMES.yb;
+  const c00 = hexToRGB(sc.none);
+  const c10 = hexToRGB(sc.a);
+  const c01 = hexToRGB(sc.b);
+  const c11 = hexToRGB(sc.both);
+  const n = BLEND_SIZE;
+  const out = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++) {
+    const tb = y / (n - 1);
+    for (let x = 0; x < n; x++) {
+      const ta = x / (n - 1);
+      const o = (y * n + x) * 4;
+      for (let k = 0; k < 3; k++) {
+        const v = c00[k] * (1 - ta) * (1 - tb) + c10[k] * ta * (1 - tb) + c01[k] * (1 - ta) * tb + c11[k] * ta * tb;
+        out[o + k] = Math.max(0, Math.min(255, Math.round(v)));
+      }
+      out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
 /** CSS gradient string for legends. */
 export function colormapCSS(name: string): string {
   const fn = COLORMAPS[name] ?? COLORMAPS.viridis;

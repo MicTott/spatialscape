@@ -11,14 +11,14 @@ import { ScatterplotLayer, type ScatterplotLayerProps } from "@deck.gl/layers";
 import type { Texture } from "@luma.gl/core";
 
 export interface ExpressionScatterProps {
-  mode: 0 | 1 | 2; // 0 continuous, 1 categorical, 2 not measured (constant grey)
+  mode: 0 | 1 | 2 | 3; // 0 continuous, 1 categorical, 2 not measured (constant grey), 3 two-channel blend
   vmin: number;
   vmax: number;
   filterOn: boolean;
   filterMin: number;
   filterMax: number;
   hideZeros: boolean;
-  lut: Uint8Array; // 256*4 RGBA
+  lut: Uint8Array; // 256*4 RGBA (mode 0) or BLEND_SIZE*BLEND_SIZE*4 (mode 3)
   catColors: Uint8Array; // N*4 RGBA (alpha 0 = hidden)
   drawCount: number;
 }
@@ -66,6 +66,7 @@ const defaultProps = {
   catColors: { type: "object", value: null, compare: false },
   drawCount: { type: "number", value: Infinity, compare: false },
   getValue: { type: "accessor", value: 0 },
+  getValue2: { type: "accessor", value: 0 },
   getCategory: { type: "accessor", value: 0 },
   getFilter: { type: "accessor", value: 0 },
 };
@@ -85,6 +86,7 @@ export class ExpressionScatterLayer extends ScatterplotLayer<unknown, Expression
         ...(shaders as any).inject,
         "vs:#decl": /* glsl */ `
 in float instanceValue;
+in float instanceValue2;
 in float instanceCategory;
 in float instanceFilter;
 uniform sampler2D lutTexture;
@@ -94,7 +96,12 @@ uniform sampler2D catTexture;
 {
   vec4 sc;
   bool drop = false;
-  if (sscape.mode > 1.5) {
+  if (sscape.mode > 2.5) {
+    float ta = clamp((instanceValue - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
+    float tb = clamp((instanceValue2 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
+    sc = texture(lutTexture, vec2(ta, tb));
+    if (sscape.hideZeros > 0.5 && instanceValue < 0.001 && instanceValue2 < 0.001) drop = true;
+  } else if (sscape.mode > 1.5) {
     sc = vec4(0.36, 0.39, 0.44, 1.0);
   } else if (sscape.mode < 0.5) {
     float t = (instanceValue - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6);
@@ -119,6 +126,7 @@ uniform sampler2D catTexture;
     super.initializeState();
     this.getAttributeManager()!.addInstanced({
       instanceValue: { size: 1, type: "unorm8", accessor: "getValue", defaultValue: 0 },
+      instanceValue2: { size: 1, type: "unorm8", accessor: "getValue2", defaultValue: 0 },
       instanceCategory: { size: 1, type: "unorm16", accessor: "getCategory", defaultValue: 0 },
       instanceFilter: { size: 1, type: "unorm8", accessor: "getFilter", defaultValue: 0 },
     });
@@ -130,7 +138,9 @@ uniform sampler2D catTexture;
     const { props, oldProps } = params;
     if (props.lut !== oldProps.lut || !this.state.lutTex) {
       this.state.lutTex?.destroy();
-      this.state.lutTex = this._makeTexture(props.lut ?? new Uint8Array(256 * 4).fill(255), 256);
+      const lut: Uint8Array = props.lut ?? new Uint8Array(256 * 4).fill(255);
+      const side = lut.length === 256 * 4 ? 256 : Math.round(Math.sqrt(lut.length / 4));
+      this.state.lutTex = this._makeTexture(lut, side, lut.length === 256 * 4 ? 1 : side, lut.length !== 256 * 4);
     }
     if (props.catColors !== oldProps.catColors || !this.state.catTex) {
       this.state.catTex?.destroy();
@@ -147,13 +157,13 @@ uniform sampler2D catTexture;
     super.finalizeState(context);
   }
 
-  private _makeTexture(data: Uint8Array, width: number): Texture {
+  private _makeTexture(data: Uint8Array, width: number, height = 1, smooth = false): Texture {
     return this.context.device.createTexture({
       data,
       width,
-      height: 1,
+      height,
       format: "rgba8unorm",
-      sampler: { minFilter: "nearest", magFilter: "nearest", addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge" },
+      sampler: { minFilter: smooth ? "linear" : "nearest", magFilter: smooth ? "linear" : "nearest", addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge" },
     });
   }
 

@@ -1,6 +1,48 @@
 import { fieldById } from "../data/manifest";
-import { colormapCSS } from "../layers/lut";
+import { useEffect, useRef } from "react";
+import { BLEND_SCHEMES, BLEND_SIZE, blendLUT, colormapCSS } from "../layers/lut";
 import { store, useViewer } from "../store/store";
+
+function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d")!;
+    const img = new ImageData(new Uint8ClampedArray(blendLUT(scheme)), BLEND_SIZE, BLEND_SIZE);
+    // flip vertically so B increases upwards
+    const tmp = document.createElement("canvas");
+    tmp.width = tmp.height = BLEND_SIZE;
+    tmp.getContext("2d")!.putImageData(img, 0, 0);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.translate(0, cv.height);
+    ctx.scale(cv.width / BLEND_SIZE, -cv.height / BLEND_SIZE);
+    ctx.drawImage(tmp, 0, 0);
+    ctx.restore();
+  }, [scheme]);
+  const sc = BLEND_SCHEMES[scheme] ?? BLEND_SCHEMES.yb;
+  const name = (list: string[]) => (list.length === 0 ? "(empty)" : list.length <= 3 ? list.join(", ") : `${list.slice(0, 2).join(", ")} +${list.length - 2}`);
+  return (
+    <div className="legend blend-legend">
+      <div className="legend-head">
+        <span>Blend</span>
+        <span className="muted">{sc.name}</span>
+      </div>
+      <div className="blend-grid">
+        <div className="blend-y" title={b.join(", ")}>
+          <span className="swatch" style={{ background: sc.b }} /> B: {name(b)}
+        </div>
+        <canvas ref={ref} width={96} height={96} />
+        <div />
+        <div className="blend-x" title={a.join(", ")}>
+          <span className="swatch" style={{ background: sc.a }} /> A: {name(a)}
+        </div>
+      </div>
+      <div className="muted small">corner colors: neither · A only · B only · both</div>
+    </div>
+  );
+}
 
 export function Legend() {
   const manifest = useViewer((s) => s.manifest);
@@ -65,6 +107,7 @@ export function Legend() {
       </div>
     );
   }
+  if (color.kind === "blend") return <BlendLegend scheme={color.scheme} a={color.a} b={color.b} />;
   const lo = vrange[0] * geneMax;
   const hi = vrange[1] * geneMax;
   const group = features?.groups.find((g) => g.features.some((f) => f.id === color.gene));

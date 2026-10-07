@@ -19,6 +19,10 @@ declare global {
 export function installTestHooks(controller: ViewerController) {
   const ready = new Promise<void>((resolve) => {
     const check = (s: ViewerState) => {
+      if (s.status === "error") {
+        resolve(); // callers inspect getState().status / error
+        return;
+      }
       if (s.status === "ready" && s.pending === 0) {
         if (window.__sscape && window.__sscape.readyAtMs == null) window.__sscape.readyAtMs = performance.now();
         resolve();

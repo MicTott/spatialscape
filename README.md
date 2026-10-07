@@ -9,11 +9,14 @@ A static, highly reactive web browser for spatial transcriptomics (Visium, Visiu
 - **Color-by and filter-by are separate.** Color by cell type while filtering to cells above a threshold of a gene or QC metric, with a live histogram and count.
 - **Linked snRNA-seq panel.** Embedding samples (UMAP of an snRNA-seq reference) render in a second view beside the tissue, sharing the same GL context, gene, colormap, legend and filters. The split is resizable and can sit left or right.
 - **Platform bar and feature groups.** Switch the mosaic between Visium, Visium HD, Xenium or all at once. Non-gene features such as RCTD cell type weights get their own tab instead of polluting the gene search.
+- **Two-set gene blending.** Color each cell by two gene sets at once (one gene or fifty per set): yellow and blue mixing to green, cyan and magenta to white, or red and green to yellow, with a 2D legend. Scores are the mean normalized expression of each set.
 - **Hover, lasso, dot plot.** Hover shows every annotation of a cell plus the current gene value. Lasso any region for composition, gene statistics and a CSV of cell IDs. A per-annotation dot plot of the current gene doubles as a category filter. Cell boundary polygons draw when zoomed in.
 - **Domain outlines over anything.** Boundaries of any categorical annotation (spatial domains, cell types) are traced at build time and can be drawn as thin light, dark or colored strokes on top of gene or cell-type coloring, so you always know which domain you are looking at.
 - **Images under the points.** H&E or fluorescence pyramids (OME-Zarr) rendered with Viv, in the same coordinate frame as the cells.
 - **Static hosting.** No server. The app is plain files (GitHub Pages, Cloudflare Pages); the data is plain files (S3, R2, any host with CORS and HTTP Range). Every view state lives in the URL.
 - **One command to add data.** `spatialscape build dataset.yaml -o bundle` converts AnnData (h5ad / zarr) or SpatialData into a viewer bundle. R users export their SpatialExperiment / SingleCellExperiment to h5ad first (zellkonverter or anndataR).
+
+A landing gallery (`app/public/datasets.json`) lists published datasets; `?d=<id>` opens one by name, `?d=<url>` opens any bundle.
 
 ## Layout
 
