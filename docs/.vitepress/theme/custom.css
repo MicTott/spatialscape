@@ -1,7 +1,8 @@
-/* Reference tables: keep argument/option names on one line. */
+/* Reference tables: keep each argument/option name on one line, but let a cell
+   with several names wrap between them so the description column keeps room. */
 .vp-doc table td:first-child code {
   white-space: nowrap;
 }
-.vp-doc table td:first-child {
-  white-space: nowrap;
+.vp-doc table td:last-child {
+  min-width: 18em;
 }
