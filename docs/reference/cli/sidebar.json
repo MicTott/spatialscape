@@ -1,0 +1,46 @@
+[
+  {
+    "text": "init",
+    "link": "/reference/cli/init"
+  },
+  {
+    "text": "plan",
+    "link": "/reference/cli/plan"
+  },
+  {
+    "text": "inspect",
+    "link": "/reference/cli/inspect"
+  },
+  {
+    "text": "build",
+    "link": "/reference/cli/build"
+  },
+  {
+    "text": "add-sample",
+    "link": "/reference/cli/add-sample"
+  },
+  {
+    "text": "refresh",
+    "link": "/reference/cli/refresh"
+  },
+  {
+    "text": "outlines",
+    "link": "/reference/cli/outlines"
+  },
+  {
+    "text": "thumbnails",
+    "link": "/reference/cli/thumbnails"
+  },
+  {
+    "text": "validate",
+    "link": "/reference/cli/validate"
+  },
+  {
+    "text": "serve",
+    "link": "/reference/cli/serve"
+  },
+  {
+    "text": "synth",
+    "link": "/reference/cli/synth"
+  }
+]

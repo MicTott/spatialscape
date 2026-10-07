@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import cliSidebar from "../reference/cli/sidebar.json" with { type: "json" };
 
 export default defineConfig({
   title: "spatialscape",
@@ -11,7 +12,7 @@ export default defineConfig({
     logo: { light: "/logo.svg", dark: "/logo.svg" },
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
-      { text: "Reference", link: "/reference/cli" },
+      { text: "Reference", link: "/reference/cli/" },
       { text: "Demo", link: "https://mictott.github.io/spatialscape/" },
       { text: "v0.1.0", items: [{ text: "Changelog", link: "/changelog" }, { text: "Contributing", link: "/contributing" }] },
     ],
@@ -35,7 +36,7 @@ export default defineConfig({
         {
           text: "Reference",
           items: [
-            { text: "CLI commands", link: "/reference/cli" },
+            { text: "CLI commands", link: "/reference/cli/", collapsed: false, items: cliSidebar },
             { text: "dataset.yaml schema", link: "/reference/dataset-schema" },
             { text: "Bundle format", link: "/reference/format" },
             { text: "URL parameters", link: "/reference/url" },

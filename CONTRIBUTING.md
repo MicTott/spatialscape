@@ -29,6 +29,8 @@ npm test && npm run e2e
 
 `npm run docs:dev` serves the VitePress site from `docs/`; `npm run docs:build` writes `docs/.vitepress/dist`. The Pages workflow publishes it under `/docs/`.
 
+The CLI reference (`docs/reference/cli/`) is generated from the Typer app's own help strings by `python/scripts/gen_cli_docs.py` (`npm run docs:gen`). Edit help text in `python/src/spatialscape/cli.py` and examples in the generator, then re-run it and commit the regenerated pages; the Pages workflow regenerates them as well, so they can never drift from `--help`.
+
 ## Where things live
 
 See `docs/reference/architecture.md`. The bundle format is specified in `docs/reference/format.md`; changes to it must bump `formatVersion`

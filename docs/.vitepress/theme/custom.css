@@ -1,0 +1,7 @@
+/* Reference tables: keep argument/option names on one line. */
+.vp-doc table td:first-child code {
+  white-space: nowrap;
+}
+.vp-doc table td:first-child {
+  white-space: nowrap;
+}
