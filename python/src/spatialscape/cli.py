@@ -27,7 +27,7 @@ def build(
         from .thumbnail import write_thumbnails
 
         write_thumbnails(out, hero_id=cfg.thumbnail_sample, log=log)
-    except Exception as e:  # noqa: BLE001 - thumbnails are cosmetic
+    except Exception as e:
         typer.secho(f"  thumbnails skipped: {e}", fg="yellow")
     problems = validate_local(out)
     for p in problems:
