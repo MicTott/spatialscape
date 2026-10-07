@@ -18,6 +18,10 @@ fields:
   - { id: domain, name: Spatial domain, type: categorical, palette_key: "visium_semisupervised,xenium_banksy_domain,visium_hd_domain,domain", aliases: { AI: IA } }
   - { id: celltype_xenium, name: Cell type, type: categorical, palette_key: cell_type }
   - { id: broad_xenium, name: Broad class, type: categorical, palette_key: broad_class }
+  - { id: celltype_hd, name: "Cell type (RCTD, HD)", type: categorical }
+  - { id: mito_percent, name: Mito %, type: continuous }
+  - { id: broad_yu, name: Broad class (Yu), type: categorical }
+  - { id: space_anno, name: Spatial annotation (Yu clusters), type: categorical }
   - { id: total_counts, name: Total transcripts, type: continuous }
   - { id: nucleus_area, name: Nucleus area (µm²), type: continuous }
   - { id: total_umi, name: Total UMI (Visium), type: continuous }
@@ -32,21 +36,77 @@ platforms:
   visium:
     fields: { domain: BS_k16_Semisupervised_wAI, total_umi: sum_umi, detected_genes: sum_gene, mito_ratio: expr_chrM_ratio }
     images: auto          # picks up image.ome.zarr next to each adata.zarr
+  visium_hd:
+    fields: { domain: spatial_domain, celltype_hd: first_type, total_umi: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
+    images: auto
 
 # Glob entries expand to one sample per match; {name} is the matched folder name.
 samples:
-  - glob: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br*/adata.zarr
+  # Xenium: cells from the 5 um re-segmentation; boundaries copied from JHPCE (processed-data/Xenium/01_resegment).
+  # Br9206 / Br9192 coordinates were transposed / anti-transposed in the export, so their vertices carry `affine`.
+  - id: xen_Br9017
+    name: Br9017 (Xenium)
     platform: xenium
-    id: "xen_{name}"
-    name: "{name} (Xenium)"
-    group: "{name}"
+    group: Br9017
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9017/adata.zarr
+    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/20240425__170523__0023004/cell_boundaries.parquet }
+  - id: xen_Br9192
+    name: Br9192 (Xenium)
+    platform: xenium
+    group: Br9192
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9192/adata.zarr
+    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/output-XETG00117__0023153__Region_1__20240329__171204/cell_boundaries.parquet, affine: [0, -1, 21675.123047, -1, 0, 11531.958984] }
+  - id: xen_Br9206
+    name: Br9206 (Xenium)
+    platform: xenium
+    group: Br9206
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9206/adata.zarr
+    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/20240425__170523__0022862/cell_boundaries.parquet, affine: [0, 1, 0, 1, 0, 0] }
+  - id: xen_Br9280
+    name: Br9280 (Xenium)
+    platform: xenium
+    group: Br9280
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9280/adata.zarr
+    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/output-XETG00117__0023154__Region_1__20240329__171203/cell_boundaries.parquet }
   - glob: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br*/adata.zarr
     platform: visium
     id: "vis_{name}"
     name: "{name} (Visium)"
     group: "{name}"
+  # Visium HD crops: coordinates, 32-vertex cell polygons (obsm/segmentations, auto) and the hires H&E share one
+  # level-0 pixel frame; microns_per_unit = SpaceRanger microns_per_pixel / tissue_hires_scalef per crop.
+  - id: hd_Br8325_CeA
+    name: Br8325_CeA (Visium HD)
+    platform: visium_hd
+    group: Br8325
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_CeA/adata.zarr
+    microns: { microns_per_unit: 4.090317 }   # H1-937FVHX_D1: 0.25249 um/px / hires scalef 0.061728396
+  - id: hd_Br8325_MeA
+    name: Br8325_MeA (Visium HD)
+    platform: visium_hd
+    group: Br8325
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_MeA/adata.zarr
+    microns: { microns_per_unit: 4.317674 }   # H1-937FVHX_A1: 0.25250 um/px / hires scalef 0.058479533
+  - id: hd_Br9280_CeA
+    name: Br9280_CeA (Visium HD)
+    platform: visium_hd
+    group: Br9280
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_CeA/adata.zarr
+    microns: { microns_per_unit: 2.432738 }   # H1-W369TJK_A1: 0.25258 um/px / hires scalef 0.10382599
+  - id: hd_Br9280_ITC
+    name: Br9280_ITC (Visium HD)
+    platform: visium_hd
+    group: Br9280
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_ITC/adata.zarr
+    microns: { microns_per_unit: 2.857036 }   # H1-HW9VGBW_A1: 0.25265 um/px / hires scalef 0.08843036
+  - id: hd_Br9280_MeA
+    name: Br9280_MeA (Visium HD)
+    platform: visium_hd
+    group: Br9280
+    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_MeA/adata.zarr
+    microns: { microns_per_unit: 3.271268 }   # H1-HW9VGBW_D1: 0.25274 um/px / hires scalef 0.07726184
   - id: sn_amy
-    name: snRNA-seq (BLA, 5 donors)
+    name: snRNA-seq, Totty et al. (BLA, 5 donors)
     platform: snrnaseq
     kind: embedding
     group: snRNA-seq
@@ -55,27 +115,15 @@ samples:
     extent: 5000
     expression: { layer: X, normalized: lognorm }
     fields: { celltype_xenium: fine_celltype, broad_xenium: broad_celltype, total_umi: sum, detected_genes: detected }
-
-# --- Pending inputs -------------------------------------------------------------------------------
-# Visium HD crops (Br8325_CeA, Br8325_MeA, Br9280_CeA, Br9280_ITC, Br9280_MeA): obsm/spatial and
-# obsm/segmentations are in level-0 pixels of the cropped hires H&E. Needs the SpaceRanger
-# `microns_per_pixel` for the two HD runs (Br8325, Br9280), then microns_per_unit = microns_per_pixel / scale_factor
-# per crop (hires scale factors: Br9280_CeA 0.10383, Br8325_MeA 0.05848, Br8325_CeA 0.06173, Br9280_ITC 0.08843,
-# Br9280_MeA 0.07726). Polygons are picked up automatically from obsm/segmentations.
-#  - glob: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/*/adata.zarr
-#    platform: visium_hd
-#    id: "hd_{name}"
-#    name: "{name} (Visium HD)"
-#    group: "{name}"
-#    microns: { microns_per_unit: <microns_per_pixel / scale_factor> }
-#    fields: { domain: spatial_domain, celltype_hd: first_type, total_umi: sum, detected_genes: detected }
-#
-# Xenium cell boundaries: the cells come from a 5 um re-segmentation whose cell_boundaries.parquet files live on
-# JHPCE under processed-data/Xenium/01_resegment/5um_segmentations/<run>/outs/. The Ranger files in
-# processed-data/xenium_data/ are the vendor segmentation (different cell ids). Once copied locally, add per donor
-# (Br9206 and Br9192 coordinates were transposed / anti-transposed in the export, so their vertices need `affine`):
-#   xen_Br9017: polygons: { path: <...>/20240425__170523__0023004/outs/cell_boundaries.parquet }
-#   xen_Br9280: polygons: { path: <...>/output-XETG00117__0023154__Region_1__20240329__171203/outs/cell_boundaries.parquet }
-#   xen_Br9206: polygons: { path: <...>/20240425__170523__0022862/outs/cell_boundaries.parquet, affine: [0, 1, 0, 1, 0, 0] }
-#   xen_Br9192: polygons: { path: <...>/output-XETG00117__0023153__Region_1__20240329__171204/outs/cell_boundaries.parquet,
-#                           affine: [0, -1, 21675.123047, -1, 0, 11531.958984] }
+  # Yu et al. 2023 (GSE195445) human amygdala snRNA-seq: the RCTD reference for the Visium HD cell types, so its
+  # labels (orig_anno without the "Human_" prefix) share the celltype_hd vocabulary and colors.
+  - id: sn_yu
+    name: snRNA-seq, Yu et al. 2023 (3 donors)
+    platform: snrnaseq
+    kind: embedding
+    group: snRNA-seq
+    path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/yu_sce.h5ad
+    coords: obsm/X_umap
+    extent: 5000
+    expression: { layer: X, normalized: lognorm }
+    fields: { celltype_hd: celltype_yu, broad_yu: broad_yu, space_anno: space_anno, total_umi: total_counts, detected_genes: n_genes, mito_percent: pct_mt }
