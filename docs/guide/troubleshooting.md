@@ -37,6 +37,10 @@ Tune `spatialscape outlines dataset.yaml -o bundle --smooth-um 150 --min-feature
 
 The `cell_id` values in the boundary file do not match `obs_names`. This happens when the object was built from a different segmentation run than the boundary file. Use the boundaries from the run that produced the cells.
 
+## Warning: polygon centroids sit far from their cells
+
+Ids matched but the vertices are in another frame: the coordinates were transposed, mirrored or cropped after segmentation. Set `polygons.affine` to undo that (see [Preparing your data](./preparing-data#cell-boundary-polygons)). For a crop, the shift is the crop origin in the uncropped frame.
+
 ## Headless or hidden tabs
 
 The viewer falls back to timers when `requestAnimationFrame` is paused (hidden tab, collapsed pane), so data keeps loading; rendering resumes when the tab is visible.

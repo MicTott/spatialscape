@@ -1,4 +1,5 @@
 """Orchestrate: dataset.yaml -> bundle directory."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from . import __version__
-from .config import DatasetConfig, FieldSpec, SampleSpec
+from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
 from .discover import auto_fields, auto_images, infer_field_spec
 from .expression import detect_lognorm, get_matrix, log1p_cp10k, write_expression
 from .geometry import default_point_radius, microns_per_unit, transform_points
@@ -33,11 +34,12 @@ from .manifest import (
 from .obs import write_obs
 from .outlines import compute_outlines, write_outlines
 from .polygons import SCALE as POLY_SCALE
-from .polygons import pack_polygons, read_polygon_table, write_polygons
+from .polygons import apply_affine, pack_polygons, read_polygon_obsm, read_polygon_table, write_polygons
 from .readers import load_sample
 from .vocab import VocabRegistry, load_palette
 
 Log = Callable[[str], None]
+AUTO_POLYGON_OBSM = ("segmentations", "cell_boundaries", "boundaries", "polygons")
 
 
 def _fields_manifest(fields: list[FieldSpec], vocab: VocabRegistry):
@@ -47,7 +49,9 @@ def _fields_manifest(fields: list[FieldSpec], vocab: VocabRegistry):
         if f.type == "categorical":
             out.append(CategoricalField(id=f.id, name=name, vocabulary=vocab.vocab_id(f.id), description=f.description))
         else:
-            out.append(ContinuousField(id=f.id, name=name, range=f.range, colormap=f.colormap, description=f.description))
+            out.append(
+                ContinuousField(id=f.id, name=name, range=f.range, colormap=f.colormap, description=f.description)
+            )
     return out
 
 
@@ -148,14 +152,37 @@ def build_sample(
 
     # --- polygons ---------------------------------------------------------
     poly_info = None
+    if spec.polygons is None and spec.kind == "spatial":
+        for key in AUTO_POLYGON_OBSM:
+            arr = adata.obsm.get(key, None)
+            if arr is not None and np.ndim(arr) == 3 and np.shape(arr)[2] == 2:
+                spec = spec.model_copy(update={"polygons": PolygonSpec(obsm=key)})
+                log(f"[{spec.id}] auto polygons: obsm/{key}")
+                break
     if spec.polygons:
-        log(f"[{spec.id}] polygons {spec.polygons.path}")
-        pids, px_, py_ = read_polygon_table(spec.polygons.path, spec.polygons.id_column, spec.polygons.x_column, spec.polygons.y_column)
-        pxy = transform_points(np.column_stack([px_, py_]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu - shift
-        offsets, deltas, with_poly = pack_polygons(ids, xy, pids, pxy, max_vertices=spec.polygons.max_vertices)
+        ps = spec.polygons
+        if ps.obsm:
+            log(f"[{spec.id}] polygons from obsm/{ps.obsm}")
+            pids, px_, py_ = read_polygon_obsm(adata, ps.obsm)
+        else:
+            log(f"[{spec.id}] polygons {ps.path}")
+            pids, px_, py_ = read_polygon_table(ps.path, ps.id_column, ps.x_column, ps.y_column)
+        if ps.affine:
+            px_, py_ = apply_affine(px_, py_, ps.affine)
+        pxy = (
+            transform_points(np.column_stack([px_, py_]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate)
+            * upu
+            - shift
+        )
+        offsets, deltas, with_poly, dev = pack_polygons(ids, xy, pids, pxy, max_vertices=ps.max_vertices)
         write_polygons(out_dir, offsets, deltas)
         poly_info = PolygonInfo(cells=with_poly, vertices=int(len(deltas) // 2), scale=POLY_SCALE)
         log(f"[{spec.id}] polygons matched {with_poly}/{n_obs} cells, {len(deltas) // 2} vertices")
+        if with_poly and dev > max(10.0, 2.0 * radius):
+            log(
+                f"[{spec.id}] warning: polygon centroids sit a median {dev:.1f} um from their cells; "
+                "the boundary file is probably in a different frame than the coordinates (see polygons.affine)"
+            )
 
     # --- images -----------------------------------------------------------
     images: list[SampleImage] = []
@@ -248,7 +275,11 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         json.dump({"genes": genes, "groups": groups}, fh, separators=(",", ":"))
 
     if cfg.default_color is not None:
-        dc = ColorSpec(kind="gene", gene=cfg.default_color.gene) if cfg.default_color.gene else ColorSpec(kind="field", field=cfg.default_color.field)
+        dc = (
+            ColorSpec(kind="gene", gene=cfg.default_color.gene)
+            if cfg.default_color.gene
+            else ColorSpec(kind="field", field=cfg.default_color.field)
+        )
     elif cfg.default_gene:
         dc = ColorSpec(kind="gene", gene=cfg.default_gene)
     else:
@@ -266,7 +297,9 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         colormaps=cfg.colormaps or list(BUILTIN_COLORMAPS),
         vocabularies=vocab.to_manifest(),
         fields=_fields_manifest(_all_fields(cfg, vocab), vocab),
-        featureGroups=[FeatureGroup(id=g["id"], name=g["name"], units=g["units"], count=len(g["features"])) for g in groups],
+        featureGroups=[
+            FeatureGroup(id=g["id"], name=g["name"], units=g["units"], count=len(g["features"])) for g in groups
+        ],
         samples=samples,
     )
     with open(out / "manifest.json", "w") as fh:
@@ -280,7 +313,9 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, log: L
     out = Path(out)
     (out / "samples").mkdir(parents=True, exist_ok=True)
     vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette))
-    samples = [build_sample(spec, cfg, out / "samples" / spec.id, vocab, sharded=sharded, log=log) for spec in cfg.samples]
+    samples = [
+        build_sample(spec, cfg, out / "samples" / spec.id, vocab, sharded=sharded, log=log) for spec in cfg.samples
+    ]
     return _write_dataset_files(out, cfg, samples, vocab)
 
 
@@ -319,7 +354,13 @@ def add_outlines(
             v = existing.vocabularies[f.vocabulary]
             na = {v.categories.index("NA")} if "NA" in v.categories else set()
             log(f"[{s.id}] outlines for {fid}")
-            write_outlines(d, fid, compute_outlines(xy, codes, len(v.categories), skip_codes=na, smooth_um=smooth_um, min_feature_um=min_feature_um))
+            write_outlines(
+                d,
+                fid,
+                compute_outlines(
+                    xy, codes, len(v.categories), skip_codes=na, smooth_um=smooth_um, min_feature_um=min_feature_um
+                ),
+            )
             done.append(fid)
         s.outlines = sorted(set(s.outlines) | set(done))
     return _write_dataset_files(out, cfg, existing.samples, vocab)
@@ -338,7 +379,13 @@ def refresh(cfg: DatasetConfig, out: Path) -> Manifest:
 
 
 def add_sample(
-    cfg: DatasetConfig, out: Path, sample_id: str, *, sharded: bool = True, allow_vocab_append: bool = True, log: Log = print
+    cfg: DatasetConfig,
+    out: Path,
+    sample_id: str,
+    *,
+    sharded: bool = True,
+    allow_vocab_append: bool = True,
+    log: Log = print,
 ) -> Manifest:
     out = Path(out)
     with open(out / "manifest.json") as fh:
@@ -346,7 +393,9 @@ def add_sample(
     spec = next((s for s in cfg.samples if s.id == sample_id), None)
     if spec is None:
         raise KeyError(f"sample {sample_id!r} not in dataset.yaml")
-    vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies, frozen=not allow_vocab_append)
+    vocab = VocabRegistry(
+        cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies, frozen=not allow_vocab_append
+    )
     vocab.adopt_manifest_fields(existing)
     new = build_sample(spec, cfg, out / "samples" / sample_id, vocab, sharded=sharded, log=log)
     samples = [s for s in existing.samples if s.id != sample_id] + [new]

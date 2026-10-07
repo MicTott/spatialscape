@@ -1,4 +1,5 @@
 """Input schema: the dataset.yaml a contributor writes."""
+
 from __future__ import annotations
 
 import glob as _glob
@@ -79,13 +80,26 @@ class ImageSpec(_Model):
 
 
 class PolygonSpec(_Model):
-    """Per-cell boundary polygons (e.g. Xenium Ranger cell_boundaries.parquet). Coordinates share the frame of `coords`."""
+    """Per-cell boundary polygons, from a long-format parquet file (`path`: one row per vertex) or from an
+    `obsm` array of shape (n_obs, n_vertices, 2) inside the object. Vertex coordinates share the frame of
+    `coords`; set `affine` when the boundary file is in a different frame (e.g. the object's coordinates were
+    transposed after segmentation)."""
 
-    path: Path
+    path: Path | None = None
+    obsm: str | None = None
     id_column: str = "cell_id"
     x_column: str = "vertex_x"
     y_column: str = "vertex_y"
     max_vertices: int = 24
+    # (a, b, c, d, e, f): x' = a*x + b*y + c ; y' = d*x + e*y + f, applied to the raw vertices first.
+    # transpose = [0, 1, 0, 1, 0, 0]; anti-transpose with extents = [0, -1, Ymax, -1, 0, Xmax].
+    affine: tuple[float, float, float, float, float, float] | None = None
+
+    @model_validator(mode="after")
+    def _one_source(self):
+        if (self.path is None) == (self.obsm is None):
+            raise ValueError("polygons: set exactly one of `path` or `obsm`")
+        return self
 
 
 class SampleSpec(_Model):
@@ -204,7 +218,7 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
         if isinstance(s.images, list):
             for im in s.images:
                 im.path = res(im.path)
-        if s.polygons:
+        if s.polygons and s.polygons.path is not None:
             s.polygons.path = res(s.polygons.path)
     return cfg
 
@@ -237,7 +251,13 @@ def _template_vars(p: Path, i: int) -> dict[str, str]:
     for suf in (".h5ad", ".zarr", ".h5"):
         if stem.endswith(suf):
             stem = stem[: -len(suf)]
-    return {"path": str(p), "dir": str(p.parent), "name": p.parent.name if p.is_dir() or p.suffix else p.name, "stem": stem, "i": str(i)}
+    return {
+        "path": str(p),
+        "dir": str(p.parent),
+        "name": p.parent.name if p.is_dir() or p.suffix else p.name,
+        "stem": stem,
+        "i": str(i),
+    }
 
 
 def expand_samples(raw: dict, base: Path) -> list[dict]:

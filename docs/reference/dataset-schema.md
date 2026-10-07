@@ -52,7 +52,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `transform` | `{flip: none \| x \| y, rotate: 0 \| 90 \| 180 \| 270}` | none | applied to points and images |
 | `fields` | `{field_id: obs_column}` or `auto` | `{}` | |
 | `images` | list of image specs or `auto` | `auto` | |
-| `polygons` | `{path, id_column, x_column, y_column, max_vertices}` | | parquet |
+| `polygons` | `{path \| obsm, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (long-format parquet) or `obsm` (n, v, 2); `affine` maps vertices into the coordinate frame |
 | `extent` | number | `5000` | embeddings: world size of the longest side |
 | `point_radius` | µm | per platform | Visium 27.5, Xenium 5, HD from spacing |
 | `seed` | int | `7` | row shuffle |

@@ -56,13 +56,26 @@ samples:
     expression: { layer: X, normalized: lognorm }
     fields: { celltype_xenium: fine_celltype, broad_xenium: broad_celltype, total_umi: sum, detected_genes: detected }
 
-# Visium HD crops (Br8325_CeA, Br8325_MeA, Br9280_CeA, Br9280_ITC, Br9280_MeA) are not built yet:
-# obsm/spatial is in level-0 pixels of the cropped hires H&E and the SpaceRanger microns_per_pixel is
-# not in the repo. To add them, set microns_per_unit = microns_per_pixel / scale_factor per crop
-# (scale factors: Br9280_CeA 0.10383, Br8325_MeA 0.05848, Br8325_CeA 0.06173, Br9280_ITC 0.08843, Br9280_MeA 0.07726):
+# --- Pending inputs -------------------------------------------------------------------------------
+# Visium HD crops (Br8325_CeA, Br8325_MeA, Br9280_CeA, Br9280_ITC, Br9280_MeA): obsm/spatial and
+# obsm/segmentations are in level-0 pixels of the cropped hires H&E. Needs the SpaceRanger
+# `microns_per_pixel` for the two HD runs (Br8325, Br9280), then microns_per_unit = microns_per_pixel / scale_factor
+# per crop (hires scale factors: Br9280_CeA 0.10383, Br8325_MeA 0.05848, Br8325_CeA 0.06173, Br9280_ITC 0.08843,
+# Br9280_MeA 0.07726). Polygons are picked up automatically from obsm/segmentations.
 #  - glob: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/*/adata.zarr
 #    platform: visium_hd
 #    id: "hd_{name}"
 #    name: "{name} (Visium HD)"
-#    microns: { microns_per_unit: <fill in> }
+#    group: "{name}"
+#    microns: { microns_per_unit: <microns_per_pixel / scale_factor> }
 #    fields: { domain: spatial_domain, celltype_hd: first_type, total_umi: sum, detected_genes: detected }
+#
+# Xenium cell boundaries: the cells come from a 5 um re-segmentation whose cell_boundaries.parquet files live on
+# JHPCE under processed-data/Xenium/01_resegment/5um_segmentations/<run>/outs/. The Ranger files in
+# processed-data/xenium_data/ are the vendor segmentation (different cell ids). Once copied locally, add per donor
+# (Br9206 and Br9192 coordinates were transposed / anti-transposed in the export, so their vertices need `affine`):
+#   xen_Br9017: polygons: { path: <...>/20240425__170523__0023004/outs/cell_boundaries.parquet }
+#   xen_Br9280: polygons: { path: <...>/output-XETG00117__0023154__Region_1__20240329__171203/outs/cell_boundaries.parquet }
+#   xen_Br9206: polygons: { path: <...>/20240425__170523__0022862/outs/cell_boundaries.parquet, affine: [0, 1, 0, 1, 0, 0] }
+#   xen_Br9192: polygons: { path: <...>/output-XETG00117__0023153__Region_1__20240329__171204/outs/cell_boundaries.parquet,
+#                           affine: [0, -1, 21675.123047, -1, 0, 11531.958984] }

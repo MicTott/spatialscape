@@ -1,4 +1,5 @@
 """Generate a tiny synthetic dataset (AnnData + PNG image + dataset.yaml) for tests and demos."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -52,6 +53,13 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
     a.obsm["spatial"] = xy
     a.obsm["X_umap"] = np.stack([np.cos(ang) * 3 + rng.normal(0, 0.3, n), np.sin(ang) * 3 + rng.normal(0, 0.3, n)], 1)
     a.uns["spot_nn_spacing_level0_px"] = 10.0  # => 10 um per px
+    # fake cell polygons: wobbly hexagons around each point (pixel units, same frame as coords),
+    # stored both as obsm/segmentations (n, 6, 2) and as a long-format parquet file
+    ang_v = np.linspace(0, 2 * np.pi, 7)[:-1]
+    r = rng.uniform(2.5, 4.0, size=(n, 1)) * (1 + 0.15 * rng.standard_normal((n, 6)))
+    vx = xy[:, 0:1] + r * np.cos(ang_v)
+    vy = xy[:, 1:2] + r * np.sin(ang_v)
+    a.obsm["segmentations"] = np.stack([vx, vy], -1)
     a.write_h5ad(path)
     # image: gradient background + darker tissue ellipse, (h, w, 3) uint8
     yy, xx = np.mgrid[0:h, 0:w]
@@ -69,16 +77,14 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
     import imageio.v3 as iio
 
     iio.imwrite(path.with_suffix(".png"), img)
-    # fake cell polygons: wobbly hexagons around each point (pixel units, same frame as coords)
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    ang_v = np.linspace(0, 2 * np.pi, 7)[:-1]
-    r = rng.uniform(2.5, 4.0, size=(n, 1)) * (1 + 0.15 * rng.standard_normal((n, 6)))
-    vx = (xy[:, 0:1] + r * np.cos(ang_v)).ravel()
-    vy = (xy[:, 1:2] + r * np.sin(ang_v)).ravel()
     cid = np.repeat(np.asarray(obs.index), 6)
-    pq.write_table(pa.table({"cell_id": cid, "vertex_x": vx, "vertex_y": vy}), path.with_suffix(".polygons.parquet"))
+    pq.write_table(
+        pa.table({"cell_id": cid, "vertex_x": vx.ravel(), "vertex_y": vy.ravel()}),
+        path.with_suffix(".polygons.parquet"),
+    )
 
 
 def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50) -> Path:

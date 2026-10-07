@@ -90,7 +90,14 @@ Flips and rotations in `transform:` apply to the points and the image together, 
 
 ## Cell boundary polygons
 
-Add `polygons: { path: cell_boundaries.parquet }` with `cell_id`, `vertex_x`, `vertex_y` columns in the same frame as the coordinates. The build matches `cell_id` to `obs_names` and reports how many cells matched; a low match rate means the segmentation does not correspond to the cells in the object.
+Polygons can come from two places:
+
+- **A long-format parquet file** such as Xenium Ranger's `cell_boundaries.parquet`: `polygons: { path: cell_boundaries.parquet }` with `cell_id`, `vertex_x`, `vertex_y` columns (names configurable). The build matches `cell_id` to `obs_names`.
+- **An `obsm` array** of shape `(n_obs, n_vertices, 2)` already in the object, as SpatialExperiment exports of Visium HD segmentations often carry: `polygons: { obsm: segmentations }`. An `obsm` key named `segmentations`, `cell_boundaries`, `boundaries` or `polygons` with that shape is picked up automatically when `polygons` is not set.
+
+Vertices must be in the same frame as the coordinates. If the object's coordinates were transposed, mirrored or shifted after segmentation, map the vertices with `affine: [a, b, c, d, e, f]` (`x' = a·x + b·y + c`, `y' = d·x + e·y + f`): a transpose is `[0, 1, 0, 1, 0, 0]`, a mirror across both axes with extents `Xmax`, `Ymax` is `[0, -1, Ymax, -1, 0, Xmax]`. The sample's own `transform:` and micron scaling are applied afterwards, so one setting keeps points, image and polygons together.
+
+The build reports how many cells matched and warns when polygon centroids sit far from their cells, which is the signature of a frame mismatch. A low match rate means the boundary file comes from a different segmentation run than the cells in the object.
 
 ## snRNA-seq and other embeddings
 
