@@ -1,0 +1,23 @@
+# Local guardrail: lint and test the Python package before every commit.
+#   pip install pre-commit && pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check python
+        entry: python/.venv/bin/ruff check --fix python
+        language: system
+        pass_filenames: false
+        files: ^python/
+      - id: pytest
+        name: pytest python/tests
+        entry: python/.venv/bin/python -m pytest -q python/tests
+        language: system
+        pass_filenames: false
+        files: ^python/
+      - id: tsc
+        name: tsc app
+        entry: bash -c 'cd app && npx tsc -b'
+        language: system
+        pass_filenames: false
+        files: ^app/src/

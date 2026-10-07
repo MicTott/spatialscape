@@ -18,6 +18,8 @@ npm run dev                                                  # terminal 2 -> htt
 
 ## Test
 
+Install the commit hook once so lint and tests run before every commit: `python/.venv/bin/pre-commit install`.
+
 ```bash
 python/.venv/bin/python -m pytest python/tests && python/.venv/bin/ruff check python
 npm test && npm run e2e
