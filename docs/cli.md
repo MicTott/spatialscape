@@ -14,34 +14,47 @@ spatialscape synth <dir>                                           tiny syntheti
 
 ## dataset.yaml
 
+The quickest start is `spatialscape init`, which writes a draft from one or more globs:
+
+```bash
+spatialscape init "data/xenium/*/adata.zarr" --platform xenium --id amygdala --name "Human amygdala" -o dataset.yaml
+spatialscape plan dataset.yaml       # shows the expanded sample list without building
+spatialscape build dataset.yaml -o bundle
+```
+
+A complete config for several platforms stays short because of three mechanisms:
+
+- **Globs with templates.** A `glob:` entry expands to one sample per match; `{name}` (matched folder), `{stem}` (file name without extension), `{dir}` and `{i}` fill in `id`, `name`, `group`.
+- **`platforms` and `defaults` blocks.** Keys every sample of a platform shares (field mappings, image settings, normalization) are written once; a sample can still override any of them.
+- **Automatic discovery.** `fields: auto` exposes every categorical column with 2 to 200 levels plus QC-like numeric columns (counts, detected, percent, area, score ...). `images: auto` (the default) picks up `image.ome.zarr` / `*.ome.zarr` next to the data, or a SpaceRanger `spatial/tissue_hires_image.png` with its `scalefactors_json.json`, or a Xenium `morphology_focus.ome.tif`. Fields that samples reference without a declaration are declared automatically, with the type inferred from the data; declare a field only to give it a display name, palette key, alias or explicit category order.
+
 ```yaml
 id: amygdala
 name: Human amygdala
 default_gene: PENK
 default_color: { field: domain }          # or { gene: PENK }
-palette: palette.json                     # optional {vocabId: {label: "#hex"}}; labels not found get a stable fallback colour
-layout: { mode: grid, order: [...] }      # grid | strip
-shard_genes: 512
+palette: palette.json                     # optional {vocabId: {label: "#hex"}}
+layout: { mode: grid }                    # grid | strip
 feature_groups:                           # var names matching `pattern` get their own tab (not in the gene search)
   - { id: rctd, name: Cell type weights (RCTD), pattern: "^RCTD: ", units: weight }
-fields:
+fields:                                   # only what needs a name / palette / alias
   - { id: domain, name: Spatial domain, type: categorical, aliases: { AI: IA }, palette_key: "visium_domain,xenium_domain" }
-  - { id: celltype, name: Cell type, type: categorical }
-  - { id: total_counts, name: Total UMI, type: continuous }
+platforms:
+  xenium:
+    fields: { domain: Banksy_domains, celltype: first_type, total_counts: total_counts }
+  visium:
+    fields: { domain: BS_k16, total_umi: sum_umi }
+    microns: { spot_diameter_fullres: 89.4 }   # or already_microns | microns_per_unit | spot_spacing | scalefactors_json (auto for SpaceRanger folders)
 samples:
-  - id: Br2743
-    name: Br2743 (Visium)
-    platform: visium                      # visium | visium_hd | xenium | merfish | snrnaseq | other
-    group: Br2743
-    path: visium/Br2743.h5ad              # h5ad, AnnData zarr (v2/v3), or SpatialData zarr (+ table:)
-    coords: obsm/spatial                  # or "obs/x,obs/y"
-    expression: { layer: X, normalized: auto }   # auto detects log-normalised vs counts (-> log1p CP10k)
-    microns: { spot_diameter_fullres: 89.4 }     # or already_microns | microns_per_unit | spot_spacing | scalefactors_json
+  - glob: xenium/*/adata.zarr
+    platform: xenium
+    id: "xen_{name}"
+    name: "{name} (Xenium)"
+    group: "{name}"
+  - glob: visium/*/outs
+    platform: visium
+    id: "vis_{name}"
     transform: { flip: none, rotate: 0 }  # applied to coordinates AND images together
-    fields: { domain: BS_k16, total_counts: sum_umi }
-    images:
-      - { id: he, name: H&E, path: visium/Br2743_hires.png, pixel_size: auto, pixels_per_unit: 0.0709 }
-    polygons: { path: xenium/cell_boundaries.parquet, id_column: cell_id, x_column: vertex_x, y_column: vertex_y, max_vertices: 24 }  # optional; same frame as coords
   - id: sn
     name: snRNA-seq
     platform: snrnaseq
@@ -49,12 +62,12 @@ samples:
     path: sce.h5ad
     coords: obsm/X_umap
     extent: 5000
-    fields: { celltype: fine_type }
+    fields: auto
 ```
 
-Micron inference when `microns:` is omitted: Xenium/MERFISH coordinates are already µm; Visium uses `uns["spot_nn_spacing_level0_px"]` (100 µm centre-to-centre) or SpaceRanger scalefactors found under `uns["spatial"]`; embeddings are rescaled so the longest side equals `extent`.
+Per-sample keys: `path` (h5ad, AnnData zarr v2/v3, or SpatialData zarr with `table:`), `coords` (`obsm/<key>` or `obs/x,obs/y`), `expression{layer, normalized: auto|lognorm|counts}`, `microns`, `transform`, `fields`, `images[]{id, name, path, kind, pixel_size, pixels_per_unit, translate, channels}`, `polygons{path, id_column, x_column, y_column, max_vertices}`, `extent` (embeddings), `point_radius`, `seed`.
 
-Images with `pixel_size: auto` share the coordinate frame of `coords` (`pixels_per_unit` image pixels per coordinate unit, 1.0 when the coordinates are in level-0 pixels of that image). Otherwise give `pixel_size` in µm per pixel and, if needed, `translate` in µm.
+Micron inference when `microns:` is omitted: Xenium/MERFISH coordinates are already µm; Visium uses `uns["spot_nn_spacing_level0_px"]` (100 µm centre-to-centre), SpaceRanger scalefactors found under `uns["spatial"]`, or the `spatial/scalefactors_json.json` that `images: auto` discovers; embeddings are rescaled so the longest side equals `extent`.
 
 ## From R
 

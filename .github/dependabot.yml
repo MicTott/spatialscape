@@ -3,12 +3,21 @@ updates:
   - package-ecosystem: npm
     directory: "/"
     schedule: { interval: monthly }
+    open-pull-requests-limit: 3
     groups:
       deck: { patterns: ["@deck.gl/*", "@luma.gl/*", "@math.gl/*", "@hms-dbmi/viv"] }
-      tooling: { patterns: ["vite", "vitest", "@vitejs/*", "typescript", "@playwright/*"] }
+      tooling: { patterns: ["vite", "vitest", "@vitejs/*", "@playwright/*"] }
+    ignore:
+      # TypeScript 7 is the native-port compiler line; stay on 5.x until the toolchain supports it
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: "/python"
     schedule: { interval: monthly }
+    open-pull-requests-limit: 3
   - package-ecosystem: github-actions
     directory: "/"
     schedule: { interval: monthly }
+    open-pull-requests-limit: 3
+    groups:
+      actions: { patterns: ["*"] }

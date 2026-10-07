@@ -103,6 +103,43 @@ def synth(out: Path = typer.Argument(..., help="directory for synthetic inputs")
 
 
 @app.command()
+def plan(config: Path):
+    """Show the expanded sample list (globs, templates, defaults applied) without building anything."""
+    from .config import load_config
+
+    cfg = load_config(config)
+    typer.echo(f"{cfg.id}: {len(cfg.samples)} samples")
+    for s in cfg.samples:
+        fields = "auto" if s.fields == "auto" else f"{len(s.fields)} fields"
+        images = "auto" if s.images == "auto" else f"{len(s.images)} image(s)"
+        typer.echo(f"  {s.id:<22} {s.platform:<10} {s.kind:<9} {fields:<10} {images:<10} {s.path}")
+
+
+@app.command()
+def init(
+    paths: list[str] = typer.Argument(..., help="glob(s) or paths of h5ad / zarr samples, e.g. 'data/xenium/*/adata.zarr'"),
+    out: Path = typer.Option("dataset.yaml", "-o", "--out"),
+    platform: str = typer.Option("xenium", help="platform for the matched samples"),
+    dataset_id: str = typer.Option("my_dataset", "--id"),
+    name: str = typer.Option("My dataset", "--name"),
+):
+    """Write a starter dataset.yaml: one glob entry per pattern, fields and images discovered automatically."""
+    import yaml
+
+    doc = {
+        "id": dataset_id,
+        "name": name,
+        "layout": {"mode": "grid"},
+        "platforms": {platform: {"fields": "auto", "images": "auto"}},
+        "samples": [
+            {"glob": p, "platform": platform, "id": f"{platform[:3]}_{{name}}", "name": f"{{name}} ({platform})", "group": "{name}"} for p in paths
+        ],
+    }
+    out.write_text(yaml.safe_dump(doc, sort_keys=False, width=200))
+    typer.echo(f"wrote {out}; next: `spatialscape plan {out}` then `spatialscape build {out} -o bundle`")
+
+
+@app.command()
 def inspect(path: Path, table: str | None = None):
     """Print obs columns, obsm keys and scale hints of an AnnData/SpatialData object."""
     import numpy as np

@@ -1,8 +1,10 @@
 """Input schema: the dataset.yaml a contributor writes."""
 from __future__ import annotations
 
+import glob as _glob
+import re
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -87,6 +89,10 @@ class PolygonSpec(_Model):
 
 
 class SampleSpec(_Model):
+    """One sample. In dataset.yaml an entry may instead carry `glob:` and templated strings
+    ("{name}", "{stem}", "{dir}", "{i}") that expand into one SampleSpec per match; `platforms.<platform>`
+    and `defaults` blocks fill in keys the entry omits."""
+
     id: str
     name: str | None = None
     platform: Platform
@@ -98,8 +104,10 @@ class SampleSpec(_Model):
     expression: ExpressionSpec = Field(default_factory=ExpressionSpec)
     microns: MicronsSpec = Field(default_factory=MicronsSpec)
     transform: TransformSpec = Field(default_factory=TransformSpec)
-    fields: dict[str, str] = Field(default_factory=dict)  # field id -> obs column
-    images: list[ImageSpec] = Field(default_factory=list)
+    # field id -> obs column, or "auto" to expose every categorical (<= 200 levels) and QC-like numeric column
+    fields: dict[str, str] | Literal["auto"] = Field(default_factory=dict)
+    # explicit list, or "auto" to pick up image.ome.zarr / *.ome.zarr / spatial/tissue_hires_image.png next to the data
+    images: list[ImageSpec] | Literal["auto"] = "auto"
     polygons: PolygonSpec | None = None
     extent: float = 5000.0  # embedding samples: rescale longest side to this many "um"
     point_radius: float | None = None  # um; default depends on platform
@@ -148,6 +156,8 @@ class DefaultColorSpec(_Model):
 
 
 class DatasetConfig(_Model):
+    """Top-level dataset.yaml. `samples` are expanded (globs, templates, defaults) by `load_config`."""
+
     id: str
     name: str
     description: str | None = None
@@ -158,23 +168,25 @@ class DatasetConfig(_Model):
     colormaps: list[str] | None = None
     shard_genes: int = 512
     feature_groups: list[FeatureGroupSpec] = Field(default_factory=list)
+    # Optional declarations (display names, explicit category order, aliases, palette keys). Fields that
+    # samples reference without a declaration are declared automatically at build time.
     fields: list[FieldSpec] = Field(default_factory=list)
+    defaults: dict[str, Any] = Field(default_factory=dict)  # merged into every sample entry
+    platforms: dict[str, dict[str, Any]] = Field(default_factory=dict)  # merged into samples of that platform
     samples: list[SampleSpec]
 
     @model_validator(mode="after")
     def _unique_ids(self):
         ids = [s.id for s in self.samples]
         if len(set(ids)) != len(ids):
-            raise ValueError("sample ids must be unique")
+            raise ValueError(f"sample ids must be unique: {sorted({i for i in ids if ids.count(i) > 1})}")
         fids = [f.id for f in self.fields]
         if len(set(fids)) != len(fids):
             raise ValueError("field ids must be unique")
-        declared = set(fids)
-        for s in self.samples:
-            for fid in s.fields:
-                if fid not in declared:
-                    raise ValueError(f"sample {s.id}: field '{fid}' is not declared in fields[]")
         return self
+
+    def field_spec(self, fid: str) -> FieldSpec | None:
+        return next((f for f in self.fields if f.id == fid), None)
 
 
 def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
@@ -188,16 +200,83 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
     for s in cfg.samples:
         s.path = res(s.path)
         s.microns.scalefactors_json = res(s.microns.scalefactors_json)
-        for im in s.images:
-            im.path = res(im.path)
+        if isinstance(s.images, list):
+            for im in s.images:
+                im.path = res(im.path)
         if s.polygons:
             s.polygons.path = res(s.polygons.path)
     return cfg
+
+
+def _deep_merge(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for k, v in over.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def _render(value: Any, vars_: dict[str, str]) -> Any:
+    if isinstance(value, str):
+        try:
+            return value.format(**vars_)
+        except (KeyError, IndexError, ValueError):
+            return value
+    if isinstance(value, list):
+        return [_render(v, vars_) for v in value]
+    if isinstance(value, dict):
+        return {k: _render(v, vars_) for k, v in value.items()}
+    return value
+
+
+def _template_vars(p: Path, i: int) -> dict[str, str]:
+    stem = p.name
+    for suf in (".h5ad", ".zarr", ".h5"):
+        if stem.endswith(suf):
+            stem = stem[: -len(suf)]
+    return {"path": str(p), "dir": str(p.parent), "name": p.parent.name if p.is_dir() or p.suffix else p.name, "stem": stem, "i": str(i)}
+
+
+def expand_samples(raw: dict, base: Path) -> list[dict]:
+    """Expand glob entries and apply `defaults` / `platforms` blocks. Returns plain dicts for SampleSpec."""
+    defaults = raw.get("defaults") or {}
+    platforms = raw.get("platforms") or {}
+    out: list[dict] = []
+    for entry in raw.get("samples") or []:
+        entry = dict(entry)
+        pattern = entry.pop("glob", None)
+        if pattern is None:
+            matches = [None]
+        else:
+            pat = str(Path(pattern).expanduser())
+            if not Path(pat).is_absolute():
+                pat = str(base / pat)
+            matches = sorted(_glob.glob(pat))
+            if not matches:
+                raise ValueError(f"glob matched nothing: {pattern}")
+        for i, m in enumerate(matches):
+            e = dict(entry)
+            if m is not None:
+                e["path"] = m
+                vars_ = _template_vars(Path(m), i)
+                e = _render(e, vars_)
+                e.setdefault("id", re.sub(r"[^A-Za-z0-9_.-]+", "_", vars_["name"]))
+            merged = _deep_merge(defaults, {})
+            merged = _deep_merge(merged, platforms.get(e.get("platform", merged.get("platform", "")), {}))
+            merged = _deep_merge(merged, e)
+            if m is not None:
+                merged = _render(merged, _template_vars(Path(m), i))
+            out.append(merged)
+    return out
 
 
 def load_config(path: str | Path) -> DatasetConfig:
     path = Path(path).expanduser().resolve()
     with open(path) as fh:
         raw = yaml.safe_load(fh)
+    raw = dict(raw)
+    raw["samples"] = expand_samples(raw, path.parent)
     cfg = DatasetConfig.model_validate(raw)
     return _resolve_paths(cfg, path.parent)

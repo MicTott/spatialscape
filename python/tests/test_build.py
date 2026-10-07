@@ -49,13 +49,13 @@ def test_add_sample_keeps_codes_stable(tmp_path):
     assert validate_local(out) == []
 
 
-def test_config_rejects_undeclared_field(tmp_path):
+def test_config_rejects_duplicate_sample_ids(tmp_path):
     cfg_path = make_synthetic(tmp_path / "src", n_cells=50, n_genes=5)
     raw = yaml.safe_load(Path(cfg_path).read_text())
-    raw["samples"][0]["fields"]["bogus"] = "cluster"
+    raw["samples"][1]["id"] = raw["samples"][0]["id"]
     bad = tmp_path / "src" / "bad.yaml"
     bad.write_text(yaml.safe_dump(raw))
-    with pytest.raises(ValueError, match="not declared"):
+    with pytest.raises(ValueError, match="unique"):
         load_config(bad)
 
 

@@ -80,6 +80,27 @@ class VocabRegistry:
             for c in f.categories or []:
                 self._add(vid, c)
 
+    def declare(self, f: FieldSpec) -> None:
+        """Register a field discovered at build time (idempotent)."""
+        if f.id in self.fields:
+            return
+        self.fields[f.id] = f
+        if f.type == "categorical":
+            vid = f.vocabulary or f.id
+            v = self.vocabs.setdefault(vid, {"categories": [], "colors": [], "aliases": {}})
+            v["aliases"].update(f.aliases)
+            v.setdefault("_palette_key", f.palette_key or vid)
+
+    def adopt_manifest_fields(self, manifest) -> None:
+        """Keep fields that an existing bundle already declares (e.g. auto-discovered ones)."""
+        for mf in manifest.fields:
+            if mf.id in self.fields:
+                continue
+            if mf.type == "categorical":
+                self.declare(FieldSpec(id=mf.id, name=mf.name, type="categorical", vocabulary=mf.vocabulary, description=mf.description))
+            else:
+                self.declare(FieldSpec(id=mf.id, name=mf.name, type="continuous", range=mf.range, colormap=mf.colormap, description=mf.description))
+
     def vocab_id(self, field_id: str) -> str:
         f = self.fields[field_id]
         return f.vocabulary or f.id

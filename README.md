@@ -30,7 +30,8 @@ Data contributors only need the CLI:
 
 ```bash
 pip install spatialscape
-spatialscape inspect my_sample.h5ad
+spatialscape init "data/xenium/*/adata.zarr" --platform xenium --id my_dataset -o dataset.yaml
+spatialscape plan dataset.yaml                 # expanded sample list, nothing built yet
 spatialscape build dataset.yaml -o bundles/my_dataset
 ```
 
@@ -52,7 +53,7 @@ npm install && npm run dev
 
 ## Adding a dataset
 
-Write a `dataset.yaml` (see `examples/amygdala.yaml` and `docs/cli.md`), then:
+`spatialscape init` writes a starter `dataset.yaml`; globs expand to one sample per folder, per-platform blocks hold shared settings, and annotations and images are discovered automatically (`examples/amygdala.yaml` describes 12 samples across three modalities in about 40 lines; see `docs/cli.md`). Then:
 
 ```bash
 spatialscape inspect my_sample.h5ad            # lists obs columns, obsm keys, scale hints

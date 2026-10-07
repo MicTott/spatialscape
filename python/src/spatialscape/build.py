@@ -12,6 +12,7 @@ import pandas as pd
 
 from . import __version__
 from .config import DatasetConfig, FieldSpec, SampleSpec
+from .discover import auto_fields, auto_images, infer_field_spec
 from .expression import detect_lognorm, get_matrix, log1p_cp10k, write_expression
 from .geometry import default_point_radius, microns_per_unit, transform_points
 from .images import prepare_image, read_image_shape, write_ome_zarr
@@ -64,6 +65,22 @@ def build_sample(
     sinput = load_sample(spec)
     adata = sinput.adata
     n_obs = adata.n_obs
+    if spec.fields == "auto":
+        spec = spec.model_copy(update={"fields": auto_fields(adata, spec)})
+        log(f"[{spec.id}] auto fields: {list(spec.fields)}")
+    if spec.images == "auto":
+        imgs, microns = auto_images(spec)
+        upd: dict = {"images": imgs}
+        if microns is not None and spec.microns == type(spec.microns)():
+            upd["microns"] = microns
+        spec = spec.model_copy(update=upd)
+        if imgs:
+            log(f"[{spec.id}] auto image: {imgs[0].path}")
+    for fid, col in spec.fields.items():
+        if fid not in vocab.fields:
+            if col not in adata.obs:
+                raise KeyError(f"sample {spec.id}: obs column {col!r} (field {fid}) not found")
+            vocab.declare(infer_field_spec(fid, adata, col))
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
@@ -90,10 +107,10 @@ def build_sample(
     # --- geometry ---------------------------------------------------------
     upu = microns_per_unit(spec, sinput)  # microns per source unit
     coords = sinput.coords
-    auto_images = [im for im in spec.images if im.pixel_size == "auto"]
-    if auto_images:
-        _c, h, w = read_image_shape(auto_images[0].path)
-        frame_w, frame_h = w / auto_images[0].pixels_per_unit, h / auto_images[0].pixels_per_unit
+    auto_px_images = [im for im in spec.images if im.pixel_size == "auto"]
+    if auto_px_images:
+        _c, h, w = read_image_shape(auto_px_images[0].path)
+        frame_w, frame_h = w / auto_px_images[0].pixels_per_unit, h / auto_px_images[0].pixels_per_unit
     else:
         frame_w, frame_h = float(coords[:, 0].max()), float(coords[:, 1].max())
     xy = transform_points(coords, frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu
@@ -212,6 +229,13 @@ def _split_features(cfg: DatasetConfig, names: list[str]) -> tuple[list[str], li
     return genes, groups
 
 
+def _all_fields(cfg: DatasetConfig, vocab: VocabRegistry) -> list[FieldSpec]:
+    declared = {f.id: f for f in cfg.fields}
+    out = list(cfg.fields)
+    out += [f for fid, f in vocab.fields.items() if fid not in declared]
+    return out
+
+
 def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], vocab: VocabRegistry) -> Manifest:
     union: set[str] = set()
     for s in samples:
@@ -241,7 +265,7 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         layout=Layout(mode=cfg.layout.mode, gutterFraction=cfg.layout.gutter_fraction, order=order),
         colormaps=cfg.colormaps or list(BUILTIN_COLORMAPS),
         vocabularies=vocab.to_manifest(),
-        fields=_fields_manifest(cfg.fields, vocab),
+        fields=_fields_manifest(_all_fields(cfg, vocab), vocab),
         featureGroups=[FeatureGroup(id=g["id"], name=g["name"], units=g["units"], count=len(g["features"])) for g in groups],
         samples=samples,
     )
@@ -277,6 +301,7 @@ def add_outlines(
     with open(out / "manifest.json") as fh:
         existing = Manifest.model_validate_json(fh.read())
     vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies)
+    vocab.adopt_manifest_fields(existing)
     for s in existing.samples:
         if sample_ids and s.id not in sample_ids:
             continue
@@ -306,6 +331,7 @@ def refresh(cfg: DatasetConfig, out: Path) -> Manifest:
     with open(out / "manifest.json") as fh:
         existing = Manifest.model_validate_json(fh.read())
     vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies)
+    vocab.adopt_manifest_fields(existing)
     order = {s.id: i for i, s in enumerate(cfg.samples)}
     samples = sorted(existing.samples, key=lambda s: order.get(s.id, 1e9))
     return _write_dataset_files(out, cfg, samples, vocab)
@@ -321,6 +347,7 @@ def add_sample(
     if spec is None:
         raise KeyError(f"sample {sample_id!r} not in dataset.yaml")
     vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies, frozen=not allow_vocab_append)
+    vocab.adopt_manifest_fields(existing)
     new = build_sample(spec, cfg, out / "samples" / sample_id, vocab, sharded=sharded, log=log)
     samples = [s for s in existing.samples if s.id != sample_id] + [new]
     order = {s.id: i for i, s in enumerate(cfg.samples)}
