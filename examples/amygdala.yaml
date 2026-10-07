@@ -117,6 +117,7 @@ samples:
     name: Totty et al. snRNA-seq (BLA, 5 donors)
     platform: snrnaseq
     path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/sce_amy_human.h5ad
+    coords: obsm/X_umap_harmony   # joint UMAP of all nuclei (HVGs, PCA, Harmony by donor); the original X_umap was three separate embeddings overlaid
     fields: { celltype_totty: fine_celltype, broad: broad_celltype, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
   - id: sn_yu
     name: Yu et al. 2023 snRNA-seq (3 donors)
