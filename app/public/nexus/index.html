@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LIBD Nexus — spatial and single-nucleus atlases of the human brain</title>
+  <meta name="description" content="Browse Lieber Institute spatial transcriptomics and snRNA-seq datasets of the human brain in the browser: domains, cell types and gene expression, cell by cell, in place." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="nexus.css" />
+</head>
+<body>
+  <div class="ribbon">Draft for review</div>
+
+  <header class="topbar">
+    <div class="wrap">
+      <a class="wordmark" href="#top" aria-label="LIBD Nexus home">
+        <span class="block"><span>L</span>IBD</span>
+        <span class="nexus">Nexus</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a class="on" href="#datasets">Datasets</a>
+        <a href="#explore">Explore</a>
+        <a href="#technologies">Technologies</a>
+        <a href="#publications">Publications</a>
+        <a href="#open">Open science</a>
+      </nav>
+      <span class="grow"></span>
+      <label class="search" aria-label="Search datasets and genes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span>Search a gene, region or dataset</span>
+      </label>
+      <a class="ext" href="https://www.libd.org" target="_blank" rel="noreferrer">libd.org ↗</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div>
+          <div class="eyebrow">Lieber Institute for Brain Development</div>
+          <h1 style="margin-top:14px">The human brain,<br><em>cell by cell, in place.</em></h1>
+          <p class="lede">Nexus brings together LIBD's spatial transcriptomics and single-nucleus datasets, from dorsolateral prefrontal cortex to amygdala, in one fast browser. Color a section by any gene, hover for the domain and cell type underneath, lasso a region, and share the exact view with a link.</p>
+          <div class="ctas">
+            <a class="btn btn-red" href="#datasets">Browse datasets <span class="arrow">→</span></a>
+            <a class="btn btn-ghost" href="../?d=amygdala&c=g:PENK&o=domain:light:1.5&sv=0">Open the amygdala atlas</a>
+          </div>
+          <div class="legend" style="position:static;margin-top:34px">
+            <span><i style="background:#197d43"></i>CeA</span>
+            <span><i style="background:#035185"></i>BL</span>
+            <span><i style="background:#E67E22"></i>BM</span>
+            <span><i style="background:#9B59B6"></i>BLD</span>
+            <span><i style="background:#f1c40f"></i>LA</span>
+            <span style="opacity:.6">Spatial domains, Br8325 Visium</span>
+          </div>
+        </div>
+        <div class="mosaic" aria-hidden="true">
+          <div class="tile main"><img src="img/vis_Br8325.png" alt=""><span class="label">Visium · Br8325</span></div>
+          <div class="tile a"><img src="img/xen_Br9280.png" alt=""><span class="label">Xenium</span></div>
+          <div class="tile b"><img src="img/sn_amy.png" alt=""><span class="label">snRNA-seq UMAP</span></div>
+          <div class="tile c"><img src="img/vis_Br6423.png" alt=""><span class="label">Visium</span></div>
+          <div class="tile d"><img src="img/xen_Br9017.png" alt=""><span class="label">Xenium</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="stats" aria-label="At a glance">
+      <div class="wrap">
+        <div class="stat"><b>5</b><span>datasets</span></div>
+        <div class="stat"><b>1.4 M</b><span>cells &amp; spots</span></div>
+        <div class="stat"><b>4</b><span>technologies</span></div>
+        <div class="stat"><b>60+</b><span>donors</span></div>
+      </div>
+    </div>
+
+    <section class="block" id="datasets">
+      <div class="wrap">
+        <div class="sec-head">
+          <div>
+            <div class="eyebrow">Datasets</div>
+            <h2 style="margin-top:8px">Published atlases, ready to explore</h2>
+            <p>Every dataset opens in the same viewer. Each card leads with a real section from the data, colored by its spatial domains.</p>
+          </div>
+          <a class="btn btn-outline" href="../">All datasets</a>
+        </div>
+        <div class="cards">
+          <a class="card" href="../?d=amygdala">
+            <div class="art"><img src="img/amygdala.png" alt="Human amygdala Visium section colored by spatial domain"><span class="badge">New</span></div>
+            <div class="body">
+              <h3>Human amygdala</h3>
+              <p class="desc">Visium, Visium HD and Xenium sections with Banksy spatial domains, RCTD cell type weights and a BLA snRNA-seq reference.</p>
+              <div class="pills"><span class="pill red">Visium</span><span class="pill red">Xenium</span><span class="pill">snRNA-seq</span></div>
+              <div class="nums"><span><b>12</b> samples</span><span><b>1.19 M</b> cells</span><span><b>34.7 k</b> genes</span></div>
+              <span class="cta">Explore →</span>
+            </div>
+          </a>
+          <a class="card soon" href="#">
+            <div class="art"><div class="ph" style="--c:#4e6069"></div><span class="badge soon">Coming soon</span></div>
+            <div class="body">
+              <h3>Human DLPFC</h3>
+              <p class="desc">spatialDLPFC: 30 Visium sections across 10 donors with layer-level spatial domains and paired snRNA-seq.</p>
+              <div class="pills"><span class="pill red">Visium</span><span class="pill">snRNA-seq</span></div>
+              <div class="nums"><span><b>30</b> samples</span><span><b>114 k</b> spots</span></div>
+              <span class="cta" style="color:var(--slate)">Huuki-Myers et al., Science 2024</span>
+            </div>
+          </a>
+          <a class="card soon" href="#">
+            <div class="art"><div class="ph" style="--c:#7b5074"></div><span class="badge soon">Coming soon</span></div>
+            <div class="body">
+              <h3>Human hippocampus</h3>
+              <p class="desc">Hippocampal formation across 10 donors on Visium with snRNA-seq and Visium-SPG; subfield and neuropil domains.</p>
+              <div class="pills"><span class="pill red">Visium</span><span class="pill">Visium-SPG</span><span class="pill">snRNA-seq</span></div>
+              <div class="nums"><span><b>36</b> samples</span><span><b>151 k</b> spots</span></div>
+              <span class="cta" style="color:var(--slate)">Thompson et al., Nature Neuroscience 2025</span>
+            </div>
+          </a>
+          <a class="card soon" href="#">
+            <div class="art"><div class="ph" style="--c:#328f9f"></div><span class="badge soon">Coming soon</span></div>
+            <div class="body">
+              <h3>Locus coeruleus</h3>
+              <p class="desc">Norepinephrine neurons of the locus coeruleus on Visium and snRNA-seq.</p>
+              <div class="pills"><span class="pill red">Visium</span><span class="pill">snRNA-seq</span></div>
+              <div class="nums"><span><b>9</b> samples</span><span><b>20 k</b> spots</span></div>
+              <span class="cta" style="color:var(--slate)">Weber et al., eLife 2024</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="block alt" id="explore">
+      <div class="wrap">
+        <div class="sec-head">
+          <div>
+            <div class="eyebrow">Explore</div>
+            <h2 style="margin-top:8px">Built for looking, not for loading</h2>
+            <p>Nexus runs on spatialscape, LIBD's open-source viewer. Everything is a static file, so a gene switch is one small request and the map never waits on a server.</p>
+          </div>
+        </div>
+        <div class="features">
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+            <h3>Every section on one canvas</h3>
+            <p>All samples of a study sit side by side under identical settings. Double-click to focus one, step through donors with <kbd>←</kbd> <kbd>→</kbd>, switch platforms with one click.</p>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></div>
+            <h3>Gene, domain and cell type at once</h3>
+            <p>Color by any gene or two blended gene sets, keep spatial-domain outlines on top, and hover any cell to read its domain, cell type and expression value.</p>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14c0-5 4-8 8-8s8 3 8 8-4 6-8 6-8-1-8-6z"/><path d="M14 20l3 2"/></svg></div>
+            <h3>Lasso, compare, share</h3>
+            <p>Draw around a region for its composition and gene statistics, export cell IDs, and send colleagues the exact view: the whole state lives in the link.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="showcase">
+      <div class="wrap">
+        <div>
+          <div class="eyebrow" style="color:#ff8fa6">Linked modalities</div>
+          <h2 style="margin-top:8px">Tissue on the right, nuclei on the left, one gene for both</h2>
+          <p>Paired snRNA-seq references render as embeddings beside the sections. Cell type labels share one vocabulary across Xenium, RCTD weights and snRNA-seq, so a color means the same thing everywhere.</p>
+          <ul>
+            <li>Spatial domains traced as outlines over gene expression</li>
+            <li>Filter the map to a cell type while coloring by a gene</li>
+            <li>Per-annotation expression table that doubles as a filter</li>
+          </ul>
+        </div>
+        <div class="shot" aria-hidden="true">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="fake">
+            <div><img src="img/sn_amy.png" alt=""></div>
+            <div><img src="img/vis_Br9280.png" alt=""></div>
+            <div class="side">
+              <div style="font-weight:700;color:#e6edf3;margin-bottom:8px">Spatial domain</div>
+              <div class="row"><i class="sw" style="background:#035185"></i>BL</div>
+              <div class="row"><i class="sw" style="background:#197d43"></i>CeA</div>
+              <div class="row"><i class="sw" style="background:#E67E22"></i>BM</div>
+              <div class="row"><i class="sw" style="background:#f1c40f"></i>LA</div>
+              <div class="row"><i class="sw" style="background:#9B59B6"></i>BLD</div>
+              <div style="margin-top:14px;font-weight:700;color:#e6edf3">PENK</div>
+              <div class="bar2"><i style="width:74%"></i></div>
+              <div>mean by domain · 74 % expr</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="technologies">
+      <div class="wrap">
+        <div class="sec-head">
+          <div>
+            <div class="eyebrow">Technologies</div>
+            <h2 style="margin-top:8px">Four ways of seeing the same tissue</h2>
+          </div>
+        </div>
+        <div class="tech">
+          <div class="t"><b><i class="dot" style="background:#e61441"></i>Visium</b><span>55 µm spots across whole sections. Domains, deconvolved cell types, H&amp;E underneath.</span></div>
+          <div class="t"><b><i class="dot" style="background:#7b5074"></i>Visium HD</b><span>8 µm bins and segmented cells on the same slides, for sub-domain structure.</span></div>
+          <div class="t"><b><i class="dot" style="background:#328f9f"></i>Xenium</b><span>Hundreds of thousands of single cells per section with a targeted panel and cell boundaries.</span></div>
+          <div class="t"><b><i class="dot" style="background:#4e6069"></i>snRNA-seq</b><span>Whole-transcriptome nuclei that anchor cell type labels across every platform.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block alt" id="publications">
+      <div class="wrap">
+        <div class="sec-head">
+          <div>
+            <div class="eyebrow">Publications</div>
+            <h2 style="margin-top:8px">The science behind the sections</h2>
+          </div>
+          <a class="btn btn-outline" href="https://www.libd.org" target="_blank" rel="noreferrer">All LIBD publications</a>
+        </div>
+        <div class="pubs">
+          <div class="pub"><div class="venue">Science · 2024</div><h3>A data-driven single-cell and spatial transcriptomic map of the human prefrontal cortex</h3><p>Huuki-Myers LA, Montgomery KD, Kwon SH, et al.</p><a class="link" href="https://doi.org/10.1126/science.adh1938" target="_blank" rel="noreferrer">Read →</a></div>
+          <div class="pub"><div class="venue">Nature Neuroscience · 2025</div><h3>An integrated single-nucleus and spatial transcriptomics atlas of the human hippocampus</h3><p>Thompson JR, Nelson ED, Tippani M, et al.</p><a class="link" href="#" >Read →</a></div>
+          <div class="pub"><div class="venue">In preparation</div><h3>Spatial and cellular architecture of the human amygdala across Visium, Visium HD and Xenium</h3><p>Totty MS, et al.</p><a class="link" href="../?d=amygdala">Explore the data →</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block open" id="open">
+      <div class="wrap">
+        <div>
+          <div class="eyebrow">Open science</div>
+          <h2 style="margin-top:8px">Take the data, and the viewer, with you</h2>
+          <ol class="steps">
+            <li><b>1</b><span>Every dataset is a plain, documented bundle you can download or read programmatically. No API keys, no accounts.</span></li>
+            <li><b>2</b><span>The viewer, <strong>spatialscape</strong>, is MIT-licensed. Point it at your own bundle and it works the same way.</span></li>
+            <li><b>3</b><span>Build your own bundle from AnnData or SpatialExperiment with one command and host it anywhere static files live.</span></li>
+          </ol>
+        </div>
+        <pre><code>pip install spatialscape
+spatialscape init "visium/*/outs" -o dataset.yaml
+spatialscape build dataset.yaml -o my_atlas
+spatialscape serve . --port 8787
+<span class="c"># then open the viewer with ?d=http://localhost:8787/my_atlas</span></code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <h4>Lieber Institute for Brain Development</h4>
+        <p>855 North Wolfe Street, Suite 300<br>Baltimore, MD 21205</p>
+        <p style="margin-top:10px">Nexus is a product of LIBD's Data Science and Spatial Biology teams.</p>
+      </div>
+      <div><h4>Nexus</h4><a href="#datasets">Datasets</a><a href="#explore">Explore</a><a href="#technologies">Technologies</a><a href="#open">Open science</a></div>
+      <div><h4>Resources</h4><a href="https://github.com/MicTott/spatialscape" target="_blank" rel="noreferrer">spatialscape on GitHub</a><a href="https://github.com/MicTott/spatialscape/tree/main/docs" target="_blank" rel="noreferrer">Documentation</a><a href="#">Data use policy</a><a href="#">Cite Nexus</a></div>
+      <div><h4>LIBD</h4><a href="https://www.libd.org" target="_blank" rel="noreferrer">libd.org</a><a href="https://www.libd.org" target="_blank" rel="noreferrer">Research divisions</a><a href="https://www.libd.org" target="_blank" rel="noreferrer">Brain repository</a><a href="https://www.libd.org" target="_blank" rel="noreferrer">Careers</a></div>
+    </div>
+    <div class="wrap legal">
+      <span>© 2026 Lieber Institute for Brain Development</span><a href="#" style="display:inline">Privacy policy</a><a href="#" style="display:inline">Conflict of interest policy</a><span style="margin-left:auto">Draft for internal review · not a live LIBD property</span>
+    </div>
+  </footer>
+</body>
+</html>
