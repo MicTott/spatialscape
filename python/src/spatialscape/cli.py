@@ -23,6 +23,12 @@ def build(
     cfg = load_config(config)
     log = (lambda *_: None) if quiet else typer.echo
     m = build_dataset(cfg, out, sharded=not no_shard, log=log)
+    try:
+        from .thumbnail import write_thumbnails
+
+        write_thumbnails(out, log=log)
+    except Exception as e:  # noqa: BLE001 - thumbnails are cosmetic
+        typer.secho(f"  thumbnails skipped: {e}", fg="yellow")
     problems = validate_local(out)
     for p in problems:
         typer.secho(f"  ! {p}", fg="red")
@@ -61,6 +67,15 @@ def outlines(
 
     m = add_outlines(load_config(config), out, sample_ids=sample or None, fields=field or None, smooth_um=smooth_um, min_feature_um=min_feature_um)
     typer.echo(f"outlines written: {[(s.id, s.outlines) for s in m.samples if s.outlines]}")
+
+
+@app.command()
+def thumbnails(out: Path = typer.Argument(..., help="bundle directory"), no_per_sample: bool = False):
+    """Render thumbnail.png (one section colored by the default annotation) for the bundle and each sample."""
+    from .thumbnail import write_thumbnails
+
+    paths = write_thumbnails(out, per_sample=not no_per_sample, log=typer.echo)
+    typer.echo(f"wrote {len(paths)} thumbnail(s)")
 
 
 @app.command()

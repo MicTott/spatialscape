@@ -1,5 +1,12 @@
 {
   "title": "LIBD spatial data browser",
+  "site": {
+    "title": "spatialscape",
+    "links": [
+      { "label": "Docs", "url": "https://github.com/MicTott/spatialscape/tree/main/docs" },
+      { "label": "GitHub", "url": "https://github.com/MicTott/spatialscape" }
+    ]
+  },
   "intro": "Published spatial transcriptomics and snRNA-seq datasets from the Lieber Institute for Brain Development, viewable in the browser without any installation.",
   "datasets": [
     {

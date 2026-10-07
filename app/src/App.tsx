@@ -10,6 +10,8 @@ import { Landing, resolveDataset } from "./ui/Landing";
 import { PlatformBar } from "./ui/PlatformBar";
 import { SplitDivider } from "./ui/SplitDivider";
 import { ScaleBar } from "./ui/ScaleBar";
+import { TopNav } from "./ui/TopNav";
+import { useRegistry } from "./ui/registry";
 
 
 export function App() {
@@ -20,6 +22,7 @@ export function App() {
   const datasetUrl = useViewer((s) => s.datasetUrl);
   const sidebarOpen = useViewer((s) => s.sidebarOpen);
   const hasManifest = useViewer((s) => !!s.manifest);
+  const hasNav = !!useRegistry()?.site;
 
   useEffect(() => {
     if (!mapRef.current || ctrlRef.current) return;
@@ -43,7 +46,8 @@ export function App() {
   }, [datasetUrl, status]);
 
   return (
-    <div className="app">
+    <div className={`app${hasNav ? " with-nav" : ""}`}>
+      <TopNav />
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}`} ref={mapRef}>
         <SplitDivider mapRef={mapRef} />
         <ScaleBar />

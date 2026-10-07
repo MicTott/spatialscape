@@ -29,6 +29,6 @@ Principles, each traceable to a prior-art lesson:
 
 Color modes in the shader: 0 continuous (1D LUT), 1 categorical (palette texture, alpha = visibility), 2 not measured (grey), 3 blend (2D LUT indexed by two gene-set scores; schemes in `layers/lut.ts`).
 
-Registry: `app/public/datasets.json` lists datasets for the landing gallery; `?d=<id>` resolves through it, full URLs bypass it.
+Registry: `app/public/datasets.json` lists datasets for the landing gallery; `?d=<id>` resolves through it, full URLs bypass it. Cards use `<bundle>/thumbnail.png` (written by the CLI) and fall back to generated art. An optional `site` block (`title`, `logo`, `links[]`) turns on a slim top bar with a dataset switcher so the viewer can act as a page of a larger site; without it the viewer has no chrome above the map.
 
 Test hooks: `window.__sscape` exposes `ready`, `setGene(gene) -> ms`, `getState()`, `pixelProbe()`, `store`, `controller` (dev and e2e builds).

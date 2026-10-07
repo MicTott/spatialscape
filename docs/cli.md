@@ -5,6 +5,7 @@ spatialscape inspect <h5ad|zarr|spatialdata.zarr> [--table KEY]   print obs colu
 spatialscape build dataset.yaml -o <bundle> [--no-shard]           build the whole bundle (then validates it)
 spatialscape add-sample dataset.yaml -o <bundle> --sample <id>     rebuild one sample; vocabularies are append-only
 spatialscape validate <bundle | https://host/bundle>               schema, shapes, codes; for URLs also CORS + Range
+spatialscape thumbnails <bundle> [--no-per-sample]            render thumbnail.png (one section colored by the default annotation); build does this automatically
 spatialscape refresh dataset.yaml -o <bundle>                     rewrite manifest/genes/features without rebuilding samples
 spatialscape outlines dataset.yaml -o <bundle> [--sample id] [--field id] [--smooth-um 150] [--min-feature-um 300]
                                                              trace categorical boundaries from the bundle's own arrays

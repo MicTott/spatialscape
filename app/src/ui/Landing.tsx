@@ -1,56 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { store } from "../store/store";
-
-export interface RegistryEntry {
-  id: string;
-  name: string;
-  description: string;
-  platforms: string[];
-  samples: number;
-  cells: number;
-  genes?: number;
-  url: string;
-  tags?: string[];
-  status: "live" | "local" | "coming soon";
-  paper?: { title: string; url?: string };
-  accent?: string;
-}
-export interface Registry {
-  title?: string;
-  intro?: string;
-  datasets: RegistryEntry[];
-}
+import { thumbnailUrl, useRegistry, type RegistryEntry } from "./registry";
+export { resolveDataset } from "./registry";
 
 const PLATFORM_LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", snrnaseq: "snRNA-seq" };
 
-/** Resolve `?d=<id>` against the registry; full URLs and paths pass through. */
-export async function resolveDataset(d: string): Promise<string> {
-  // the worker fetches relative to its own script URL, so every bundle URL must be absolute
-  const absolute = (u: string) => new URL(u, document.baseURI).toString().replace(/\/$/, "");
-  if (/^(https?:)?\/\//.test(d) || d.includes("/")) return absolute(d);
-  try {
-    const reg: Registry = await (await fetch(registryUrl())).json();
-    const hit = reg.datasets.find((x) => x.id === d);
-    if (hit?.url) return absolute(hit.url);
-  } catch {
-    /* no registry */
-  }
-  return d;
-}
-
-export function registryUrl() {
-  return new URL("datasets.json", document.baseURI).toString();
-}
-
 export function Landing() {
   const [url, setUrl] = useState("");
-  const [reg, setReg] = useState<Registry | null>(null);
-  useEffect(() => {
-    fetch(registryUrl())
-      .then((r) => (r.ok ? r.json() : null))
-      .then((r) => setReg(r))
-      .catch(() => setReg(null));
-  }, []);
+  const reg = useRegistry();
   const go = (u: string) => {
     const clean = u.trim().replace(/\/manifest\.json$/, "");
     if (!clean) return;
@@ -79,7 +36,7 @@ export function Landing() {
             return (
               <article key={d.id} className={`card ${openable ? "" : "soon"}`} style={{ ["--accent" as any]: d.accent ?? "#40c4ff" }} onClick={() => openable && go(d.url)}>
                 <div className="card-art">
-                  <Thumb seed={d.id} accent={d.accent ?? "#40c4ff"} />
+                  <CardArt d={d} />
                   <span className={`status ${d.status.replace(" ", "-")}`}>{d.status}</span>
                 </div>
                 <div className="card-body">
@@ -129,7 +86,15 @@ export function Landing() {
   );
 }
 
-/** Deterministic abstract "tissue" thumbnail so mock entries have something to look at. */
+/** Real thumbnail (<bundle>/thumbnail.png, rendered by `spatialscape build`) with an abstract fallback. */
+function CardArt({ d }: { d: RegistryEntry }) {
+  const [failed, setFailed] = useState(false);
+  const src = thumbnailUrl(d);
+  if (src && !failed) return <img src={src} alt={`${d.name} example section`} onError={() => setFailed(true)} loading="lazy" />;
+  return <Thumb seed={d.id} accent={d.accent ?? "#40c4ff"} />;
+}
+
+/** Deterministic abstract "tissue" placeholder for entries without a bundle yet. */
 function Thumb({ seed, accent }: { seed: string; accent: string }) {
   let h = 0;
   for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;

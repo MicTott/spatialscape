@@ -16,7 +16,7 @@ A static, highly reactive web browser for spatial transcriptomics (Visium, Visiu
 - **Static hosting.** No server. The app is plain files (GitHub Pages, Cloudflare Pages); the data is plain files (S3, R2, any host with CORS and HTTP Range). Every view state lives in the URL.
 - **One command to add data.** `spatialscape build dataset.yaml -o bundle` converts AnnData (h5ad / zarr) or SpatialData into a viewer bundle. R users export their SpatialExperiment / SingleCellExperiment to h5ad first (zellkonverter or anndataR).
 
-A landing gallery (`app/public/datasets.json`) lists published datasets; `?d=<id>` opens one by name, `?d=<url>` opens any bundle.
+A landing gallery (`app/public/datasets.json`) lists published datasets with real thumbnails rendered at build time; `?d=<id>` opens one by name, `?d=<url>` opens any bundle. An optional `site` block in the same file adds a slim navigation bar with a dataset switcher, so the viewer can sit inside an institute website.
 
 ## Layout
 
