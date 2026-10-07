@@ -18,6 +18,7 @@ export interface ExpressionScatterProps {
   filterMin: number;
   filterMax: number;
   hideZeros: boolean;
+  valueScale: number; // multiplies the unorm value before vmin/vmax mapping (per-sample max -> shared scale)
   lut: Uint8Array; // 256*4 RGBA (mode 0) or BLEND_SIZE*BLEND_SIZE*4 (mode 3)
   catColors: Uint8Array; // N*4 RGBA (alpha 0 = hidden)
   drawCount: number;
@@ -34,6 +35,7 @@ uniform sscapeUniforms {
   float filterOn;
   float hideZeros;
   float catCount;
+  float valueScale;
 } sscape;
 `;
 
@@ -50,6 +52,7 @@ const sscapeModule = {
     filterOn: "f32",
     hideZeros: "f32",
     catCount: "f32",
+    valueScale: "f32",
   },
 } as const;
 
@@ -62,6 +65,7 @@ const defaultProps = {
   filterMin: 0,
   filterMax: 1,
   hideZeros: false,
+  valueScale: 1,
   lut: { type: "object", value: null, compare: false },
   catColors: { type: "object", value: null, compare: false },
   drawCount: { type: "number", value: Infinity, compare: false },
@@ -96,15 +100,17 @@ uniform sampler2D catTexture;
 {
   vec4 sc;
   bool drop = false;
+  float v1 = instanceValue * sscape.valueScale;
+  float v2 = instanceValue2 * sscape.valueScale;
   if (sscape.mode > 2.5) {
-    float ta = clamp((instanceValue - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
-    float tb = clamp((instanceValue2 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
+    float ta = clamp((v1 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
+    float tb = clamp((v2 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
     sc = texture(lutTexture, vec2(ta, tb));
     if (sscape.hideZeros > 0.5 && instanceValue < 0.001 && instanceValue2 < 0.001) drop = true;
   } else if (sscape.mode > 1.5) {
     sc = vec4(0.36, 0.39, 0.44, 1.0);
   } else if (sscape.mode < 0.5) {
-    float t = (instanceValue - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6);
+    float t = (v1 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6);
     t = clamp(t, 0.0, 1.0);
     sc = texture(lutTexture, vec2((t * 255.0 + 0.5) / 256.0, 0.5));
     if (sscape.hideZeros > 0.5 && instanceValue < 0.001) drop = true;
@@ -181,6 +187,7 @@ uniform sampler2D catTexture;
         filterOn: p.filterOn ? 1 : 0,
         hideZeros: p.hideZeros ? 1 : 0,
         catCount: this.state.catCount,
+        valueScale: p.valueScale ?? 1,
       },
     });
     model.setBindings({ lutTexture: this.state.lutTex, catTexture: this.state.catTex });

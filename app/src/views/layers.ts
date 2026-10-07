@@ -100,6 +100,12 @@ export class LayerBuilder {
         const hasData = baseMode === 1 ? !!inp.cat : baseMode === 3 ? !!(inp.value || inp.value2) : !!inp.value;
         const mode: 0 | 1 | 2 | 3 = hasData || !s.color ? baseMode : 2; // 2 = feature not measured on this sample
         const filterActive = !!s.filter && !!inp.filter;
+        // gene columns are quantized against each sample's own max; rescale to the shared max unless per-sample was asked for
+        let valueScale = 1;
+        if (mode === 0 && s.color?.kind === "gene" && !s.scalePerSample && s.geneMax > 0) {
+          const g = c.geneGmax.get(`${id}:${s.color.gene}`);
+          if (g !== undefined) valueScale = g / s.geneMax;
+        }
         layers.push(
           new ExpressionScatterLayer({
             id: `pts-${id}`,
@@ -121,6 +127,7 @@ export class LayerBuilder {
             vmin: s.vrange[0],
             vmax: s.vrange[1],
             hideZeros: s.hideZeros,
+            valueScale,
             filterOn: filterActive,
             filterMin: s.filter ? filterRange(s.filter)[0] : 0,
             filterMax: s.filter ? filterRange(s.filter)[1] : 1,
@@ -249,6 +256,13 @@ export class LayerBuilder {
     const c = this.c;
     const frames: { path: [number, number][]; color: [number, number, number, number]; width: number; dashed: boolean }[] = [];
     const labels: { pos: [number, number]; text: string; color: [number, number, number, number] }[] = [];
+    // one platform on screen -> the "(Platform)" suffix is noise
+    const shown = [...L.placements.keys()].map((id) => c.samplesById.get(id)!);
+    const onePlatform = new Set(shown.map((x) => x.platform)).size === 1;
+    const scale = Math.pow(2, c.viewStates[view].zoom);
+    const vs = c.viewStates[view];
+    const [vw, vh] = c.viewSize(view);
+    const taken: [number, number, number, number][] = [];
     for (const [id, p] of L.placements) {
       const smp = c.samplesById.get(id)!;
       const [x0, y0, x1, y1] = p.worldBbox;
@@ -263,11 +277,16 @@ export class LayerBuilder {
       if (st === "error") frames.push({ path: rect, color: [255, 90, 90, 220], width: 2, dashed: true });
       else if (id === s.focus) frames.push({ path: rect, color: [64, 196, 255, 200], width: 2, dashed: false });
       else if (id === s.selected) frames.push({ path: rect, color: [230, 237, 243, 140], width: 1.5, dashed: false });
-      labels.push({
-        pos: [x0, y0],
-        text: st === "error" ? `${smp.name} (failed to load)` : st === "loading" || st === "pending" ? `${smp.name} …` : smp.name,
-        color: st === "error" ? [255, 120, 120, 255] : [230, 237, 243, 230],
-      });
+      const base = onePlatform ? smp.name.replace(/\s*\([^()]*\)\s*$/, "") : smp.name;
+      const text = st === "error" ? `${base} (failed to load)` : st === "loading" || st === "pending" ? `${base} …` : base;
+      // greedy collision test in screen space so labels never pile up at overview zoom
+      const sx = (x0 - vs.target[0]) * scale + vw / 2;
+      const sy = (y0 - vs.target[1]) * scale + vh / 2;
+      const box: [number, number, number, number] = [sx, sy - 20, sx + 7.2 * text.length + 10, sy];
+      const sampleWide = (x1 - x0) * scale > 36;
+      if (!sampleWide || taken.some((t) => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1])) continue;
+      taken.push(box);
+      labels.push({ pos: [x0, y0], text, color: st === "error" ? [255, 120, 120, 255] : [230, 237, 243, 230] });
     }
     const common = overlayProps(view);
     return [

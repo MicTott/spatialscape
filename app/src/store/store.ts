@@ -97,6 +97,10 @@ export interface ViewerState {
   filterHistogram: number[] | null;
   visibleCount: number | null;
   geneMax: number; // max gmax of current gene across loaded samples (legend labels)
+  scalePerSample: boolean; // gene colors: each sample stretched to its own max instead of one shared scale
+  recentGenes: string[]; // last genes picked in the search box (not in the URL)
+  debug: boolean; // ?debug=1: show timings in the status bar
+  help: boolean; // keyboard shortcut overlay
   timings: { lastGeneMs: number | null; fps: number };
 
   set: (p: Partial<ViewerState>) => void;
@@ -159,6 +163,10 @@ export const store = createStore<ViewerState>((set, get) => ({
   filterHistogram: null,
   visibleCount: null,
   geneMax: 0,
+  scalePerSample: false,
+  recentGenes: [],
+  debug: false,
+  help: false,
   timings: { lastGeneMs: null, fps: 0 },
 
   set: (p) => set(p),
@@ -169,7 +177,11 @@ export const store = createStore<ViewerState>((set, get) => ({
     const next = all.filter((p) => cur.has(p));
     set({ platforms: next.length === all.length ? null : next });
   },
-  setColor: (color) => set({ color }),
+  setColor: (color) => {
+    const recent = get().recentGenes;
+    const gene = color.kind === "gene" ? color.gene : null;
+    set({ color, recentGenes: gene && recent[0] !== gene ? [gene, ...recent.filter((g) => g !== gene)].slice(0, 6) : recent });
+  },
   setFilter: (filter) => set({ filter }),
   toggleCategory: (field, code) => {
     const cur = new Set(get().hiddenCategories[field] ?? []);

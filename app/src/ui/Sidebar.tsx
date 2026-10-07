@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { store, useViewer, type FilterSpec } from "../store/store";
 import { GeneSearch } from "./GeneSearch";
 import { BlendPanel } from "./BlendPanel";
@@ -22,7 +22,10 @@ export function Sidebar() {
       {!collapsed && (
         <div className="sidebar-inner">
           <header>
-            <h1>{manifest.name}</h1>
+            <div className="hdr-row">
+              <h1>{manifest.name}</h1>
+              <HeaderActions />
+            </div>
             {manifest.description && <p className="muted">{manifest.description}</p>}
           </header>
           <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
@@ -39,6 +42,26 @@ export function Sidebar() {
   );
 }
 
+function HeaderActions() {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    void navigator.clipboard?.writeText(window.location.href).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <span className="legend-actions hdr-actions">
+      <button onClick={copy} title="copy a link that reproduces this view">
+        {copied ? "copied" : "copy link"}
+      </button>
+      <button onClick={() => void window.__sscape?.controller?.exportPNG()} title="download the current view as PNG with legend and scale bar">
+        PNG
+      </button>
+    </span>
+  );
+}
+
 function ColorPanel({ genes }: { genes: string[] }) {
   const manifest = useViewer((s) => s.manifest)!;
   const features = useViewer((s) => s.features);
@@ -46,6 +69,8 @@ function ColorPanel({ genes }: { genes: string[] }) {
   const colormap = useViewer((s) => s.colormap);
   const vrange = useViewer((s) => s.vrange);
   const hideZeros = useViewer((s) => s.hideZeros);
+  const scalePerSample = useViewer((s) => s.scalePerSample);
+  const recent = useViewer((s) => s.recentGenes);
   const set = store.getState().set;
   const groups = features?.groups ?? [];
   const groupOf = (id: string) => groups.find((g) => g.features.some((f) => f.id === id));
@@ -92,14 +117,27 @@ function ColorPanel({ genes }: { genes: string[] }) {
           </ul>
         </div>
       ) : isGene ? (
-        <GeneSearch
-          genes={genes}
-          value={color.gene}
-          onPick={(g) => {
-            setLastGene(g);
-            store.getState().setColor({ kind: "gene", gene: g });
-          }}
-        />
+        <>
+          <GeneSearch
+            genes={genes}
+            value={color.gene}
+            onPick={(g) => {
+              setLastGene(g);
+              store.getState().setColor({ kind: "gene", gene: g });
+            }}
+          />
+          {recent.filter((g) => g !== color.gene).length > 0 && (
+            <div className="chips recent" title="recent genes">
+              {recent
+                .filter((g) => g !== color.gene)
+                .map((g) => (
+                  <button key={g} className="chip" onClick={() => store.getState().setColor({ kind: "gene", gene: g })}>
+                    {g}
+                  </button>
+                ))}
+            </div>
+          )}
+        </>
       ) : (
         <select value={color?.kind === "field" ? color.field : ""} onChange={(e) => store.getState().setColor({ kind: "field", field: e.target.value })}>
           {(() => {
@@ -138,6 +176,11 @@ function ColorPanel({ genes }: { genes: string[] }) {
           <label className="check">
             <input type="checkbox" checked={hideZeros} onChange={(e) => set({ hideZeros: e.target.checked })} /> hide zeros
           </label>
+          {(isGene || isBlend) && (
+            <label className="check" title="off: one shared scale across samples, so colors are comparable. on: each sample is stretched to its own maximum">
+              <input type="checkbox" checked={scalePerSample} onChange={(e) => set({ scalePerSample: e.target.checked })} /> scale each sample to its own max
+            </label>
+          )}
         </div>
       )}
     </section>
@@ -168,9 +211,7 @@ function FilterPanel({ genes }: { genes: string[] }) {
   const catFields = manifest.fields.filter((f) => f.type === "categorical");
   return (
     <section>
-      <h2>
-        Filter by <span className="muted">(independent of color)</span>
-      </h2>
+      <h2 title="Filters hide cells; the coloring stays as it is">Filter by</h2>
       <select
         value={kindValue}
         onChange={(e) => {
@@ -247,9 +288,7 @@ function OutlinePanel() {
   if (!fields.length) return null;
   return (
     <section>
-      <h2>
-        Outlines <span className="muted">(boundaries drawn over any coloring)</span>
-      </h2>
+      <h2 title="Annotation boundaries drawn over any coloring">Outlines</h2>
       <select value={outline.field ?? ""} onChange={(e) => set({ outline: { ...outline, field: e.target.value || null } })}>
         <option value="">none</option>
         {fields.map((f) => (
@@ -258,21 +297,6 @@ function OutlinePanel() {
           </option>
         ))}
       </select>
-      {outline.field && (
-        <>
-          <div className="tabs" style={{ marginTop: 8 }}>
-            {(["light", "dark", "field"] as const).map((st) => (
-              <button key={st} className={outline.style === st ? "on" : ""} onClick={() => set({ outline: { ...outline, style: st } })}>
-                {st === "field" ? "colored" : st}
-              </button>
-            ))}
-          </div>
-          <label>
-            width <small>{outline.width.toFixed(1)} px</small>
-            <input type="range" min={0.5} max={5} step={0.25} value={outline.width} onChange={(e) => set({ outline: { ...outline, width: +e.target.value } })} />
-          </label>
-        </>
-      )}
     </section>
   );
 }

@@ -39,3 +39,19 @@ describe("point size per view", () => {
     g.window = saved;
   });
 });
+
+describe("scale and debug flags", () => {
+  it("serialize only when set and read back", () => {
+    const q = new URLSearchParams(serialize({ ...store.getState(), scalePerSample: true, debug: true } as ViewerState));
+    expect(q.get("sps")).toBe("1");
+    expect(q.get("debug")).toBe("1");
+    expect(new URLSearchParams(serialize(store.getState())).has("sps")).toBe(false);
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: "?sps=1&debug=1" } };
+    const r = readUrl();
+    expect(r.scalePerSample).toBe(true);
+    expect(r.debug).toBe(true);
+    g.window = saved;
+  });
+});

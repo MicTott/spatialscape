@@ -4,10 +4,12 @@ interface Props {
   genes: string[];
   value: string | null;
   onPick: (gene: string) => void;
+  /** When given, Enter on a comma/space/newline separated list adds every gene at once. */
+  onPickMany?: (genes: string[]) => void;
   placeholder?: string;
 }
 
-export function GeneSearch({ genes, value, onPick, placeholder }: Props) {
+export function GeneSearch({ genes, value, onPick, onPickMany, placeholder }: Props) {
   const [q, setQ] = useState(value ?? "");
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
@@ -54,6 +56,13 @@ export function GeneSearch({ genes, value, onPick, placeholder }: Props) {
             e.preventDefault();
           } else if (e.key === "ArrowUp") {
             setHi((h) => Math.max(0, h - 1));
+            e.preventDefault();
+          } else if (e.key === "Enter" && onPickMany && /[\s,;]/.test(q.trim())) {
+            const byLower = new Map(genes.map((g) => [g.toLowerCase(), g]));
+            const list = [...new Set(q.split(/[\s,;]+/).map((g) => g.trim()).filter(Boolean).map((g) => byLower.get(g.toLowerCase()) ?? g))];
+            if (list.length) onPickMany(list);
+            setQ("");
+            setOpen(false);
             e.preventDefault();
           } else if (e.key === "Enter") {
             const exact = genes.find((g) => g.toLowerCase() === q.trim().toLowerCase());

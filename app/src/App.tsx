@@ -11,6 +11,7 @@ import { PlatformBar } from "./ui/PlatformBar";
 import { SplitDivider } from "./ui/SplitDivider";
 import { ScaleBar } from "./ui/ScaleBar";
 import { PointSizeControls } from "./ui/PointSizeControl";
+import { HelpOverlay } from "./ui/HelpOverlay";
 import { TopNav } from "./ui/TopNav";
 import { useRegistry } from "./ui/registry";
 
@@ -66,6 +67,7 @@ export function App() {
       <Sidebar />
       <Tooltip />
       <StatusBar />
+      <HelpOverlay />
     </div>
   );
 }

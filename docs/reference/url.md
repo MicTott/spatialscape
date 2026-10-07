@@ -21,6 +21,8 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `hs` | hidden samples | `hs=vis_Br2743` |
 | `ps` | point size multiplier, spatial view | `ps=1.5` |
 | `pse` | point size multiplier, embedding view | `pse=0.5` |
+| `sps` | `1`: scale gene colors per sample instead of one shared scale | `sps=1` |
+| `debug` | `1`: show timing and frame-rate readouts in the status bar | `debug=1` |
 | `sv` | embedding split: `0` off, or `l:<fraction>` / `r:<fraction>` | `sv=r:0.4` |
 | `v` | camera: `x,y,zoom` in dataset microns and log2 scale (spatial view) | `v=24609,23505,-6.4` |
 

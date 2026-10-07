@@ -53,7 +53,13 @@ export function Legend() {
   const vrange = useViewer((s) => s.vrange);
   const geneMax = useViewer((s) => s.geneMax);
   const features = useViewer((s) => s.features);
+  const platforms = useViewer((s) => s.platforms);
+  const hiddenSamples = useViewer((s) => s.hiddenSamples);
+  const scalePerSample = useViewer((s) => s.scalePerSample);
   if (!manifest || !color) return null;
+  // samples currently on screen that do not carry the colored field: drawn grey as "not measured"
+  const onScreen = manifest.samples.filter((smp) => !hiddenSamples.includes(smp.id) && (smp.kind === "embedding" || !platforms || platforms.includes(smp.platform)));
+  const notMeasured = color.kind === "field" ? onScreen.filter((smp) => !smp.fields.includes((color as any).field)).length : 0;
 
   if (color.kind === "field") {
     const f = fieldById(manifest, color.field);
@@ -62,6 +68,9 @@ export function Legend() {
       const v = manifest.vocabularies[f.vocabulary];
       const hid = new Set(hidden[f.id] ?? []);
       const cnt = counts[f.id];
+      // categories with no cells in the loaded samples are dropped; the rest sort by count so the big classes come first
+      const order = v.categories.map((_, i) => i).filter((i) => !cnt || cnt[i] > 0 || hid.has(i));
+      if (cnt) order.sort((a, b) => cnt[b] - cnt[a]);
       const all = () => store.getState().setHiddenCategories(f.id, []);
       const none = () => store.getState().setHiddenCategories(f.id, v.categories.map((_, i) => i));
       return (
@@ -74,7 +83,9 @@ export function Legend() {
             </span>
           </div>
           <ul className="cats">
-            {v.categories.map((c, i) => (
+            {order.map((i) => {
+              const c = v.categories[i];
+              return (
               <li
                 key={c}
                 className={hid.has(i) ? "off" : ""}
@@ -89,8 +100,10 @@ export function Legend() {
                 <span className="cat-name">{c}</span>
                 {cnt && <span className="cat-n">{cnt[i].toLocaleString()}</span>}
               </li>
-            ))}
+              );
+            })}
           </ul>
+          {notMeasured > 0 && <NotMeasured n={notMeasured} />}
         </div>
       );
     }
@@ -104,6 +117,7 @@ export function Legend() {
           <span>low</span>
           <span>high</span>
         </div>
+        {notMeasured > 0 && <NotMeasured n={notMeasured} />}
       </div>
     );
   }
@@ -120,9 +134,17 @@ export function Legend() {
       </div>
       <div className="ramp" style={{ background: colormapCSS(colormap) }} />
       <div className="ramp-labels">
-        <span>{lo.toFixed(2)}</span>
-        <span>{hi.toFixed(2)}</span>
+        <span>{scalePerSample ? "0" : lo.toFixed(2)}</span>
+        <span>{scalePerSample ? "max per sample" : hi.toFixed(2)}</span>
       </div>
+    </div>
+  );
+}
+
+function NotMeasured({ n }: { n: number }) {
+  return (
+    <div className="muted small notmeasured">
+      <span className="swatch" style={{ background: "#5c6470" }} /> grey: not measured in {n} sample{n === 1 ? "" : "s"} on screen
     </div>
   );
 }

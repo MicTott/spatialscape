@@ -20,6 +20,7 @@ import { computeLayout, fitBbox, type LayoutResult } from "./layout";
 import { Loader } from "./loader";
 import { Selection } from "./selection";
 import { Stats } from "./stats";
+import { composePNG } from "./exportPng";
 import { sameChannel, VIEWS, type ViewRect } from "./types";
 
 export class ViewerController {
@@ -46,6 +47,8 @@ export class ViewerController {
   private frameTimes: number[] = [];
   private lastProbe: { nonBackground: number; total: number } | null = null;
   private wantProbe = false;
+  private wantCapture = false;
+  private captureResolvers: (() => void)[] = [];
   private probeResolvers: ((p: { nonBackground: number; total: number }) => void)[] = [];
 
   constructor(public container: HTMLDivElement) {
@@ -78,6 +81,25 @@ export class ViewerController {
   }
 
   // ---------------------------------------------------------------- public API used by the UI and tests
+  storeState() {
+    return store.getState();
+  }
+  /** Renders one frame and downloads it as a PNG with a legend and scale bar drawn on top. */
+  exportPNG(): Promise<void> {
+    return new Promise((resolve) => {
+      this.captureResolvers.push(resolve);
+      this.wantCapture = true;
+      this.buildLayers();
+      this.deck.redraw("capture");
+      setTimeout(() => {
+        const i = this.captureResolvers.indexOf(resolve);
+        if (i >= 0) {
+          this.captureResolvers.splice(i, 1);
+          resolve();
+        }
+      }, 4000);
+    });
+  }
   load(url: string) {
     return this.loader.load(url);
   }
@@ -203,6 +225,7 @@ export class ViewerController {
       s.imageOpacity !== prev.imageOpacity ||
       s.showImages !== prev.showImages ||
       s.pointScale !== prev.pointScale ||
+      s.scalePerSample !== prev.scalePerSample ||
       s.selected !== prev.selected ||
       s.sampleStatus !== prev.sampleStatus ||
       s.outline !== prev.outline ||
@@ -330,6 +353,17 @@ export class ViewerController {
       const fps = this.frameTimes.length;
       const t = store.getState().timings;
       if (Math.abs(t.fps - fps) >= 2) store.getState().set({ timings: { ...t, fps } });
+    }
+    if (this.wantCapture) {
+      this.wantCapture = false;
+      const rs = this.captureResolvers;
+      this.captureResolvers = [];
+      try {
+        composePNG(this.deck.getCanvas() as HTMLCanvasElement, this.container, this.rects);
+      } catch (e) {
+        console.error("PNG export failed", e);
+      }
+      rs.forEach((r) => r());
     }
     if (this.wantProbe) {
       this.wantProbe = false;

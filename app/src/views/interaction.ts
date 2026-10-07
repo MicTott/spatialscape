@@ -196,8 +196,11 @@ export class Interaction {
     } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
       c.stepFocus(-1);
       e.preventDefault();
+    } else if (e.key === "?") {
+      s.set({ help: !s.help });
     } else if (e.key === "Escape") {
-      if (c.selection.current) c.selection.clear();
+      if (s.help) s.set({ help: false });
+      else if (c.selection.current) c.selection.clear();
       else if (s.tool === "lasso") s.set({ tool: "pan" });
       else s.setFocus(null);
     } else if (e.key === "l") {
