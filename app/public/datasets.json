@@ -3,7 +3,7 @@
   "site": {
     "title": "spatialscape",
     "links": [
-      { "label": "Docs", "url": "https://github.com/MicTott/spatialscape/tree/main/docs" },
+      { "label": "Docs", "url": "https://mictott.github.io/spatialscape/docs/" },
       { "label": "GitHub", "url": "https://github.com/MicTott/spatialscape" }
     ]
   },

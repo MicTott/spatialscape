@@ -14,3 +14,5 @@ app/playwright-report/
 .npmrc
 examples/amygdala-src/
 .claude/
+docs/.vitepress/cache/
+docs/.vitepress/dist/

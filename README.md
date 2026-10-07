@@ -20,13 +20,15 @@ A landing gallery (`app/public/datasets.json`) lists published datasets with rea
 
 `app/public/nexus/` holds a draft landing page for an institute portal ("LIBD Nexus") built around the viewer; it is a static mockup for review, served at `/nexus/index.html`.
 
+**Documentation:** <https://mictott.github.io/spatialscape/docs/> (source in `docs/`, built with VitePress; `npm run docs:dev` to preview).
+
 ## Layout
 
 ```
 app/      Vite + React 19 + TypeScript viewer (deck.gl 9, Viv, zarrita, Zustand)
 python/   `spatialscape` CLI (anndata, zarr v3, pydantic)
 examples/ synthetic demo bundle (committed) and dataset.yaml examples
-docs/     format.md (bundle on disk), cli.md, hosting.md, architecture.md
+docs/     VitePress documentation site (guide + reference)
 ```
 
 ## Quick start

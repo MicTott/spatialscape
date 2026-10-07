@@ -25,9 +25,13 @@ python/.venv/bin/python -m pytest python/tests && python/.venv/bin/ruff check py
 npm test && npm run e2e
 ```
 
+## Docs
+
+`npm run docs:dev` serves the VitePress site from `docs/`; `npm run docs:build` writes `docs/.vitepress/dist`. The Pages workflow publishes it under `/docs/`.
+
 ## Where things live
 
-See `docs/architecture.md`. The bundle format is specified in `docs/format.md`; changes to it must bump `formatVersion`
+See `docs/reference/architecture.md`. The bundle format is specified in `docs/reference/format.md`; changes to it must bump `formatVersion`
 in both `python/src/spatialscape/manifest.py` and `app/src/data/manifest.ts` and keep them in sync.
 
 ## Pull requests
