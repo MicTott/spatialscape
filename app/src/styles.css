@@ -180,6 +180,14 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .scalebar::before { left: 0; } .scalebar::after { right: 0; }
 .scalebar span { position: absolute; left: 0; bottom: 8px; font-size: 11px; color: var(--fg); text-shadow: 0 0 4px var(--bg), 0 0 2px var(--bg); white-space: nowrap; }
 
+/* per-view point size widget (bottom-left of each view; above the scale bar in the spatial view) */
+.pointsize { position: absolute; bottom: 14px; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(4px); }
+.pointsize.spatial { bottom: 40px; }
+.pointsize input[type="range"] { width: 90px; margin: 0; }
+.pointsize .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+.pointsize .dot.big { width: 9px; height: 9px; }
+.pointsize small { font-size: 10px; color: var(--muted); min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
 /* registry gallery */
 .overlay.gallery { justify-content: flex-start; overflow-y: auto; padding: 48px 32px 32px; gap: 24px; }
 .gallery-head { max-width: 760px; display: flex; flex-direction: column; align-items: center; gap: 12px; }

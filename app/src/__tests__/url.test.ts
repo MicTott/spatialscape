@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serialize } from "../url/urlState";
+import { readUrl, serialize } from "../url/urlState";
 import { store, type ViewerState } from "../store/store";
 
 describe("url state", () => {
@@ -21,5 +21,21 @@ describe("url state", () => {
     expect(q.get("s")).toBe("s1");
     expect(q.get("v")).toBe("100,201,-2.35");
     expect(q.has("cm")).toBe(false);
+  });
+});
+
+describe("point size per view", () => {
+  it("round-trips separate spatial and embedding multipliers", () => {
+    const s = { ...store.getState(), pointScale: { spatial: 1.5, embedding: 0.5 } } as ViewerState;
+    const q = new URLSearchParams(serialize(s));
+    expect(q.get("ps")).toBe("1.50");
+    expect(q.get("pse")).toBe("0.50");
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: "?ps=1.5&pse=0.5" } };
+    expect(readUrl().pointScale).toEqual({ spatial: 1.5, embedding: 0.5 });
+    g.window = { location: { search: "?ps=2" } };
+    expect(readUrl().pointScale).toEqual({ spatial: 2, embedding: 1 });
+    g.window = saved;
   });
 });

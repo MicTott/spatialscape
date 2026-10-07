@@ -10,6 +10,7 @@ import { Landing, resolveDataset } from "./ui/Landing";
 import { PlatformBar } from "./ui/PlatformBar";
 import { SplitDivider } from "./ui/SplitDivider";
 import { ScaleBar } from "./ui/ScaleBar";
+import { PointSizeControls } from "./ui/PointSizeControl";
 import { TopNav } from "./ui/TopNav";
 import { useRegistry } from "./ui/registry";
 
@@ -51,6 +52,7 @@ export function App() {
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}`} ref={mapRef}>
         <SplitDivider mapRef={mapRef} />
         <ScaleBar />
+        <PointSizeControls />
       </div>
       {status === "idle" && !datasetUrl && <Landing />}
       {status === "error" && (

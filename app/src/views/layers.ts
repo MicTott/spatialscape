@@ -108,7 +108,7 @@ export class LayerBuilder {
             visible,
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
-            getRadius: smp.pointRadius * s.pointScale,
+            getRadius: smp.pointRadius * s.pointScale[view],
             radiusMinPixels: 1,
             radiusMaxPixels: 40,
             stroked: false,

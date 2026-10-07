@@ -91,7 +91,7 @@ export interface ViewerState {
   viewState: ViewState | null;
   imageOpacity: number;
   showImages: boolean;
-  pointScale: number;
+  pointScale: Record<ViewId, number>; // point radius multiplier per view (spatial sections vs embeddings)
   hover: HoverInfo | null;
   categoryCounts: Record<string, number[]>;
   filterHistogram: number[] | null;
@@ -116,7 +116,7 @@ export const DEFAULTS = {
   layoutMode: "grid" as LayoutMode,
   imageOpacity: 1,
   showImages: true,
-  pointScale: 1,
+  pointScale: { spatial: 1, embedding: 1 } as Record<ViewId, number>,
 };
 
 export const store = createStore<ViewerState>((set, get) => ({

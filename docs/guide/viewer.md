@@ -45,6 +45,10 @@ Display → Outlines draws the boundaries of any categorical annotation as light
 
 Press `L` or the ⌒ lasso button, drag around a region, release. Selected cells get a white ring and the Selection panel shows counts per sample, the composition of every annotation, and the current gene's mean and percent expressing in the selection versus the whole sample. "export CSV" downloads `sample,cell_id` rows. `Esc` clears.
 
+## Point size
+
+Each view has its own point-size slider at its bottom-left corner: one for the tissue sections, one for the embedding, so dense UMAPs and sparse Visium spots can be tuned independently. Double-click a slider to reset it. The values travel in the URL as `ps` (spatial) and `pse` (embedding).
+
 ## Images and polygons
 
 H&E or fluorescence pyramids render under the points with an opacity slider. Cell boundary polygons, when the bundle has them, appear once you zoom in far enough that a cell spans several pixels.

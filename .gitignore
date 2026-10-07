@@ -16,3 +16,4 @@ examples/amygdala-src/
 .claude/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+app/tsconfig.tsbuildinfo

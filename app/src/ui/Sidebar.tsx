@@ -282,7 +282,6 @@ function DisplayPanel() {
   const showImages = useViewer((s) => s.showImages);
   const showPolygons = useViewer((s) => s.showPolygons);
   const imageOpacity = useViewer((s) => s.imageOpacity);
-  const pointScale = useViewer((s) => s.pointScale);
   const layoutMode = useViewer((s) => s.layoutMode);
   const set = store.getState().set;
   const hasImages = manifest.samples.some((s) => s.images.length);
@@ -297,10 +296,6 @@ function DisplayPanel() {
           Strip
         </button>
       </div>
-      <label>
-        point size <small>×{pointScale.toFixed(2)}</small>
-        <input type="range" min={0.25} max={4} step={0.05} value={pointScale} onChange={(e) => set({ pointScale: +e.target.value })} />
-      </label>
       {manifest.samples.some((s) => s.polygons) && (
         <label className="check">
           <input type="checkbox" checked={showPolygons} onChange={(e) => set({ showPolygons: e.target.checked })} /> cell boundaries when zoomed in

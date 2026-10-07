@@ -95,7 +95,7 @@ export class Interaction {
     const p = c.layouts[hit.view]!.placements.get(id)!;
     const inv = new Matrix4(p.modelMatrix).invert();
     const [lx, ly] = inv.transformAsPoint([hit.world[0], hit.world[1], 0]);
-    const r = Math.max(smp.pointRadius * s.pointScale, 6 / scale);
+    const r = Math.max(smp.pointRadius * s.pointScale[hit.view], 6 / scale);
     const hits = sd.index.within(lx, ly, r);
     if (!hits.length) {
       if (s.hover) s.set({ hover: null });

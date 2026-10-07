@@ -65,7 +65,7 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
   if (q.get("s")) out.focus = q.get("s");
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
-  if (q.get("ps")) out.pointScale = num(q.get("ps"), 1);
+  if (q.get("ps") || q.get("pse")) out.pointScale = { spatial: num(q.get("ps"), 1), embedding: num(q.get("pse"), 1) };
   if (q.get("o")) {
     const [field, style, width] = q.get("o")!.split(":");
     if (field) out.outline = { field, style: (["field", "light", "dark"].includes(style) ? style : "light") as "field" | "light" | "dark", width: num(width, 1.5) };
@@ -107,7 +107,8 @@ export function serialize(s: ViewerState): string {
   else if (s.imageOpacity !== 1) q.set("img", s.imageOpacity.toFixed(2));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);
   if (s.hiddenSamples.length) q.set("hs", s.hiddenSamples.join(","));
-  if (s.pointScale !== 1) q.set("ps", s.pointScale.toFixed(2));
+  if (s.pointScale.spatial !== 1) q.set("ps", s.pointScale.spatial.toFixed(2));
+  if (s.pointScale.embedding !== 1) q.set("pse", s.pointScale.embedding.toFixed(2));
   if (s.platforms) q.set("p", s.platforms.join(","));
   if (s.groupField) q.set("gf", s.groupField);
   if (!s.showPolygons) q.set("poly", "0");
