@@ -67,3 +67,13 @@ describe("fitBbox / drawCount", () => {
     expect(small).toBeGreaterThanOrEqual(3000);
   });
 });
+
+describe("image footprints", () => {
+  it("grow the cell so H&E frames do not touch across the gutter", async () => {
+    const { footprint } = await import("../views/layout");
+    const s: any = { id: "a", bbox: [0, 0, 6500, 6500], toDataset: [1, 0, 0, 0, 1, 0], images: [{ pixelSize: 4.4, translate: [-1100, -1100], size: [2000, 2000] }] };
+    expect(footprint(s)).toEqual([-1100, -1100, 7700, 7700]);
+    const L = computeLayout([s, { ...s, id: "b" }], ["a", "b"], "strip", 0.2, 1);
+    expect(L.cell[0]).toBeCloseTo(8800 * 1.2);
+  });
+});

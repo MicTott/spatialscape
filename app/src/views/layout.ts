@@ -27,10 +27,24 @@ function affine3to4(a: number[]): Matrix4 {
   return m;
 }
 
-/** bbox of a sample after its toDataset affine. */
+/** Sample-local footprint: the point bbox grown to cover its images (a Visium H&E frame extends past the spots). */
+export function footprint(s: Sample): [number, number, number, number] {
+  let [x0, y0, x1, y1] = s.bbox;
+  for (const im of s.images ?? []) {
+    const [h, w] = im.size;
+    const [tx, ty] = im.translate ?? [0, 0];
+    x0 = Math.min(x0, tx);
+    y0 = Math.min(y0, ty);
+    x1 = Math.max(x1, tx + w * im.pixelSize);
+    y1 = Math.max(y1, ty + h * im.pixelSize);
+  }
+  return [x0, y0, x1, y1];
+}
+
+/** bbox of a sample (points and images) after its toDataset affine. */
 export function datasetBbox(s: Sample): [number, number, number, number] {
   const m = affine3to4(s.toDataset);
-  const [x0, y0, x1, y1] = s.bbox;
+  const [x0, y0, x1, y1] = footprint(s);
   const pts = [
     [x0, y0],
     [x1, y0],
