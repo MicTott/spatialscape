@@ -6,12 +6,13 @@ name: Human dACC
 description: Visium sections of the dorsal anterior cingulate cortex with cortical layer labels, and paired snRNA-seq with Azimuth cell types, across ten donors.
 default_gene: SNAP25
 default_color: { field: layer }
-layout: { mode: grid }
+palette: /Users/michael.totty/Documents/Web/spatialscape/examples/palettes/dacc.json
+layout: { mode: grid, gutter_fraction: 0.35 }
 thumbnail_sample: vis_V12N28-334_A1
 
 fields:
-  - { id: layer, name: Layer (PRECAST), type: categorical, categories: [L1, L2, L3, L5, L6a, L6b, WM] }
-  - { id: celltype_azimuth, name: Cell type (Azimuth), type: categorical }
+  - { id: layer, name: Layer (PRECAST), type: categorical, categories: [L1, L2, L3, L5, L6a, L6b, WM], palette_key: layer }
+  - { id: celltype_azimuth, name: Cell type (Azimuth), type: categorical, palette_key: celltype_azimuth }
   - { id: donor, name: Donor, type: categorical }
   - { id: total_counts, name: Total counts, type: continuous }
   - { id: detected_genes, name: Detected genes, type: continuous }

@@ -339,6 +339,7 @@ def add_outlines(
         existing = Manifest.model_validate_json(fh.read())
     vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies)
     vocab.adopt_manifest_fields(existing)
+    vocab.recolor_from_palette()  # palette edits apply on refresh; codes stay put
     for s in existing.samples:
         if sample_ids and s.id not in sample_ids:
             continue
@@ -375,6 +376,7 @@ def refresh(cfg: DatasetConfig, out: Path) -> Manifest:
         existing = Manifest.model_validate_json(fh.read())
     vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies)
     vocab.adopt_manifest_fields(existing)
+    vocab.recolor_from_palette()  # palette edits apply on refresh; codes stay put
     order = {s.id: i for i, s in enumerate(cfg.samples)}
     samples = sorted(existing.samples, key=lambda s: order.get(s.id, 1e9))
     return _write_dataset_files(out, cfg, samples, vocab)

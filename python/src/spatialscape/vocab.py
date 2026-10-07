@@ -101,6 +101,24 @@ class VocabRegistry:
             else:
                 self.declare(FieldSpec(id=mf.id, name=mf.name, type="continuous", range=mf.range, colormap=mf.colormap, description=mf.description))
 
+    def recolor_from_palette(self) -> int:
+        """Re-derive the color of every existing label that the palette names, keeping codes. Returns how many changed."""
+        changed = 0
+        for vid, v in self.vocabs.items():
+            key = v.get("_palette_key", vid)
+            keys = [k.strip() for k in str(key).split(",")] + [vid, "_flat"]
+            for i, label in enumerate(v["categories"]):
+                if label == NA_LABEL:
+                    continue
+                for pk in keys:
+                    pal = self.palette.get(pk)
+                    if pal and label in pal:
+                        if v["colors"][i] != pal[label]:
+                            v["colors"][i] = pal[label]
+                            changed += 1
+                        break
+        return changed
+
     def vocab_id(self, field_id: str) -> str:
         f = self.fields[field_id]
         return f.vocabulary or f.id

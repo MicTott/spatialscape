@@ -1,0 +1,33 @@
+{
+ "_notes": "dACC palettes: layer colors from code/12_spatial_registration/dACC_manual_spatial_registration.R; Azimuth cell type colors from processed-data/snRNA-seq/05_azimuth/celltype_colors.Rdata",
+ "layer": {
+  "L1": "#F0027F",
+  "L2": "#377EB8",
+  "L3": "#4DAF4A",
+  "L5": "#FFD700",
+  "L6a": "#FFC18A",
+  "L6b": "#c46200",
+  "WM": "#1A1A1A"
+ },
+ "celltype_azimuth": {
+  "L2/3 IT": "#1F78C8",
+  "Oligo": "#ff0000",
+  "L6b": "#33a02c",
+  "L5 IT": "#6A33C2",
+  "Pvalb": "#ff7f00",
+  "OPC": "#565656",
+  "Lamp5": "#FFD700",
+  "Vip": "#a6cee3",
+  "L6 CT": "#FB6496",
+  "Micro-PVM": "#b2df8a",
+  "Sst": "#CAB2D6",
+  "L6 IT": "#FDBF6F",
+  "VLMC": "#999999",
+  "Astro": "#EEE685",
+  "L5 ET": "#C8308C",
+  "Sncg": "#FF83FA",
+  "L6 IT Car3": "#C814FA",
+  "L5/6 NP": "#0000FF",
+  "Endo": "#36648B"
+ }
+}

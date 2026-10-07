@@ -71,3 +71,24 @@ def test_microns_from_uns_and_overrides(small_adata, tmp_path):
     assert microns_per_unit(spec, si) == pytest.approx(0.5)
     spec = SampleSpec(id="s", platform="xenium", path=tmp_path)
     assert microns_per_unit(spec, si) == 1.0
+
+
+def test_refresh_applies_palette_changes_without_changing_codes(tmp_path):
+    from spatialscape.build import refresh
+
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=200, n_genes=5)
+    out = tmp_path / "bundle"
+    m1 = build_dataset(load_config(cfg_path), out, log=lambda *_: None)
+    v1 = m1.vocabularies["cluster"]
+    pal = tmp_path / "palette.json"
+    pal.write_text(json.dumps({"cluster": {"Astro": "#123456", "Oligo": "#abcdef"}}))
+    doc = yaml.safe_load(cfg_path.read_text())
+    doc["palette"] = str(pal)
+    cfg_path.write_text(yaml.safe_dump(doc))
+    m2 = refresh(load_config(cfg_path), out)
+    v2 = m2.vocabularies["cluster"]
+    assert v2.categories == v1.categories
+    assert v2.colors[v2.categories.index("Astro")] == "#123456"
+    assert v2.colors[v2.categories.index("Oligo")] == "#abcdef"
+    other = next(c for c in v1.categories if c not in ("Astro", "Oligo"))
+    assert v2.colors[v2.categories.index(other)] == v1.colors[v1.categories.index(other)]

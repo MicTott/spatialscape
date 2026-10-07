@@ -7,11 +7,18 @@ src <- "/Users/michael.totty/Documents/Web/spatialscape/examples/bla-src"
 set.seed(20261007)
 keep <- c("Sample", "subject", "species", "subregion", "dv_axis", "sex", "sum", "detected", "subsets_Mito_percent", "broad_celltype", "fine_celltype")
 for (sp in c("human", "baboon", "macaque")) {
-  sce <- readRDS(file.path(src, sprintf("sce_%s.rds", sp)))
+  rds <- file.path(src, sprintf("sce_%s.rds", sp))
+  if (file.exists(rds)) {
+    sce <- readRDS(rds)
+  } else {
+    # the cluster copy was removed after the first export: recompute from the earlier h5ad (X = logcounts)
+    sce <- readH5AD(file.path(src, sprintf("sce_%s.h5ad", sp)))
+    assay(sce, "logcounts") <- assay(sce, "X")
+  }
   cat(sprintf("== %s: %d cells x %d genes, %d subjects\n", sp, ncol(sce), nrow(sce), length(unique(sce$subject))))
   dec <- modelGeneVar(sce, block = sce$subject)
   hvg <- getTopHVGs(dec, n = 2000)
-  sce <- runPCA(sce, subset_row = hvg, ncomponents = 50, BSPARAM = IrlbaParam())
+  sce <- runPCA(sce, subset_row = hvg, ncomponents = 50, scale = TRUE, BSPARAM = IrlbaParam())  # scaled HVGs, as Seurat does
   hm <- harmony::RunHarmony(reducedDim(sce, "PCA"), meta_data = as.data.frame(colData(sce)), vars_use = "subject", verbose = FALSE)
   um <- uwot::umap(hm, n_neighbors = 30, min_dist = 0.3, metric = "cosine", n_threads = 4)
   cd <- colData(sce)[, intersect(keep, colnames(colData(sce)))]
