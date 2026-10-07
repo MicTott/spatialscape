@@ -167,6 +167,7 @@ class DatasetConfig(_Model):
     palette: Path | None = None
     colormaps: list[str] | None = None
     shard_genes: int = 512
+    thumbnail_sample: str | None = None  # sample shown on the dataset's gallery card (default: first in layout order)
     feature_groups: list[FeatureGroupSpec] = Field(default_factory=list)
     # Optional declarations (display names, explicit category order, aliases, palette keys). Fields that
     # samples reference without a declaration are declared automatically at build time.

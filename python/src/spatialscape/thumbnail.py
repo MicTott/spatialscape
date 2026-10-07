@@ -29,7 +29,7 @@ def pick_field(m: Manifest, sample) -> str | None:
     return None
 
 
-def render_sample(root: Path, m: Manifest, sample, *, width: int = 480, height: int = 300, max_points: int = 60_000, pad: int = 10) -> Image.Image:
+def render_sample(root: Path, m: Manifest, sample, *, width: int = 512, height: int = 512, max_points: int = 80_000, pad: int = 16) -> Image.Image:
     d = root / "samples" / sample.id
     og = zarr.open_group(str(d / "obs.zarr"), mode="r")
     xy = og["xy"][:]
@@ -65,14 +65,17 @@ def render_sample(root: Path, m: Manifest, sample, *, width: int = 480, height: 
     return img
 
 
-def write_thumbnails(root: Path, *, per_sample: bool = True, log=lambda *_: None) -> list[Path]:
+def write_thumbnails(root: Path, *, per_sample: bool = True, hero_id: str | None = None, log=lambda *_: None) -> list[Path]:
     root = Path(root)
     m = Manifest.model_validate_json((root / "manifest.json").read_text())
     out: list[Path] = []
     spatial = [s for s in m.samples if s.kind == "spatial"] or m.samples
     if not spatial:
         return out
-    hero = next((s for s in spatial if s.id == (m.layout.order[0] if m.layout.order else None)), spatial[0])
+    hero = next((s for s in m.samples if s.id == hero_id), None) if hero_id else None
+    if hero_id and hero is None:
+        raise KeyError(f"thumbnail sample {hero_id!r} not in bundle")
+    hero = hero or next((s for s in spatial if s.id == (m.layout.order[0] if m.layout.order else None)), spatial[0])
     img = render_sample(root, m, hero)
     p = root / "thumbnail.png"
     img.save(p, optimize=True)
@@ -80,7 +83,7 @@ def write_thumbnails(root: Path, *, per_sample: bool = True, log=lambda *_: None
     log(f"thumbnail: {hero.id} -> {p.name}")
     if per_sample:
         for s in m.samples:
-            img = render_sample(root, m, s, width=240, height=160, max_points=20_000, pad=6)
+            img = render_sample(root, m, s, width=256, height=256, max_points=20_000, pad=8)
             sp = root / "samples" / s.id / "thumbnail.png"
             img.save(sp, optimize=True)
             out.append(sp)

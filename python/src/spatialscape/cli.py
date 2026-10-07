@@ -26,7 +26,7 @@ def build(
     try:
         from .thumbnail import write_thumbnails
 
-        write_thumbnails(out, log=log)
+        write_thumbnails(out, hero_id=cfg.thumbnail_sample, log=log)
     except Exception as e:  # noqa: BLE001 - thumbnails are cosmetic
         typer.secho(f"  thumbnails skipped: {e}", fg="yellow")
     problems = validate_local(out)
@@ -70,11 +70,15 @@ def outlines(
 
 
 @app.command()
-def thumbnails(out: Path = typer.Argument(..., help="bundle directory"), no_per_sample: bool = False):
+def thumbnails(
+    out: Path = typer.Argument(..., help="bundle directory"),
+    hero: str | None = typer.Option(None, help="sample id for the dataset thumbnail"),
+    no_per_sample: bool = False,
+):
     """Render thumbnail.png (one section colored by the default annotation) for the bundle and each sample."""
     from .thumbnail import write_thumbnails
 
-    paths = write_thumbnails(out, per_sample=not no_per_sample, log=typer.echo)
+    paths = write_thumbnails(out, per_sample=not no_per_sample, hero_id=hero, log=typer.echo)
     typer.echo(f"wrote {len(paths)} thumbnail(s)")
 
 
