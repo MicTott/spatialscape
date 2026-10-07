@@ -50,7 +50,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `expression` | `{layer, normalized, keep_f16}` | `X`, `auto`, `false` | `normalized`: `auto`, `lognorm`, `counts` |
 | `microns` | one of `already_microns`, `microns_per_unit`, `spot_diameter_fullres`, `spot_spacing`, `scalefactors_json` | inferred | |
 | `transform` | `{flip: none \| x \| y, rotate: 0 \| 90 \| 180 \| 270}` | none | applied to points and images |
-| `fields` | `{field_id: obs_column}` or `auto` | `{}` | |
+| `fields` | `{field_id: obs_column}` or `{field_id: {column, scale}}` or `auto` | `{}` | `scale` multiplies a numeric column, e.g. `100` to show a ratio as a percent |
 | `images` | list of image specs or `auto` | `auto` | |
 | `polygons` | `{path \| obsm, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (long-format parquet) or `obsm` (n, v, 2); `affine` maps vertices into the coordinate frame |
 | `extent` | number | `5000` | embeddings: world size of the longest side |

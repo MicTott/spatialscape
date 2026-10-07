@@ -62,3 +62,13 @@ def test_build_with_auto_fields_declares_them(tmp_path):
     assert {f.id for f in m.fields} >= {"cluster", "total_counts"}
     assert m.field_by_id("cluster").type == "categorical"
     assert validate_local(tmp_path / "bundle") == []
+
+
+def test_field_map_long_form_sets_scale(tmp_path):
+    from spatialscape.config import SampleSpec
+
+    s = SampleSpec.model_validate(
+        {"id": "a", "platform": "visium", "path": str(tmp_path), "fields": {"mito": {"column": "chrM_ratio", "scale": 100}, "dom": "domain"}}
+    )
+    assert s.fields == {"mito": "chrM_ratio", "dom": "domain"}
+    assert s.field_scales == {"mito": 100.0}

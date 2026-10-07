@@ -135,7 +135,9 @@ def build_sample(
         if f.type == "categorical":
             cats[fid] = vocab.encode(fid, series.reset_index(drop=True))
         else:
-            nums[fid] = pd.to_numeric(series, errors="coerce").to_numpy(dtype=np.float32)
+            arr = pd.to_numeric(series, errors="coerce").to_numpy(dtype=np.float32)
+            scale = spec.field_scales.get(fid, 1.0)
+            nums[fid] = arr * np.float32(scale) if scale != 1.0 else arr
     ids = [str(s) for s in adata.obs_names[perm]]
     write_obs(out_dir, xy=xy, order=perm.astype(np.uint32), ids=ids, cats=cats, nums=nums)
     outlines: list[str] = []

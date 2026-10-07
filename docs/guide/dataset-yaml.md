@@ -93,3 +93,17 @@ Colors come from the palette file (`{vocabulary: {label: "#hex"}}`, with `palett
 ## Reference
 
 Every key is listed with its type and default in the [dataset.yaml schema](../reference/dataset-schema).
+
+## One field, several units
+
+Samples that store the same quantity in different units can still share one field. Give the mapping in long form with a `scale` that multiplies the column:
+
+```yaml
+platforms:
+  visium:
+    fields: { mito_percent: { column: expr_chrM_ratio, scale: 100 } }   # ratio -> percent
+  visium_hd:
+    fields: { mito_percent: subsets_Mito_percent }                      # already a percent
+```
+
+Keeping annotations shared this way is what makes the sidebar short: one *Total counts*, one *Mito %*, one *Cell type* per reference, each listing every sample that carries it.

@@ -102,6 +102,14 @@ class PolygonSpec(_Model):
         return self
 
 
+class FieldMap(_Model):
+    """Long form of a field mapping: `{column, scale}`. `scale` multiplies a numeric column (e.g. 100 to turn a
+    ratio into a percent) so one field can be shared by samples that store the same quantity in different units."""
+
+    column: str
+    scale: float = 1.0
+
+
 class SampleSpec(_Model):
     """One sample. In dataset.yaml an entry may instead carry `glob:` and templated strings
     ("{name}", "{stem}", "{dir}", "{i}") that expand into one SampleSpec per match; `platforms.<platform>`
@@ -118,8 +126,10 @@ class SampleSpec(_Model):
     expression: ExpressionSpec = Field(default_factory=ExpressionSpec)
     microns: MicronsSpec = Field(default_factory=MicronsSpec)
     transform: TransformSpec = Field(default_factory=TransformSpec)
-    # field id -> obs column, or "auto" to expose every categorical (<= 200 levels) and QC-like numeric column
+    # field id -> obs column (or {column, scale}), or "auto" to expose every categorical (<= 200 levels) and
+    # QC-like numeric column. Long-form entries are normalized into `fields` + `field_scales`.
     fields: dict[str, str] | Literal["auto"] = Field(default_factory=dict)
+    field_scales: dict[str, float] = Field(default_factory=dict)
     # explicit list, or "auto" to pick up image.ome.zarr / *.ome.zarr / spatial/tissue_hires_image.png next to the data
     images: list[ImageSpec] | Literal["auto"] = "auto"
     polygons: PolygonSpec | None = None
@@ -127,6 +137,23 @@ class SampleSpec(_Model):
     point_radius: float | None = None  # um; default depends on platform
     seed: int = 7
     gene_column: str | None = None  # var column holding symbols; default var_names
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_field_maps(cls, data):
+        if not isinstance(data, dict) or not isinstance(data.get("fields"), dict):
+            return data
+        fields: dict[str, str] = {}
+        scales: dict[str, float] = dict(data.get("field_scales") or {})
+        for fid, v in data["fields"].items():
+            if isinstance(v, dict):
+                fm = FieldMap.model_validate(v)
+                fields[fid] = fm.column
+                if fm.scale != 1.0:
+                    scales[fid] = fm.scale
+            else:
+                fields[fid] = v
+        return {**data, "fields": fields, "field_scales": scales}
 
 
 class FieldSpec(_Model):

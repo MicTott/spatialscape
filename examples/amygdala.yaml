@@ -1,8 +1,9 @@
-# Human amygdala (LIBD): Xenium + Visium sections and an snRNA-seq reference.
-# Inputs are the read-only AnnData-zarr stores exported for the earlier Vitessce app; nothing there is modified.
+# Human amygdala (LIBD): Xenium, Visium and Visium HD sections plus two snRNA-seq references.
+# Inputs are the read-only AnnData-zarr stores exported for the earlier Vitessce app (nothing there is modified)
+# and files fetched from JHPCE into examples/amygdala-src/ (gitignored).
 id: amygdala
 name: Human amygdala
-description: Visium, Visium HD and Xenium sections of human amygdala with spatial domains and cell types.
+description: Visium, Visium HD and Xenium sections of human amygdala with spatial domains, cell types and cell boundaries.
 default_gene: PENK
 default_color: { field: domain }
 palette: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/build/handoff/palette.json
@@ -12,35 +13,37 @@ thumbnail_sample: vis_Br8325
 feature_groups:
   - { id: rctd, name: Cell type weights (RCTD), pattern: "^RCTD: ", units: weight }
 
-# Only fields that need a display name, palette key, alias or explicit order are declared here;
-# anything else a sample maps is declared automatically with its type inferred from the data.
+# One field per concept, shared across platforms. Two cell-type references exist (Totty et al. labels were
+# transferred onto Xenium; Yu et al. 2023 labels onto Visium HD), so each gets one field that the matching
+# snRNA-seq embedding also carries. QC metrics share ids and units everywhere (mito as percent).
 fields:
   - { id: domain, name: Spatial domain, type: categorical, palette_key: "visium_semisupervised,xenium_banksy_domain,visium_hd_domain,domain", aliases: { AI: IA } }
-  - { id: celltype_xenium, name: Cell type, type: categorical, palette_key: cell_type }
-  - { id: broad_xenium, name: Broad class, type: categorical, palette_key: broad_class }
-  - { id: celltype_hd, name: "Cell type (RCTD, HD)", type: categorical }
-  - { id: mito_percent, name: Mito %, type: continuous }
-  - { id: broad_yu, name: Broad class (Yu), type: categorical }
-  - { id: space_anno, name: Spatial annotation (Yu clusters), type: categorical }
-  - { id: total_counts, name: Total transcripts, type: continuous }
-  - { id: nucleus_area, name: Nucleus area (µm²), type: continuous }
-  - { id: total_umi, name: Total UMI (Visium), type: continuous }
+  - { id: celltype_totty, name: Cell type (Totty et al.), type: categorical, palette_key: cell_type }
+  - { id: celltype_yu, name: Cell type (Yu et al.), type: categorical }
+  - { id: broad, name: Broad class, type: categorical, palette_key: broad_class,
+      aliases: { ExN: Excitatory, InN: Inhibitory, Astrocyte: Non-neuronal, Endothelial: Non-neuronal, Microglia: Non-neuronal, OPC: Non-neuronal, Oligodendrocyte: Non-neuronal } }
+  - { id: total_counts, name: Total counts, type: continuous }
   - { id: detected_genes, name: Detected genes, type: continuous }
-  - { id: mito_ratio, name: Mito ratio, type: continuous }
+  - { id: mito_percent, name: Mito %, type: continuous }
+  - { id: nucleus_area, name: Nucleus area (µm²), type: continuous }
 
-# Per-platform defaults; every sample of that platform inherits them (sample keys override).
 platforms:
   xenium:
-    fields: { domain: Banksy_domains, celltype_xenium: first_type, broad_xenium: first_type_broad, total_counts: total_counts, nucleus_area: nucleus_area }
+    fields: { domain: Banksy_domains, celltype_totty: first_type, broad: first_type_broad, total_counts: total_counts, nucleus_area: nucleus_area }
     images: []            # no morphology images in this export
   visium:
-    fields: { domain: BS_k16_Semisupervised_wAI, total_umi: sum_umi, detected_genes: sum_gene, mito_ratio: expr_chrM_ratio }
+    fields: { domain: BS_k16_Semisupervised_wAI, total_counts: sum_umi, detected_genes: sum_gene, mito_percent: { column: expr_chrM_ratio, scale: 100 } }
     images: auto          # picks up image.ome.zarr next to each adata.zarr
   visium_hd:
-    fields: { domain: spatial_domain, celltype_hd: first_type, total_umi: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
+    fields: { domain: spatial_domain, celltype_yu: first_type, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
     images: auto
+  snrnaseq:
+    kind: embedding
+    group: snRNA-seq
+    coords: obsm/X_umap
+    extent: 5000
+    expression: { layer: X, normalized: lognorm }
 
-# Glob entries expand to one sample per match; {name} is the matched folder name.
 samples:
   # Xenium: cells from the 5 um re-segmentation; boundaries copied from JHPCE (processed-data/Xenium/01_resegment).
   # Br9206 / Br9192 coordinates were transposed / anti-transposed in the export, so their vertices carry `affine`.
@@ -68,62 +71,55 @@ samples:
     group: Br9280
     path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9280/adata.zarr
     polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/output-XETG00117__0023154__Region_1__20240329__171203/cell_boundaries.parquet }
+
   - glob: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br*/adata.zarr
     platform: visium
     id: "vis_{name}"
     name: "{name} (Visium)"
     group: "{name}"
+
   # Visium HD crops: coordinates, 32-vertex cell polygons (obsm/segmentations, auto) and the hires H&E share one
   # level-0 pixel frame; microns_per_unit = SpaceRanger microns_per_pixel / tissue_hires_scalef per crop.
   - id: hd_Br8325_CeA
-    name: Br8325_CeA (Visium HD)
+    name: Br8325 CeA (Visium HD)
     platform: visium_hd
     group: Br8325
     path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_CeA/adata.zarr
     microns: { microns_per_unit: 4.090317 }   # H1-937FVHX_D1: 0.25249 um/px / hires scalef 0.061728396
   - id: hd_Br8325_MeA
-    name: Br8325_MeA (Visium HD)
+    name: Br8325 MeA (Visium HD)
     platform: visium_hd
     group: Br8325
     path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_MeA/adata.zarr
-    microns: { microns_per_unit: 4.317674 }   # H1-937FVHX_A1: 0.25250 um/px / hires scalef 0.058479533
+    microns: { microns_per_unit: 4.317675 }   # H1-937FVHX_A1: 0.25250 um/px / hires scalef 0.058479533
   - id: hd_Br9280_CeA
-    name: Br9280_CeA (Visium HD)
+    name: Br9280 CeA (Visium HD)
     platform: visium_hd
     group: Br9280
     path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_CeA/adata.zarr
-    microns: { microns_per_unit: 2.432738 }   # H1-W369TJK_A1: 0.25258 um/px / hires scalef 0.10382599
+    microns: { microns_per_unit: 2.432737 }   # H1-W369TJK_A1: 0.25258 um/px / hires scalef 0.10382599
   - id: hd_Br9280_ITC
-    name: Br9280_ITC (Visium HD)
+    name: Br9280 ITC (Visium HD)
     platform: visium_hd
     group: Br9280
     path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_ITC/adata.zarr
-    microns: { microns_per_unit: 2.857036 }   # H1-HW9VGBW_A1: 0.25265 um/px / hires scalef 0.08843036
+    microns: { microns_per_unit: 2.857041 }   # H1-HW9VGBW_A1: 0.25265 um/px / hires scalef 0.08843036
   - id: hd_Br9280_MeA
-    name: Br9280_MeA (Visium HD)
+    name: Br9280 MeA (Visium HD)
     platform: visium_hd
     group: Br9280
     path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_MeA/adata.zarr
-    microns: { microns_per_unit: 3.271268 }   # H1-HW9VGBW_D1: 0.25274 um/px / hires scalef 0.07726184
-  - id: sn_amy
-    name: snRNA-seq, Totty et al. (BLA, 5 donors)
+    microns: { microns_per_unit: 3.271265 }   # H1-HW9VGBW_D1: 0.25274 um/px / hires scalef 0.07726184
+
+  # snRNA-seq references. Totty et al. (BLA) is the reference behind the Xenium labels; Yu et al. 2023 (GSE195445)
+  # is the RCTD reference behind the Visium HD labels (orig_anno without the "Human_" prefix).
+  - id: sn_totty
+    name: Totty et al. snRNA-seq (BLA, 5 donors)
     platform: snrnaseq
-    kind: embedding
-    group: snRNA-seq
     path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/sce_amy_human.h5ad
-    coords: obsm/X_umap
-    extent: 5000
-    expression: { layer: X, normalized: lognorm }
-    fields: { celltype_xenium: fine_celltype, broad_xenium: broad_celltype, total_umi: sum, detected_genes: detected }
-  # Yu et al. 2023 (GSE195445) human amygdala snRNA-seq: the RCTD reference for the Visium HD cell types, so its
-  # labels (orig_anno without the "Human_" prefix) share the celltype_hd vocabulary and colors.
+    fields: { celltype_totty: fine_celltype, broad: broad_celltype, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
   - id: sn_yu
-    name: snRNA-seq, Yu et al. 2023 (3 donors)
+    name: Yu et al. 2023 snRNA-seq (3 donors)
     platform: snrnaseq
-    kind: embedding
-    group: snRNA-seq
     path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/yu_sce.h5ad
-    coords: obsm/X_umap
-    extent: 5000
-    expression: { layer: X, normalized: lognorm }
-    fields: { celltype_hd: celltype_yu, broad_yu: broad_yu, space_anno: space_anno, total_umi: total_counts, detected_genes: n_genes, mito_percent: pct_mt }
+    fields: { celltype_yu: celltype_yu, broad: broad_yu, total_counts: total_counts, detected_genes: n_genes, mito_percent: pct_mt }
