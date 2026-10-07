@@ -11,7 +11,7 @@ function PointSizeControl({ view }: { view: ViewId }) {
   const update = (v: number) => store.getState().set({ pointScale: { ...store.getState().pointScale, [view]: v } });
   return (
     <div className={`pointsize ${view}`} style={{ left: rect.x + 12 }} title="Point size (double-click the slider to reset)">
-      <span className="cap">{view === "embedding" ? "snRNA-seq points" : "tissue points"}</span>
+      <span className="cap">Point size</span>
       <span className="dot" aria-hidden />
       <input
         type="range"

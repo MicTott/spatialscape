@@ -175,14 +175,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .blend-x { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
 
 /* scale bar */
-.scalebar { position: absolute; bottom: 14px; height: 4px; background: var(--fg); border-radius: 1px; opacity: 0.9; pointer-events: none; z-index: 3; }
+.scalebar { position: absolute; bottom: 52px; height: 4px; background: var(--fg); border-radius: 1px; opacity: 0.9; pointer-events: none; z-index: 3; }
 .scalebar::before, .scalebar::after { content: ""; position: absolute; bottom: 0; width: 2px; height: 10px; background: var(--fg); }
 .scalebar::before { left: 0; } .scalebar::after { right: 0; }
 .scalebar span { position: absolute; left: 0; bottom: 8px; font-size: 11px; color: var(--fg); text-shadow: 0 0 4px var(--bg), 0 0 2px var(--bg); white-space: nowrap; }
 
-/* per-view point size widget (bottom-left of each view; above the scale bar in the spatial view) */
+/* per-view point size widget (bottom-left of each view, same height in both; the scale bar sits above it) */
 .map > .pointsize { position: absolute; top: auto; bottom: 14px; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(4px); }
-.map > .pointsize.spatial { bottom: 40px; }
 .pointsize .cap { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; white-space: nowrap; }
 .pointsize input[type="range"] { width: 90px; margin: 0; }
 .pointsize .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
