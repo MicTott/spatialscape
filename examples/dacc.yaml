@@ -1,0 +1,42 @@
+# Human dorsal anterior cingulate cortex (LIBD, spatialdACC): 17 Visium capture areas from 10 donors with
+# PRECAST layer labels, plus 10 snRNA-seq libraries with Azimuth cell types. Inputs come from
+# examples/scripts/export_dacc.R run on the objects behind the spatialLIBD / iSEE apps (gitignored).
+id: dacc
+name: Human dACC
+description: Visium sections of the dorsal anterior cingulate cortex with cortical layer labels, and paired snRNA-seq with Azimuth cell types, across ten donors.
+default_gene: SNAP25
+default_color: { field: layer }
+layout: { mode: grid }
+thumbnail_sample: vis_V12N28-334_A1
+
+fields:
+  - { id: layer, name: Layer (PRECAST), type: categorical, categories: [L1, L2, L3, L5, L6a, L6b, WM] }
+  - { id: celltype_azimuth, name: Cell type (Azimuth), type: categorical }
+  - { id: donor, name: Donor, type: categorical }
+  - { id: total_counts, name: Total counts, type: continuous }
+  - { id: detected_genes, name: Detected genes, type: continuous }
+  - { id: mito_percent, name: Mito %, type: continuous }
+
+platforms:
+  visium:
+    gene_column: gene_name          # rows are Ensembl ids; symbols live in var/gene_name
+    fields: { layer: layer, donor: brnum, total_counts: sum_umi, detected_genes: sum_gene, mito_percent: { column: expr_chrM_ratio, scale: 100 } }
+    images: auto                    # spatial/tissue_hires_image.png + scalefactors_json.json next to each adata.h5ad
+  snrnaseq:
+    kind: embedding
+    group: snRNA-seq
+    coords: obsm/X_umap
+    extent: 5000
+    expression: { layer: X, normalized: lognorm }
+
+samples:
+  - glob: /Users/michael.totty/Documents/Web/spatialscape/examples/dacc-src/visium/*/adata.h5ad
+    platform: visium
+    id: "vis_{name}"
+    name: "{name} (Visium)"
+    group: "{name}"
+  - id: sn_dacc
+    name: dACC snRNA-seq (10 donors, Azimuth)
+    platform: snrnaseq
+    path: /Users/michael.totty/Documents/Web/spatialscape/examples/dacc-src/sce_dacc_azimuth.h5ad
+    fields: { celltype_azimuth: cellType_azimuth, donor: brain, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }

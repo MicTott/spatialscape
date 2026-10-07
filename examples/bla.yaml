@@ -1,0 +1,33 @@
+# Basolateral amygdala snRNA-seq across species (Totty et al. 2024, BLA_crossSpecies): human, baboon and
+# rhesus macaque, one joint donor-corrected UMAP per species (examples/scripts/export_bla.R). Fine cell type
+# labels share one vocabulary across species, so colors match between the three embeddings.
+id: bla_crossspecies
+name: Amygdala across species (snRNA-seq)
+description: Basolateral amygdala nuclei from human, baboon and rhesus macaque with conserved fine cell type labels, subregion of origin and donor; one UMAP per species.
+default_gene: SLC17A7
+default_color: { field: celltype }
+layout: { mode: grid }
+thumbnail_sample: sn_human
+
+fields:
+  - { id: celltype, name: Cell type, type: categorical }
+  - { id: broad, name: Broad class, type: categorical }
+  - { id: subregion, name: Subregion, type: categorical }
+  - { id: donor, name: Donor, type: categorical }
+  - { id: sex, name: Sex, type: categorical }
+  - { id: total_counts, name: Total counts, type: continuous }
+  - { id: detected_genes, name: Detected genes, type: continuous }
+  - { id: mito_percent, name: Mito %, type: continuous }
+
+platforms:
+  snrnaseq:
+    kind: embedding
+    coords: obsm/X_umap
+    extent: 5000
+    expression: { layer: X, normalized: lognorm }
+    fields: { celltype: fine_celltype, broad: broad_celltype, subregion: subregion, donor: subject, sex: sex, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
+
+samples:
+  - { id: sn_human,   name: Human (5 donors),          platform: snrnaseq, group: Human,   path: /Users/michael.totty/Documents/Web/spatialscape/examples/bla-src/sce_human.h5ad }
+  - { id: sn_baboon,  name: Baboon (2 donors),         platform: snrnaseq, group: Baboon,  path: /Users/michael.totty/Documents/Web/spatialscape/examples/bla-src/sce_baboon.h5ad }
+  - { id: sn_macaque, name: Rhesus macaque (5 donors), platform: snrnaseq, group: Macaque, path: /Users/michael.totty/Documents/Web/spatialscape/examples/bla-src/sce_macaque.h5ad }

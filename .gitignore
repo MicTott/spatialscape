@@ -7,13 +7,16 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 build/
-examples/amygdala/
 app/test-results/
 app/playwright-report/
 .DS_Store
 .npmrc
-examples/amygdala-src/
 .claude/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 app/tsconfig.tsbuildinfo
+# real-data bundles and their source exports stay local (large, derived from cluster data)
+examples/*/
+!examples/synthetic/
+!examples/synthetic-src/
+!examples/scripts/
