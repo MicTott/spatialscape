@@ -1,0 +1,96 @@
+{
+  "note": "Draft list for the Nexus mockup. Download links are placeholders showing the intended shape (Globus guest collection + S3/CloudFront mirror + archival DOI).",
+  "publications": [
+    {
+      "id": "totty-amygdala-2026",
+      "title": "Spatial and cellular architecture of the human amygdala across Visium, Visium HD and Xenium",
+      "authors": "Totty MS, et al.",
+      "venue": "In preparation",
+      "year": 2026,
+      "region": "Amygdala",
+      "summary": "Multi-platform atlas of amygdala subnuclei: Banksy spatial domains, RCTD cell type weights from a basolateral amygdala snRNA-seq reference, and single-cell Xenium validation.",
+      "datasets": [{ "id": "amygdala", "name": "Human amygdala", "url": "../?d=amygdala", "live": true }],
+      "downloads": [
+        { "label": "Visium SpatialExperiment (.rds)", "size": "2.0 GB", "href": "#", "via": "Globus" },
+        { "label": "Visium HD SpatialExperiment (.rds)", "size": "0.8 GB", "href": "#", "via": "Globus" },
+        { "label": "Xenium SpatialExperiment (.rds)", "size": "3.2 GB", "href": "#", "via": "Globus" },
+        { "label": "snRNA-seq SingleCellExperiment (.rds)", "size": "0.4 GB", "href": "#", "via": "Globus" },
+        { "label": "Viewer bundle (zarr)", "size": "0.75 GB", "href": "#", "via": "S3" }
+      ],
+      "code": [{ "label": "Analysis code", "href": "https://github.com/LieberInstitute" }],
+      "accessions": []
+    },
+    {
+      "id": "huuki-myers-2024",
+      "title": "A data-driven single-cell and spatial transcriptomic map of the human prefrontal cortex",
+      "authors": "Huuki-Myers LA, Montgomery KD, Kwon SH, Cinquemani S, Eagles NJ, Gonzalez-Padilla D, et al.",
+      "venue": "Science",
+      "year": 2024,
+      "doi": "10.1126/science.adh1938",
+      "region": "Dorsolateral prefrontal cortex",
+      "summary": "spatialDLPFC: 30 Visium sections across anterior, middle and posterior DLPFC with unsupervised spatial domains, paired snRNA-seq and cell type deconvolution.",
+      "datasets": [{ "id": "dlpfc-visium", "name": "Human DLPFC (spatialDLPFC)", "url": "datasets.html?region=Dorsolateral%20prefrontal%20cortex", "live": false }],
+      "downloads": [
+        { "label": "SpatialExperiment, 30 sections (.rds)", "size": "4.1 GB", "href": "#", "via": "Globus" },
+        { "label": "snRNA-seq SingleCellExperiment (.rds)", "size": "1.9 GB", "href": "#", "via": "Globus" }
+      ],
+      "code": [{ "label": "LieberInstitute/spatialDLPFC", "href": "https://github.com/LieberInstitute/spatialDLPFC" }],
+      "accessions": [{ "label": "GEO GSE235820", "href": "https://www.ncbi.nlm.nih.gov/geo/" }]
+    },
+    {
+      "id": "thompson-hpc-2025",
+      "title": "An integrated single-nucleus and spatial transcriptomics atlas of the human hippocampus",
+      "authors": "Thompson JR, Nelson ED, Tippani M, Ramnauth AD, Divecha HR, Miller RA, et al.",
+      "venue": "Nature Neuroscience",
+      "year": 2025,
+      "region": "Hippocampus",
+      "summary": "Hippocampal formation across 10 donors: subfield and neuropil spatial domains on Visium, Visium-SPG with immunofluorescence, and snRNA-seq.",
+      "datasets": [{ "id": "hpc", "name": "Human hippocampus", "url": "datasets.html?region=Hippocampus", "live": false }],
+      "downloads": [{ "label": "SpatialExperiment (.rds)", "size": "5.3 GB", "href": "#", "via": "Globus" }],
+      "code": [{ "label": "LieberInstitute/spatial_hpc", "href": "https://github.com/LieberInstitute/spatial_hpc" }],
+      "accessions": []
+    },
+    {
+      "id": "weber-lc-2024",
+      "title": "The gene expression landscape of the human locus coeruleus revealed by single-nucleus and spatially-resolved transcriptomics",
+      "authors": "Weber LM, Divecha HR, Tran MN, Kwon SH, Spangler A, Montgomery KD, et al.",
+      "venue": "eLife",
+      "year": 2024,
+      "doi": "10.7554/eLife.84628",
+      "region": "Locus coeruleus",
+      "summary": "Visium and snRNA-seq of the brainstem locus coeruleus, with norepinephrine neuron markers and a reusable analysis workflow.",
+      "datasets": [{ "id": "lc", "name": "Human locus coeruleus", "url": "datasets.html?region=Locus%20coeruleus", "live": false }],
+      "downloads": [{ "label": "SpatialExperiment + SCE (.rds)", "size": "0.6 GB", "href": "#", "via": "Globus" }],
+      "code": [{ "label": "lmweber/locus-c", "href": "https://github.com/lmweber/locus-c" }],
+      "accessions": []
+    },
+    {
+      "id": "maynard-2021",
+      "title": "Transcriptome-scale spatial gene expression in the human dorsolateral prefrontal cortex",
+      "authors": "Maynard KR, Collado-Torres L, Weber LM, Uytingco C, Barry BK, Williams SR, et al.",
+      "venue": "Nature Neuroscience",
+      "year": 2021,
+      "doi": "10.1038/s41593-020-00787-0",
+      "region": "Dorsolateral prefrontal cortex",
+      "summary": "The first Visium study of human DLPFC with manually annotated cortical layers; the dataset behind spatialLIBD and a widely used benchmark.",
+      "datasets": [{ "id": "dlpfc-pilot", "name": "Human DLPFC pilot (spatialLIBD)", "url": "datasets.html?q=pilot", "live": false }],
+      "downloads": [{ "label": "SpatialExperiment via spatialLIBD (.rds)", "size": "1.1 GB", "href": "#", "via": "Bioconductor" }],
+      "code": [{ "label": "LieberInstitute/HumanPilot", "href": "https://github.com/LieberInstitute/HumanPilot" }, { "label": "spatialLIBD (Bioconductor)", "href": "https://bioconductor.org/packages/spatialLIBD" }],
+      "accessions": []
+    },
+    {
+      "id": "tran-2021",
+      "title": "Single-nucleus transcriptome analysis reveals cell-type-specific molecular signatures across reward circuitry in the human brain",
+      "authors": "Tran MN, Maynard KR, Spangler A, Huuki LA, Montgomery KD, Sadashivaiah V, et al.",
+      "venue": "Neuron",
+      "year": 2021,
+      "doi": "10.1016/j.neuron.2021.09.001",
+      "region": "Nucleus accumbens; amygdala; sACC; DLPFC; hippocampus",
+      "summary": "snRNA-seq across five regions of the human reward circuit, including the nucleus accumbens atlas listed in the catalog.",
+      "datasets": [{ "id": "nac-snrna", "name": "Human nucleus accumbens", "url": "datasets.html?region=Nucleus%20accumbens", "live": false }],
+      "downloads": [{ "label": "SingleCellExperiment objects (.rda)", "size": "3.4 GB", "href": "#", "via": "Globus" }],
+      "code": [{ "label": "LieberInstitute/10xPilot_snRNAseq-human", "href": "https://github.com/LieberInstitute/10xPilot_snRNAseq-human" }],
+      "accessions": []
+    }
+  ]
+}

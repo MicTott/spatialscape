@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open science — LIBD Nexus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="nexus.css" />
+</head>
+<body class="catalog-page">
+  <div class="ribbon">Draft for review</div>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="wordmark" href="index.html" aria-label="LIBD Nexus home"><span class="block"><span>L</span>IBD</span><span class="nexus">Nexus</span></a>
+      <nav class="nav" aria-label="Primary">
+        <a href="datasets.html">Datasets</a>
+        <a href="publications.html">Publications</a>
+        <a class="on" href="open.html">Open science</a>
+      </nav>
+      <span class="grow"></span>
+      <a class="ext" href="https://www.libd.org" target="_blank" rel="noreferrer">libd.org ↗</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="catalog-head">
+      <div class="wrap">
+        <div class="eyebrow">Open science</div>
+        <h1>How to get the data, cite it, and build on it</h1>
+        <p class="muted">Everything on Nexus is meant to be reused. This page is the single place that explains access, licensing, citation and the software behind the site.</p>
+      </div>
+    </section>
+
+    <section class="catalog">
+      <div class="wrap catalog-grid">
+        <aside class="facets toc" aria-label="On this page">
+          <h4>On this page</h4>
+          <a href="#access">Data access</a>
+          <a href="#tiers">What you can download</a>
+          <a href="#cite">Citing</a>
+          <a href="#software">Software</a>
+          <a href="#reproduce">Reproducibility</a>
+          <a href="#policy">Policies &amp; ethics</a>
+          <a href="#contribute">Contribute</a>
+          <a href="#contact">Contact</a>
+        </aside>
+        <div class="prose">
+          <h2 id="access">Data access</h2>
+          <p>Processed, de-identified data are public and need no account. Each dataset page and each publication lists its downloads with sizes and checksums. Three routes serve different needs:</p>
+          <div class="routes">
+            <div class="route"><b>Browser</b><span>One click from a dataset or publication page. Fine for objects up to a few gigabytes; downloads resume if interrupted.</span></div>
+            <div class="route"><b>Command line</b><span>Every file has a plain HTTPS URL, so <code>curl -O</code>, <code>wget</code> or <code>rclone</code> work, and a manifest per dataset lets you fetch all samples at once.</span></div>
+            <div class="route"><b>Globus</b><span>For large transfers to an HPC system, every dataset is also published as a Globus guest collection. Search for “LIBD Nexus” in the Globus web app or use the per-dataset collection link.</span></div>
+          </div>
+          <pre><code># whole dataset, resumable
+curl -O https://data.libd.org/nexus/amygdala/v1/manifest.txt
+xargs -n1 curl -O --continue-at - &lt; manifest.txt
+
+# or one object
+curl -O https://data.libd.org/nexus/amygdala/v1/amygdala_visium_spe.rds</code></pre>
+
+          <h2 id="tiers">What you can download</h2>
+          <table class="tiers">
+            <thead><tr><th>Tier</th><th>What it is</th><th>Formats</th><th>Where</th></tr></thead>
+            <tbody>
+              <tr><td><b>Viewer bundle</b></td><td>Exactly what the browser reads: coordinates, annotations, quantized expression, images, domain outlines. Ideal for exploration and lightweight scripts.</td><td>Zarr v3, JSON, OME-Zarr</td><td>Nexus CDN</td></tr>
+              <tr><td><b>Analysis objects</b></td><td>Full-precision processed objects used in the papers, with QC, normalization, clustering and annotations.</td><td>SpatialExperiment / SingleCellExperiment (.rds), AnnData (.h5ad)</td><td>Globus + Nexus CDN</td></tr>
+              <tr><td><b>Raw sequencing</b></td><td>FASTQ and Space Ranger / Xenium Ranger outputs. Human raw data are controlled access.</td><td>FASTQ, BAM, Ranger outputs</td><td>GEO / SRA, dbGaP</td></tr>
+            </tbody>
+          </table>
+          <p class="muted small">Objects are versioned (<code>v1.0</code>, <code>v1.1</code>…) and never overwritten. The version used in a paper is archived with a DOI on Zenodo; the Nexus copy is the fast mirror.</p>
+
+          <h2 id="cite">Citing</h2>
+          <p>Please cite the publication that produced the dataset, and the dataset DOI when you use the data directly. Each dataset page has a <em>Cite</em> button that copies both in BibTeX or plain text. If the viewer itself was useful, cite spatialscape.</p>
+          <pre><code>Totty MS, et al. Spatial and cellular architecture of the human amygdala… (in preparation)
+Dataset: Lieber Institute for Brain Development (2026). Human amygdala spatial atlas v1.0. Zenodo. doi:10.5281/zenodo.XXXXXXX
+Software: Totty M. spatialscape (v0.1). https://github.com/MicTott/spatialscape</code></pre>
+
+          <h2 id="software">Software</h2>
+          <div class="routes">
+            <div class="route"><b>spatialscape</b><span>The viewer behind Nexus and the CLI that builds dataset bundles from AnnData or SpatialExperiment. MIT licensed; point it at your own data.</span><a href="https://github.com/MicTott/spatialscape" target="_blank" rel="noreferrer">GitHub →</a></div>
+            <div class="route"><b>spatialLIBD</b><span>Bioconductor package for working with LIBD spatial data in R, including the DLPFC datasets and interactive Shiny apps.</span><a href="https://bioconductor.org/packages/spatialLIBD" target="_blank" rel="noreferrer">Bioconductor →</a></div>
+            <div class="route"><b>Analysis repositories</b><span>Every paper has a public repository with the code that produced its figures; links are on the publication page.</span><a href="publications.html">Publications →</a></div>
+          </div>
+
+          <h2 id="reproduce">Reproducibility</h2>
+          <p>Processed objects carry the exact annotations shown on Nexus, so a domain or cell type you see in the browser is the same label you get in R or Python. Build scripts that turn the analysis objects into viewer bundles are versioned alongside the data, and each bundle records the software version that produced it.</p>
+
+          <h2 id="policy">Policies &amp; ethics</h2>
+          <p>Human tissue was obtained with informed consent through the LIBD Human Brain Repository and partner brain banks under IRB-approved protocols. Processed data are shared under a <a href="#">CC BY 4.0</a> license; raw human sequencing data are available through controlled-access repositories. We ask that reuse acknowledges donors and the repository as well as the authors.</p>
+
+          <h2 id="contribute">Contribute</h2>
+          <p>Found an annotation that looks wrong, or built something on these data? Open an issue on the relevant repository, or write to us. LIBD groups can add a dataset to Nexus by building a bundle with <code>spatialscape build</code> and submitting a registry entry; the team reviews metadata and publishes it alongside the publication.</p>
+
+          <h2 id="contact">Contact</h2>
+          <p>Data questions: <a href="#">nexus@libd.org</a>. Viewer and bundle format: <a href="https://github.com/MicTott/spatialscape/issues" target="_blank" rel="noreferrer">spatialscape issues</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap legal"><span>© 2026 Lieber Institute for Brain Development</span><a href="index.html" style="display:inline">Nexus home</a><span style="margin-left:auto">Draft for internal review · not a live LIBD property</span></div></footer>
+</body>
+</html>

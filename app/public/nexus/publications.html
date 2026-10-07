@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Publications — LIBD Nexus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="nexus.css" />
+</head>
+<body class="catalog-page">
+  <div class="ribbon">Draft for review</div>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="wordmark" href="index.html" aria-label="LIBD Nexus home"><span class="block"><span>L</span>IBD</span><span class="nexus">Nexus</span></a>
+      <nav class="nav" aria-label="Primary">
+        <a href="datasets.html">Datasets</a>
+        <a class="on" href="publications.html">Publications</a>
+        <a href="open.html">Open science</a>
+      </nav>
+      <span class="grow"></span>
+      <a class="ext" href="https://www.libd.org" target="_blank" rel="noreferrer">libd.org ↗</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="catalog-head">
+      <div class="wrap">
+        <div class="eyebrow">Publications</div>
+        <h1>Papers, with their data attached</h1>
+        <p class="muted">Each publication lists the datasets it produced, where to explore them, and how to download the primary objects and code.</p>
+      </div>
+    </section>
+    <section class="catalog">
+      <div class="wrap catalog-grid">
+        <aside class="facets" aria-label="Filters">
+          <label class="searchbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="q" type="search" placeholder="Search title, author, region…" autocomplete="off" />
+          </label>
+          <div class="facet" data-key="year"><h4>Year</h4></div>
+          <div class="facet" data-key="venue"><h4>Venue</h4></div>
+          <div class="facet" data-key="region"><h4>Brain region</h4></div>
+          <button id="clear" class="btn btn-outline small" type="button">Clear filters</button>
+        </aside>
+        <div class="results">
+          <div class="results-bar"><span id="count" class="muted"></span><span id="chips" class="chips"></span></div>
+          <div id="list" class="publist"></div>
+          <div id="empty" class="empty" hidden><b>No publications match.</b></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap legal"><span>© 2026 Lieber Institute for Brain Development</span><a href="index.html" style="display:inline">Nexus home</a><span style="margin-left:auto">Draft for internal review · not a live LIBD property</span></div></footer>
+  <script src="publications.js"></script>
+</body>
+</html>
