@@ -1,6 +1,8 @@
 """CLI behaviour a new user meets in the first ten minutes."""
 from __future__ import annotations
 
+import re
+
 import pytest
 import yaml
 from typer.testing import CliRunner
@@ -85,7 +87,7 @@ def test_plan_and_errors_are_one_readable_line(tmp_path, capsys, monkeypatch):
 
 def test_help_and_usage_errors_still_work(capsys):
     main(["--help"])  # help prints and returns (exit status 0)
-    out = capsys.readouterr().out
+    out = re.sub(r"\x1b\[[0-9;]*m", "", capsys.readouterr().out)  # CI runners force colors
     assert "Usage: spatialscape" in out and "build" in out
     with pytest.raises(SystemExit) as ex:
         main(["build", "--no-such-flag"])

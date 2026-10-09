@@ -10,7 +10,9 @@ export default defineConfig({
       command: "../python/.venv/bin/spatialscape serve ../examples --port 8787",
       url: "http://127.0.0.1:8787/synthetic/manifest.json",
       reuseExistingServer: true,
+      timeout: 120_000,
     },
-    { command: "npx vite --port 5173 --strictPort", url: "http://127.0.0.1:5173", reuseExistingServer: true },
+    // bind explicitly: on Linux runners "localhost" can resolve to ::1 while Playwright polls 127.0.0.1
+    { command: "npx vite --port 5173 --strictPort --host 127.0.0.1", url: "http://127.0.0.1:5173", reuseExistingServer: true, timeout: 120_000 },
   ],
 });
