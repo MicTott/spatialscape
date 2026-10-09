@@ -12,7 +12,8 @@ export default defineConfig({
       reuseExistingServer: true,
       timeout: 120_000,
     },
-    // bind explicitly: on Linux runners "localhost" can resolve to ::1 while Playwright polls 127.0.0.1
-    { command: "npx vite --port 5173 --strictPort --host 127.0.0.1", url: "http://127.0.0.1:5173", reuseExistingServer: true, timeout: 120_000 },
+    // The production build, not the dev server: a cold Vite dev server re-optimizes dependencies on first
+    // use and reloads the page mid-test. Locally a running dev server on 5173 is reused instead.
+    { command: "npx vite build && npx vite preview --port 5173 --strictPort --host 127.0.0.1", url: "http://127.0.0.1:5173", reuseExistingServer: true, timeout: 180_000 },
   ],
 });

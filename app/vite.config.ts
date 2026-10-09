@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 /** In development, a gitignored public/datasets.local.json (local bundles, 127.0.0.1 URLs) replaces the public registry. */
 function localRegistry(): Plugin {
-  const file = resolve(__dirname, "public/datasets.local.json");
+  const file = fileURLToPath(new URL("./public/datasets.local.json", import.meta.url));
   return {
     name: "spatialscape-local-registry",
     apply: "serve",
