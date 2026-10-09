@@ -62,6 +62,8 @@ def init(
 
     label = PLATFORM_LABEL.get(platform, platform)
     prefix = PLATFORM_PREFIX.get(platform, platform[:3])
+    out = out.expanduser()
+    out.parent.mkdir(parents=True, exist_ok=True)
     entries = []
     for pat in paths:
         matches = sorted(_glob.glob(os.path.expanduser(pat)))
@@ -71,7 +73,10 @@ def init(
         # (right for `samples/*.h5ad` or `samples/<sample>.zarr`). Pick whichever carries the sample name.
         stems = {Path(m).name.split(".")[0].lower() for m in matches}
         var = "{name}" if matches and stems <= GENERIC_STORE_NAMES else "{stem}"
-        entries.append({"glob": pat, "platform": platform, "id": f"{prefix}_{var}", "name": f"{var} ({label})", "group": var})
+        # paths in dataset.yaml resolve against the yaml's own folder, so store the pattern relative to it
+        abs_pat = os.path.abspath(os.path.expanduser(pat))
+        rel_pat = os.path.relpath(abs_pat, out.parent.resolve())
+        entries.append({"glob": rel_pat, "platform": platform, "id": f"{prefix}_{var}", "name": f"{var} ({label})", "group": var})
     platform_block: dict = {"fields": "auto"}
     if platform == "snrnaseq":
         platform_block.update({"kind": "embedding", "coords": "obsm/X_umap"})

@@ -92,3 +92,13 @@ def test_help_and_usage_errors_still_work(capsys):
     with pytest.raises(SystemExit) as ex:
         main(["build", "--no-such-flag"])
     assert ex.value.code == 2
+
+
+def test_init_stores_paths_relative_to_the_yaml(tmp_path, monkeypatch):
+    make_synthetic(tmp_path / "data", n_cells=30, n_genes=5)
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / "config" / "dataset.yaml"  # a yaml in a subfolder, glob typed relative to the shell
+    r = runner.invoke(app, ["init", "data/*.h5ad", "--platform", "visium", "--id", "d", "-o", str(out)])
+    assert r.exit_code == 0, r.output
+    assert yaml.safe_load(out.read_text())["samples"][0]["glob"] == "../data/*.h5ad"
+    assert len(load_config(out).samples) == 2

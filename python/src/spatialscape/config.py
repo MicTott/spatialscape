@@ -306,7 +306,7 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
                 pat = str(base / pat)
             matches = sorted(_glob.glob(pat))
             if not matches:
-                raise ValueError(f"glob matched nothing: {pattern}")
+                raise ValueError(f"glob matched nothing: {pattern} (paths in dataset.yaml are relative to its folder, {base})")
         for i, m in enumerate(matches):
             e = dict(entry)
             if m is not None:
