@@ -120,31 +120,41 @@ def validate_local(root: Path) -> list[str]:
     return p
 
 
+ORIGIN = "https://viewer.example.org"  # any browser origin; servers that gate CORS on it answer as they would for the viewer
+
+
 def validate_remote(url: str) -> list[str]:
     p: list[str] = []
     url = url.rstrip("/")
     try:
-        with urllib.request.urlopen(url + "/manifest.json", timeout=20) as r:
+        req = urllib.request.Request(url + "/manifest.json", headers={"Origin": ORIGIN})
+        with urllib.request.urlopen(req, timeout=20) as r:
             m = Manifest.model_validate_json(r.read())
-            acao = r.headers.get("Access-Control-Allow-Origin")
-            if not acao:
-                _problem(p, "manifest.json: no Access-Control-Allow-Origin header (CORS)")
+            if not r.headers.get("Access-Control-Allow-Origin"):
+                _problem(p, "manifest.json: no Access-Control-Allow-Origin header; the browser will refuse to load the bundle (configure CORS on the host)")
     except Exception as e:
         return [f"cannot fetch manifest: {e}"]
     if not m.samples:
         return p + ["manifest has no samples"]
     s = m.samples[0]
+    sharded = s.expr.sharded
     chunk = f"{url}/samples/{s.id}/expr.zarr/u8/c/0/0"
-    req = urllib.request.Request(chunk, headers={"Range": "bytes=0-15"})
+    headers = {"Origin": ORIGIN}
+    if sharded:
+        headers["Range"] = "bytes=0-15"
+    req = urllib.request.Request(chunk, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
-            if r.status != 206:
-                _problem(p, f"range request returned {r.status}, expected 206 (server must support HTTP Range)")
-            exp = r.headers.get("Access-Control-Expose-Headers", "")
-            if "content-range" not in exp.lower():
-                _problem(p, "Access-Control-Expose-Headers should include Content-Range")
+            if sharded:
+                if r.status != 206:
+                    _problem(p, f"range request returned {r.status}, expected 206: this bundle is sharded, so the host must support HTTP Range (or rebuild with --no-shard)")
+                exp = r.headers.get("Access-Control-Expose-Headers", "")
+                if "content-range" not in exp.lower() and "*" not in exp:
+                    _problem(p, "Access-Control-Expose-Headers should include Content-Range for sharded bundles")
+            elif r.status != 200:
+                _problem(p, f"gene chunk request returned {r.status}")
     except Exception as e:
-        _problem(p, f"range request failed for {chunk}: {e}")
+        _problem(p, f"gene chunk request failed for {chunk}: {e}")
     return p
 
 

@@ -13,7 +13,28 @@ app = typer.Typer(
     help="Build, check and serve static spatialscape viewer bundles.",
     no_args_is_help=True,
     rich_markup_mode="markdown",
+    pretty_exceptions_enable=False,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        from importlib.metadata import version
+
+        typer.echo(f"spatialscape {version('spatialscape')}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: bool = typer.Option(False, "--version", "-V", help="Print the version and exit.", callback=_version_callback, is_eager=True),
+) -> None:
+    """Build, check and serve static spatialscape viewer bundles."""
+
+
+PLATFORM_LABEL = {"visium": "Visium", "visium_hd": "Visium HD", "xenium": "Xenium", "merfish": "MERFISH", "snrnaseq": "snRNA-seq", "other": "Sample"}
+PLATFORM_PREFIX = {"visium": "vis", "visium_hd": "hd", "xenium": "xen", "merfish": "mer", "snrnaseq": "sn", "other": "smp"}
+GENERIC_STORE_NAMES = {"adata", "data", "sample", "outs", "table", "sdata", "spe", "sce"}
 
 CONFIG_ARG = typer.Argument(..., help="Path to `dataset.yaml`. Relative paths inside it resolve against its own folder.", show_default=False)
 OUT_OPT = typer.Option(..., "-o", "--out", help="Bundle directory to write (created if missing).", show_default=False)
@@ -33,16 +54,34 @@ def init(
     `fields: auto` and `images: auto`, so the first build needs no hand-written mapping. Review the result with
     `plan`, then edit field names, palettes and scale factors as needed.
     """
+    import glob as _glob
+    import os
+
     import yaml
 
+    label = PLATFORM_LABEL.get(platform, platform)
+    prefix = PLATFORM_PREFIX.get(platform, platform[:3])
+    entries = []
+    for pat in paths:
+        matches = sorted(_glob.glob(os.path.expanduser(pat)))
+        if not matches:
+            typer.secho(f"warning: {pat!r} matches nothing right now; ids will come from the files present at build time", fg="yellow", err=True)
+        # `{name}` is the parent folder (right for `<sample>/adata.zarr`); `{stem}` is the file or store name
+        # (right for `samples/*.h5ad` or `samples/<sample>.zarr`). Pick whichever carries the sample name.
+        stems = {Path(m).name.split(".")[0].lower() for m in matches}
+        var = "{name}" if matches and stems <= GENERIC_STORE_NAMES else "{stem}"
+        entries.append({"glob": pat, "platform": platform, "id": f"{prefix}_{var}", "name": f"{var} ({label})", "group": var})
+    platform_block: dict = {"fields": "auto"}
+    if platform == "snrnaseq":
+        platform_block.update({"kind": "embedding", "coords": "obsm/X_umap"})
+    else:
+        platform_block["images"] = "auto"
     doc = {
         "id": dataset_id,
         "name": name,
         "layout": {"mode": "grid"},
-        "platforms": {platform: {"fields": "auto", "images": "auto"}},
-        "samples": [
-            {"glob": p, "platform": platform, "id": f"{platform[:3]}_{{name}}", "name": f"{{name}} ({platform})", "group": "{name}"} for p in paths
-        ],
+        "platforms": {platform: platform_block},
+        "samples": entries,
     }
     out.write_text(yaml.safe_dump(doc, sort_keys=False, width=200))
     typer.echo(f"wrote {out}; next: `spatialscape plan {out}` then `spatialscape build {out} -o bundle`")
@@ -92,7 +131,7 @@ def inspect(
             v = s.to_numpy()
             typer.echo(f"  {c:<40} numeric     range {np.nanmin(v):.3g}..{np.nanmax(v):.3g}")
     typer.echo("obsm: " + ", ".join(f"{k}{tuple(np.asarray(a.obsm[k]).shape)}" for k in a.obsm))
-    typer.echo("layers: " + ", ".join(a.layers.keys()))
+    typer.echo("layers: " + ", ".join(k for k in a.layers if k))
     hints = [k for k in a.uns if any(t in k.lower() for t in ("scale", "spacing", "unit", "spatial", "pixel"))]
     typer.echo("uns scale hints: " + ", ".join(hints))
     for k in hints:
@@ -261,5 +300,48 @@ def synth(
     typer.echo(f"wrote {make_synthetic(out, cells, genes)}")
 
 
+def _describe(e: BaseException) -> str:
+    """One readable message per error class; the traceback stays behind SPATIALSCAPE_DEBUG=1."""
+    from pydantic import ValidationError
+    from yaml import YAMLError
+
+    if isinstance(e, ValidationError):
+        lines = [f"{'.'.join(str(x) for x in err['loc']) or '<root>'}: {err['msg']}" for err in e.errors()]
+        return "dataset.yaml is not valid:\n  " + "\n  ".join(lines)
+    if isinstance(e, YAMLError):
+        return f"dataset.yaml could not be parsed: {e}"
+    if isinstance(e, FileNotFoundError):
+        return f"file not found: {e.filename or e}"
+    if isinstance(e, KeyError) and e.args:
+        return str(e.args[0])
+    if isinstance(e, (ValueError, OSError)):
+        return str(e)
+    return f"{type(e).__name__}: {e}"
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Console entry point: run the Typer app and turn expected failures into one-line errors."""
+    import os
+    import sys
+
+    try:
+        app(args=argv, standalone_mode=False, prog_name="spatialscape")
+    except typer.Exit as e:
+        sys.exit(e.exit_code)
+    except typer.Abort:
+        typer.secho("aborted", fg="red", err=True)
+        sys.exit(130)
+    except Exception as e:
+        # usage errors (Typer ships its own click, so match by shape rather than class)
+        if hasattr(e, "show") and hasattr(e, "exit_code"):
+            e.show()  # type: ignore[attr-defined]
+            sys.exit(e.exit_code)  # type: ignore[attr-defined]
+        if os.environ.get("SPATIALSCAPE_DEBUG"):
+            raise
+        typer.secho(f"error: {_describe(e)}", fg="red", err=True)
+        typer.secho("set SPATIALSCAPE_DEBUG=1 for the full traceback", dim=True, err=True)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    app()
+    main()
