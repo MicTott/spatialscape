@@ -22,7 +22,7 @@ spatialscape convert <OBJECTS>... [OPTIONS]
 |---|---|---|---|
 | `-o`, `--out` | path | *required* | Folder to write into (created if missing). |
 | `--assay` | text | `logcounts` | Assay written as the expression matrix. Counts are fine too; `build` normalizes them. |
-| `--cols` | text | — | Comma-separated colData columns to keep as annotations. Default: all. Fewer columns keep files small and the viewer's field list short. |
+| `--cols` | text, repeatable | — | colData columns to keep as annotations: `--cols a,b,c`, `--cols "a, b, c"` (quoted) or `--cols a --cols b`. Default: all. Fewer columns keep files small and the viewer's field list short. |
 | `--sample-col` | text | `sample_id` | colData column that defines samples (spatial objects only). |
 | `--embedding` | text | — | reducedDims entry to use as the 2-D embedding (objects without spatialCoords). Default: UMAP if present. |
 | `--microns-per-pixel` | float | — | Microns per coordinate unit, when known (e.g. SpaceRanger's `microns_per_pixel`; required for Visium HD). Default: derive a Visium spot diameter from the spot spacing. |

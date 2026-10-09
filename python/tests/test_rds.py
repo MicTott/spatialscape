@@ -89,4 +89,15 @@ def test_convert_rejects_stray_tokens_with_a_hint(tmp_path, capsys):
     with pytest.raises(SystemExit) as ex:
         main(["convert", str(FIX / "tiny_spe.rds"), "sum_umi,", "sum_gene", "-o", str(tmp_path / "x"), "--cols", "label,"])
     err = capsys.readouterr().err
-    assert ex.value.code == 1 and "not an R object file: sum_umi," in err and "no spaces" in err
+    assert ex.value.code == 1 and "not an R object file: sum_umi," in err and "quote" in err
+
+
+def test_convert_cols_accepts_quoted_lists_and_repeats(tmp_path):
+    r = runner.invoke(app, ["convert", str(FIX / "tiny_spe.rds"), "-o", str(tmp_path / "a"), "--cols", "label, score"])
+    assert r.exit_code == 0, r.output
+    import anndata as ad
+
+    assert list(ad.read_h5ad(tmp_path / "a" / "A" / "adata.h5ad").obs.columns) == ["label", "score"]
+    r = runner.invoke(app, ["convert", str(FIX / "tiny_spe.rds"), "-o", str(tmp_path / "b"), "--cols", "label", "--cols", "score"])
+    assert r.exit_code == 0, r.output
+    assert list(ad.read_h5ad(tmp_path / "b" / "A" / "adata.h5ad").obs.columns) == ["label", "score"]

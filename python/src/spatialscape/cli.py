@@ -175,7 +175,7 @@ def convert(
     objects: list[Path] = typer.Argument(..., help="R objects: `.rds` or `.rda`/`.RData` files holding a SpatialExperiment or SingleCellExperiment.", show_default=False),
     out: Path = typer.Option(..., "-o", "--out", help="Folder to write into (created if missing).", show_default=False),
     assay: str = typer.Option("logcounts", "--assay", help="Assay written as the expression matrix. Counts are fine too; `build` normalizes them."),
-    cols: str | None = typer.Option(None, "--cols", help="Comma-separated colData columns to keep as annotations. Default: all. Fewer columns keep files small and the viewer's field list short."),
+    cols: list[str] | None = typer.Option(None, "--cols", help="colData columns to keep as annotations: `--cols a,b,c`, `--cols \"a, b, c\"` (quoted) or `--cols a --cols b`. Default: all. Fewer columns keep files small and the viewer's field list short."),
     sample_col: str = typer.Option("sample_id", "--sample-col", help="colData column that defines samples (spatial objects only)."),
     embedding: str | None = typer.Option(None, "--embedding", help="reducedDims entry to use as the 2-D embedding (objects without spatialCoords). Default: UMAP if present."),
     microns_per_pixel: float | None = typer.Option(None, "--microns-per-pixel", help="Microns per coordinate unit, when known (e.g. SpaceRanger's `microns_per_pixel`; required for Visium HD). Default: derive a Visium spot diameter from the spot spacing."),
@@ -190,10 +190,10 @@ def convert(
     """
     from .convert import convert_object
 
-    keep = [c.strip() for c in cols.split(",") if c.strip()] if cols else None
+    keep = [c.strip() for chunk in (cols or []) for c in chunk.replace(";", ",").split(",") if c.strip()] or None
     for obj in objects:
         if obj.suffix.lower() not in (".rds", ".rda", ".rdata"):
-            hint = " (looks like a column name: write --cols a,b,c with no spaces, or repeat --cols)" if "," in obj.name or not obj.exists() else ""
+            hint = ' (looks like a column name: quote the list, --cols "a, b, c", or write it without spaces)' if "," in obj.name or not obj.exists() else ""
             raise ValueError(f"not an R object file: {obj}{hint}")
         if not obj.exists():
             raise FileNotFoundError(str(obj))
