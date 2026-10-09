@@ -14,7 +14,7 @@ spatialscape inspect <PATH> [OPTIONS]
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `PATH` | path | *required* | An `.h5ad` file, an AnnData Zarr store, or a SpatialData Zarr store. |
+| `PATH` | path | *required* | An `.h5ad` file, an AnnData Zarr store, a SpatialData Zarr store, or an R `.rds` / `.rda` holding a SpatialExperiment / SingleCellExperiment. |
 
 ## Options
 
@@ -23,6 +23,12 @@ spatialscape inspect <PATH> [OPTIONS]
 | `--table` | text | — | Table key inside a SpatialData store (required when the store has more than one). |
 
 ## Examples
+
+**A SpatialExperiment saved from R**
+
+```bash
+spatialscape inspect Vitessce_app/spe_amy_shinyapp.rds
+```
 
 **An h5ad written from R**
 
@@ -38,5 +44,6 @@ spatialscape inspect store.zarr --table cells
 
 ## See also
 
+- [`spatialscape convert`](./convert)
 - [`spatialscape init`](./init)
 - Guide: [Preparing your data](/guide/preparing-data)

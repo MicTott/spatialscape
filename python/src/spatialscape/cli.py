@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import typer
 
 app = typer.Typer(
@@ -106,7 +107,7 @@ def plan(config: Path = CONFIG_ARG):
 
 @app.command()
 def inspect(
-    path: Path = typer.Argument(..., help="An `.h5ad` file, an AnnData Zarr store, or a SpatialData Zarr store.", show_default=False),
+    path: Path = typer.Argument(..., help="An `.h5ad` file, an AnnData Zarr store, a SpatialData Zarr store, or an R `.rds` / `.rda` holding a SpatialExperiment / SingleCellExperiment.", show_default=False),
     table: str | None = typer.Option(None, "--table", help="Table key inside a SpatialData store (required when the store has more than one)."),
 ):
     """Print what a sample file contains, to help write `dataset.yaml`.
@@ -115,6 +116,30 @@ def inspect(
     the `obsm` keys and their shapes, the layers, and any `uns` keys that look like scale information.
     """
     import numpy as np
+
+    if path.suffix.lower() in (".rds", ".rda", ".rdata"):
+        from .rds import read_experiment
+
+        x = read_experiment(path)
+        typer.echo(f"{path}: {x.class_name}, {x.n_obs} cells x {x.n_vars} genes; assays: {', '.join(x.assays)}")
+        if "sample_id" in x.obs:
+            counts = x.obs["sample_id"].astype(str).value_counts()
+            typer.echo(f"samples ({len(counts)}): " + ", ".join(f"{k} ({v})" for k, v in counts.items()))
+        typer.echo("colData columns:")
+        for c in x.obs.columns:
+            s = x.obs[c]
+            if isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object:
+                n = s.nunique(dropna=True)
+                typer.echo(f"  {c:<40} categorical  {n:>5} levels  e.g. {list(map(str, s.dropna().unique()[:6]))}")
+            else:
+                v = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float)
+                typer.echo(f"  {c:<40} numeric     range {np.nanmin(v):.3g}..{np.nanmax(v):.3g}")
+        typer.echo("spatialCoords: " + ("yes" if x.spatial is not None else "no (an snRNA-seq / embedding object)"))
+        typer.echo("reducedDims: " + ", ".join(f"{k}{v.shape}" for k, v in x.reduced_dims.items()))
+        typer.echo("images: " + (", ".join(f"{i.sample_id}/{i.image_id} (scale {i.scale_factor:.4g}, {'loaded' if i.rgb is not None else 'stored'})" for i in x.images) or "none"))
+        typer.echo("rowData columns: " + ", ".join(x.var.columns) + f"; rownames e.g. {', '.join(x.var.index[:3])}")
+        typer.echo(f"next: spatialscape convert {path} -o <folder> --assay {'logcounts' if 'logcounts' in x.assays else next(iter(x.assays))} --cols <col1,col2,...>")
+        return
 
     from .readers import read_anndata
 
@@ -138,6 +163,35 @@ def inspect(
         v = a.uns[k]
         if not isinstance(v, dict):
             typer.echo(f"  {k} = {v}")
+
+
+@app.command()
+def convert(
+    objects: list[Path] = typer.Argument(..., help="R objects: `.rds` or `.rda`/`.RData` files holding a SpatialExperiment or SingleCellExperiment.", show_default=False),
+    out: Path = typer.Option(..., "-o", "--out", help="Folder to write into (created if missing).", show_default=False),
+    assay: str = typer.Option("logcounts", "--assay", help="Assay written as the expression matrix. Counts are fine too; `build` normalizes them."),
+    cols: str | None = typer.Option(None, "--cols", help="Comma-separated colData columns to keep as annotations. Default: all. Fewer columns keep files small and the viewer's field list short."),
+    sample_col: str = typer.Option("sample_id", "--sample-col", help="colData column that defines samples (spatial objects only)."),
+    embedding: str | None = typer.Option(None, "--embedding", help="reducedDims entry to use as the 2-D embedding (objects without spatialCoords). Default: UMAP if present."),
+    microns_per_pixel: float | None = typer.Option(None, "--microns-per-pixel", help="Microns per coordinate unit, when known (e.g. SpaceRanger's `microns_per_pixel`; required for Visium HD). Default: derive a Visium spot diameter from the spot spacing."),
+    object_name: str | None = typer.Option(None, "--object", help="Which object to take from an `.rda` that holds several."),
+):
+    """Turn R objects (SpatialExperiment / SingleCellExperiment saved as .rds or .rda) into build inputs.
+
+    No R needed: the file is parsed in Python. A spatial object becomes one folder per sample under `OUT`
+    (`adata.h5ad`, the H&E as PNG, SpaceRanger-style scale factors), which `init` and `build` pick up with
+    no image or scale settings; an object without spatialCoords becomes `OUT/<name>.h5ad` with its UMAP in
+    `obsm/X_umap`, ready to be an embedding sample. Needs enough memory to hold the object (roughly what R needs).
+    """
+    from .convert import convert_object
+
+    keep = [c.strip() for c in cols.split(",") if c.strip()] if cols else None
+    written: list[Path] = []
+    for obj in objects:
+        written += convert_object(obj, out, assay=assay, cols=keep, sample_col=sample_col, embedding=embedding, microns_per_pixel=microns_per_pixel, object_name=object_name, log=typer.echo)
+    spatial = [w for w in written if w.name == "adata.h5ad"]
+    hint = f'spatialscape init "{out}/*/adata.h5ad" --platform visium --id <id> -o dataset.yaml' if spatial else f"add `{written[0]}` to dataset.yaml as an embedding sample (kind: embedding, coords: obsm/X_umap)"
+    typer.echo(f"{len(written)} file(s) written under {out.resolve()}\n  next: {hint}")
 
 
 @app.command()

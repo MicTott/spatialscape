@@ -12,6 +12,7 @@ spatialscape --help
 | [`init`](./init) | Write a starter `dataset.yaml`. |
 | [`plan`](./plan) | Show the expanded sample list without building anything. |
 | [`inspect`](./inspect) | Print what a sample file contains, to help write `dataset.yaml`. |
+| [`convert`](./convert) | Turn R objects (SpatialExperiment / SingleCellExperiment saved as .rds or .rda) into build inputs. |
 | [`build`](./build) | Build a complete bundle from `dataset.yaml`. |
 | [`add-sample`](./add-sample) | Rebuild one sample inside an existing bundle. |
 | [`refresh`](./refresh) | Rewrite the dataset-level files without rebuilding any sample. |

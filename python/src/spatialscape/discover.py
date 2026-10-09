@@ -64,6 +64,8 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
             key = "tissue_hires_scalef" if "hires" in png else "tissue_lowres_scalef"
             if key in scale:
                 return [ImageSpec(id="he", name="H&E", path=sp / png, pixel_size="auto", pixels_per_unit=float(scale[key]))], MicronsSpec(scalefactors_json=sf)
+    if sf.exists():  # scale factors without an image (e.g. `convert` of an object whose image file was gone)
+        return [], MicronsSpec(scalefactors_json=sf)
     # 3. Xenium morphology image
     for tif in sorted(d.glob("morphology_focus*.ome.tif")) + sorted(d.glob("morphology*.ome.tif")):
         return [ImageSpec(id="dapi", name="DAPI", path=tif, kind="multichannel", pixel_size="auto", pixels_per_unit=1 / 0.2125)], None

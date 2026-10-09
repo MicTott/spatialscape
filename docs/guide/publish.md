@@ -15,9 +15,12 @@ The package includes the viewer, so everything below runs offline.
 
 ## 2. Describe and build each dataset
 
+Starting from a saved R object (skip the first two lines if you already have h5ad / zarr files):
+
 ```bash
+spatialscape inspect analysis/spe_dlpfc.rds                                  # samples, columns, images
+spatialscape convert analysis/spe_dlpfc.rds -o data/visium --cols layer,sum_umi,sum_gene
 spatialscape init "data/visium/*/adata.h5ad" --platform visium --id dlpfc --name "Human DLPFC" -o dlpfc.yaml
-spatialscape inspect data/visium/Br2743/adata.h5ad       # which obs columns and obsm keys exist
 spatialscape plan dlpfc.yaml                            # ids and paths, nothing built
 spatialscape build dlpfc.yaml -o bundles/dlpfc           # validates itself and renders thumbnails
 ```

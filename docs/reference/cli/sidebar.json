@@ -12,6 +12,10 @@
     "link": "/reference/cli/inspect"
   },
   {
+    "text": "convert",
+    "link": "/reference/cli/convert"
+  },
+  {
     "text": "build",
     "link": "/reference/cli/build"
   },

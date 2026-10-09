@@ -25,8 +25,14 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
     ],
     "plan": [("Check what a build would do", "spatialscape plan dataset.yaml")],
     "inspect": [
+        ("A SpatialExperiment saved from R", "spatialscape inspect Vitessce_app/spe_amy_shinyapp.rds"),
         ("An h5ad written from R", "spatialscape inspect Br2743.h5ad"),
         ("A SpatialData store with several tables", "spatialscape inspect store.zarr --table cells"),
+    ],
+    "convert": [
+        ("A Visium SpatialExperiment, keeping four annotations", "spatialscape convert spe_visium.rds -o data/visium --assay logcounts --cols BayesSpace_domain,sum_umi,sum_gene,expr_chrM_ratio"),
+        ("A Visium HD object whose coordinates are pixels of a known size", "spatialscape convert spe_hd.rds -o data/hd --microns-per-pixel 0.2525"),
+        ("An snRNA-seq SingleCellExperiment with a UMAP", "spatialscape convert sce_snrnaseq.rds -o data/sn --cols fine_celltype,broad_celltype,subject"),
     ],
     "build": [
         ("Standard build", "spatialscape build dataset.yaml -o bundles/amygdala"),
@@ -61,7 +67,8 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
 RELATED: dict[str, list[str]] = {
     "init": ["plan", "inspect", "build"],
     "plan": ["init", "build"],
-    "inspect": ["init"],
+    "inspect": ["convert", "init"],
+    "convert": ["inspect", "init", "build"],
     "build": ["validate", "add-sample", "refresh", "serve"],
     "add-sample": ["build", "refresh"],
     "refresh": ["add-sample", "thumbnails"],
@@ -76,6 +83,7 @@ GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "init": ("Writing dataset.yaml", "/guide/dataset-yaml"),
     "plan": ("Writing dataset.yaml", "/guide/dataset-yaml"),
     "inspect": ("Preparing your data", "/guide/preparing-data"),
+    "convert": ("Preparing your data: from R", "/guide/preparing-data#from-r"),
     "build": ("Building and validating", "/guide/building"),
     "add-sample": ("Building and validating", "/guide/building#incremental-workflows"),
     "refresh": ("Building and validating", "/guide/building#incremental-workflows"),

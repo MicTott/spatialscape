@@ -38,6 +38,7 @@ dependencies = [
   "tifffile>=2024.1",
   "scikit-image>=0.22",
   "pillow>=10",
+  "rds2py>=0.10",
 ]
 
 [project.urls]

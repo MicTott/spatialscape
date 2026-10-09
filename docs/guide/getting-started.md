@@ -30,8 +30,9 @@ There is no upload, no account and no server process beyond this one.
 
 ## Your own data in four steps
 
-1. **Export** each sample as AnnData (`.h5ad` or `.zarr`) or a SpatialData store. From R, write your
-   `SpatialExperiment` with zellkonverter or anndataR. See [Preparing your data](./preparing-data).
+1. **Bring the data.** AnnData (`.h5ad` / `.zarr`) and SpatialData stores are read directly. R objects too:
+   `spatialscape convert spe.rds -o data/visium` turns a saved `SpatialExperiment` or `SingleCellExperiment`
+   into build inputs, images and scale factors included. See [Preparing your data](./preparing-data).
 2. **Describe** the dataset in a `dataset.yaml`. `spatialscape init` writes a draft; `spatialscape inspect`
    lists the columns available in a file. See [Writing dataset.yaml](./dataset-yaml).
 3. **Build** with `spatialscape build dataset.yaml -o bundles/<id>`. The build validates itself and renders

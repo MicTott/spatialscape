@@ -14,7 +14,7 @@ A static, highly reactive web browser for spatial transcriptomics (Visium, Visiu
 - **Domain outlines over anything.** Boundaries of any categorical annotation (spatial domains, cell types) are traced at build time and can be drawn as thin light, dark or colored strokes on top of gene or cell-type coloring, so you always know which domain you are looking at.
 - **Images under the points.** H&E or fluorescence pyramids (OME-Zarr) rendered with Viv, in the same coordinate frame as the cells.
 - **Static hosting.** No server. The app is plain files (GitHub Pages, Cloudflare Pages); the data is plain files (S3, R2, any host with CORS and HTTP Range). Every view state lives in the URL.
-- **One command to add data, one to publish.** `spatialscape build dataset.yaml -o bundle` converts AnnData (h5ad / zarr) or SpatialData into a viewer bundle; `spatialscape serve bundles` opens everything locally with the viewer that ships in the package; `spatialscape site build bundles -o site` writes a folder to upload to any static host. R users export their SpatialExperiment / SingleCellExperiment to h5ad first (zellkonverter or anndataR).
+- **One command to add data, one to publish.** `spatialscape build dataset.yaml -o bundle` converts AnnData (h5ad / zarr) or SpatialData into a viewer bundle; `spatialscape serve bundles` opens everything locally with the viewer that ships in the package; `spatialscape site build bundles -o site` writes a folder to upload to any static host. R users point `spatialscape convert` at a saved SpatialExperiment / SingleCellExperiment (`.rds` or `.rda`): it is parsed in Python, images and scale factors included.
 
 A landing gallery (`app/public/datasets.json`) lists published datasets with real thumbnails rendered at build time; `?d=<id>` opens one by name, `?d=<url>` opens any bundle. An optional `site` block in the same file adds a slim navigation bar with a dataset switcher, so the viewer can sit inside an institute website.
 
@@ -40,11 +40,12 @@ spatialscape build demo-src/dataset.yaml -o bundles/demo
 spatialscape serve bundles --open                        # viewer + data at http://127.0.0.1:8787/
 ```
 
-Your own data:
+Your own data (from an R object, or from AnnData / SpatialData files directly):
 
 ```bash
-spatialscape init "data/xenium/*/adata.zarr" --platform xenium --id my_dataset -o dataset.yaml
-spatialscape inspect data/xenium/Br1/adata.zarr          # obs columns, obsm keys, scale hints
+spatialscape inspect analysis/spe_visium.rds             # what is in it
+spatialscape convert analysis/spe_visium.rds -o data/visium --cols BayesSpace_domain,sum_umi,sum_gene
+spatialscape init "data/visium/*/adata.h5ad" --platform visium --id my_dataset -o dataset.yaml
 spatialscape plan dataset.yaml                           # expanded sample list, nothing built yet
 spatialscape build dataset.yaml -o bundles/my_dataset
 spatialscape site build bundles/my_dataset -o site       # viewer + registry + data, ready to upload

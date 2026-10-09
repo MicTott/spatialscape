@@ -18,28 +18,38 @@ The CLI reads three input types. Whatever you start from, each **sample** (one t
 
 ## From R
 
-### The short way: one helper, one folder per sample
-
-[`spe_to_spatialscape.R`](https://github.com/MicTott/spatialscape/blob/main/examples/scripts/spe_to_spatialscape.R)
-writes each sample of a `SpatialExperiment` as `adata.h5ad` next to a SpaceRanger-style `spatial/` folder
-(H&E PNG plus `scalefactors_json.json`), which the CLI recognises without any image or scale settings:
-
-```r
-source("https://raw.githubusercontent.com/MicTott/spatialscape/main/examples/scripts/spe_to_spatialscape.R")
-spe_to_spatialscape(spe, "exports/visium", assay = "logcounts",
-                    cols = c("BS_k16_Semisupervised_wAI", "sum_umi", "sum_gene", "expr_chrM_ratio"))
-```
+You do not need to export anything from R. Save your object and let the CLI read it:
 
 ```bash
-spatialscape init "exports/visium/*/adata.h5ad" --platform visium --id my_visium -o dataset.yaml
+spatialscape inspect spe_visium.rds                 # samples, colData columns, images, assays
+spatialscape convert spe_visium.rds -o data/visium --assay logcounts \
+    --cols BayesSpace_domain,sum_umi,sum_gene,expr_chrM_ratio
+spatialscape init "data/visium/*/adata.h5ad" --platform visium --id my_visium -o dataset.yaml
 spatialscape build dataset.yaml -o bundles/my_visium
 ```
 
-`cols` limits `colData` to the annotations you want to show (leave it out to keep everything). Images come
-from `imgData()` (hires if present, else lowres); the spot diameter is measured from the spot spacing. The
-helper needs zellkonverter, png, RANN and jsonlite.
+`convert` parses the `.rds` (or `.rda`) in Python and writes, for a `SpatialExperiment`, one folder per
+sample under `data/visium/`: `adata.h5ad` (the assay as `X`, the chosen `colData` columns as `obs`,
+`spatialCoords()` as `obsm/spatial`), the H&E from `imgData()` as `spatial/tissue_<id>_image.png`, and
+`spatial/scalefactors_json.json` with the image scale factor plus a spot diameter measured from the spot
+spacing. That is the SpaceRanger layout, so `init` and `build` need no image or scale settings.
 
-### By hand: SpatialExperiment / SingleCellExperiment → h5ad
+A `SingleCellExperiment` without `spatialCoords` (an snRNA-seq reference) becomes one `data/<name>.h5ad`
+with its UMAP in `obsm/X_umap`, ready to be an embedding sample.
+
+Options that matter:
+
+- `--cols` keeps the viewer's field list short; leave it out to keep every column.
+- `--assay counts` works too; `build` log-normalizes counts.
+- `--microns-per-pixel` for Visium HD, where the spot-spacing rule does not apply (SpaceRanger prints it in `scalefactors_json.json`).
+- `--sample-col` if samples are not in `sample_id`; `--object` to pick one object out of an `.rda`.
+
+The object is held in memory while converting, so expect roughly the memory R needs for it. HDF5-backed
+assays (`DelayedArray`) are not read; realize them in R first with `assay(x, "logcounts") <- as(assay(x, "logcounts"), "dgCMatrix")`.
+
+### Writing h5ad yourself instead
+
+If you prefer to control the export, zellkonverter works:
 
 ```r
 library(zellkonverter)
@@ -48,27 +58,10 @@ reducedDim(sce, "spatial") <- spatialCoords(spe)      # becomes obsm/spatial
 writeH5AD(sce, "Br2743.h5ad", X_name = "logcounts")
 ```
 
-`colData` becomes `obs` and `rowData` becomes `var`. Trim `colData` first if it carries dozens of QC columns;
-it keeps the file small and `fields: auto` tidy. anndataR works without a Python environment:
-
-```r
-anndataR::write_h5ad(anndataR::as_AnnData(sce), "sce.h5ad")
-```
-
-### Visium scale factors
-
-Visium coordinates in a `SpatialExperiment` are full-resolution pixels. Pass the scale through one of these:
-
-- a `spatial/scalefactors_json.json` next to the file with `spot_diameter_fullres` (55 µm spots) or `microns_per_pixel`, which `images: auto` also reads, or
-- `microns: { spot_diameter_fullres: 89.4 }` in `dataset.yaml`, or
-- `uns["spot_nn_spacing_level0_px"]` in the object (centre-to-centre spot spacing in coordinate units, 100 µm); the CLI finds it automatically.
-
-### Images from R
-
-`imgRaster(spe, sample, "hires")` is a raster you can write with `png::writePNG`; put it at
-`spatial/tissue_hires_image.png` next to the h5ad with the matching `tissue_hires_scalef` in
-`scalefactors_json.json` and the CLI picks it up. Or point `images:` at any OME-Zarr / TIFF / PNG that shares
-the coordinate frame, with `pixels_per_unit` set to the image's scale factor.
+Then give the CLI the scale and image yourself: a `spatial/` folder next to the file with
+`tissue_hires_image.png` and a `scalefactors_json.json` (`tissue_hires_scalef`, `spot_diameter_fullres` or
+`microns_per_pixel`), or `microns: { spot_diameter_fullres: 89.4 }` in `dataset.yaml`, or
+`uns["spot_nn_spacing_level0_px"]` in the object.
 
 ## From Python
 
