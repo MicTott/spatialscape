@@ -191,6 +191,12 @@ def convert(
     from .convert import convert_object
 
     keep = [c.strip() for c in cols.split(",") if c.strip()] if cols else None
+    for obj in objects:
+        if obj.suffix.lower() not in (".rds", ".rda", ".rdata"):
+            hint = " (looks like a column name: write --cols a,b,c with no spaces, or repeat --cols)" if "," in obj.name or not obj.exists() else ""
+            raise ValueError(f"not an R object file: {obj}{hint}")
+        if not obj.exists():
+            raise FileNotFoundError(str(obj))
     written: list[Path] = []
     for obj in objects:
         written += convert_object(obj, out, assay=assay, cols=keep, sample_col=sample_col, embedding=embedding, microns_per_pixel=microns_per_pixel, object_name=object_name, log=typer.echo)

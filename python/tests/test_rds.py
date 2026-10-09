@@ -81,3 +81,12 @@ def test_inspect_reads_r_objects():
     r = runner.invoke(app, ["inspect", str(FIX / "tiny_spe.rds")])
     assert r.exit_code == 0, r.output
     assert "SpatialExperiment" in r.output and "A (20)" in r.output and "lowres" in r.output and "convert" in r.output
+
+
+def test_convert_rejects_stray_tokens_with_a_hint(tmp_path, capsys):
+    from spatialscape.cli import main
+
+    with pytest.raises(SystemExit) as ex:
+        main(["convert", str(FIX / "tiny_spe.rds"), "sum_umi,", "sum_gene", "-o", str(tmp_path / "x"), "--cols", "label,"])
+    err = capsys.readouterr().err
+    assert ex.value.code == 1 and "not an R object file: sum_umi," in err and "no spaces" in err
