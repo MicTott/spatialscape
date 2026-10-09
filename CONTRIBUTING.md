@@ -25,6 +25,10 @@ python/.venv/bin/python -m pytest python/tests && python/.venv/bin/ruff check py
 npm test && npm run e2e
 ```
 
+## The viewer inside the package
+
+`spatialscape serve` and `spatialscape site build` use a copy of the built viewer at `python/src/spatialscape/_app` (gitignored). Refresh it after app changes with `npm run build && python/.venv/bin/python python/scripts/bundle_app.py`; the release workflow does this before building the wheel, so published packages always carry the matching viewer.
+
 ## Docs
 
 `npm run docs:dev` serves the VitePress site from `docs/`; `npm run docs:build` writes `docs/.vitepress/dist`. The Pages workflow publishes it under `/docs/`.

@@ -3,7 +3,8 @@
 # Visium: one SpaceRanger-like folder per capture area (adata.h5ad + spatial/tissue_hires_image.png +
 # spatial/scalefactors_json.json) so `images: auto` and the micron scale need no hand configuration.
 suppressPackageStartupMessages({ library(SpatialExperiment); library(SingleCellExperiment); library(zellkonverter); library(png); library(RANN); library(jsonlite) })
-src <- "/Users/michael.totty/Documents/Web/spatialscape/examples/dacc-src"
+script_dir <- dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])))
+src <- file.path(dirname(script_dir), "dacc-src")  # examples/dacc-src, next to this script's folder
 out <- file.path(src, "visium"); dir.create(out, showWarnings = FALSE)
 
 nm <- load(file.path(src, "spe_nnSVG_PRECAST_9_labels.Rdata")); obj <- get(nm[1]); rm(list = nm); spe <- obj; rm(obj)

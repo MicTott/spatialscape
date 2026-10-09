@@ -1,12 +1,13 @@
 # Human amygdala (LIBD): Xenium, Visium and Visium HD sections plus two snRNA-seq references.
-# Inputs are the read-only AnnData-zarr stores exported for the earlier Vitessce app (nothing there is modified)
-# and files fetched from JHPCE into examples/amygdala-src/ (gitignored).
+# Inputs: the read-only AnnData-zarr stores exported for the earlier Vitessce app, found through the
+# SPATIALAMYGDALA environment variable (export SPATIALAMYGDALA=/path/to/spatialAmygdala), and files fetched
+# from JHPCE into amygdala-src/ next to this file (gitignored). Paths are relative to this file.
 id: amygdala
 name: Human amygdala
 description: Visium, Visium HD and Xenium sections of human amygdala with spatial domains, cell types and cell boundaries.
 default_gene: PENK
 default_color: { field: domain }
-palette: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/build/handoff/palette.json
+palette: ${SPATIALAMYGDALA}/Vitessce_app/build/handoff/palette.json
 layout: { mode: grid }
 thumbnail_sample: vis_Br8325
 
@@ -51,28 +52,28 @@ samples:
     name: Br9017 (Xenium)
     platform: xenium
     group: Br9017
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9017/adata.zarr
-    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/20240425__170523__0023004/cell_boundaries.parquet }
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/xenium/Br9017/adata.zarr
+    polygons: { path: amygdala-src/xenium_5um/20240425__170523__0023004/cell_boundaries.parquet }
   - id: xen_Br9192
     name: Br9192 (Xenium)
     platform: xenium
     group: Br9192
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9192/adata.zarr
-    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/output-XETG00117__0023153__Region_1__20240329__171204/cell_boundaries.parquet, affine: [0, -1, 21675.123047, -1, 0, 11531.958984] }
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/xenium/Br9192/adata.zarr
+    polygons: { path: amygdala-src/xenium_5um/output-XETG00117__0023153__Region_1__20240329__171204/cell_boundaries.parquet, affine: [0, -1, 21675.123047, -1, 0, 11531.958984] }
   - id: xen_Br9206
     name: Br9206 (Xenium)
     platform: xenium
     group: Br9206
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9206/adata.zarr
-    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/20240425__170523__0022862/cell_boundaries.parquet, affine: [0, 1, 0, 1, 0, 0] }
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/xenium/Br9206/adata.zarr
+    polygons: { path: amygdala-src/xenium_5um/20240425__170523__0022862/cell_boundaries.parquet, affine: [0, 1, 0, 1, 0, 0] }
   - id: xen_Br9280
     name: Br9280 (Xenium)
     platform: xenium
     group: Br9280
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/xenium/Br9280/adata.zarr
-    polygons: { path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/xenium_5um/output-XETG00117__0023154__Region_1__20240329__171203/cell_boundaries.parquet }
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/xenium/Br9280/adata.zarr
+    polygons: { path: amygdala-src/xenium_5um/output-XETG00117__0023154__Region_1__20240329__171203/cell_boundaries.parquet }
 
-  - glob: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium/Br*/adata.zarr
+  - glob: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/visium/Br*/adata.zarr
     platform: visium
     id: "vis_{name}"
     name: "{name} (Visium)"
@@ -84,31 +85,31 @@ samples:
     name: Br8325 CeA (Visium HD)
     platform: visium_hd
     group: Br8325
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_CeA/adata.zarr
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_CeA/adata.zarr
     microns: { microns_per_unit: 4.090317 }   # H1-937FVHX_D1: 0.25249 um/px / hires scalef 0.061728396
   - id: hd_Br8325_MeA
     name: Br8325 MeA (Visium HD)
     platform: visium_hd
     group: Br8325
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_MeA/adata.zarr
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/visium_hd/Br8325_MeA/adata.zarr
     microns: { microns_per_unit: 4.317675 }   # H1-937FVHX_A1: 0.25250 um/px / hires scalef 0.058479533
   - id: hd_Br9280_CeA
     name: Br9280 CeA (Visium HD)
     platform: visium_hd
     group: Br9280
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_CeA/adata.zarr
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_CeA/adata.zarr
     microns: { microns_per_unit: 2.432737 }   # H1-W369TJK_A1: 0.25258 um/px / hires scalef 0.10382599
   - id: hd_Br9280_ITC
     name: Br9280 ITC (Visium HD)
     platform: visium_hd
     group: Br9280
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_ITC/adata.zarr
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_ITC/adata.zarr
     microns: { microns_per_unit: 2.857041 }   # H1-HW9VGBW_A1: 0.25265 um/px / hires scalef 0.08843036
   - id: hd_Br9280_MeA
     name: Br9280 MeA (Visium HD)
     platform: visium_hd
     group: Br9280
-    path: /Users/michael.totty/Documents/R/spatialAmygdala/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_MeA/adata.zarr
+    path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/visium_hd/Br9280_MeA/adata.zarr
     microns: { microns_per_unit: 3.271265 }   # H1-HW9VGBW_D1: 0.25274 um/px / hires scalef 0.07726184
 
   # snRNA-seq references. Totty et al. (BLA) is the reference behind the Xenium labels; Yu et al. 2023 (GSE195445)
@@ -116,11 +117,11 @@ samples:
   - id: sn_totty
     name: Totty et al. snRNA-seq (BLA, 5 donors)
     platform: snrnaseq
-    path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/sce_amy_human.h5ad
+    path: amygdala-src/sce_amy_human.h5ad
     coords: obsm/X_umap_harmony   # joint UMAP of all nuclei (HVGs, PCA, Harmony by donor); the original X_umap was three separate embeddings overlaid
     fields: { celltype_totty: fine_celltype, broad: broad_celltype, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
   - id: sn_yu
     name: Yu et al. 2023 snRNA-seq (3 donors)
     platform: snrnaseq
-    path: /Users/michael.totty/Documents/Web/spatialscape/examples/amygdala-src/yu_sce.h5ad
+    path: amygdala-src/yu_sce.h5ad
     fields: { celltype_yu: celltype_yu, broad: broad_yu, total_counts: total_counts, detected_genes: n_genes, mito_percent: pct_mt }

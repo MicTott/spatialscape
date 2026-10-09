@@ -1,47 +1,57 @@
 # Getting started
 
-spatialscape has two parts:
+spatialscape is one Python package: a command-line tool that turns AnnData / SpatialData into *bundles*
+(folders of static files), and the web viewer that streams them, shipped inside the same install.
 
-- **The viewer**, a static web app. The hosted copy at <https://mictott.github.io/spatialscape/> can open any bundle on any host; you never need to deploy it yourself unless you want your own URL or a registry.
-- **The CLI**, `spatialscape`, a Python package that converts your data into a *bundle*: a folder of static files the viewer streams.
-
-## Install the CLI
+## Install
 
 ```bash
 pip install spatialscape
+spatialscape --version
 ```
 
-Python 3.11 or newer. `sscape` works as a short alias for every command.
+Python 3.11 or newer. `sscape` is a short alias for every command.
 
-## Try it with synthetic data
+## Try it in two minutes
 
 ```bash
-spatialscape synth demo-src                 # two fake sections + an embedding + dataset.yaml
+spatialscape synth demo-src                      # two fake sections, an embedding and a dataset.yaml
 spatialscape build demo-src/dataset.yaml -o bundles/demo
-spatialscape serve bundles --port 8787
+spatialscape serve bundles --open                # viewer + data from one local address
 ```
 
-Open <https://mictott.github.io/spatialscape/?d=http://127.0.0.1:8787/demo>. The hosted viewer loads the bundle straight from your machine; nothing is uploaded.
+`serve` opens a gallery of every bundle in the folder. Click one: double-click a section to focus it,
+step through sections with the arrow keys, type a gene, color by an annotation, lasso a region.
 
-::: tip Why does that work?
-The viewer is plain JavaScript running in your browser. It fetches the bundle with ordinary HTTP requests, and `spatialscape serve` answers them with the two headers that matter: CORS and HTTP Range.
+::: tip Nothing leaves your machine
+The viewer is plain JavaScript served from `127.0.0.1`, and it reads the bundle from the same address.
+There is no upload, no account and no server process beyond this one.
 :::
 
 ## Your own data in four steps
 
-1. **Export** each sample as AnnData (`.h5ad` or `.zarr`) or a SpatialData store. From R, write your `SpatialExperiment` with zellkonverter or anndataR. See [Preparing your data](./preparing-data).
-2. **Describe** the dataset in a `dataset.yaml`. `spatialscape init` writes a draft; `spatialscape inspect` shows the columns available in a file. See [Writing dataset.yaml](./dataset-yaml).
-3. **Build** with `spatialscape build dataset.yaml -o bundles/<id>`. The build validates itself and renders thumbnails. See [Building and validating](./building).
-4. **Host** the bundle folder anywhere static files live, then share `https://<viewer>/?d=https://<data-host>/<id>`. See [Hosting](./hosting).
+1. **Export** each sample as AnnData (`.h5ad` or `.zarr`) or a SpatialData store. From R, write your
+   `SpatialExperiment` with zellkonverter or anndataR. See [Preparing your data](./preparing-data).
+2. **Describe** the dataset in a `dataset.yaml`. `spatialscape init` writes a draft; `spatialscape inspect`
+   lists the columns available in a file. See [Writing dataset.yaml](./dataset-yaml).
+3. **Build** with `spatialscape build dataset.yaml -o bundles/<id>`. The build validates itself and renders
+   thumbnails. See [Building and validating](./building).
+4. **Publish** with `spatialscape site build bundles/* -o site` and upload the folder, or host the bundles on
+   object storage and share `https://<viewer>/?d=https://<data-host>/<id>`. See [Publish your own site](./publish).
 
-## Run the viewer locally
+## The hosted viewer
 
-Only needed if you want to change the app or run your own copy:
+<https://mictott.github.io/spatialscape/> is the same viewer, deployed from this repository. It opens any
+bundle on any host with `?d=<url>`, which is handy for sharing data that is already online. Opening a
+`127.0.0.1` bundle from it depends on your browser's local-network permissions, so for local work use
+`spatialscape serve`.
+
+## Working on the viewer itself
+
+Only needed to change the app:
 
 ```bash
 git clone https://github.com/MicTott/spatialscape && cd spatialscape
 npm install
-npm run dev          # http://127.0.0.1:5173
+npm run dev          # http://127.0.0.1:5173, proxies /examples to `spatialscape serve examples --port 8787`
 ```
-
-In development the dev server proxies `/examples` to `spatialscape serve examples --port 8787`, so the committed synthetic bundle opens with `?d=synthetic`.

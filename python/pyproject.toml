@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spatialscape"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Build static spatialscape viewer bundles from AnnData / SpatialData"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,9 +14,14 @@ keywords = ["spatial-transcriptomics", "visium", "xenium", "single-cell", "visua
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "Topic :: Scientific/Engineering :: Visualization",
+  "Environment :: Web Environment",
 ]
 dependencies = [
   "anndata>=0.12",
@@ -36,9 +41,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mictott/spatialscape"
-Documentation = "https://github.com/mictott/spatialscape/tree/main/docs"
+Homepage = "https://mictott.github.io/spatialscape/"
+Documentation = "https://mictott.github.io/spatialscape/docs/"
+Repository = "https://github.com/mictott/spatialscape"
 Issues = "https://github.com/mictott/spatialscape/issues"
+Changelog = "https://github.com/mictott/spatialscape/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 spatialdata = ["spatialdata>=0.4"]
@@ -47,6 +54,13 @@ dev = ["pytest>=8", "ruff>=0.5", "h5py>=3.10", "build>=1.2"]
 [project.scripts]
 spatialscape = "spatialscape.cli:main"
 sscape = "spatialscape.cli:main"
+
+[tool.hatch.version]
+path = "src/spatialscape/__init__.py"
+
+[tool.hatch.build]
+# the viewer build is generated (python/scripts/bundle_app.py) and gitignored, so list it explicitly
+artifacts = ["src/spatialscape/_app/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/spatialscape"]

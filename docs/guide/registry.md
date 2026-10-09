@@ -49,4 +49,4 @@ When `site` is present, a slim bar appears above the viewer and the gallery: the
 
 ## Where the registry comes from
 
-For a single lab, edit the file by hand. For an institute, generate it from the same source that produces your publications and dataset pages, so a dataset is entered once; the thumbnail, counts and gene totals can be read straight from each bundle's `manifest.json`.
+`spatialscape site build` writes it from the bundles' manifests and keeps whatever you add by hand (paper, tags, accent, status, a `site` block, placeholder entries). `spatialscape serve` generates the same thing on the fly for a folder of bundles. For an institute, generate the hand-written parts from the same source that produces your publications pages, so a dataset is entered once.

@@ -16,12 +16,13 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: pip install -e python
+      - run: python python/scripts/gen_cli_docs.py
       - name: Rebuild the synthetic demo bundle (unsharded for GitHub Pages)
         run: |
           spatialscape synth /tmp/synth
           spatialscape build /tmp/synth/dataset.yaml -o /tmp/site/examples/synthetic --no-shard
       - run: npm run build
-      - run: python python/scripts/gen_cli_docs.py && npm run docs:build && mkdir -p /tmp/site/docs && cp -r docs/.vitepress/dist/* /tmp/site/docs/
+      - run: npm run docs:build && mkdir -p /tmp/site/docs && cp -r docs/.vitepress/dist/* /tmp/site/docs/
       - run: cp -r app/dist/* /tmp/site/
       - uses: actions/upload-pages-artifact@v3
         with: { path: /tmp/site }

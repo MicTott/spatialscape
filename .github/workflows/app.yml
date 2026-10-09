@@ -1,0 +1,33 @@
+name: app
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: npm ci
+      - run: npm run typecheck -w app
+      - run: npm test
+      - run: npm run build
+      - name: Python CLI (serves the e2e data) and the viewer copy inside the package
+        run: |
+          python -m venv python/.venv
+          python/.venv/bin/pip install -e python
+          python/.venv/bin/python python/scripts/bundle_app.py
+          python/.venv/bin/spatialscape synth /tmp/synth
+          python/.venv/bin/spatialscape build /tmp/synth/dataset.yaml -o examples/synthetic
+      - run: npx playwright install --with-deps chromium
+        working-directory: app
+      - run: npx playwright test
+        working-directory: app
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: app/playwright-report, if-no-files-found: ignore }
+      - name: Wheel with the viewer inside (downloadable from this run)
+        run: python/.venv/bin/pip install build && python/.venv/bin/python -m build python --wheel --outdir dist
+      - uses: actions/upload-artifact@v4
+        with: { name: spatialscape-wheel, path: dist/*.whl }

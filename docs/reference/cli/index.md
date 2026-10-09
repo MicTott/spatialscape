@@ -18,7 +18,8 @@ spatialscape --help
 | [`outlines`](./outlines) | Trace annotation boundaries from the arrays already in a bundle. |
 | [`thumbnails`](./thumbnails) | Render `thumbnail.png` for the dataset and for each sample. |
 | [`validate`](./validate) | Check a bundle on disk or over HTTP. |
-| [`serve`](./serve) | Serve a directory for local viewing, with CORS and HTTP Range. |
+| [`serve`](./serve) | Open your bundles in the viewer locally: one origin for the app and the data. |
+| [`site build`](./site-build) | Write a folder you can upload to any static host. |
 | [`synth`](./synth) | Write a tiny synthetic dataset for tests and demos. |
 
 ## Typical sequence

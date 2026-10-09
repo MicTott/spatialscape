@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **The viewer ships in the Python package.** `spatialscape serve` serves the viewer, a gallery generated from every bundle in the folder, and the data from one local address; `--open` launches the browser. New `spatialscape site build` writes a deployable folder (viewer + `datasets.json` + bundles, or `--data-url` for bundles on object storage) and preserves hand edits to the registry.
+- CLI: readable one-line errors (traceback behind `SPATIALSCAPE_DEBUG=1`), `--version`, `init` picks the right template for file-per-sample and folder-per-sample layouts, `inspect` no longer crashes on files without layers, `validate <url>` sends an `Origin` header and requires Range support only for sharded bundles. Config paths expand `${ENV_VAR}`.
+- Build: polygons from `obsm` arrays (auto-detected) or long-format parquet with an `affine` frame mapping and a centroid sanity check; long-form field maps `{column, scale}`; `refresh` re-applies palette colors; per-crop micron scales for Visium HD.
+- Viewer: shared gene color scale across samples (per-sample as an option), blend = mean log-normalized expression, per-view point size, PNG export with legend and scale bar, copy-link button, recent genes, `?` shortcut overlay, legends sorted by count with a "not measured" note, label de-collision, grid cells that include image frames, collapsed sample list, telemetry behind `?debug=1`.
+- Docs: VitePress site with a generated per-command CLI reference; "Publish your own site" guide.
+- Registry: public `datasets.json` plus a gitignored `datasets.local.json` overlay for development.
+
+
 ## 0.1.0 (2026-10-06)
 
 First public version.

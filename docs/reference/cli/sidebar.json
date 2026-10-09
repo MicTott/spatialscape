@@ -40,6 +40,10 @@
     "link": "/reference/cli/serve"
   },
   {
+    "text": "site build",
+    "link": "/reference/cli/site-build"
+  },
+  {
     "text": "synth",
     "link": "/reference/cli/synth"
   }

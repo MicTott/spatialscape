@@ -50,10 +50,9 @@ Any static server that supports Range requests works (nginx, Apache, Caddy all d
 
 Globus Connect Server v5 collections can expose files over HTTPS. A guest collection with anonymous access gives plain URLs that work for `curl` and, with CORS enabled on the collection, for the viewer as well. Useful when the authoritative copy already lives on institutional storage.
 
-## Deploying the app itself
+## Deploying the viewer
 
-```bash
-npm run build          # app/dist
-```
-
-Upload `app/dist` to GitHub Pages, Cloudflare Pages, Netlify or any static host. To ship a registry, put a `datasets.json` next to `index.html` (see [Registry](./registry)). The repository's Pages workflow does this for the demo and the docs.
+You do not need Node. `spatialscape site build` writes a folder with the viewer, a registry and your bundles
+(or references to bundles on object storage); upload it as-is. The full walkthrough is in
+[Publish your own site](./publish). Developers who change the app build it with `npm run build` and deploy
+`app/dist`; the repository's Pages workflow does this for the demo and the docs.

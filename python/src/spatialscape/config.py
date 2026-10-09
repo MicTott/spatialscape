@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import glob as _glob
+import os
 import re
 from pathlib import Path
 from typing import Any, Literal
@@ -232,10 +233,12 @@ class DatasetConfig(_Model):
 
 
 def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
+    """Paths are relative to the config file; `~` and `${ENV_VAR}` are expanded so configs stay portable."""
+
     def res(p: Path | None) -> Path | None:
         if p is None:
             return None
-        p = Path(p).expanduser()
+        p = Path(os.path.expandvars(str(p))).expanduser()
         return p if p.is_absolute() else (base / p).resolve()
 
     cfg.palette = res(cfg.palette)
@@ -298,7 +301,7 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
         if pattern is None:
             matches = [None]
         else:
-            pat = str(Path(pattern).expanduser())
+            pat = str(Path(os.path.expandvars(str(pattern))).expanduser())
             if not Path(pat).is_absolute():
                 pat = str(base / pat)
             matches = sorted(_glob.glob(pat))

@@ -47,8 +47,14 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
         ("After upload", "spatialscape validate https://data.example.org/amygdala"),
     ],
     "serve": [
-        ("Serve every bundle under a folder", "spatialscape serve bundles --port 8787"),
+        ("Open everything under a folder in the viewer", "spatialscape serve bundles --open"),
         ("Reachable from another machine on the network", "spatialscape serve bundles --host 0.0.0.0 --port 8787"),
+        ("Preview a site written by `site build`", "spatialscape serve site"),
+    ],
+    "site build": [
+        ("Viewer + bundles in one folder, ready to upload", "spatialscape site build bundles/my_atlas bundles/other -o site --title \"Our lab's data\""),
+        ("Bundles already on R2 / S3; the site only carries the viewer and the registry", "spatialscape site build bundles/my_atlas -o site --data-url https://data.example.org"),
+        ("Local preview of large bundles without copying them", "spatialscape site build bundles/my_atlas -o site --link && spatialscape serve site"),
     ],
     "synth": [("Make inputs, build them, serve them", "spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml -o bundles/demo && spatialscape serve bundles")],
 }
@@ -62,7 +68,8 @@ RELATED: dict[str, list[str]] = {
     "outlines": ["build"],
     "thumbnails": ["refresh"],
     "validate": ["build", "serve"],
-    "serve": ["validate"],
+    "serve": ["site build", "validate"],
+    "site build": ["serve", "build"],
     "synth": ["build"],
 }
 GUIDE_LINKS: dict[str, tuple[str, str]] = {
@@ -76,7 +83,8 @@ GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "thumbnails": ("Registry and site bar", "/guide/registry"),
     "validate": ("Hosting", "/guide/hosting"),
     "serve": ("Getting started", "/guide/getting-started"),
-    "synth": ("Getting started", "/guide/getting-started#try-it-with-synthetic-data"),
+    "site build": ("Publish your own site", "/guide/publish"),
+    "synth": ("Getting started", "/guide/getting-started#try-it-in-two-minutes"),
 }
 
 
@@ -166,7 +174,7 @@ def page(cmd_name: str, cmd) -> str:
     if rel or g:
         out += ["## See also", ""]
         for r in rel:
-            out.append(f"- [`spatialscape {r}`](./{r})")
+            out.append(f"- [`spatialscape {r}`](./{r.replace(' ', '-')})")
         if g:
             out.append(f"- Guide: [{g[0]}]({g[1]})")
         out.append("")
@@ -177,16 +185,24 @@ def main() -> None:
     group = typer.main.get_command(app)
     assert hasattr(group, "commands"), "expected a command group"
     OUT.mkdir(parents=True, exist_ok=True)
-    names = list(EXAMPLES)  # documented order
-    names += [n for n in group.commands if n not in names]
+    commands: dict[str, object] = {}
+    for n, cmd in group.commands.items():
+        if hasattr(cmd, "commands"):  # nested group such as `site`
+            for sub, subcmd in cmd.commands.items():
+                commands[f"{n} {sub}"] = subcmd
+        else:
+            commands[n] = cmd
+    names = [n for n in EXAMPLES if n in commands]  # documented order
+    names += [n for n in commands if n not in names]
     rows = []
     sidebar = []
     for n in names:
-        cmd = group.commands[n]
-        (OUT / f"{n}.md").write_text(page(n, cmd))
+        cmd = commands[n]
+        slug = n.replace(" ", "-")
+        (OUT / f"{slug}.md").write_text(page(n, cmd))
         summary = (cmd.help or "").strip().partition("\n\n")[0]
-        rows.append(f"| [`{n}`](./{n}) | {md_inline(summary)} |")
-        sidebar.append({"text": n, "link": f"/reference/cli/{n}"})
+        rows.append(f"| [`{n}`](./{slug}) | {md_inline(summary)} |")
+        sidebar.append({"text": n, "link": f"/reference/cli/{slug}"})
     index = [
         "# CLI commands",
         "",

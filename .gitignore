@@ -21,3 +21,8 @@ examples/*/
 !examples/synthetic-src/
 !examples/scripts/
 !examples/palettes/
+# viewer build copied into the package by python/scripts/bundle_app.py
+python/src/spatialscape/_app/
+python/dist/
+# per-machine registry overlay used by the vite dev server
+app/public/datasets.local.json

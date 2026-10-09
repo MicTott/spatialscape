@@ -270,18 +270,47 @@ def validate(target: str = typer.Argument(..., help="A bundle directory, or the 
 
 @app.command()
 def serve(
-    directory: Path = typer.Argument(".", help="Directory to serve; each bundle inside is reachable at `/<name>`."),
+    directory: Path = typer.Argument(".", help="Folder of bundles (each reachable at `/<folder-name>`), a single bundle, or a site written by `site build`."),
     port: int = typer.Option(8787, "--port", help="TCP port."),
     host: str = typer.Option("127.0.0.1", "--host", help="Interface to bind. Use `0.0.0.0` to reach the server from other machines."),
+    open_browser: bool = typer.Option(False, "--open", help="Open the viewer in the default browser once the server is up."),
 ):
-    """Serve a directory for local viewing, with CORS and HTTP Range.
+    """Open your bundles in the viewer locally: one origin for the app and the data.
 
-    A development server: it sends the headers the viewer needs and answers byte-range requests, which the
-    standard library server does not. Not intended for production traffic.
+    Serves the viewer that ships with this package at `/`, a `datasets.json` generated from every bundle in
+    the folder (so the landing gallery lists them all), and the bundles themselves with CORS and HTTP Range
+    headers. A folder that already contains `index.html` (the output of `site build`) is served as-is.
+    A development server, not meant for production traffic.
     """
     from .serve import serve as _serve
 
-    _serve(directory.resolve(), port=port, host=host)
+    _serve(directory.resolve(), port=port, host=host, open_browser=open_browser)
+
+
+site_app = typer.Typer(help="Assemble a deployable static site: viewer + registry + bundles.", no_args_is_help=True)
+app.add_typer(site_app, name="site")
+
+
+@site_app.command("build")
+def site_build(
+    bundles: list[Path] = typer.Argument(..., help="Bundle directories, or folders that contain bundles.", show_default=False),
+    out: Path = typer.Option(..., "-o", "--out", help="Site directory to write (created if missing; an existing `datasets.json` there is merged, not replaced).", show_default=False),
+    data_url: str | None = typer.Option(None, "--data-url", help="Bundles are hosted elsewhere at `<data-url>/<id>`: write the registry to point there and copy nothing."),
+    link: bool = typer.Option(False, "--link", help="Symlink bundle folders into the site instead of copying them (local previews of large data)."),
+    title: str | None = typer.Option(None, "--title", help="Gallery title."),
+    intro: str | None = typer.Option(None, "--intro", help="One or two sentences under the title."),
+):
+    """Write a folder you can upload to any static host.
+
+    Copies the viewer into `OUT`, places every bundle at `OUT/<id>/` (or references `--data-url`), and writes
+    `OUT/datasets.json` from the bundles' manifests: names, descriptions, platforms, counts and thumbnails.
+    Edit that file afterwards for paper links, tags, a `site` navigation block or "coming soon" entries;
+    rerunning keeps those edits. Preview with `spatialscape serve OUT`.
+    """
+    from .site import build_site
+
+    build_site(out, bundles, data_url=data_url, link=link, title=title, intro=intro, log=typer.echo)
+    typer.echo(f"site ready: {out}\n  preview: spatialscape serve {out}\n  deploy:  upload the folder to GitHub Pages, Cloudflare Pages, Netlify, S3 + CloudFront, or any static host")
 
 
 @app.command()

@@ -34,4 +34,4 @@ spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml -o bundl
 ## See also
 
 - [`spatialscape build`](./build)
-- Guide: [Getting started](/guide/getting-started#try-it-with-synthetic-data)
+- Guide: [Getting started](/guide/getting-started#try-it-in-two-minutes)

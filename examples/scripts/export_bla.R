@@ -3,7 +3,8 @@
 # donor-corrected UMAP per species: donor-blocked HVGs -> 50 PCs -> Harmony (subject) -> UMAP.
 # The objects' own `umap` was computed separately per broad class and overlaid, so it is not used.
 suppressPackageStartupMessages({ library(SingleCellExperiment); library(scran); library(scater); library(harmony); library(uwot); library(BiocSingular); library(zellkonverter) })
-src <- "/Users/michael.totty/Documents/Web/spatialscape/examples/bla-src"
+script_dir <- dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])))
+src <- file.path(dirname(script_dir), "bla-src")  # examples/bla-src, next to this script's folder
 set.seed(20261007)
 keep <- c("Sample", "subject", "species", "subregion", "dv_axis", "sex", "sum", "detected", "subsets_Mito_percent", "broad_celltype", "fine_celltype")
 for (sp in c("human", "baboon", "macaque")) {

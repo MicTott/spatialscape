@@ -41,6 +41,10 @@ The `cell_id` values in the boundary file do not match `obs_names`. This happens
 
 Ids matched but the vertices are in another frame: the coordinates were transposed, mirrored or cropped after segmentation. Set `polygons.affine` to undo that (see [Preparing your data](./preparing-data#cell-boundary-polygons)). For a crop, the shift is the crop origin in the uncropped frame.
 
+## The hosted viewer cannot open my local bundle
+
+A page on `https://mictott.github.io` fetching `http://127.0.0.1:8787` is a public site reaching into your local network. Browsers increasingly gate that behind a permission prompt (Chrome's local-network access) or block it outright, and the error reads like a CORS failure. Use `spatialscape serve` instead: it serves the viewer and the data from the same local address, so nothing crosses origins.
+
 ## Headless or hidden tabs
 
 The viewer falls back to timers when `requestAnimationFrame` is paused (hidden tab, collapsed pane), so data keeps loading; rendering resumes when the tab is visible.

@@ -4,7 +4,7 @@ title: spatialscape
 hero:
   name: spatialscape
   text: One fast map for every section.
-  tagline: A static, reactive browser for spatial transcriptomics and snRNA-seq, plus a one-command CLI that turns AnnData or SpatialExperiment into a hostable dataset.
+  tagline: A static, reactive browser for spatial transcriptomics and snRNA-seq. One pip install turns AnnData or SpatialExperiment into a dataset you can open locally or publish as a site.
   image:
     src: /hero.png
     alt: spatialscape showing a Visium mosaic beside an snRNA-seq UMAP
@@ -47,12 +47,13 @@ spatialscape init "data/xenium/*/adata.zarr" --platform xenium --id my_atlas -o 
 spatialscape build dataset.yaml -o bundles/my_atlas
 ```
 
-Then serve the bundle and open it in the viewer:
+Then open it, viewer included:
 
 ```bash
-spatialscape serve bundles --port 8787
-# https://mictott.github.io/spatialscape/?d=http://localhost:8787/my_atlas
+spatialscape serve bundles --open
 ```
+
+And when it is ready for others, `spatialscape site build bundles -o site` writes a folder to upload anywhere.
 
 ## Who it is for
 

@@ -6,7 +6,7 @@ name: Amygdala across species (snRNA-seq)
 description: Basolateral amygdala nuclei from human, baboon and rhesus macaque with conserved fine cell type labels, subregion of origin and donor; one UMAP per species.
 default_gene: SLC17A7
 default_color: { field: celltype }
-palette: /Users/michael.totty/Documents/Web/spatialscape/examples/palettes/bla.json
+palette: palettes/bla.json
 layout: { mode: grid }
 thumbnail_sample: sn_human
 
@@ -29,6 +29,6 @@ platforms:
     fields: { celltype: fine_celltype, broad: broad_celltype, subregion: subregion, donor: subject, sex: sex, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
 
 samples:
-  - { id: sn_human,   name: Human (5 donors),          platform: snrnaseq, group: Human,   path: /Users/michael.totty/Documents/Web/spatialscape/examples/bla-src/sce_human.h5ad }
-  - { id: sn_baboon,  name: Baboon (2 donors),         platform: snrnaseq, group: Baboon,  path: /Users/michael.totty/Documents/Web/spatialscape/examples/bla-src/sce_baboon.h5ad }
-  - { id: sn_macaque, name: Rhesus macaque (5 donors), platform: snrnaseq, group: Macaque, path: /Users/michael.totty/Documents/Web/spatialscape/examples/bla-src/sce_macaque.h5ad }
+  - { id: sn_human,   name: Human (5 donors),          platform: snrnaseq, group: Human,   path: bla-src/sce_human.h5ad }
+  - { id: sn_baboon,  name: Baboon (2 donors),         platform: snrnaseq, group: Baboon,  path: bla-src/sce_baboon.h5ad }
+  - { id: sn_macaque, name: Rhesus macaque (5 donors), platform: snrnaseq, group: Macaque, path: bla-src/sce_macaque.h5ad }
