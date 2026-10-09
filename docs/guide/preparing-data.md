@@ -18,16 +18,38 @@ The CLI reads three input types. Whatever you start from, each **sample** (one t
 
 ## From R
 
-### SpatialExperiment / SingleCellExperiment → h5ad
+### The short way: one helper, one folder per sample
+
+[`spe_to_spatialscape.R`](https://github.com/MicTott/spatialscape/blob/main/examples/scripts/spe_to_spatialscape.R)
+writes each sample of a `SpatialExperiment` as `adata.h5ad` next to a SpaceRanger-style `spatial/` folder
+(H&E PNG plus `scalefactors_json.json`), which the CLI recognises without any image or scale settings:
+
+```r
+source("https://raw.githubusercontent.com/MicTott/spatialscape/main/examples/scripts/spe_to_spatialscape.R")
+spe_to_spatialscape(spe, "exports/visium", assay = "logcounts",
+                    cols = c("BS_k16_Semisupervised_wAI", "sum_umi", "sum_gene", "expr_chrM_ratio"))
+```
+
+```bash
+spatialscape init "exports/visium/*/adata.h5ad" --platform visium --id my_visium -o dataset.yaml
+spatialscape build dataset.yaml -o bundles/my_visium
+```
+
+`cols` limits `colData` to the annotations you want to show (leave it out to keep everything). Images come
+from `imgData()` (hires if present, else lowres); the spot diameter is measured from the spot spacing. The
+helper needs zellkonverter, png, RANN and jsonlite.
+
+### By hand: SpatialExperiment / SingleCellExperiment → h5ad
 
 ```r
 library(zellkonverter)
-writeH5AD(spe, "Br2743.h5ad", X_name = "logcounts")
+sce <- as(spe, "SingleCellExperiment")
+reducedDim(sce, "spatial") <- spatialCoords(spe)      # becomes obsm/spatial
+writeH5AD(sce, "Br2743.h5ad", X_name = "logcounts")
 ```
 
-zellkonverter writes `spatialCoords()` into `obsm/spatial`, `colData` into `obs`, and `rowData` into `var`. If you only want a subset of `colData`, trim it first; it keeps the file small and `fields: auto` tidy.
-
-anndataR works without a Python environment:
+`colData` becomes `obs` and `rowData` becomes `var`. Trim `colData` first if it carries dozens of QC columns;
+it keeps the file small and `fields: auto` tidy. anndataR works without a Python environment:
 
 ```r
 anndataR::write_h5ad(anndataR::as_AnnData(sce), "sce.h5ad")
@@ -37,13 +59,16 @@ anndataR::write_h5ad(anndataR::as_AnnData(sce), "sce.h5ad")
 
 Visium coordinates in a `SpatialExperiment` are full-resolution pixels. Pass the scale through one of these:
 
-- `microns: { spot_diameter_fullres: 89.4 }` using `scaleFactors()` / `spot_diameter_fullres` (55 µm spots), or
-- `microns: { scalefactors_json: outs/spatial/scalefactors_json.json }`, or
-- put `uns["spot_nn_spacing_level0_px"]` (center-to-center spot spacing in coordinate units, 100 µm) in the object; the CLI finds it automatically.
+- a `spatial/scalefactors_json.json` next to the file with `spot_diameter_fullres` (55 µm spots) or `microns_per_pixel`, which `images: auto` also reads, or
+- `microns: { spot_diameter_fullres: 89.4 }` in `dataset.yaml`, or
+- `uns["spot_nn_spacing_level0_px"]` in the object (centre-to-centre spot spacing in coordinate units, 100 µm); the CLI finds it automatically.
 
 ### Images from R
 
-Point `images:` at the SpaceRanger `tissue_hires_image.png` with `pixels_per_unit: <tissue_hires_scalef>`, or at any OME-Zarr / TIFF / PNG that shares the coordinate frame. If the folder has a SpaceRanger `spatial/` directory, `images: auto` handles it.
+`imgRaster(spe, sample, "hires")` is a raster you can write with `png::writePNG`; put it at
+`spatial/tissue_hires_image.png` next to the h5ad with the matching `tissue_hires_scalef` in
+`scalefactors_json.json` and the CLI picks it up. Or point `images:` at any OME-Zarr / TIFF / PNG that shares
+the coordinate frame, with `pixels_per_unit` set to the image's scale factor.
 
 ## From Python
 
