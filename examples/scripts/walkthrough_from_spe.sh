@@ -3,7 +3,7 @@
 set -e
 
 python3 -m venv .venv-spatialscape && source .venv-spatialscape/bin/activate
-pip install /Users/michael.totty/Documents/Web/spatialscape/python/dist/spatialscape-0.1.0-py3-none-any.whl
+pip install /Users/michael.totty/Documents/Web/spatialscape/python/dist/spatialscape-0.1.1.dev1-py3-none-any.whl
 spatialscape --version
 
 spatialscape inspect Vitessce_app/spe_amy_shinyapp.rds
