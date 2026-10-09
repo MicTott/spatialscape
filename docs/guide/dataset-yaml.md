@@ -4,6 +4,8 @@
 
 ## Start from a draft
 
+`spatialscape init` writes a yaml whose optional settings are present as comments, so the file shows what can be changed. Without `default_gene`, the viewer opens on the most variable gene of the first section; set it to a marker you care about.
+
 ```bash
 spatialscape init "visium/*/adata.h5ad" --platform visium --id my_atlas --name "My atlas" -o dataset.yaml
 spatialscape plan dataset.yaml          # expanded sample list, nothing built

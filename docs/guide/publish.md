@@ -87,6 +87,10 @@ The site then carries only the viewer and the registry (about 5 MB); the data st
 Every control writes to the URL. `copy link` in the viewer header gives a link that reopens the same gene,
 annotation, filters, camera and split. `PNG` exports the frame with its legend for slides.
 
+## Changing things afterwards
+
+[Making changes](./changes) lists, for every common edit, the yaml line and the command that applies it.
+
 ## Updating later
 
 - New dataset: `build` it, rerun `site build` with the full list, upload.

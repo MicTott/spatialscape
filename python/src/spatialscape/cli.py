@@ -58,7 +58,6 @@ def init(
     import glob as _glob
     import os
 
-    import yaml
 
     label = PLATFORM_LABEL.get(platform, platform)
     prefix = PLATFORM_PREFIX.get(platform, platform[:3])
@@ -77,19 +76,42 @@ def init(
         abs_pat = os.path.abspath(os.path.expanduser(pat))
         rel_pat = os.path.relpath(abs_pat, out.parent.resolve())
         entries.append({"glob": rel_pat, "platform": platform, "id": f"{prefix}_{var}", "name": f"{var} ({label})", "group": var})
-    platform_block: dict = {"fields": "auto"}
-    if platform == "snrnaseq":
-        platform_block.update({"kind": "embedding", "coords": "obsm/X_umap"})
-    else:
-        platform_block["images"] = "auto"
-    doc = {
-        "id": dataset_id,
-        "name": name,
-        "layout": {"mode": "grid"},
-        "platforms": {platform: platform_block},
-        "samples": entries,
-    }
-    out.write_text(yaml.safe_dump(doc, sort_keys=False, width=200))
+    emb = platform == "snrnaseq"
+    sample_blocks = []
+    for e in entries:
+        sample_blocks.append(
+            f"  - glob: \"{e['glob']}\"   # one sample per match; {{name}} = parent folder, {{stem}} = file or store name\n"
+            f"    platform: {e['platform']}\n    id: \"{e['id']}\"\n    name: \"{e['name']}\"\n    group: \"{e['group']}\"\n"
+        )
+    platform_lines = (
+        "    kind: embedding\n    coords: obsm/X_umap        # the 2-D embedding to draw\n    fields: auto                # or { celltype: fine_celltype, donor: subject }\n"
+        if emb
+        else "    fields: auto                # or { domain: BayesSpace_domain, total_counts: sum_umi }\n    images: auto                # spatial/tissue_hires_image.png + scalefactors_json.json next to each file\n"
+    )
+    text = (
+        "# dataset.yaml for spatialscape. Lines starting with # are optional settings; uncomment to use.\n"
+        "# What to edit for which change: https://mictott.github.io/spatialscape/docs/guide/changes\n"
+        f"id: {dataset_id}\n"
+        f"name: {name}\n"
+        "# description: One sentence for the gallery card.\n"
+        "# default_gene: SNAP25              # gene shown on open (default: the most variable gene)\n"
+        "# default_color: { field: domain }   # or open on an annotation\n"
+        '# palette: colors.json               # { "domain": { "L1": "#F0027F", ... } }, used through palette_key\n'
+        f"# thumbnail_sample: {PLATFORM_PREFIX.get(platform, platform[:3])}_<sample>   # section drawn on the gallery card\n"
+        "layout: { mode: grid }               # or strip; gutter_fraction: 0.1 spaces sections out\n"
+        "\n"
+        "# Annotations. `fields: auto` (below) exposes every categorical (<= 200 levels) and QC-like numeric column,\n"
+        "# named from the column names. To name, order, alias or color them, declare them here and map columns below.\n"
+        "# fields:\n"
+        "#   - { id: domain, name: Spatial domain, type: categorical, palette_key: domain, aliases: { AI: IA } }\n"
+        "#   - { id: total_counts, name: Total counts, type: continuous }\n"
+        "\n"
+        "platforms:\n"
+        f"  {platform}:\n{platform_lines}"
+        "\n"
+        "samples:\n" + "".join(sample_blocks)
+    )
+    out.write_text(text)
     typer.echo(f"wrote {out}; next: `spatialscape plan {out}` then `spatialscape build {out} -o bundle`")
 
 

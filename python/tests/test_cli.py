@@ -26,6 +26,8 @@ def test_init_on_a_folder_of_h5ad_files_gives_unique_ids(tmp_path):
     assert r.exit_code == 0, r.output
     doc = yaml.safe_load(out.read_text())
     assert doc["samples"][0]["id"] == "vis_{stem}"
+    text = out.read_text()
+    assert "# default_gene:" in text and "# palette:" in text and "guide/changes" in text  # the yaml explains its own knobs
     cfg = load_config(out)
     assert sorted(s.id for s in cfg.samples) == ["vis_sampleA", "vis_sampleB"]
     assert cfg.samples[0].name.endswith("(Visium)")

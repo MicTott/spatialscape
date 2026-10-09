@@ -37,7 +37,8 @@ There is no upload, no account and no server process beyond this one.
    lists the columns available in a file. See [Writing dataset.yaml](./dataset-yaml).
 3. **Build** with `spatialscape build dataset.yaml -o bundles/<id>`. The build validates itself and renders
    thumbnails. See [Building and validating](./building).
-4. **Publish** with `spatialscape site build bundles/* -o site` and upload the folder, or host the bundles on
+4. **Adjust** names, colors, the opening gene and which annotations show, in the yaml; `refresh` applies most of it in a second. See [Making changes](./changes).
+5. **Publish** with `spatialscape site build bundles/* -o site` and upload the folder, or host the bundles on
    object storage and share `https://<viewer>/?d=https://<data-host>/<id>`. See [Publish your own site](./publish).
 
 ## The hosted viewer

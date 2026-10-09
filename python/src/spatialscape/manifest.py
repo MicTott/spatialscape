@@ -108,6 +108,7 @@ class Sample(_Model):
     outlines: list[str] = Field(default_factory=list)  # categorical field ids with outlines/<field>.json
     polygons: PolygonInfo | None = None
     idBlock: int = 65536
+    suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
 
 
 class FeatureGroup(_Model):

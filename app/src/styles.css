@@ -251,3 +251,4 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .help td { padding: 3px 10px 3px 0; vertical-align: top; }
 .help kbd { background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 12px; white-space: nowrap; }
 .help p { margin: 10px 0 0; }
+.genecount { margin-top: 4px; }

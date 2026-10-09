@@ -92,3 +92,15 @@ def test_refresh_applies_palette_changes_without_changing_codes(tmp_path):
     assert v2.colors[v2.categories.index("Oligo")] == "#abcdef"
     other = next(c for c in v1.categories if c not in ("Astro", "Oligo"))
     assert v2.colors[v2.categories.index(other)] == v1.colors[v1.categories.index(other)]
+
+
+def test_default_gene_is_the_most_variable_not_the_first(tmp_path):
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=300, n_genes=12)
+    doc = yaml.safe_load(cfg_path.read_text())
+    doc.pop("default_gene", None)
+    doc.pop("default_color", None)
+    cfg_path.write_text(yaml.safe_dump(doc))
+    m = build_dataset(load_config(cfg_path), tmp_path / "bundle", log=lambda *_: None)
+    genes = json.loads((tmp_path / "bundle" / "genes.json").read_text())
+    assert all(s.suggestedGene in genes for s in m.samples)
+    assert m.defaultGene == next(s.suggestedGene for s in m.samples if s.kind == "spatial")

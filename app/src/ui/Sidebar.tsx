@@ -126,6 +126,7 @@ function ColorPanel({ genes }: { genes: string[] }) {
               store.getState().setColor({ kind: "gene", gene: g });
             }}
           />
+          <div className="muted small genecount">{genes.length.toLocaleString()} genes · type to search</div>
           {recent.filter((g) => g !== color.gene).length > 0 && (
             <div className="chips recent" title="recent genes">
               {recent

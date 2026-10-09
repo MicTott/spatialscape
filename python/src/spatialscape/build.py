@@ -55,6 +55,38 @@ def _fields_manifest(fields: list[FieldSpec], vocab: VocabRegistry):
     return out
 
 
+def most_variable_gene(M, keep: np.ndarray, genes: list[str], *, seed: int = 0, max_rows: int = 4000) -> str | None:
+    """Gene with the largest variance of normalized expression over a row subsample: a better opening gene than the
+    alphabetically first one. `M` is (n_obs, n_vars) normalized; `keep` selects the retained genes."""
+    if not genes:
+        return None
+    n = M.shape[0]
+    rng = np.random.default_rng(seed)
+    rows = np.sort(rng.choice(n, size=min(n, max_rows), replace=False)) if n > max_rows else slice(None)
+    sub = M[rows][:, keep] if hasattr(M, "tocsr") else np.asarray(M)[rows][:, keep]
+    if hasattr(sub, "multiply"):
+        mean = np.asarray(sub.mean(axis=0)).ravel()
+        sq = np.asarray(sub.multiply(sub).mean(axis=0)).ravel()
+    else:
+        mean = sub.mean(axis=0)
+        sq = (sub * sub).mean(axis=0)
+    var = sq - mean * mean
+    if not np.isfinite(var).any():
+        return genes[0]
+    return genes[int(np.nanargmax(var))]
+
+
+def suggested_default(samples: list[Sample], genes: list[str]) -> str | None:
+    """Default gene for the dataset: the first spatial sample's most variable gene, else any sample's, else the first gene."""
+    for s in samples:
+        if s.kind == "spatial" and s.suggestedGene in genes:
+            return s.suggestedGene
+    for s in samples:
+        if s.suggestedGene in genes:
+            return s.suggestedGene
+    return genes[0] if genes else None
+
+
 def build_sample(
     spec: SampleSpec,
     cfg: DatasetConfig,
@@ -107,6 +139,7 @@ def build_sample(
     genes = [str(g) for g in sinput.gene_names[res.keep]]
     with open(out_dir / "genes.json", "w") as fh:
         json.dump(genes, fh, separators=(",", ":"))
+    suggested = most_variable_gene(M, res.keep, genes, seed=spec.seed)
 
     # --- geometry ---------------------------------------------------------
     upu = microns_per_unit(spec, sinput)  # microns per source unit
@@ -238,6 +271,7 @@ def build_sample(
         images=images,
         outlines=outlines,
         polygons=poly_info,
+        suggestedGene=suggested,
     )
 
 
@@ -286,8 +320,8 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         dc = ColorSpec(kind="gene", gene=cfg.default_gene)
     else:
         cat_fields = [f for f in cfg.fields if f.type == "categorical"]
-        dc = ColorSpec(kind="field", field=cat_fields[0].id) if cat_fields else ColorSpec(kind="gene", gene=genes[0])
-    default_gene = cfg.default_gene or (dc.gene if dc.kind == "gene" else genes[0] if genes else None)
+        dc = ColorSpec(kind="field", field=cat_fields[0].id) if cat_fields else ColorSpec(kind="gene", gene=suggested_default(samples, genes) or genes[0])
+    default_gene = cfg.default_gene or (dc.gene if dc.kind == "gene" else suggested_default(samples, genes))
     order = cfg.layout.order or [s.id for s in samples]
     manifest = Manifest(
         id=cfg.id,

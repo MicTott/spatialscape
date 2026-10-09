@@ -25,6 +25,7 @@ export default defineConfig({
             { text: "Preparing your data", link: "/guide/preparing-data" },
             { text: "Writing dataset.yaml", link: "/guide/dataset-yaml" },
             { text: "Building and validating", link: "/guide/building" },
+            { text: "Making changes", link: "/guide/changes" },
             { text: "Using the viewer", link: "/guide/viewer" },
             { text: "Publish your own site", link: "/guide/publish" },
             { text: "Hosting", link: "/guide/hosting" },

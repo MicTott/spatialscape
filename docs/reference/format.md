@@ -72,3 +72,5 @@ penk = g["u8"][genes.index("PENK"), :] / 255 * gmax[genes.index("PENK")]
 ```
 
 R (Rarr / pizzarr) reads the same arrays; `obs.zarr/order` maps rows back to the source object.
+
+Each sample may carry `suggestedGene`, its most variable gene; `build` uses the first spatial sample's as the dataset `defaultGene` when `default_gene` is not set.
