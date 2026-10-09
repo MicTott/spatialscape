@@ -336,7 +336,7 @@ def validate(target: str = typer.Argument(..., help="A bundle directory, or the 
 @app.command()
 def serve(
     directory: Path = typer.Argument(".", help="Folder of bundles (each reachable at `/<folder-name>`), a single bundle, or a site written by `site build`."),
-    port: int = typer.Option(8787, "--port", help="TCP port."),
+    port: int | None = typer.Option(None, "--port", help="TCP port. Default 8787, or the next free port when that one is busy."),
     host: str = typer.Option("127.0.0.1", "--host", help="Interface to bind. Use `0.0.0.0` to reach the server from other machines."),
     open_browser: bool = typer.Option(False, "--open", help="Open the viewer in the default browser once the server is up."),
 ):
@@ -349,7 +349,7 @@ def serve(
     """
     from .serve import serve as _serve
 
-    _serve(directory.resolve(), port=port, host=host, open_browser=open_browser)
+    _serve(directory.resolve(), port=port or 8787, host=host, open_browser=open_browser, port_chosen=port is not None)
 
 
 site_app = typer.Typer(help="Assemble a deployable static site: viewer + registry + bundles.", no_args_is_help=True)

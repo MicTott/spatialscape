@@ -20,7 +20,7 @@ spatialscape serve [DIRECTORY] [OPTIONS]
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--port` | int | `8787` | TCP port. |
+| `--port` | int | — | TCP port. Default 8787, or the next free port when that one is busy. |
 | `--host` | text | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to reach the server from other machines. |
 | `--open` | flag | `off` | Open the viewer in the default browser once the server is up. |
 

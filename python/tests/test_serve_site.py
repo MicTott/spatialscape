@@ -120,3 +120,34 @@ def test_site_build_needs_a_viewer(bundle, tmp_path, monkeypatch):
     monkeypatch.setattr(st, "packaged_app_dir", lambda: None)
     with pytest.raises(FileNotFoundError, match="packaged viewer"):
         build_site(tmp_path / "s", [bundle], log=lambda *_: None)
+
+
+def test_serve_skips_a_busy_default_port(bundle, fake_app, monkeypatch, capsys):
+    import threading
+
+    import spatialscape.serve as srv
+
+    busy = make_server(bundle.parent, port=0, app_dir=fake_app)
+    port = busy.server_address[1]
+    threading.Thread(target=busy.serve_forever, daemon=True).start()
+    started = {}
+
+    class _Fake:
+        RequestHandlerClass = type("H", (), {"func": type("F", (), {"app_dir": fake_app})})
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+    def fake_make_server(directory, port=8787, host="127.0.0.1", app_dir=None):
+        started["port"] = port
+        return _Fake()
+
+    monkeypatch.setattr(srv, "make_server", fake_make_server)
+    try:
+        srv.serve(bundle.parent, port=port, open_browser=False, port_chosen=False)
+        assert started["port"] == port + 1
+        assert f"port {port} is in use; using {port + 1}" in capsys.readouterr().out
+        with pytest.raises(OSError, match="already in use"):
+            srv.serve(bundle.parent, port=port, open_browser=False, port_chosen=True)
+    finally:
+        busy.shutdown()

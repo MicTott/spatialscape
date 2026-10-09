@@ -169,7 +169,24 @@ def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_
     return ThreadingHTTPServer((host, port), factory)
 
 
-def serve(directory: Path, port: int = 8787, host: str = "127.0.0.1", open_browser: bool = False) -> None:
+def _port_free(host: str, port: int) -> bool:
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        return sock.connect_ex((host, port)) != 0
+
+
+def serve(directory: Path, port: int = 8787, host: str = "127.0.0.1", open_browser: bool = False, port_chosen: bool = False) -> None:
+    """Start the server. With the default port, a busy port is skipped to the next free one; an explicit `--port` is honoured or refused."""
+    if not _port_free(host, port):
+        if port_chosen:
+            raise OSError(f"port {port} is already in use; stop that server or pass another --port")
+        wanted = port
+        while not _port_free(host, port) and port < wanted + 20:
+            port += 1
+        if not _port_free(host, port):
+            raise OSError(f"ports {wanted}-{port} are all in use; pass --port")
+        print(f"port {wanted} is in use; using {port}", flush=True)
     httpd = make_server(directory, port=port, host=host)
     handler_cls = httpd.RequestHandlerClass.func  # type: ignore[attr-defined]
     url = f"http://{host}:{port}/"
