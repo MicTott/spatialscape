@@ -176,11 +176,11 @@ def serve(directory: Path, port: int = 8787, host: str = "127.0.0.1", open_brows
     directory = Path(directory).resolve()
     n = len(find_bundles(directory))
     if handler_cls.app_dir is not None:
-        print(f"viewer + {n} bundle(s) from {directory}\n  open {url}")
+        print(f"viewer + {n} bundle(s) from {directory}\n  open {url}   (Ctrl-C stops the server)", flush=True)
     elif (directory / "index.html").exists():
-        print(f"serving site {directory}\n  open {url}")
+        print(f"serving site {directory}\n  open {url}   (Ctrl-C stops the server)", flush=True)
     else:
-        print(f"serving {n} bundle(s) from {directory} at {url} (no viewer in this install; open them in a hosted viewer with ?d=<url>)")
+        print(f"serving {n} bundle(s) from {directory} at {url} (no viewer in this install; open them in a hosted viewer with ?d=<url>)", flush=True)
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     with contextlib.suppress(KeyboardInterrupt):
