@@ -18,34 +18,45 @@ The CLI reads three input types. Whatever you start from, each **sample** (one t
 
 ## From R
 
-You do not need to export anything from R. Save your object and let the CLI read it:
+You do not need to export anything from R. Save your object and point the CLI at it:
 
 ```bash
-spatialscape inspect spe_visium.rds                 # samples, colData columns, images, assays
-spatialscape convert spe_visium.rds -o data/visium --assay logcounts \
-    --cols BayesSpace_domain,sum_umi,sum_gene,expr_chrM_ratio
-spatialscape init "data/visium/*/adata.h5ad" --platform visium --id my_visium -o dataset.yaml
-spatialscape build dataset.yaml -o bundles/my_visium
+spatialscape init analysis/spe_visium.rds --id my_visium      # reads the object once, writes my_visium.yaml
+spatialscape build my_visium.yaml                             # converts it (cached), builds every sample
 ```
 
-`convert` parses the `.rds` (or `.rda`) in Python and writes, for a `SpatialExperiment`, one folder per
-sample under `data/visium/`: `adata.h5ad` (the assay as `X`, the chosen `colData` columns as `obs`,
+The yaml lists the object as one `samples:` entry; `{name}` is the sample id:
+
+```yaml
+samples:
+  - path: analysis/spe_visium.rds        # one sample per sample_id
+    platform: visium
+    assay: logcounts                     # also in the object: counts
+    id: "vis_{name}"
+    name: "{name} (Visium)"
+    group: "{name}"
+    fields: { domain: BayesSpace_domain, total_counts: sum_umi, detected_genes: sum_gene, mito_percent: { column: expr_chrM_ratio, scale: 100 } }
+```
+
+`build` parses the `.rds` (or `.rda`) in Python and writes, for a `SpatialExperiment`, one folder per sample
+into `bundles/.cache/<id>/`: `adata.h5ad` (the assay as `X`, every `colData` column as `obs`,
 `spatialCoords()` as `obsm/spatial`), the H&E from `imgData()` as `spatial/tissue_<id>_image.png`, and
 `spatial/scalefactors_json.json` with the image scale factor plus a spot diameter measured from the spot
-spacing. That is the SpaceRanger layout, so `init` and `build` need no image or scale settings.
+spacing. That is the SpaceRanger layout, so no image or scale settings are needed. Later builds reuse the
+cache; it is replaced when the object or its conversion settings change.
 
-A `SingleCellExperiment` without `spatialCoords` (an snRNA-seq reference) becomes one `data/<name>.h5ad`
-with its UMAP in `obsm/X_umap`, ready to be an embedding sample.
+A `SingleCellExperiment` without `spatialCoords` (an snRNA-seq reference) becomes one embedding sample drawn
+by its UMAP (`platform: snrnaseq`, `kind: embedding`, `coords: obsm/X_umap`, all set for you).
 
-Options that matter:
+Settings on the entry:
 
-- `--cols` keeps the viewer's field list short; leave it out to keep every column.
-- `--assay counts` works too; `build` log-normalizes counts.
-- `--microns-per-pixel` for Visium HD, where the spot-spacing rule does not apply (SpaceRanger prints it in `scalefactors_json.json`).
-- `--sample-col` if samples are not in `sample_id`; `--object` to pick one object out of an `.rda`.
+- `assay: counts` works too; `build` log-normalizes counts.
+- `microns: { microns_per_unit: 0.2525 }` for Visium HD, where the spot-spacing rule does not apply (SpaceRanger prints `microns_per_pixel` in `scalefactors_json.json`). Xenium and MERFISH objects are taken as microns.
+- `sample_col` if samples are not in `sample_id`; `embedding` to pick a reducedDims entry; `object` to pick one object out of an `.rda`.
 
-The object is held in memory while converting, so expect roughly the memory R needs for it. HDF5-backed
-assays (`DelayedArray`) are not read; realize them in R first with `assay(x, "logcounts") <- as(assay(x, "logcounts"), "dgCMatrix")`.
+The object is held in memory while it is read (once by `init`, once by the first `build`), so expect roughly
+the memory R needs for it. HDF5-backed assays (`DelayedArray`) are not read; realize them in R first with
+`assay(x, "logcounts") <- as(assay(x, "logcounts"), "dgCMatrix")`.
 
 ### Writing h5ad yourself instead
 

@@ -14,9 +14,10 @@ A static, highly reactive web browser for spatial transcriptomics (Visium, Visiu
 - **Domain outlines over anything.** Boundaries of any categorical annotation (spatial domains, cell types) are traced at build time and can be drawn as thin light, dark or colored strokes on top of gene or cell-type coloring, so you always know which domain you are looking at.
 - **Images under the points.** H&E or fluorescence pyramids (OME-Zarr) rendered with Viv, in the same coordinate frame as the cells.
 - **Static hosting.** No server. The app is plain files (GitHub Pages, Cloudflare Pages); the data is plain files (S3, R2, any host with CORS and HTTP Range). Every view state lives in the URL.
-- **One command to add data, one to publish.** `spatialscape build dataset.yaml -o bundle` converts AnnData (h5ad / zarr) or SpatialData into a viewer bundle; `spatialscape serve bundles` opens everything locally with the viewer that ships in the package; `spatialscape site build bundles -o site` writes a folder to upload to any static host. R users point `spatialscape convert` at a saved SpatialExperiment / SingleCellExperiment (`.rds` or `.rda`): it is parsed in Python, images and scale factors included.
+- **One yaml per dataset, one command to apply it.** `spatialscape init` reads your data (a saved SpatialExperiment / SingleCellExperiment as `.rds` / `.rda`, parsed in Python with images and scale factors, or AnnData / SpatialData files) and writes a yaml that is a menu of what it contains. `spatialscape build <yaml>` turns it into a bundle and, after every edit, redoes only what changed. `spatialscape serve bundles` opens everything locally with the viewer that ships in the package.
+- **One yaml for the gallery, when you want one.** `spatialscape site build bundles -o site` writes a folder to upload to any static host; `site.yaml` adds a title, paper links, "coming soon" cards and a navigation bar, and `spatialscape site build site.yaml` builds the listed datasets and the registry from it.
 
-A landing gallery (`app/public/datasets.json`) lists published datasets with real thumbnails rendered at build time; `?d=<id>` opens one by name, `?d=<url>` opens any bundle. An optional `site` block in the same file adds a slim navigation bar with a dataset switcher, so the viewer can sit inside an institute website.
+The landing gallery lists datasets with real thumbnails rendered at build time; `?d=<id>` opens one by name, `?d=<url>` opens any bundle. The hosted demo's registry is `app/public/datasets.json`.
 
 `app/public/nexus/` holds a draft landing page for an institute portal ("LIBD Nexus") built around the viewer; it is a static mockup for review, served at `/nexus/index.html`.
 
@@ -40,18 +41,17 @@ spatialscape build demo-src/dataset.yaml -o bundles/demo
 spatialscape serve bundles --open                        # viewer + data at http://127.0.0.1:8787/
 ```
 
-Your own data (from an R object, or from AnnData / SpatialData files directly):
+Your own data, from a saved R object or from AnnData / SpatialData files, inside your project folder:
 
 ```bash
-spatialscape inspect analysis/spe_visium.rds             # what is in it
-spatialscape convert analysis/spe_visium.rds -o data/visium --cols BayesSpace_domain,sum_umi,sum_gene
-spatialscape init "data/visium/*/adata.h5ad" --platform visium --id my_dataset -o dataset.yaml
-spatialscape plan dataset.yaml                           # expanded sample list, nothing built yet
-spatialscape build dataset.yaml -o bundles/my_dataset
-spatialscape site build bundles/my_dataset -o site       # viewer + registry + data, ready to upload
+spatialscape init analysis/spe_visium.rds --id my_dataset   # writes my_dataset.yaml: a menu of the data
+# edit my_dataset.yaml: keep the annotations you want, name them, pick colors and the opening gene
+spatialscape build my_dataset.yaml                          # -> bundles/my_dataset; rerun after any edit
+spatialscape serve bundles --open
+spatialscape site build bundles -o site                     # viewer + registry + data, ready to upload
 ```
 
-Upload `site/` to GitHub Pages, Cloudflare Pages or any static host, or keep the bundles on S3 / R2 and pass `--data-url`. The [documentation](https://mictott.github.io/spatialscape/docs/) walks through every step; `sscape` is accepted as a short alias everywhere.
+For a gallery of several datasets with a title, paper links and "coming soon" cards, `spatialscape site init` writes a `site.yaml` and `spatialscape site build site.yaml` builds it. Upload `site/` to GitHub Pages, Cloudflare Pages or any static host, or keep the bundles on S3 / R2 and set `data_url` in `site.yaml`. The [documentation](https://mictott.github.io/spatialscape/docs/) walks through every step; `sscape` is accepted as a short alias everywhere.
 
 Developers, from a clone:
 

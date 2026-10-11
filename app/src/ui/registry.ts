@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 
+/** One gallery card. `spatialscape site build` writes every key; hand-written entries may leave the optional ones out. */
 export interface RegistryEntry {
   id: string;
   name: string;
-  description: string;
-  platforms: string[];
-  samples: number;
-  cells: number;
+  description?: string;
+  platforms?: string[];
+  samples?: number;
+  cells?: number;
   genes?: number;
-  url: string;
+  url: string; // empty for "coming soon" entries
   thumbnail?: string; // defaults to <url>/thumbnail.png
   tags?: string[];
-  status: "live" | "local" | "coming soon";
+  status?: "live" | "local" | "coming soon";
   paper?: { title: string; url?: string };
   accent?: string;
 }

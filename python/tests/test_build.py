@@ -6,7 +6,7 @@ import pytest
 import yaml
 import zarr
 
-from spatialscape.build import add_sample, build_dataset
+from spatialscape.build import build_bundle, build_dataset
 from spatialscape.config import load_config
 from spatialscape.synthetic import make_synthetic
 from spatialscape.validate import validate_local
@@ -38,15 +38,19 @@ def test_synthetic_build_validates(tmp_path):
     assert img.size == (384, 512)
 
 
-def test_add_sample_keeps_codes_stable(tmp_path):
+def test_rebuilding_one_sample_keeps_codes_stable(tmp_path):
+    import os
+    import time
+
     cfg_path = make_synthetic(tmp_path / "src", n_cells=300, n_genes=10)
-    cfg = load_config(cfg_path)
-    out = tmp_path / "bundle"
-    m1 = build_dataset(cfg, out, log=lambda *_: None)
-    before = list(m1.vocabularies["cluster"].categories)
-    m2 = add_sample(cfg, out, "sampleB", log=lambda *_: None)
-    assert list(m2.vocabularies["cluster"].categories) == before
-    assert validate_local(out) == []
+    r1 = build_bundle(load_config(cfg_path), log=lambda *_: None)
+    before = list(r1.manifest.vocabularies["cluster"].categories)
+    later = time.time() + 10
+    os.utime(tmp_path / "src" / "sampleB.h5ad", (later, later))
+    r2 = build_bundle(load_config(cfg_path), log=lambda *_: None)
+    assert [a.spec.id for a in r2.plan.to_build] == ["sampleB"]
+    assert list(r2.manifest.vocabularies["cluster"].categories) == before
+    assert validate_local(r2.out) == []
 
 
 def test_config_rejects_duplicate_sample_ids(tmp_path):
@@ -73,9 +77,7 @@ def test_microns_from_uns_and_overrides(small_adata, tmp_path):
     assert microns_per_unit(spec, si) == 1.0
 
 
-def test_refresh_applies_palette_changes_without_changing_codes(tmp_path):
-    from spatialscape.build import refresh
-
+def test_palette_changes_apply_without_changing_codes(tmp_path):
     cfg_path = make_synthetic(tmp_path / "src", n_cells=200, n_genes=5)
     out = tmp_path / "bundle"
     m1 = build_dataset(load_config(cfg_path), out, log=lambda *_: None)
@@ -85,7 +87,7 @@ def test_refresh_applies_palette_changes_without_changing_codes(tmp_path):
     doc = yaml.safe_load(cfg_path.read_text())
     doc["palette"] = str(pal)
     cfg_path.write_text(yaml.safe_dump(doc))
-    m2 = refresh(load_config(cfg_path), out)
+    m2 = build_dataset(load_config(cfg_path), out, log=lambda *_: None)  # nothing to rebuild; colors re-derived
     v2 = m2.vocabularies["cluster"]
     assert v2.categories == v1.categories
     assert v2.colors[v2.categories.index("Astro")] == "#123456"

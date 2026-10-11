@@ -1,6 +1,6 @@
 # Getting started
 
-spatialscape is one Python package: a command-line tool that turns AnnData / SpatialData into *bundles*
+spatialscape is one Python package: a command-line tool that turns your data into *bundles*
 (folders of static files), and the web viewer that streams them, shipped inside the same install.
 
 ## Install
@@ -16,8 +16,8 @@ Python 3.11 or newer. `sscape` is a short alias for every command.
 
 ```bash
 spatialscape synth demo-src                      # two fake sections, an embedding and a dataset.yaml
-spatialscape build demo-src/dataset.yaml -o bundles/demo
-spatialscape serve bundles --open                # viewer + data from one local address
+spatialscape build demo-src/dataset.yaml         # -> demo-src/bundles/synthetic
+spatialscape serve demo-src/bundles --open       # viewer + data from one local address
 ```
 
 `serve` opens a gallery of every bundle in the folder. Click one: double-click a section to focus it,
@@ -28,18 +28,40 @@ The viewer is plain JavaScript served from `127.0.0.1`, and it reads the bundle 
 There is no upload, no account and no server process beyond this one.
 :::
 
-## Your own data in four steps
+## Your own data in three steps
 
-1. **Bring the data.** AnnData (`.h5ad` / `.zarr`) and SpatialData stores are read directly. R objects too:
-   `spatialscape convert spe.rds -o data/visium` turns a saved `SpatialExperiment` or `SingleCellExperiment`
-   into build inputs, images and scale factors included. See [Preparing your data](./preparing-data).
-2. **Describe** the dataset in a `dataset.yaml`. `spatialscape init` writes a draft; `spatialscape inspect`
-   lists the columns available in a file. See [Writing dataset.yaml](./dataset-yaml).
-3. **Build** with `spatialscape build dataset.yaml -o bundles/<id>`. The build validates itself and renders
-   thumbnails. See [Building and validating](./building).
-4. **Adjust** names, colors, the opening gene and which annotations show, in the yaml; `refresh` applies most of it in a second. See [Making changes](./changes).
-5. **Publish** with `spatialscape site build bundles/* -o site` and upload the folder, or host the bundles on
-   object storage and share `https://<viewer>/?d=https://<data-host>/<id>`. See [Publish your own site](./publish).
+Work inside your project folder: everything a command writes lands next to the yaml it read, and every
+output path is printed.
+
+1. **Describe.** Point `init` at the data: a saved R object (a `SpatialExperiment` or
+   `SingleCellExperiment` as `.rds` / `.rda`) or a glob of AnnData files. It writes `<id>.yaml`, a menu of
+   what the data contains: the columns that look like spatial domains, cell types and QC metrics are
+   already mapped, every other column is a comment, and so is every optional setting.
+
+   ```bash
+   spatialscape init analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"
+   ```
+
+2. **Edit, build, look.** Open `dlpfc.yaml`, keep the annotations you want, name them, pick the opening
+   gene and a palette. Build, then open the result. Rerun `build` after any edit: only the samples whose
+   inputs or settings changed are rebuilt, so names, colors and defaults apply in seconds.
+
+   ```bash
+   spatialscape build dlpfc.yaml                  # -> bundles/dlpfc next to the yaml
+   spatialscape serve bundles --open
+   ```
+
+3. **Publish.** `spatialscape site build bundles -o site` writes a folder to upload to any static host.
+   For a gallery with a title, several datasets, paper links or "coming soon" cards, describe it in
+   `site.yaml` and build that instead.
+
+   ```bash
+   spatialscape site init dlpfc.yaml --title "Our lab's spatial data"
+   spatialscape site build site.yaml              # -> site/ next to site.yaml
+   ```
+
+[Writing dataset.yaml](./dataset-yaml) explains the menu, [Making changes](./changes) maps every common
+edit to the line to change, and [Publish your own site](./publish) covers hosting.
 
 ## The hosted viewer
 

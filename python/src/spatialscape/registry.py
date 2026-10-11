@@ -1,8 +1,8 @@
 """Registry (datasets.json) entries derived from bundles on disk.
 
-The viewer's landing gallery reads `datasets.json` next to its `index.html`. `spatialscape serve`
-generates one on the fly for every bundle in the served folder; `spatialscape site build` writes one
-into a deployable site. Hand-edited keys (paper, tags, accent, status, a custom url) survive regeneration.
+The viewer's landing gallery reads `datasets.json` next to its `index.html`. `spatialscape serve` generates
+one on the fly for every bundle in the served folder; `spatialscape site build` writes one from `site.yaml`
+(or, for a plain folder of bundles, from their manifests alone).
 """
 from __future__ import annotations
 
@@ -11,8 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from .manifest import Manifest
-
-GENERATED_KEYS = ("name", "description", "platforms", "samples", "cells", "genes")
 
 
 def find_bundles(root: Path) -> list[Path]:
@@ -48,43 +46,29 @@ def bundle_entry(bundle: Path, url: str) -> dict[str, Any]:
     return entry
 
 
-def merge_entry(generated: dict[str, Any], existing: dict[str, Any] | None) -> dict[str, Any]:
-    """Generated facts win; everything else a person added to the existing entry is kept."""
-    if not existing:
-        return generated
-    out = dict(existing)
-    out.update({k: v for k, v in generated.items() if k in GENERATED_KEYS or k == "id"})
-    out.setdefault("url", generated["url"])
-    out.setdefault("status", generated["status"])
-    return out
+def placeholder_entry(dataset_id: str, name: str, description: str | None = None, platforms: list[str] | None = None) -> dict[str, Any]:
+    """A complete "coming soon" card: every key the gallery reads is present, so the viewer never sees a half entry."""
+    return {
+        "id": dataset_id,
+        "name": name,
+        "description": description or "",
+        "platforms": list(platforms or []),
+        "samples": 0,
+        "cells": 0,
+        "url": "",
+        "status": "coming soon",
+    }
 
 
-def build_registry(
-    bundles: list[Path],
-    *,
-    url_for: Any,
-    existing: dict[str, Any] | None = None,
-    title: str | None = None,
-    intro: str | None = None,
-) -> dict[str, Any]:
-    """A datasets.json document. `url_for(bundle_dir, manifest_id) -> str` decides where each bundle is served."""
-    existing = existing or {}
-    by_id = {d.get("id"): d for d in existing.get("datasets", []) if isinstance(d, dict)}
+def build_registry(bundles: list[Path], *, url_for: Any, title: str | None = None, intro: str | None = None) -> dict[str, Any]:
+    """A datasets.json document from bundles alone. `url_for(bundle_dir, manifest_id) -> str` decides where each is served."""
     datasets = []
-    seen = set()
     for b in bundles:
         m_id = json.loads((b / "manifest.json").read_text()).get("id") or b.name
-        entry = bundle_entry(b, url_for(b, m_id))
-        datasets.append(merge_entry(entry, by_id.get(entry["id"])))
-        seen.add(entry["id"])
-    # keep hand-written entries that are not built here (e.g. "coming soon" placeholders or remote bundles)
-    datasets += [d for i, d in by_id.items() if i not in seen]
-    doc: dict[str, Any] = {k: v for k, v in existing.items() if k not in ("datasets",)}
-    if title is not None:
-        doc["title"] = title
+        datasets.append(bundle_entry(b, url_for(b, m_id)))
+    doc: dict[str, Any] = {"title": title or "spatialscape"}
     if intro is not None:
         doc["intro"] = intro
-    doc.setdefault("title", "spatialscape")
     doc["datasets"] = datasets
     return doc
 

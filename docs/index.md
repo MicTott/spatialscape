@@ -43,8 +43,8 @@ features:
 
 ```bash
 pip install spatialscape
-spatialscape init "data/xenium/*/adata.zarr" --platform xenium --id my_atlas -o dataset.yaml
-spatialscape build dataset.yaml -o bundles/my_atlas
+spatialscape init analysis/spe_dlpfc.rds --id dlpfc      # writes dlpfc.yaml, a menu of what the data contains
+spatialscape build dlpfc.yaml                            # -> bundles/dlpfc; rerun after any edit
 ```
 
 Then open it, viewer included:
@@ -53,7 +53,7 @@ Then open it, viewer included:
 spatialscape serve bundles --open
 ```
 
-And when it is ready for others, `spatialscape site build bundles -o site` writes a folder to upload anywhere.
+And when it is ready for others, `spatialscape site build bundles -o site` writes a folder to upload anywhere; a gallery of several datasets is described in a `site.yaml`.
 
 ## Who it is for
 

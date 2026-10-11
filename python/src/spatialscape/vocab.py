@@ -51,18 +51,16 @@ def load_palette(path: Path | None) -> dict[str, dict[str, str]]:
 
 
 class VocabRegistry:
-    """Append-only registry. Codes never change once assigned (add-sample safety)."""
+    """Append-only registry: codes never change once assigned, so a rebuilt sample stays consistent with the others."""
 
     def __init__(
         self,
         fields: list[FieldSpec],
         palette: dict[str, dict[str, str]] | None = None,
         existing: dict[str, Vocabulary] | None = None,
-        frozen: bool = False,
     ):
         self.fields = {f.id: f for f in fields}
         self.palette = palette or {}
-        self.frozen = frozen
         self.vocabs: dict[str, dict[str, Any]] = {}
         for vid, v in (existing or {}).items():
             self.vocabs[vid] = {
@@ -91,10 +89,10 @@ class VocabRegistry:
             v["aliases"].update(f.aliases)
             v.setdefault("_palette_key", f.palette_key or vid)
 
-    def adopt_manifest_fields(self, manifest) -> None:
-        """Keep fields that an existing bundle already declares (e.g. auto-discovered ones)."""
+    def adopt_manifest_fields(self, manifest, only: set[str] | None = None) -> None:
+        """Keep fields that an existing bundle already declares (e.g. auto-discovered ones); `only` restricts the ids."""
         for mf in manifest.fields:
-            if mf.id in self.fields:
+            if mf.id in self.fields or (only is not None and mf.id not in only):
                 continue
             if mf.type == "categorical":
                 self.declare(FieldSpec(id=mf.id, name=mf.name, type="categorical", vocabulary=mf.vocabulary, description=mf.description))
@@ -141,11 +139,6 @@ class VocabRegistry:
         cats = v["categories"]
         if label in cats:
             return cats.index(label)
-        if self.frozen:
-            raise ValueError(
-                f"vocabulary '{vid}' is frozen but sample introduces new label {label!r}; "
-                "rerun with --allow-vocab-append"
-            )
         cats.append(label)
         v["colors"].append(self._color_for(vid, label, len(cats) - 1))
         return len(cats) - 1

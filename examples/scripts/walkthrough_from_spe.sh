@@ -6,15 +6,15 @@ python3 -m venv .venv-spatialscape && source .venv-spatialscape/bin/activate
 pip install /Users/michael.totty/Documents/Web/spatialscape/python
 spatialscape --version
 
-spatialscape inspect Vitessce_app/spe_amy_shinyapp.rds
+mkdir -p spatialscape && cd spatialscape
 
-spatialscape convert Vitessce_app/spe_amy_shinyapp.rds -o spatialscape/data/visium --assay logcounts --cols BS_k16_Semisupervised_wAI,sum_umi,sum_gene,expr_chrM_ratio
+spatialscape init ../Vitessce_app/spe_amy_shinyapp.rds --id amygdala_visium --name "Human amygdala Visium"
+# edit amygdala_visium.yaml: keep the annotations you want, name them, pick colors and the opening gene
 
-spatialscape init "spatialscape/data/visium/*/adata.h5ad" --platform visium --id amygdala_visium --name "Human amygdala Visium" -o spatialscape/dataset.yaml
-spatialscape plan spatialscape/dataset.yaml
+spatialscape build amygdala_visium.yaml --dry-run
+spatialscape build amygdala_visium.yaml
 
-spatialscape build spatialscape/dataset.yaml -o spatialscape/bundles/amygdala_visium
+spatialscape site init amygdala_visium.yaml --title "Human amygdala"
+spatialscape site build site.yaml
 
-spatialscape site build spatialscape/bundles -o spatialscape/site --title "Human amygdala"
-
-spatialscape serve spatialscape/bundles --open
+spatialscape serve site --open

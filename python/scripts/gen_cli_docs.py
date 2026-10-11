@@ -20,78 +20,68 @@ OUT = ROOT / "docs" / "reference" / "cli"
 
 EXAMPLES: dict[str, list[tuple[str, str]]] = {
     "init": [
-        ("Xenium donors in sibling folders", 'spatialscape init "xenium/*/adata.zarr" --platform xenium --id amygdala --name "Human amygdala" -o dataset.yaml'),
-        ("Two patterns, one config", 'spatialscape init "visium/*/outs" "xenium/*/adata.zarr" --platform visium -o dataset.yaml'),
-    ],
-    "plan": [("Check what a build would do", "spatialscape plan dataset.yaml")],
-    "inspect": [
-        ("A SpatialExperiment saved from R", "spatialscape inspect Vitessce_app/spe_amy_shinyapp.rds"),
-        ("An h5ad written from R", "spatialscape inspect Br2743.h5ad"),
-        ("A SpatialData store with several tables", "spatialscape inspect store.zarr --table cells"),
-    ],
-    "convert": [
-        ("A Visium SpatialExperiment, keeping four annotations", "spatialscape convert spe_visium.rds -o data/visium --assay logcounts --cols BayesSpace_domain,sum_umi,sum_gene,expr_chrM_ratio"),
-        ("A Visium HD object whose coordinates are pixels of a known size", "spatialscape convert spe_hd.rds -o data/hd --microns-per-pixel 0.2525"),
-        ("An snRNA-seq SingleCellExperiment with a UMAP", "spatialscape convert sce_snrnaseq.rds -o data/sn --cols fine_celltype,broad_celltype,subject"),
+        ("A SpatialExperiment saved from R (one sample per sample_id)", 'spatialscape init analysis/spe_visium.rds --id dlpfc --name "Human DLPFC"'),
+        ("Xenium donors in sibling folders", 'spatialscape init "xenium/*/adata.zarr" --platform xenium --id amygdala --name "Human amygdala"'),
+        ("A spatial object and the snRNA-seq reference behind its labels, one dataset", "spatialscape init analysis/spe_visium.rds analysis/sce_snrnaseq.rds --id dlpfc"),
     ],
     "build": [
-        ("Standard build", "spatialscape build dataset.yaml -o bundles/amygdala"),
-        ("For GitHub Pages or other hosts without Range support", "spatialscape build dataset.yaml -o site/examples/demo --no-shard"),
-    ],
-    "add-sample": [
-        ("Rebuild one donor after fixing its coordinates", "spatialscape add-sample dataset.yaml -o bundles/amygdala --sample vis_Br2743"),
-        ("Fail instead of silently extending a vocabulary", "spatialscape add-sample dataset.yaml -o bundles/amygdala --sample xen_new --no-allow-vocab-append"),
-    ],
-    "refresh": [("After renaming fields or changing the palette", "spatialscape refresh dataset.yaml -o bundles/amygdala")],
-    "outlines": [
-        ("All spatial samples, all categorical fields", "spatialscape outlines dataset.yaml -o bundles/amygdala"),
-        ("Finer outlines for one Xenium donor", "spatialscape outlines dataset.yaml -o bundles/amygdala --sample xen_Br9280 --field domain --smooth-um 80 --min-feature-um 150"),
-    ],
-    "thumbnails": [("Lead with a particular section", "spatialscape thumbnails bundles/amygdala --hero vis_Br8325")],
-    "validate": [
-        ("Before upload", "spatialscape validate bundles/amygdala"),
-        ("After upload", "spatialscape validate https://data.example.org/amygdala"),
+        ("Build, or update after editing the yaml (default output: `bundles/<id>` next to it)", "spatialscape build dlpfc.yaml"),
+        ("See what would be rebuilt and why, without writing anything", "spatialscape build dlpfc.yaml --dry-run"),
+        ("For GitHub Pages or other hosts without Range support", "spatialscape build dlpfc.yaml --no-shard"),
+        ("Rebuild everything", "spatialscape build dlpfc.yaml --force"),
     ],
     "serve": [
         ("Open everything under a folder in the viewer", "spatialscape serve bundles --open"),
         ("Reachable from another machine on the network", "spatialscape serve bundles --host 0.0.0.0 --port 8787"),
         ("Preview a site written by `site build`", "spatialscape serve site"),
     ],
-    "site build": [
-        ("Viewer + bundles in one folder, ready to upload", "spatialscape site build bundles/my_atlas bundles/other -o site --title \"Our lab's data\""),
-        ("Bundles already on R2 / S3; the site only carries the viewer and the registry", "spatialscape site build bundles/my_atlas -o site --data-url https://data.example.org"),
-        ("Local preview of large bundles without copying them", "spatialscape site build bundles/my_atlas -o site --link && spatialscape serve site"),
+    "site init": [
+        ("List two datasets and start a gallery yaml", 'spatialscape site init dlpfc.yaml amygdala.yaml --title "Our lab\'s spatial data"'),
+        ("Pick up every dataset yaml and bundle in the current folder", "spatialscape site init"),
     ],
-    "synth": [("Make inputs, build them, serve them", "spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml -o bundles/demo && spatialscape serve bundles")],
+    "site build": [
+        ("The gallery described in site.yaml (default output: site/ next to it)", "spatialscape site build site.yaml"),
+        ("One dataset, no settings: viewer + bundles from a folder", "spatialscape site build bundles -o site"),
+        ("Local preview of large bundles without copying them", "spatialscape site build site.yaml --link && spatialscape serve site"),
+    ],
+    "inspect": [
+        ("A SpatialExperiment saved from R", "spatialscape inspect analysis/spe_visium.rds"),
+        ("An h5ad written from R", "spatialscape inspect Br2743.h5ad"),
+        ("A SpatialData store with several tables", "spatialscape inspect store.zarr --table cells"),
+    ],
+    "validate": [
+        ("Before upload", "spatialscape validate bundles/dlpfc"),
+        ("After upload", "spatialscape validate https://data.example.org/dlpfc"),
+    ],
+    "outlines": [
+        ("All spatial samples, all categorical fields", "spatialscape outlines dlpfc.yaml"),
+        ("Finer outlines for one Xenium donor", "spatialscape outlines amygdala.yaml --sample xen_Br9280 --field domain --smooth-um 80 --min-feature-um 150"),
+    ],
+    "thumbnails": [("Lead with a particular section", "spatialscape thumbnails bundles/dlpfc --hero vis_Br8325")],
+    "synth": [("Make inputs, build them, serve them", "spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml && spatialscape serve demo-src/bundles --open")],
 }
 RELATED: dict[str, list[str]] = {
-    "init": ["plan", "inspect", "build"],
-    "plan": ["init", "build"],
-    "inspect": ["convert", "init"],
-    "convert": ["inspect", "init", "build"],
-    "build": ["validate", "add-sample", "refresh", "serve"],
-    "add-sample": ["build", "refresh"],
-    "refresh": ["add-sample", "thumbnails"],
-    "outlines": ["build"],
-    "thumbnails": ["refresh"],
+    "init": ["build", "inspect"],
+    "build": ["serve", "validate", "site build"],
+    "serve": ["build", "site build"],
+    "site init": ["site build"],
+    "site build": ["site init", "serve", "build"],
+    "inspect": ["init"],
     "validate": ["build", "serve"],
-    "serve": ["site build", "validate"],
-    "site build": ["serve", "build"],
+    "outlines": ["build"],
+    "thumbnails": ["build"],
     "synth": ["build"],
 }
 GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "init": ("Writing dataset.yaml", "/guide/dataset-yaml"),
-    "plan": ("Writing dataset.yaml", "/guide/dataset-yaml"),
-    "inspect": ("Preparing your data", "/guide/preparing-data"),
-    "convert": ("Preparing your data: from R", "/guide/preparing-data#from-r"),
     "build": ("Building and validating", "/guide/building"),
-    "add-sample": ("Building and validating", "/guide/building#incremental-workflows"),
-    "refresh": ("Building and validating", "/guide/building#incremental-workflows"),
-    "outlines": ("Using the viewer: outlines", "/guide/viewer#outlines"),
-    "thumbnails": ("Registry and site bar", "/guide/registry"),
-    "validate": ("Hosting", "/guide/hosting"),
     "serve": ("Getting started", "/guide/getting-started"),
+    "site init": ("The gallery: site.yaml", "/guide/registry"),
     "site build": ("Publish your own site", "/guide/publish"),
+    "inspect": ("Preparing your data", "/guide/preparing-data"),
+    "validate": ("Hosting", "/guide/hosting"),
+    "outlines": ("Using the viewer: outlines", "/guide/viewer#outlines"),
+    "thumbnails": ("The gallery: site.yaml", "/guide/registry"),
     "synth": ("Getting started", "/guide/getting-started#try-it-in-two-minutes"),
 }
 
@@ -176,6 +166,8 @@ def page(cmd_name: str, cmd) -> str:
     if ex:
         out += ["## Examples", ""]
         for title, code in ex:
+            if "`" not in title:
+                title = title.replace("<", "&lt;").replace(">", "&gt;")
             out += [f"**{title}**", "", "```bash", code, "```", ""]
     rel = RELATED.get(cmd_name, [])
     g = GUIDE_LINKS.get(cmd_name)
@@ -214,7 +206,7 @@ def main() -> None:
     index = [
         "# CLI commands",
         "",
-        "The `spatialscape` command converts data into viewer bundles and checks them. Every command is also available as `sscape <command>`, and `spatialscape <command> --help` prints the same information as these pages.",
+        "Four commands cover the normal path: `init` writes a dataset yaml from your data, `build` turns it into a bundle (and updates the bundle after every edit), `serve` opens it, `site build` writes the folder to publish. Every command is also available as `sscape <command>`, and `spatialscape <command> --help` prints the same information as these pages.",
         "",
         "```bash",
         "pip install spatialscape",
@@ -228,17 +220,18 @@ def main() -> None:
         "## Typical sequence",
         "",
         "```bash",
-        'spatialscape init "data/*/adata.zarr" --platform xenium --id my_atlas -o dataset.yaml',
-        "spatialscape plan dataset.yaml",
-        "spatialscape build dataset.yaml -o bundles/my_atlas",
-        "spatialscape serve bundles --port 8787",
-        "# ... upload bundles/my_atlas ...",
+        "spatialscape init analysis/spe_visium.rds --id my_atlas     # writes my_atlas.yaml, a menu of the data",
+        "# edit my_atlas.yaml: annotations, names, colors, the opening gene",
+        "spatialscape build my_atlas.yaml                            # -> bundles/my_atlas; rerun after any edit",
+        "spatialscape serve bundles --open",
+        "spatialscape site init my_atlas.yaml && spatialscape site build site.yaml   # only for a gallery with settings",
+        "# ... upload site/ (or the bundles alone) ...",
         "spatialscape validate https://data.example.org/my_atlas",
         "```",
         "",
         "## Exit codes",
         "",
-        "`build` and `validate` exit with status 1 when validation reports problems, so they can gate a deployment script. Every other command exits 0 on success and raises on error.",
+        "`build` and `validate` exit with status 1 when validation reports problems, so they can gate a deployment script. Every other command exits 0 on success and prints a one-line error otherwise (`SPATIALSCAPE_DEBUG=1` shows the traceback).",
         "",
         "::: tip Generated reference",
         "These pages are generated from the CLI's own help text by `python/scripts/gen_cli_docs.py`. If a page and `--help` ever disagree, `--help` is right and the generator needs re-running.",

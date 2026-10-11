@@ -46,6 +46,6 @@ spatialscape serve site
 
 ## See also
 
+- [`spatialscape build`](./build)
 - [`spatialscape site build`](./site-build)
-- [`spatialscape validate`](./validate)
 - Guide: [Getting started](/guide/getting-started)

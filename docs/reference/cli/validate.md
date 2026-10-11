@@ -21,13 +21,13 @@ spatialscape validate <TARGET>
 **Before upload**
 
 ```bash
-spatialscape validate bundles/amygdala
+spatialscape validate bundles/dlpfc
 ```
 
 **After upload**
 
 ```bash
-spatialscape validate https://data.example.org/amygdala
+spatialscape validate https://data.example.org/dlpfc
 ```
 
 ## See also

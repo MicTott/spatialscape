@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from .manifest import LayoutMode, Platform, SampleKind
 
@@ -197,6 +197,29 @@ class DefaultColorSpec(_Model):
         return self
 
 
+R_SUFFIXES = (".rds", ".rda", ".rdata")
+R_ENTRY_KEYS = ("sample_col", "assay", "embedding", "object")
+
+
+def is_r_object(path: Any) -> bool:
+    return isinstance(path, (str, Path)) and str(path).lower().endswith(R_SUFFIXES)
+
+
+class RObjectEntry(_Model):
+    """A `samples:` entry whose `path` is an R object (`.rds`, `.rda`, `.RData`) holding a SpatialExperiment or
+    SingleCellExperiment. `build` converts it once into a cache next to the bundle and expands it into one sample
+    per `sample_col` value (objects with spatialCoords) or one embedding sample (objects without). Every other
+    key of the entry (platform, templated id / name / group, fields, microns, ...) applies to those samples."""
+
+    path: Path
+    sample_col: str = "sample_id"
+    assay: str = "logcounts"
+    embedding: str | None = None  # reducedDims entry for objects without spatialCoords; default: UMAP if present
+    object: str | None = None  # which object to take from an .rda that holds several
+    template: dict[str, Any] = Field(default_factory=dict)  # the rest of the entry, applied to the expanded samples
+    index: int = 0  # position in the yaml's `samples:` list
+
+
 class DatasetConfig(_Model):
     """Top-level dataset.yaml. `samples` are expanded (globs, templates, defaults) by `load_config`."""
 
@@ -217,6 +240,30 @@ class DatasetConfig(_Model):
     defaults: dict[str, Any] = Field(default_factory=dict)  # merged into every sample entry
     platforms: dict[str, dict[str, Any]] = Field(default_factory=dict)  # merged into samples of that platform
     samples: list[SampleSpec]
+
+    # set by load_config: where the yaml lives, its raw content (for re-expansion) and its R object entries
+    _path: Path | None = PrivateAttr(default=None)
+    _raw: dict | None = PrivateAttr(default=None)
+    _r_objects: list[RObjectEntry] = PrivateAttr(default_factory=list)
+
+    @property
+    def path(self) -> Path | None:
+        return self._path
+
+    @property
+    def raw(self) -> dict:
+        return self._raw or {}
+
+    @property
+    def r_objects(self) -> list[RObjectEntry]:
+        return self._r_objects
+
+    @property
+    def default_bundle_dir(self) -> Path:
+        """`bundles/<id>` next to the yaml: where `build` writes when `-o` is not given."""
+        if self._path is None:
+            raise ValueError("this config was not loaded from a file; pass an output directory")
+        return self._path.parent / "bundles" / self.id
 
     @model_validator(mode="after")
     def _unique_ids(self):
@@ -290,14 +337,24 @@ def _template_vars(p: Path, i: int) -> dict[str, str]:
     }
 
 
-def expand_samples(raw: dict, base: Path) -> list[dict]:
-    """Expand glob entries and apply `defaults` / `platforms` blocks. Returns plain dicts for SampleSpec."""
+def _merged_entry(entry: dict, raw: dict) -> dict:
+    """`defaults` < `platforms.<platform>` < the entry itself."""
     defaults = raw.get("defaults") or {}
     platforms = raw.get("platforms") or {}
+    merged = _deep_merge(defaults, {})
+    merged = _deep_merge(merged, platforms.get(entry.get("platform", merged.get("platform", "")), {}))
+    return _deep_merge(merged, entry)
+
+
+def expand_samples(raw: dict, base: Path) -> list[dict]:
+    """Expand glob entries and apply `defaults` / `platforms` blocks. Returns plain dicts for SampleSpec.
+    Entries whose `path` is an R object are skipped here; `build` converts and expands them (see convert.py)."""
     out: list[dict] = []
     for entry in raw.get("samples") or []:
         entry = dict(entry)
         pattern = entry.pop("glob", None)
+        if pattern is None and is_r_object(entry.get("path")):
+            continue
         if pattern is None:
             matches = [None]
         else:
@@ -314,20 +371,47 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
                 vars_ = _template_vars(Path(m), i)
                 e = _render(e, vars_)
                 e.setdefault("id", re.sub(r"[^A-Za-z0-9_.-]+", "_", vars_["name"]))
-            merged = _deep_merge(defaults, {})
-            merged = _deep_merge(merged, platforms.get(e.get("platform", merged.get("platform", "")), {}))
-            merged = _deep_merge(merged, e)
+            merged = _merged_entry(e, raw)
             if m is not None:
                 merged = _render(merged, _template_vars(Path(m), i))
             out.append(merged)
     return out
 
 
+def r_object_entries(raw: dict, base: Path) -> list[RObjectEntry]:
+    """The `samples:` entries that point at R objects, with their templates checked against the sample schema."""
+    out: list[RObjectEntry] = []
+    for i, entry in enumerate(raw.get("samples") or []):
+        if not isinstance(entry, dict) or "glob" in entry or not is_r_object(entry.get("path")):
+            continue
+        entry = dict(entry)
+        r_keys = {k: entry.pop(k) for k in R_ENTRY_KEYS if k in entry}
+        path = Path(os.path.expandvars(str(entry.pop("path")))).expanduser()
+        path = path if path.is_absolute() else (base / path).resolve()
+        # validate the template now (platform, fields, microns, ...) so typos surface before a long conversion
+        probe = _merged_entry({**entry, "path": "probe/adata.h5ad", "id": "probe"}, raw)
+        probe.setdefault("platform", "other")
+        SampleSpec.model_validate(_render(probe, _template_vars(Path("probe/adata.h5ad"), 0)))
+        out.append(RObjectEntry(path=path, template=entry, index=i, **r_keys))
+    return out
+
+
+def config_from_raw(raw: dict, path: Path, *, original: dict | None = None) -> DatasetConfig:
+    """Validate an already-parsed yaml document. `path` is the yaml's location (paths resolve against its folder)."""
+    base = path.parent
+    r_entries = r_object_entries(raw, base)
+    cfg = DatasetConfig.model_validate({**raw, "samples": expand_samples(raw, base)})
+    cfg = _resolve_paths(cfg, base)
+    cfg._path = path
+    cfg._raw = original if original is not None else raw
+    cfg._r_objects = r_entries
+    return cfg
+
+
 def load_config(path: str | Path) -> DatasetConfig:
     path = Path(path).expanduser().resolve()
     with open(path) as fh:
         raw = yaml.safe_load(fh)
-    raw = dict(raw)
-    raw["samples"] = expand_samples(raw, path.parent)
-    cfg = DatasetConfig.model_validate(raw)
-    return _resolve_paths(cfg, path.parent)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path}: expected a mapping (id, name, samples, ...) at the top level")
+    return config_from_raw(dict(raw), path)

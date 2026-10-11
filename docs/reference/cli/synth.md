@@ -28,7 +28,7 @@ spatialscape synth <OUT> [OPTIONS]
 **Make inputs, build them, serve them**
 
 ```bash
-spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml -o bundles/demo && spatialscape serve bundles
+spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml && spatialscape serve demo-src/bundles --open
 ```
 
 ## See also

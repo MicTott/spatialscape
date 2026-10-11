@@ -29,7 +29,7 @@ export default defineConfig({
             { text: "Using the viewer", link: "/guide/viewer" },
             { text: "Publish your own site", link: "/guide/publish" },
             { text: "Hosting", link: "/guide/hosting" },
-            { text: "Registry and site bar", link: "/guide/registry" },
+            { text: "The gallery: site.yaml", link: "/guide/registry" },
             { text: "Troubleshooting", link: "/guide/troubleshooting" },
           ],
         },
@@ -40,6 +40,7 @@ export default defineConfig({
           items: [
             { text: "CLI commands", link: "/reference/cli/", collapsed: false, items: cliSidebar },
             { text: "dataset.yaml schema", link: "/reference/dataset-schema" },
+            { text: "site.yaml schema", link: "/reference/site-yaml" },
             { text: "Bundle format", link: "/reference/format" },
             { text: "URL parameters", link: "/reference/url" },
             { text: "Architecture", link: "/reference/architecture" },

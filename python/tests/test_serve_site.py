@@ -1,4 +1,4 @@
-"""The one-origin dev server, the generated registry and `site build`."""
+"""The one-origin dev server, the generated registry, `site.yaml` and `site build`."""
 from __future__ import annotations
 
 import json
@@ -10,9 +10,9 @@ import pytest
 
 from spatialscape.build import build_dataset
 from spatialscape.config import load_config
-from spatialscape.registry import bundle_entry, merge_entry
+from spatialscape.registry import bundle_entry, placeholder_entry
 from spatialscape.serve import make_server
-from spatialscape.site import build_site
+from spatialscape.site import build_site, build_site_from_config, load_site_config, write_site_template
 from spatialscape.synthetic import make_synthetic
 
 
@@ -81,37 +81,86 @@ def test_server_without_viewer_still_serves_data(bundle, tmp_path, monkeypatch):
         httpd.shutdown()
 
 
-def test_registry_merge_keeps_hand_edits(bundle):
+def test_bundle_and_placeholder_entries(bundle):
     gen = bundle_entry(bundle, "demo")
-    assert gen["platforms"] == ["visium", "snrnaseq"] and gen["genes"] == 5
-    merged = merge_entry(gen, {"id": "synthetic", "name": "old name", "paper": {"title": "X et al."}, "tags": ["t"], "status": "coming soon"})
-    assert merged["name"] == gen["name"] and merged["paper"]["title"] == "X et al." and merged["tags"] == ["t"]
-    assert merged["status"] == "coming soon"  # people's status wins over the generated "live"
+    assert gen["platforms"] == ["visium", "snrnaseq"] and gen["genes"] == 5 and gen["status"] == "live"
+    ph = placeholder_entry("later", "Later", None, ["visium"])
+    assert ph == {"id": "later", "name": "Later", "description": "", "platforms": ["visium"], "samples": 0, "cells": 0, "url": "", "status": "coming soon"}
 
 
-def test_site_build_copies_links_or_references(bundle, fake_app, tmp_path):
+def test_site_build_from_a_folder_copies_links_or_references(bundle, fake_app, tmp_path):
     site = tmp_path / "site"
-    build_site(site, [bundle], app_dir=fake_app, title="Lab data", log=lambda *_: None)
+    build_site(site, [bundle], app_dir=fake_app, log=lambda *_: None)
     assert (site / "index.html").exists() and (site / "assets" / "a.js").exists()
     assert (site / "synthetic" / "manifest.json").exists()
     reg = json.loads((site / "datasets.json").read_text())
-    assert reg["title"] == "Lab data" and reg["datasets"][0]["url"] == "synthetic"
-    # hand edits survive a rebuild
-    reg["datasets"][0]["paper"] = {"title": "Someone 2026"}
-    reg["datasets"].append({"id": "later", "name": "Later", "description": "", "platforms": [], "samples": 0, "cells": 0, "url": "", "status": "coming soon"})
-    (site / "datasets.json").write_text(json.dumps(reg))
-    build_site(site, [bundle.parent], app_dir=fake_app, log=lambda *_: None)
-    reg2 = json.loads((site / "datasets.json").read_text())
-    assert reg2["datasets"][0]["paper"]["title"] == "Someone 2026" and reg2["datasets"][1]["id"] == "later"
-    # remote data: nothing copied
-    site2 = tmp_path / "site2"
+    assert reg["title"] == "spatialscape" and reg["datasets"][0]["url"] == "synthetic"
+    site2 = tmp_path / "site2"  # remote data: nothing copied
     build_site(site2, [bundle], app_dir=fake_app, data_url="https://data.example.org/", log=lambda *_: None)
     assert not (site2 / "synthetic").exists()
     assert json.loads((site2 / "datasets.json").read_text())["datasets"][0]["url"] == "https://data.example.org/synthetic"
-    # linked
-    site3 = tmp_path / "site3"
+    site3 = tmp_path / "site3"  # linked
     build_site(site3, [bundle], app_dir=fake_app, link=True, log=lambda *_: None)
     assert (site3 / "synthetic").is_symlink()
+
+
+def test_site_yaml_is_the_one_source_of_the_gallery(bundle, fake_app, tmp_path):
+    import yaml
+
+    proj = tmp_path / "proj"
+    cfg = make_synthetic(proj / "src", n_cells=40, n_genes=5)
+    other = proj / "src" / "other.yaml"  # a second dataset yaml, built by `site build` itself
+    doc = yaml.safe_load(cfg.read_text())
+    doc["id"], doc["name"] = "other", "Other"
+    other.write_text(yaml.safe_dump(doc))
+    site_yaml = proj / "site.yaml"
+    site_yaml.write_text(
+        "title: Lab data\nintro: Two datasets.\n"
+        "nav: { title: Our lab, links: [{ label: Lab site, url: https://lab.example.org }] }\n"
+        "datasets:\n"
+        "  - config: src/other.yaml\n    paper: { title: Someone 2026, url: https://doi.org/x }\n    tags: [demo]\n"
+        f"  - bundle: {bundle}\n    description: Hand-written card text.\n"
+        "  - id: later\n    name: Later\n    platforms: [visium]\n"
+    )
+    out = build_site_from_config(site_yaml, app_dir=fake_app, log=lambda *_: None)
+    assert out == proj / "site" and (out / "index.html").exists()
+    assert (proj / "src" / "bundles" / "other" / "manifest.json").exists()  # built into bundles/<id> next to its yaml
+    assert (out / "other" / "manifest.json").exists() and (out / "synthetic" / "manifest.json").exists()
+    reg = json.loads((out / "datasets.json").read_text())
+    assert reg["title"] == "Lab data" and reg["intro"] == "Two datasets." and reg["site"]["links"][0]["label"] == "Lab site"
+    ids = [d["id"] for d in reg["datasets"]]
+    assert ids == ["other", "synthetic", "later"]
+    assert reg["datasets"][0]["paper"]["title"] == "Someone 2026" and reg["datasets"][0]["tags"] == ["demo"] and reg["datasets"][0]["url"] == "other"
+    assert reg["datasets"][1]["description"] == "Hand-written card text." and reg["datasets"][1]["samples"] == 3
+    assert reg["datasets"][2] == {"id": "later", "name": "Later", "description": "", "platforms": ["visium"], "samples": 0, "cells": 0, "url": "", "status": "coming soon"}
+    # a hand edit to datasets.json does not survive: site.yaml is the source
+    reg["datasets"][0]["tags"] = ["edited"]
+    (out / "datasets.json").write_text(json.dumps(reg))
+    build_site_from_config(site_yaml, app_dir=fake_app, log=lambda *_: None)
+    assert json.loads((out / "datasets.json").read_text())["datasets"][0]["tags"] == ["demo"]
+    # remote data: viewer + registry only
+    site_yaml.write_text("title: T\ndata_url: https://data.example.org\ndatasets:\n" + f"  - bundle: {bundle}\n")
+    out2 = build_site_from_config(site_yaml, tmp_path / "remote", app_dir=fake_app, log=lambda *_: None)
+    assert not (out2 / "synthetic").exists()
+    assert json.loads((out2 / "datasets.json").read_text())["datasets"][0]["url"] == "https://data.example.org/synthetic"
+
+
+def test_site_yaml_validation_messages(tmp_path):
+    p = tmp_path / "site.yaml"
+    p.write_text("title: T\ndatasets:\n  - config: a.yaml\n    bundle: b\n")
+    with pytest.raises(Exception, match="exactly one of"):
+        load_site_config(p)
+    p.write_text("title: T\ndatasets:\n  - id: later\n")
+    with pytest.raises(Exception, match="set `name:`"):
+        load_site_config(p)
+
+
+def test_site_init_template_loads(bundle, tmp_path):
+    cfg = make_synthetic(tmp_path / "src", n_cells=30, n_genes=5)
+    out = write_site_template([cfg, bundle], tmp_path / "site.yaml", title="Lab data")
+    site = load_site_config(out)
+    assert site.title == "Lab data" and [d.config is not None for d in site.datasets] == [True, False]
+    assert site.datasets[0].config == cfg.resolve() and site.datasets[1].bundle == bundle.resolve()
 
 
 def test_site_build_needs_a_viewer(bundle, tmp_path, monkeypatch):

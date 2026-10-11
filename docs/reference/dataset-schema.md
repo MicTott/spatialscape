@@ -1,6 +1,6 @@
 # dataset.yaml schema
 
-Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown keys are errors. Paths are resolved relative to the YAML file.
+Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown keys are errors. Paths are resolved relative to the YAML file. `spatialscape init` writes a yaml with every optional key present as a comment; `spatialscape build <yaml>` writes the bundle to `bundles/<id>` next to the yaml unless `-o` says otherwise.
 
 ## Top level
 
@@ -39,12 +39,14 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `glob` | pattern | | expands to one sample per match; `{name}`, `{stem}`, `{dir}`, `{i}` templates |
+| `path` ending in `.rds` / `.rda` | path | | an R object: converted by `build` into `bundles/.cache/<id>/` and expanded into one sample per `sample_col` value, or one embedding sample; `{name}` is the sample id. See [R objects as samples](../guide/dataset-yaml#r-objects-as-samples) |
+| `assay`, `sample_col`, `embedding`, `object` | string | `logcounts`, `sample_id`, UMAP, | R objects only: the assay drawn, the column that splits samples, the reducedDims entry for objects without spatialCoords, the object to take from an `.rda` |
 | `id` | string | sanitized `{name}` | unique |
 | `name` | string | `id` | |
 | `platform` | `visium`, `visium_hd`, `xenium`, `merfish`, `snrnaseq`, `other` | required | |
 | `kind` | `spatial` or `embedding` | `spatial` | |
 | `group` | string | | donor or batch label |
-| `path` | path | required | h5ad, AnnData zarr, SpatialData zarr |
+| `path` | path | required | h5ad, AnnData zarr, SpatialData zarr, or an R object (above) |
 | `table` | string | | SpatialData table key |
 | `coords` | string | `obsm/spatial` | or `obs/x,obs/y` |
 | `expression` | `{layer, normalized, keep_f16}` | `X`, `auto`, `false` | `normalized`: `auto`, `lognorm`, `counts` |

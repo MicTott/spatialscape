@@ -6,6 +6,8 @@ import json
 import re
 import shutil
 from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -13,8 +15,10 @@ import pandas as pd
 
 from . import __version__
 from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
+from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, auto_images, infer_field_spec
 from .expression import detect_lognorm, get_matrix, log1p_cp10k, write_expression
+from .fingerprint import read_sidecar, sample_fingerprint, why_stale, write_sidecar
 from .geometry import default_point_radius, microns_per_unit, transform_points
 from .images import prepare_image, read_image_shape, write_ome_zarr
 from .manifest import (
@@ -337,22 +341,158 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
             FeatureGroup(id=g["id"], name=g["name"], units=g["units"], count=len(g["features"])) for g in groups
         ],
         samples=samples,
+        thumbnailSample=cfg.thumbnail_sample,
     )
     with open(out / "manifest.json", "w") as fh:
         fh.write(manifest.model_dump_json(indent=1, exclude_none=True))
     with open(out / "build-info.json", "w") as fh:
-        json.dump({"sscape": __version__}, fh)
+        json.dump({"spatialscape": __version__, "config": str(cfg.path) if cfg.path else None, "built": datetime.now(UTC).isoformat(timespec="seconds")}, fh, indent=1)
     return manifest
 
 
-def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, log: Log = print) -> Manifest:
+def read_manifest(out: Path) -> Manifest | None:
+    p = Path(out) / "manifest.json"
+    if not p.exists():
+        return None
+    try:
+        return Manifest.model_validate_json(p.read_text())
+    except Exception:
+        return None
+
+
+@dataclass
+class SampleAction:
+    spec: SampleSpec
+    build: bool
+    reason: str  # new | source changed | settings changed | field declarations changed | format changed | forced | unchanged
+    fingerprint: dict
+
+
+@dataclass
+class BuildPlan:
+    """What a `build` would do to a bundle directory. Pure: computed from the yaml, the input files and the sidecars."""
+
+    out: Path
+    actions: list[SampleAction]
+    removed: list[str]  # sample folders in the bundle that the yaml no longer lists
+    existing: Manifest | None
+    sources: list[SourceStatus] = field(default_factory=list)
+
+    @property
+    def to_build(self) -> list[SampleAction]:
+        return [a for a in self.actions if a.build]
+
+    @property
+    def reused(self) -> list[SampleAction]:
+        return [a for a in self.actions if not a.build]
+
+
+def plan_build(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force: bool = False) -> BuildPlan:
+    out = Path(out)
+    existing = read_manifest(out)
+    present = {s.id for s in existing.samples} if existing else set()
+    actions: list[SampleAction] = []
+    for spec in cfg.samples:
+        fp = sample_fingerprint(spec, cfg, sharded=sharded)
+        d = out / "samples" / spec.id
+        if force:
+            reason: str | None = "forced"
+        elif spec.id not in present or not (d / "expr.zarr").exists():
+            reason = "new"
+        else:
+            reason = why_stale(read_sidecar(d), fp)
+        actions.append(SampleAction(spec, reason is not None, reason or "unchanged", fp))
+    wanted = {s.id for s in cfg.samples}
+    folders = sorted(p.name for p in (out / "samples").iterdir() if p.is_dir()) if (out / "samples").is_dir() else []
+    return BuildPlan(out, actions, [f for f in folders if f not in wanted], existing)
+
+
+def describe_plan(plan: BuildPlan) -> list[str]:
+    lines: list[str] = []
+    if plan.sources:
+        lines.append("sources")
+        for st in plan.sources:
+            lines.append(f"  {st.entry.path}: {st.label}")
+    if plan.actions:
+        w = max(len(a.spec.id) for a in plan.actions)
+        for a in plan.actions:
+            lines.append(f"  {a.spec.id:<{w}}  {'build' if a.build else 'skip '}  {a.reason}")
+    for sid in plan.removed:
+        lines.append(f"  {sid}: removed (no longer in the yaml)")
+    n_build, n_skip = len(plan.to_build), len(plan.reused)
+    pending = sum(st.state == "pending" for st in plan.sources)
+    if pending:
+        lines.append(f"{pending} R object{'s' if pending != 1 else ''} to convert first (their samples are listed once converted)")
+    lines.append(f"{n_build} sample{'s' if n_build != 1 else ''} to build, {n_skip} unchanged; manifest.json, genes.json, features.json and thumbnails are rewritten every time")
+    return lines
+
+
+def _registry_for(cfg: DatasetConfig, existing: Manifest | None, reused: list[SampleAction]) -> VocabRegistry:
+    """Fresh vocabularies when every sample is rebuilt; otherwise the vocabularies that reused samples depend on are
+    kept from the existing manifest so their codes stay valid, and new labels append. Palette colors always apply."""
+    palette = load_palette(cfg.palette)
+    if existing is None or not reused:
+        return VocabRegistry(cfg.fields, palette)
+    by_id = {s.id: s for s in existing.samples}
+    reused_fields = {fid for a in reused for fid in by_id[a.spec.id].fields}
+    keep_vocabs = {f.vocabulary for fid in reused_fields if (f := existing.field_by_id(fid)) is not None and f.type == "categorical"}
+    vocab = VocabRegistry(cfg.fields, palette, existing={vid: v for vid, v in existing.vocabularies.items() if vid in keep_vocabs})
+    vocab.adopt_manifest_fields(existing, only=reused_fields)
+    vocab.recolor_from_palette()
+    return vocab
+
+
+def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force: bool = False, plan: BuildPlan | None = None, log: Log = print) -> Manifest:
+    """Bring the bundle directory in line with the yaml: build new and changed samples, keep the rest, drop
+    samples the yaml no longer lists, and rewrite the dataset-level files."""
     out = Path(out)
     (out / "samples").mkdir(parents=True, exist_ok=True)
-    vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette))
-    samples = [
-        build_sample(spec, cfg, out / "samples" / spec.id, vocab, sharded=sharded, log=log) for spec in cfg.samples
-    ]
+    plan = plan or plan_build(cfg, out, sharded=sharded, force=force)
+    vocab = _registry_for(cfg, plan.existing, plan.reused)
+    by_id = {s.id: s for s in plan.existing.samples} if plan.existing else {}
+    samples: list[Sample] = []
+    for a in plan.actions:
+        if a.build:
+            s = build_sample(a.spec, cfg, out / "samples" / a.spec.id, vocab, sharded=sharded, log=log)
+            write_sidecar(out / "samples" / a.spec.id, a.fingerprint)
+        else:
+            s = by_id[a.spec.id].model_copy(update={"name": a.spec.name or a.spec.id, "group": a.spec.group})
+        samples.append(s)
+    for sid in plan.removed:
+        shutil.rmtree(out / "samples" / sid, ignore_errors=True)
+        log(f"removed sample {sid}")
     return _write_dataset_files(out, cfg, samples, vocab)
+
+
+@dataclass
+class BuildResult:
+    out: Path
+    plan: BuildPlan
+    manifest: Manifest | None  # None for a dry run
+    problems: list[str] = field(default_factory=list)
+
+
+def build_bundle(cfg: DatasetConfig, out: Path | None = None, *, sharded: bool = True, force: bool = False, dry_run: bool = False, log: Log = print) -> BuildResult:
+    """Everything `spatialscape build` does: convert R objects into the cache, plan, build, render thumbnails,
+    validate. `site build` runs the same for every dataset yaml it lists."""
+    from .thumbnail import write_thumbnails
+    from .validate import validate_local
+
+    out = Path(out) if out is not None else cfg.default_bundle_dir
+    cache_root = out.parent / ".cache" / out.name
+    cfg, sources = expand_r_objects(cfg, cache_root, convert=not dry_run, log=log)
+    plan = plan_build(cfg, out, sharded=sharded, force=force)
+    plan.sources = sources
+    for line in describe_plan(plan):
+        log(line)
+    if dry_run:
+        return BuildResult(out, plan, None)
+    m = build_dataset(cfg, out, sharded=sharded, force=force, plan=plan, log=log)
+    try:
+        write_thumbnails(out, hero_id=cfg.thumbnail_sample, log=log)
+    except Exception as e:  # thumbnails are a nicety; never fail a build over them
+        log(f"thumbnails skipped: {e}")
+    return BuildResult(out, plan, m, validate_local(out))
 
 
 def add_outlines(
@@ -401,42 +541,3 @@ def add_outlines(
             done.append(fid)
         s.outlines = sorted(set(s.outlines) | set(done))
     return _write_dataset_files(out, cfg, existing.samples, vocab)
-
-
-def refresh(cfg: DatasetConfig, out: Path) -> Manifest:
-    """Rewrite manifest/genes/features from the samples already in the bundle (no sample rebuild)."""
-    out = Path(out)
-    with open(out / "manifest.json") as fh:
-        existing = Manifest.model_validate_json(fh.read())
-    vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies)
-    vocab.adopt_manifest_fields(existing)
-    vocab.recolor_from_palette()  # palette edits apply on refresh; codes stay put
-    order = {s.id: i for i, s in enumerate(cfg.samples)}
-    samples = sorted(existing.samples, key=lambda s: order.get(s.id, 1e9))
-    return _write_dataset_files(out, cfg, samples, vocab)
-
-
-def add_sample(
-    cfg: DatasetConfig,
-    out: Path,
-    sample_id: str,
-    *,
-    sharded: bool = True,
-    allow_vocab_append: bool = True,
-    log: Log = print,
-) -> Manifest:
-    out = Path(out)
-    with open(out / "manifest.json") as fh:
-        existing = Manifest.model_validate_json(fh.read())
-    spec = next((s for s in cfg.samples if s.id == sample_id), None)
-    if spec is None:
-        raise KeyError(f"sample {sample_id!r} not in dataset.yaml")
-    vocab = VocabRegistry(
-        cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies, frozen=not allow_vocab_append
-    )
-    vocab.adopt_manifest_fields(existing)
-    new = build_sample(spec, cfg, out / "samples" / sample_id, vocab, sharded=sharded, log=log)
-    samples = [s for s in existing.samples if s.id != sample_id] + [new]
-    order = {s.id: i for i, s in enumerate(cfg.samples)}
-    samples.sort(key=lambda s: order.get(s.id, 1e9))
-    return _write_dataset_files(out, cfg, samples, vocab)

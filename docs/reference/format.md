@@ -8,8 +8,9 @@
   genes.json                   sorted union of plain gene symbols (autocomplete)
   features.json                {genes, groups:[{id, name, units, features:[{id, label}]}]}
   thumbnail.png                one section colored by the default annotation
-  build-info.json
+  build-info.json              spatialscape version, config path, build time
   samples/<sampleId>/
+    build.json                 fingerprint of the inputs and settings this sample was built from (incremental builds)
     genes.json                 gene order of the expression rows for this sample
     expr.zarr/                 Zarr v3 group
       u8      uint8   (nGenes, nObs)  chunk (1, nObs), shard (shardGenes, nObs), zstd
@@ -73,4 +74,8 @@ penk = g["u8"][genes.index("PENK"), :] / 255 * gmax[genes.index("PENK")]
 
 R (Rarr / pizzarr) reads the same arrays; `obs.zarr/order` maps rows back to the source object.
 
-Each sample may carry `suggestedGene`, its most variable gene; `build` uses the first spatial sample's as the dataset `defaultGene` when `default_gene` is not set.
+Each sample may carry `suggestedGene`, its most variable gene; `build` uses the first spatial sample's as the dataset `defaultGene` when `default_gene` is not set. The manifest may carry `thumbnailSample`, the sample drawn on `thumbnail.png`.
+
+## Next to the bundle
+
+`spatialscape build` writes `bundles/<id>` by default and keeps two things beside it that are not part of the bundle: `bundles/.cache/<id>/<key>/` holds R objects converted into AnnData files (one folder per conversion key, with an `index.json` describing the source), and nothing else. Upload `bundles/<id>` alone; `find_bundles` and `site build` ignore the cache because it has no `manifest.json`.

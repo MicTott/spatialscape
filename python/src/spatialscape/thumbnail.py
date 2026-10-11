@@ -71,6 +71,7 @@ def write_thumbnails(root: Path, *, per_sample: bool = True, hero_id: str | None
     spatial = [s for s in m.samples if s.kind == "spatial"] or m.samples
     if not spatial:
         return out
+    hero_id = hero_id or m.thumbnailSample
     hero = next((s for s in m.samples if s.id == hero_id), None) if hero_id else None
     if hero_id and hero is None:
         raise KeyError(f"thumbnail sample {hero_id!r} not in bundle")

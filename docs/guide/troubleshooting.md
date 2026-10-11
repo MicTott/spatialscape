@@ -27,7 +27,15 @@ The selected feature is not measured on that sample (a gene missing from a Xeniu
 
 ## The build is slow
 
-Visium with 36k genes writes ~1 GB of uint8 before compression. Most of the time is the dense conversion per shard; `--no-shard` is not faster. Build samples in parallel by running `add-sample` for each in separate processes.
+Visium with 36k genes writes ~1 GB of uint8 before compression. Most of the time is the dense conversion per shard; `--no-shard` is not faster. After the first build only the samples whose inputs or settings changed are rebuilt, so edits to names, colors and defaults take seconds; `spatialscape build <yaml> --dry-run` shows what a run would do before it starts.
+
+## A sample was rebuilt that I did not change
+
+`build` compares each sample's `build.json` with the yaml and the input files. Touching a source file (a fresh export with identical content, a copy that reset modification times) counts as `source changed`; editing a declared field's `aliases`, `categories`, `type` or `vocabulary` rebuilds every sample that maps it; `--no-shard` on and off flips every sample. The reason is printed next to each sample. Bundles built before fingerprints existed are rebuilt once in full.
+
+## An R object was converted again
+
+The conversion cache under `bundles/.cache/<id>/` is keyed on the object's path, size and modification time plus `assay`, `sample_col`, `embedding` and `object`. Re-saving the object or changing any of those converts again; editing `fields:` or anything else never does.
 
 ## Outlines look fragmented or too coarse
 

@@ -73,3 +73,51 @@ def load_sample(spec: SampleSpec) -> SampleInput:
         raise ValueError("coords length does not match n_obs")
     uns = dict(adata.uns) if adata.uns is not None else {}
     return SampleInput(adata=adata, coords=coords, gene_names=gene_names(adata, spec.gene_column), uns=uns)
+
+
+@dataclass
+class Peek:
+    """What `init` and `inspect` need from a sample file without reading its matrix."""
+
+    obs: pd.DataFrame
+    obsm: list[str]
+    layers: list[str]
+    n_vars: int
+
+
+def _table_dir(path: Path, table: str | None) -> Path:
+    tables = path / "tables"
+    if table is None:
+        keys = sorted(p.name for p in tables.iterdir() if p.is_dir())
+        if len(keys) != 1:
+            raise ValueError(f"SpatialData store has tables {keys}; set `table:`")
+        table = keys[0]
+    return tables / table
+
+
+def _peek_group(g, read_elem) -> Peek:
+    obs = read_elem(g["obs"])
+    obsm = list(g["obsm"].keys()) if "obsm" in g else []
+    layers = [k for k in (g["layers"].keys() if "layers" in g else []) if k]
+    n_vars = len(read_elem(g["var"])) if "var" in g else 0
+    return Peek(obs=obs, obsm=obsm, layers=layers, n_vars=n_vars)
+
+
+def peek(path: Path, table: str | None = None) -> Peek:
+    """Read `obs` plus the `obsm` and layer keys of an h5ad / AnnData Zarr / SpatialData table; the matrix stays on disk."""
+    from anndata.io import read_elem
+
+    path = Path(path)
+    if path.is_file():
+        if path.suffix != ".h5ad":
+            raise ValueError(f"unsupported file type: {path}")
+        import h5py
+
+        with h5py.File(path, "r") as f:
+            return _peek_group(f, read_elem)
+    if not path.is_dir():
+        raise FileNotFoundError(path)
+    import zarr
+
+    target = _table_dir(path, table) if (path / "tables").is_dir() else path
+    return _peek_group(zarr.open_group(str(target), mode="r"), read_elem)

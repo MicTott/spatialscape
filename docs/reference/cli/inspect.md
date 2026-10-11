@@ -1,8 +1,8 @@
 # `spatialscape inspect`
 
-Print what a sample file contains, to help write `dataset.yaml`.
+Print what a sample file contains, to help edit the dataset yaml.
 
-Lists every `obs` column with its type and number of levels (with example values for categoricals), the `obsm` keys and their shapes, the layers, and any `uns` keys that look like scale information.
+Lists every `obs` column with its type and number of levels (with example values for categoricals), the `obsm` keys and their shapes, the layers, and any `uns` keys that look like scale information. `init` writes the same information into a yaml you can edit; `inspect` only prints it.
 
 ## Usage
 
@@ -27,7 +27,7 @@ spatialscape inspect <PATH> [OPTIONS]
 **A SpatialExperiment saved from R**
 
 ```bash
-spatialscape inspect Vitessce_app/spe_amy_shinyapp.rds
+spatialscape inspect analysis/spe_visium.rds
 ```
 
 **An h5ad written from R**
@@ -44,6 +44,5 @@ spatialscape inspect store.zarr --table cells
 
 ## See also
 
-- [`spatialscape convert`](./convert)
 - [`spatialscape init`](./init)
 - Guide: [Preparing your data](/guide/preparing-data)

@@ -1,0 +1,116 @@
+"""Per-sample build fingerprints: how `build` decides whether a sample folder is still current.
+
+After building a sample, `build` writes `samples/<id>/build.json` holding a fingerprint of everything that
+went into it: the resolved sample settings, the size and modification time of every input file, the
+declarations of the fields it maps (type, vocabulary, category order, aliases), the shard settings and the
+format and recipe versions. The next `build` recomputes the fingerprint from the yaml and the files and
+rebuilds the sample only when it differs. Display names, group labels and palette colors are not part of it:
+they live in the dataset-level files, which every `build` rewrites.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+
+from . import __version__
+from .config import DatasetConfig, MicronsSpec, SampleSpec
+from .discover import auto_images
+from .manifest import FORMAT_VERSION
+
+BUILD_RECIPE = 1  # bump when build_sample writes something different for the same inputs and settings
+SIDECAR = "build.json"
+
+
+def _stat(path: Path) -> dict | None:
+    """Size and mtime of a file, or a digest over the file list of a directory (Zarr stores, OME-Zarr images)."""
+    p = Path(path)
+    if not p.exists():
+        return None
+    if p.is_file():
+        st = p.stat()
+        return {"size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    h = hashlib.sha1()
+    n = 0
+    for root, dirs, files in os.walk(p):
+        dirs.sort()
+        for f in sorted(files):
+            fp = Path(root) / f
+            try:
+                st = fp.stat()
+            except OSError:
+                continue
+            h.update(f"{fp.relative_to(p)}\0{st.st_size}\0{st.st_mtime_ns}\n".encode())
+            n += 1
+    return {"tree": h.hexdigest(), "files": n}
+
+
+def resolve_auto_images(spec: SampleSpec) -> SampleSpec:
+    """`images: auto` and the micron rule it implies, resolved the way build_sample does it."""
+    if spec.images != "auto":
+        return spec
+    imgs, microns = auto_images(spec)
+    upd: dict = {"images": imgs}
+    if microns is not None and spec.microns == MicronsSpec():
+        upd["microns"] = microns
+    return spec.model_copy(update=upd)
+
+
+def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -> dict:
+    resolved = resolve_auto_images(spec)
+    spec_json = resolved.model_dump(mode="json", exclude={"name", "group"})
+    paths: list[Path | None] = [resolved.path, resolved.microns.scalefactors_json]
+    paths += [im.path for im in resolved.images]
+    if resolved.polygons is not None and resolved.polygons.path is not None:
+        paths.append(resolved.polygons.path)
+    inputs = {str(p): _stat(p) for p in paths if p is not None}
+    fields = []
+    for fid in resolved.fields if isinstance(resolved.fields, dict) else {}:
+        f = cfg.field_spec(fid)
+        if f is not None:
+            fields.append({"id": f.id, "type": f.type, "vocabulary": f.vocabulary or f.id, "categories": f.categories, "aliases": f.aliases})
+    fp = {
+        "recipe": BUILD_RECIPE,
+        "format": FORMAT_VERSION,
+        "spec": spec_json,
+        "inputs": inputs,
+        "fields": fields,
+        "shard_genes": cfg.shard_genes,
+        "sharded": sharded,
+    }
+    return json.loads(json.dumps(fp, sort_keys=True, default=str))  # the same shape the sidecar comes back in
+
+
+def why_stale(old: dict | None, new: dict) -> str | None:
+    """None when the sample folder is current, else a short reason for rebuilding it."""
+    if old is None:
+        return "new"
+    if old == new:
+        return None
+    if old.get("recipe") != new["recipe"] or old.get("format") != new["format"]:
+        return "format changed"
+    if old.get("inputs") != new["inputs"]:
+        return "source changed"
+    if old.get("spec") != new["spec"] or old.get("shard_genes") != new["shard_genes"] or old.get("sharded") != new["sharded"]:
+        return "settings changed"
+    if old.get("fields") != new["fields"]:
+        return "field declarations changed"
+    return "settings changed"
+
+
+def read_sidecar(sample_dir: Path) -> dict | None:
+    p = Path(sample_dir) / SIDECAR
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text()).get("fingerprint")
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def write_sidecar(sample_dir: Path, fingerprint: dict) -> Path:
+    p = Path(sample_dir) / SIDECAR
+    p.write_text(json.dumps({"fingerprint": fingerprint, "built": datetime.now(UTC).isoformat(timespec="seconds"), "spatialscape": __version__}, indent=1))
+    return p

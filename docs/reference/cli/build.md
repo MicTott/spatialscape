@@ -1,8 +1,8 @@
 # `spatialscape build`
 
-Build a complete bundle from `dataset.yaml`.
+Build or update a bundle from the dataset yaml. Rerun it after any edit.
 
-For every sample: read the object, resolve automatic fields and images, quantize and shard the expression matrix, convert coordinates to microns, write observation arrays and ids, pack polygons, convert images, and trace annotation outlines. Then write the dataset-level files, render thumbnails and run the same checks as `validate`. Exits with status 1 if validation reports problems.
+The first run converts R objects listed under `samples:` (kept in `bundles/.cache/<id>/` next to the bundle), builds every sample and writes the dataset-level files. Later runs rebuild only the samples whose source files, settings or field declarations changed (compared with `samples/<id>/build.json`), remove samples the yaml no longer lists, and always rewrite `manifest.json`, `genes.json`, `features.json` and the thumbnails, so renamed fields, palettes and defaults apply in seconds. Ends with the same checks as `validate`; exits with status 1 if they report problems.
 
 ## Usage
 
@@ -14,34 +14,47 @@ spatialscape build <CONFIG> [OPTIONS]
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `CONFIG` | path | *required* | Path to `dataset.yaml`. Relative paths inside it resolve against its own folder. |
+| `CONFIG` | path | *required* | Path to the dataset yaml. Relative paths inside it resolve against its own folder. |
 
 ## Options
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `-o`, `--out` | path | *required* | Bundle directory to write (created if missing). |
+| `-o`, `--out` | path | — | Bundle directory. Default: `bundles/<id>` next to the yaml. |
+| `--dry-run` | flag | `off` | Show which samples would be built, kept or removed, and why; write nothing. |
+| `--force` | flag | `off` | Rebuild every sample even when nothing changed. |
 | `--no-shard` | flag | `off` | Write one file per gene instead of sharded Zarr. Larger file counts, but works on hosts without HTTP Range support (e.g. GitHub Pages). |
 | `-q`, `--quiet` | flag | `off` | Suppress per-sample progress output. |
 
 ## Examples
 
-**Standard build**
+**Build, or update after editing the yaml (default output: `bundles/<id>` next to it)**
 
 ```bash
-spatialscape build dataset.yaml -o bundles/amygdala
+spatialscape build dlpfc.yaml
+```
+
+**See what would be rebuilt and why, without writing anything**
+
+```bash
+spatialscape build dlpfc.yaml --dry-run
 ```
 
 **For GitHub Pages or other hosts without Range support**
 
 ```bash
-spatialscape build dataset.yaml -o site/examples/demo --no-shard
+spatialscape build dlpfc.yaml --no-shard
+```
+
+**Rebuild everything**
+
+```bash
+spatialscape build dlpfc.yaml --force
 ```
 
 ## See also
 
-- [`spatialscape validate`](./validate)
-- [`spatialscape add-sample`](./add-sample)
-- [`spatialscape refresh`](./refresh)
 - [`spatialscape serve`](./serve)
+- [`spatialscape validate`](./validate)
+- [`spatialscape site build`](./site-build)
 - Guide: [Building and validating](/guide/building)

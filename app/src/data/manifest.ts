@@ -69,6 +69,7 @@ export interface Sample {
   outlines?: string[];
   polygons?: { path: string; cells: number; vertices: number; scale: number } | null;
   idBlock: number;
+  suggestedGene?: string | null; // most variable gene; the dataset default when none is configured
 }
 export interface FeatureGroup {
   id: string;
@@ -101,6 +102,7 @@ export interface Manifest {
   fields: ObsField[];
   featureGroups?: FeatureGroup[];
   samples: Sample[];
+  thumbnailSample?: string; // sample drawn on the dataset thumbnail
 }
 
 export function assertManifest(m: unknown): asserts m is Manifest {

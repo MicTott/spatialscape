@@ -1,20 +1,31 @@
-"""R objects straight from .rds / .rda: the reader, `convert`, and the chain into init / build."""
+"""R objects straight from .rds / .rda: the reader, the conversion cache, and `init` / `build` on them."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
-from spatialscape.build import build_dataset
+from spatialscape.build import build_bundle
 from spatialscape.cli import app
-from spatialscape.config import load_config
-from spatialscape.convert import convert_object
+from spatialscape.config import RObjectEntry, load_config
+from spatialscape.convert import cache_key, read_index, write_cache
 from spatialscape.rds import read_experiment
 
 FIX = Path(__file__).parent / "fixtures"
 runner = CliRunner()
+
+
+def quiet(*_):
+    pass
+
+
+def _yaml(tmp_path: Path, entries: list[dict], **top) -> Path:
+    p = tmp_path / "t.yaml"
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": entries, **top}))
+    return p
 
 
 def test_reader_covers_spe_sce_and_rda():
@@ -36,68 +47,92 @@ def test_reader_covers_spe_sce_and_rda():
     assert rda.n_obs == 40 and rda.class_name == "SpatialExperiment"
 
 
-def test_convert_writes_the_spaceranger_layout_and_builds(tmp_path):
-    out = tmp_path / "visium"
-    written = convert_object(FIX / "tiny_spe.rds", out, cols=["label", "score"], log=lambda *_: None)
-    assert sorted(w.parent.name for w in written) == ["A", "B"]
-    sf = json.loads((out / "A" / "spatial" / "scalefactors_json.json").read_text())
+def test_spatial_object_builds_through_the_cache(tmp_path):
+    p = _yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "visium", "id": "vis_{name}", "fields": {"celltype": "label", "score": "score"}}])
+    cfg = load_config(p)
+    assert cfg.samples == [] and len(cfg.r_objects) == 1 and cfg.r_objects[0].template["platform"] == "visium"
+    r = build_bundle(cfg, log=quiet)
+    assert r.problems == [] and [s.id for s in r.manifest.samples] == ["vis_A", "vis_B"]
+    a = r.manifest.samples[0]
+    assert a.nObs == 20 and a.images and a.images[0].pixelSize == pytest.approx(1 / 0.05, rel=0.2) and a.fields == ["celltype", "score"]
+    cache = tmp_path / "bundles" / ".cache" / "t"
+    keys = [d for d in cache.iterdir() if d.is_dir()]
+    assert len(keys) == 1
+    idx = read_index(keys[0])
+    assert idx["spatial"] and idx["samples"] == ["A", "B"] and idx["assay"] == "logcounts"
+    sf = json.loads((keys[0] / "A" / "spatial" / "scalefactors_json.json").read_text())
     assert sf["tissue_lowres_scalef"] == 0.05 and sf["spot_diameter_fullres"] == pytest.approx(55.0)
-    assert (out / "A" / "spatial" / "tissue_lowres_image.png").exists()
-    # the whole chain: init -> build on the converted folder, images and scale picked up automatically
-    cfg = tmp_path / "dataset.yaml"
-    r = runner.invoke(app, ["init", str(out / "*" / "adata.h5ad"), "--platform", "visium", "--id", "t", "-o", str(cfg)])
-    assert r.exit_code == 0, r.output
-    m = build_dataset(load_config(cfg), tmp_path / "bundle", log=lambda *_: None)
-    a = next(s for s in m.samples if s.id == "vis_A")
-    assert a.nObs == 20 and a.images and a.images[0].pixelSize == pytest.approx(55 / 55 / 0.05 * 1.0, rel=0.2)
-    assert "label" in a.fields and "score" in a.fields
+    assert (keys[0] / "A" / "spatial" / "tissue_lowres_image.png").exists()
+    r2 = build_bundle(load_config(p), log=quiet)  # second build: cache hit, nothing rebuilt
+    assert r2.plan.sources[0].state == "cached" and all(not x.build for x in r2.plan.actions)
 
 
-def test_convert_embedding_and_errors(tmp_path):
-    out = tmp_path / "sn"
-    written = convert_object(FIX / "tiny_sce.rds", out, cols=["label"], log=lambda *_: None)
-    assert written == [out / "tiny_sce.h5ad"]
+def test_changed_assay_makes_a_new_key_and_prunes_the_old(tmp_path):
+    p = _yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "visium"}])
+    build_bundle(load_config(p), log=quiet)
+    doc = yaml.safe_load(p.read_text())
+    doc["samples"][0]["assay"] = "counts"
+    p.write_text(yaml.safe_dump(doc))
+    r = build_bundle(load_config(p), log=quiet)
+    assert r.plan.sources[0].state == "converted"
+    assert len([d for d in (tmp_path / "bundles" / ".cache" / "t").iterdir() if d.is_dir()]) == 1
+    assert {a.reason for a in r.plan.actions} == {"source changed"} and r.problems == []
+
+
+def test_embedding_object_rda_and_xenium_defaults(tmp_path):
+    p = _yaml(
+        tmp_path,
+        [
+            {"path": str(FIX / "tiny_sce.rds"), "fields": {"celltype": "label"}},
+            {"path": str(FIX / "tiny_spe.rda"), "platform": "visium", "id": "rda_{name}"},
+            {"path": str(FIX / "tiny_spe.rds"), "platform": "xenium", "id": "xen_{name}"},
+        ],
+    )
+    r = build_bundle(load_config(p), log=quiet)
+    assert [s.id for s in r.manifest.samples] == ["tiny_sce", "rda_A", "rda_B", "xen_A", "xen_B"]
+    sn = r.manifest.samples[0]
+    assert sn.kind == "embedding" and sn.platform == "snrnaseq" and sn.nObs == 40
+    assert r.manifest.samples[3].pointRadius == 5.0  # xenium: coordinates taken as microns
+    assert r.problems == []
+
+
+def test_errors_name_the_setting(tmp_path):
+    with pytest.raises(KeyError, match="assay 'nope'"):
+        build_bundle(load_config(_yaml(tmp_path, [{"path": str(FIX / "tiny_sce.rds"), "assay": "nope"}])), log=quiet)
+    with pytest.raises(ValueError, match="no 2-D embedding"):
+        build_bundle(load_config(_yaml(tmp_path, [{"path": str(FIX / "tiny_sce.rds"), "embedding": "nope"}])), log=quiet)
+    with pytest.raises(Exception, match="platform"):  # the entry's template is checked when the yaml loads
+        load_config(_yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "nope"}]))
+    with pytest.raises(FileNotFoundError):
+        build_bundle(load_config(_yaml(tmp_path, [{"path": str(tmp_path / "missing.rds"), "platform": "visium"}])), log=quiet)
+
+
+def test_dry_run_reports_pending_without_parsing(tmp_path, monkeypatch):
+    import spatialscape.convert as cv
+
+    def boom(*_a, **_k):
+        raise AssertionError("the dry run parsed the object")
+
+    monkeypatch.setattr(cv, "read_experiment", boom)
+    p = _yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "visium"}])
+    r = build_bundle(load_config(p), dry_run=True, log=quiet)
+    assert r.manifest is None and r.plan.sources[0].state == "pending" and r.plan.actions == []
+    assert not (tmp_path / "bundles").exists()
+
+
+def test_write_cache_keys_on_file_and_settings(tmp_path):
+    e1 = RObjectEntry(path=FIX / "tiny_spe.rds")
+    assert cache_key(e1) == cache_key(RObjectEntry(path=FIX / "tiny_spe.rds"))
+    assert cache_key(e1) != cache_key(RObjectEntry(path=FIX / "tiny_spe.rds", assay="counts"))
+    idx = write_cache(e1, tmp_path / "cache", log=quiet)
+    assert idx["samples"] == ["A", "B"] and (tmp_path / "cache" / cache_key(e1) / "index.json").exists()
     import anndata as ad
 
-    a = ad.read_h5ad(written[0])
-    assert a.obsm["X_umap"].shape == (40, 2) and list(a.obs.columns) == ["label"]
-    with pytest.raises(KeyError, match="assay 'nope'"):
-        convert_object(FIX / "tiny_sce.rds", out, assay="nope", log=lambda *_: None)
-    with pytest.raises(KeyError, match="missing_col"):
-        convert_object(FIX / "tiny_spe.rds", out, cols=["missing_col"], log=lambda *_: None)
-    with pytest.raises(ValueError, match="no 2-D embedding"):
-        convert_object(FIX / "tiny_sce.rds", out, embedding="nope", log=lambda *_: None)
-
-
-def test_convert_microns_per_pixel_and_cli(tmp_path):
-    r = runner.invoke(app, ["convert", str(FIX / "tiny_spe.rds"), "-o", str(tmp_path / "hd"), "--microns-per-pixel", "0.25", "--cols", "label"])
-    assert r.exit_code == 0, r.output
-    sf = json.loads((tmp_path / "hd" / "A" / "spatial" / "scalefactors_json.json").read_text())
-    assert sf["microns_per_pixel"] == 0.25 and "spot_diameter_fullres" not in sf
-    assert "next:" in r.output and "spatialscape init" in r.output
+    a = ad.read_h5ad(tmp_path / "cache" / cache_key(e1) / "A" / "adata.h5ad")
+    assert {"label", "score", "flag", "note"} <= set(a.obs.columns)  # every column is kept; the yaml picks
 
 
 def test_inspect_reads_r_objects():
     r = runner.invoke(app, ["inspect", str(FIX / "tiny_spe.rds")])
     assert r.exit_code == 0, r.output
-    assert "SpatialExperiment" in r.output and "A (20)" in r.output and "lowres" in r.output and "convert" in r.output
-
-
-def test_convert_rejects_stray_tokens_with_a_hint(tmp_path, capsys):
-    from spatialscape.cli import main
-
-    with pytest.raises(SystemExit) as ex:
-        main(["convert", str(FIX / "tiny_spe.rds"), "sum_umi,", "sum_gene", "-o", str(tmp_path / "x"), "--cols", "label,"])
-    err = capsys.readouterr().err
-    assert ex.value.code == 1 and "not an R object file: sum_umi," in err and "quote" in err
-
-
-def test_convert_cols_accepts_quoted_lists_and_repeats(tmp_path):
-    r = runner.invoke(app, ["convert", str(FIX / "tiny_spe.rds"), "-o", str(tmp_path / "a"), "--cols", "label, score"])
-    assert r.exit_code == 0, r.output
-    import anndata as ad
-
-    assert list(ad.read_h5ad(tmp_path / "a" / "A" / "adata.h5ad").obs.columns) == ["label", "score"]
-    r = runner.invoke(app, ["convert", str(FIX / "tiny_spe.rds"), "-o", str(tmp_path / "b"), "--cols", "label", "--cols", "score"])
-    assert r.exit_code == 0, r.output
-    assert list(ad.read_h5ad(tmp_path / "b" / "A" / "adata.h5ad").obs.columns) == ["label", "score"]
+    assert "SpatialExperiment" in r.output and "A (20)" in r.output and "lowres" in r.output and "spatialscape init" in r.output

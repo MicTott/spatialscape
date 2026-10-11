@@ -17,7 +17,7 @@ export function Landing() {
   return (
     <div className="overlay landing gallery">
       <header className="gallery-head">
-        <h1>spatialscape</h1>
+        <h1>{reg?.title || "spatialscape"}</h1>
         <p>{reg?.intro ?? "A static, reactive browser for spatial transcriptomics and snRNA-seq."}</p>
         <form
           onSubmit={(e) => {
@@ -33,17 +33,19 @@ export function Landing() {
         <section className="cards">
           {reg.datasets.map((d) => {
             const openable = !!d.url;
+            // entries written by hand may omit keys; the card still renders
+            const status = d.status ?? (openable ? "live" : "coming soon");
             return (
               <article key={d.id} className={`card ${openable ? "" : "soon"}`} style={{ ["--accent" as any]: d.accent ?? "#40c4ff" }} onClick={() => openable && go(d.url)}>
                 <div className="card-art">
                   <CardArt d={d} />
-                  <span className={`status ${d.status.replace(" ", "-")}`}>{d.status}</span>
+                  <span className={`status ${status.replace(" ", "-")}`}>{status}</span>
                 </div>
                 <div className="card-body">
                   <h2>{d.name}</h2>
-                  <p>{d.description}</p>
+                  <p>{d.description ?? ""}</p>
                   <div className="meta">
-                    {d.platforms.map((p) => (
+                    {(d.platforms ?? []).map((p) => (
                       <span key={p} className="pill">
                         {PLATFORM_LABEL[p] ?? p}
                       </span>
@@ -51,10 +53,10 @@ export function Landing() {
                   </div>
                   <div className="nums">
                     <span>
-                      <b>{d.samples}</b> samples
+                      <b>{d.samples ?? 0}</b> samples
                     </span>
                     <span>
-                      <b>{d.cells.toLocaleString()}</b> cells
+                      <b>{(d.cells ?? 0).toLocaleString()}</b> cells
                     </span>
                     {d.genes != null && (
                       <span>
@@ -80,7 +82,7 @@ export function Landing() {
         </section>
       )}
       <footer className="gallery-foot muted">
-        Datasets are static bundles built with <code>spatialscape build</code>; the registry is <code>datasets.json</code> next to the app. Share any view by copying the URL.
+        Datasets are static bundles built with <code>spatialscape build</code>; the gallery comes from <code>site.yaml</code> (<code>spatialscape site build</code>). Share any view by copying the URL.
       </footer>
     </div>
   );

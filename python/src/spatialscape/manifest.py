@@ -131,6 +131,7 @@ class Manifest(_Model):
     fields: list[ObsField] = Field(default_factory=list)
     featureGroups: list[FeatureGroup] = Field(default_factory=list)
     samples: list[Sample] = Field(default_factory=list)
+    thumbnailSample: str | None = None  # sample drawn on the dataset thumbnail (default: first spatial sample in layout order)
 
     def field_by_id(self, fid: str) -> CategoricalField | ContinuousField | None:
         for f in self.fields:
