@@ -45,4 +45,4 @@ spatialscape inspect store.zarr --table cells
 ## See also
 
 - [`spatialscape init`](./init)
-- Guide: [Preparing your data](/guide/preparing-data)
+- Guide: [Inputs: what the CLI reads](/guide/preparing-data)

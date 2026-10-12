@@ -53,7 +53,7 @@ Then open it, viewer included:
 spatialscape serve bundles --open
 ```
 
-And when it is ready for others, `spatialscape site build bundles -o site` writes a folder to upload anywhere; a gallery of several datasets is described in a `site.yaml`.
+And when it is ready for others, `spatialscape site build bundles -o site` writes a folder to upload anywhere; a gallery of several datasets is described in a `site.yaml`. [How it fits together](/guide/getting-started#how-it-fits-together) shows which files you edit and which folders you upload.
 
 ## Who it is for
 

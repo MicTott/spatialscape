@@ -1,18 +1,21 @@
-# Preparing your data
+# Inputs: what the CLI reads
 
-The CLI reads three input types. Whatever you start from, each **sample** (one tissue section, or one embedding) becomes one entry in `dataset.yaml`.
+Nothing needs preparing: point `init` at what you have. A **sample** is one tissue section or one embedding; files give one sample each, an R object gives one per `sample_id` (or one embedding).
 
-| Input | Path in `dataset.yaml` | Notes |
+| Input | Entry in the dataset yaml | Notes |
 |---|---|---|
-| AnnData `.h5ad` | `path: sample.h5ad` | Read with `anndata.read_h5ad` |
-| AnnData Zarr (v2 or v3) | `path: sample.zarr` | Read with `anndata.read_zarr` |
-| SpatialData Zarr | `path: store.zarr`, `table: <key>` | The table is read as AnnData; coordinates come from its `obsm` |
+| R object: `SpatialExperiment` / `SingleCellExperiment` as `.rds` or `.rda` | `path: spe.rds` | parsed in Python, no R needed; converted once into `bundles/.cache/` ([details](#from-r)) |
+| AnnData `.h5ad` | `path: sample.h5ad` | read with `anndata.read_h5ad` |
+| AnnData Zarr (v2 or v3) | `path: sample.zarr` | read with `anndata.read_zarr` |
+| SpatialData Zarr | `path: store.zarr`, `table: <key>` | the table is read as AnnData; coordinates come from its `obsm` |
+
+Many files of one kind go in as a single `glob:` entry (`glob: visium/*/adata.h5ad`); `init` writes these entries for you.
 
 ## What the CLI needs from each sample
 
 - **Expression**: `X` or a layer, cells × genes. Counts are detected and converted to log1p CP10k; log-normalized data is used as is (`expression.normalized` overrides the guess).
 - **Coordinates**: `obsm/spatial` by default, or any `obsm` key, or two obs columns (`coords: "obs/x,obs/y"`). Units can be pixels or microns; see [scale](#getting-the-scale-right).
-- **Annotations**: obs columns, categorical or numeric. `fields: auto` picks sensible ones.
+- **Annotations**: obs columns, categorical or numeric. `init` maps the likely ones and lists the rest as comments.
 - **Gene names**: `var_names`, or a var column via `gene_column`.
 - **Images** (optional): see [images](#images).
 

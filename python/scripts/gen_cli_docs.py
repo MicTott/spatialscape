@@ -78,7 +78,7 @@ GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "serve": ("Getting started", "/guide/getting-started"),
     "site init": ("The gallery: site.yaml", "/guide/registry"),
     "site build": ("Publish your own site", "/guide/publish"),
-    "inspect": ("Preparing your data", "/guide/preparing-data"),
+    "inspect": ("Inputs: what the CLI reads", "/guide/preparing-data"),
     "validate": ("Hosting", "/guide/hosting"),
     "outlines": ("Using the viewer: outlines", "/guide/viewer#outlines"),
     "thumbnails": ("The gallery: site.yaml", "/guide/registry"),

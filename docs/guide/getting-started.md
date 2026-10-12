@@ -28,10 +28,45 @@ The viewer is plain JavaScript served from `127.0.0.1`, and it reads the bundle 
 There is no upload, no account and no server process beyond this one.
 :::
 
+## How it fits together
+
+Two kinds of file are yours to edit, everything else is built from them:
+
+```
+your data                     you write / edit                    spatialscape builds
+─────────────────────────     ─────────────────────────────────   ──────────────────────────────────
+spe.rds, sce.rds        ──▶   amygdala.yaml   (one per dataset) ──▶  bundles/amygdala/   the dataset, upload this
+*.h5ad, *.zarr          ──▶   dlpfc.yaml                        ──▶  bundles/dlpfc/
+                              site.yaml       (optional gallery) ──▶  site/               viewer + gallery + bundles, upload this
+```
+
+Inside your project folder that looks like this after the steps below:
+
+```
+myproject/
+  analysis/spe_dlpfc.rds           your object, never modified
+  spatialscape/
+    dlpfc.yaml                     written by `init`, edited by you: samples, annotations, names, colors
+    site.yaml                      written by `site init`, edited by you: title, cards, paper links (optional)
+    bundles/
+      dlpfc/                       written by `build`: manifest.json, genes.json, samples/<id>/..., thumbnail.png
+      .cache/dlpfc/                R objects converted to AnnData; reused by later builds, never uploaded
+    site/                          written by `site build`: index.html, assets/, datasets.json, dlpfc/
+```
+
+| File or folder | Who writes it | What to do with it |
+|---|---|---|
+| `<id>.yaml` | `init`, then you | edit it; rerun `build` after every change |
+| `site.yaml` | `site init`, then you | edit it; rerun `site build` |
+| `bundles/<id>/` | `build` | open with `serve`; upload to a data host ([format](../reference/format)) |
+| `bundles/.cache/` | `build` | leave it alone; delete it to reclaim space, the next `build` recreates it |
+| `site/` | `site build` | upload to any static host, or `serve site` to preview |
+
+Every command prints the paths it wrote and the next command to run.
+
 ## Your own data in three steps
 
-Work inside your project folder: everything a command writes lands next to the yaml it read, and every
-output path is printed.
+Work inside your project folder: everything a command writes lands next to the yaml it read.
 
 1. **Describe.** Point `init` at the data: a saved R object (a `SpatialExperiment` or
    `SingleCellExperiment` as `.rds` / `.rda`) or a glob of AnnData files. It writes `<id>.yaml`, a menu of

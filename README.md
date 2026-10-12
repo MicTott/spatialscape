@@ -51,7 +51,7 @@ spatialscape serve bundles --open
 spatialscape site build bundles -o site                     # viewer + registry + data, ready to upload
 ```
 
-For a gallery of several datasets with a title, paper links and "coming soon" cards, `spatialscape site init` writes a `site.yaml` and `spatialscape site build site.yaml` builds it. Upload `site/` to GitHub Pages, Cloudflare Pages or any static host, or keep the bundles on S3 / R2 and set `data_url` in `site.yaml`. The [documentation](https://mictott.github.io/spatialscape/docs/) walks through every step; `sscape` is accepted as a short alias everywhere.
+What ends up where: `my_dataset.yaml` and `site.yaml` are yours to edit; `bundles/my_dataset/` is the dataset (upload it to a data host); `bundles/.cache/` holds converted R objects (local only); `site/` is the finished website. For a gallery of several datasets with a title, paper links and "coming soon" cards, `spatialscape site init` writes a `site.yaml` and `spatialscape site build site.yaml` builds it. Upload `site/` to GitHub Pages, Cloudflare Pages or any static host, or keep the bundles on S3 / R2 and set `data_url` in `site.yaml`. The [documentation](https://mictott.github.io/spatialscape/docs/) walks through every step; `sscape` is accepted as a short alias everywhere.
 
 Developers, from a clone:
 
