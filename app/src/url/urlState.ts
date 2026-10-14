@@ -74,6 +74,7 @@ export function readUrl(): Partial<ViewerState> {
   }
   if (q.get("gf")) out.groupField = q.get("gf");
   if (q.get("poly") === "0") out.showPolygons = false;
+  if (q.get("cl") === "0") out.clusterLabels = false;
   if (q.get("p")) out.platforms = q.get("p")!.split(",").filter(Boolean);
   if (q.get("sv")) {
     const v = q.get("sv")!;
@@ -116,6 +117,7 @@ export function serialize(s: ViewerState): string {
   if (s.platforms) q.set("p", s.platforms.join(","));
   if (s.groupField) q.set("gf", s.groupField);
   if (!s.showPolygons) q.set("poly", "0");
+  if (!s.clusterLabels) q.set("cl", "0");
   if (s.outline.field) q.set("o", `${s.outline.field}:${s.outline.style}:${s.outline.width}`);
   if (!s.split.on) q.set("sv", "0");
   else if (s.split.side !== "left" || Math.abs(s.split.fraction - 0.38) > 0.005) q.set("sv", `${s.split.side[0]}:${s.split.fraction.toFixed(2)}`);

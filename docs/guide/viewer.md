@@ -15,6 +15,7 @@ The **spatial view** holds every section as a grid or a strip, at true physical 
 | Hide a sample from the layout | its checkbox in the sample list |
 | Show one platform | the top bar: All / Visium / Xenium …; shift-click toggles |
 | Grid vs strip | Display → Grid / Strip |
+| Cluster names on the embedding | Display → label clusters in the embedding |
 
 ## Color by
 
@@ -54,6 +55,8 @@ Gene colors share one scale across all samples on screen, so the same color mean
 *copy link* in the panel header copies a URL that reproduces the whole view: dataset, coloring, filters, hidden categories, camera, split and point sizes. *PNG* downloads the current frame at screen resolution (2× on high-density displays) with the legend and scale bar drawn in. Press `?` for the list of keyboard and mouse shortcuts.
 
 ## Point size
+
+When an embedding is colored by an annotation, each category's name floats at the centre of its cells, largest clusters first and never overlapping; hidden categories lose their label. Turn it off under Display (`cl=0` in the URL).
 
 Each view has its own point-size slider at its bottom-left corner: one for the tissue sections, one for the embedding, so dense UMAPs and sparse Visium spots can be tuned independently. Double-click a slider to reset it. The values travel in the URL as `ps` (spatial) and `pse` (embedding).
 

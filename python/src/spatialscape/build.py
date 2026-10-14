@@ -333,7 +333,7 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         description=cfg.description,
         defaultGene=default_gene,
         defaultColor=dc,
-        layout=Layout(mode=cfg.layout.mode, gutterFraction=cfg.layout.gutter_fraction, order=order),
+        layout=Layout(mode=cfg.layout.mode, gutterFraction=cfg.layout.gutter_fraction, order=order, columns=cfg.layout.columns),
         colormaps=cfg.colormaps or list(BUILTIN_COLORMAPS),
         vocabularies=vocab.to_manifest(),
         fields=_fields_manifest(_all_fields(cfg, vocab), vocab),

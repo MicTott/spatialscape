@@ -21,6 +21,16 @@ const mk = (id: string, w: number, h: number): Sample => ({
 });
 
 describe("computeLayout", () => {
+  it("honours a fixed column count and fits one otherwise", () => {
+    const samples = ["a", "b", "c", "d", "e", "f", "g", "h", "i"].map((id) => mk(id, 50, 50));
+    const fixed = computeLayout(samples, samples.map((s) => s.id), "grid", 0.1, 3, new Set(), 3);
+    expect([fixed.ncols, fixed.nrows]).toEqual([3, 3]);
+    expect(fixed.placements.get("d")!.row).toBe(1);
+    const fitted = computeLayout(samples, samples.map((s) => s.id), "grid", 0.1, 3);
+    expect(fitted.ncols).toBeGreaterThan(3); // a wide viewport gets more columns when none is fixed
+    expect(computeLayout(samples, samples.map((s) => s.id), "strip", 0.1, 3, new Set(), 3).ncols).toBe(9); // strip ignores it
+  });
+
   it("places samples in non-overlapping cells and preserves order", () => {
     const samples = [mk("a", 100, 50), mk("b", 80, 80), mk("c", 40, 40)];
     const L = computeLayout(samples, ["c", "a", "b"], "grid", 0.1, 1.5);

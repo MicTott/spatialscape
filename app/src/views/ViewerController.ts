@@ -241,7 +241,7 @@ export class ViewerController {
     const s = store.getState();
     const [w, h] = this.viewSize(view);
     const samples = this.manifest.samples.filter((x) => (x.kind === "embedding") === (view === "embedding"));
-    this.layouts[view] = computeLayout(samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenSampleSet(s));
+    this.layouts[view] = computeLayout(samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenSampleSet(s), this.manifest.layout.columns);
     const focusHere = s.focus && this.viewOf(s.focus) === view;
     if (focusHere && this.layouts[view]!.placements.has(s.focus!)) this.focusSample(s.focus!, animate);
     else if (focusHere) s.set({ focus: null });

@@ -12,7 +12,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `default_gene` | string | | must exist in the gene union |
 | `default_color` | `{gene}` or `{field}` | first categorical field | |
 | `palette` | path | | `{vocabulary: {label: "#hex"}}` JSON |
-| `layout` | `{mode, order, gutter_fraction}` | `grid`, build order, `0.1` | |
+| `layout` | `{mode, order, gutter_fraction, columns}` | `grid`, build order, `0.1`, fitted | `columns` fixes the grid width, e.g. `3` for a 3 × 3 of species by cell class |
 | `thumbnail_sample` | sample id | first spatial sample | |
 | `shard_genes` | int | `512` | genes per shard (capped to ~128 MB) |
 | `feature_groups` | list of `{id, name, pattern, strip, units}` | `[]` | regex over var names |
@@ -55,6 +55,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `fields` | `{field_id: obs_column}` or `{field_id: {column, scale}}` or `auto` | `{}` | `scale` multiplies a numeric column, e.g. `100` to show a ratio as a percent |
 | `images` | list of image specs or `auto` | `auto` | |
 | `polygons` | `{path \| obsm, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (long-format parquet) or `obsm` (n, v, 2); `affine` maps vertices into the coordinate frame |
+| `subset` | `{column, values}` | all rows | keep only observations whose obs column takes one of the values; one file can then appear as several samples (one panel per cell class, per condition, ...) |
 | `extent` | number | `5000` | embeddings: world size of the longest side |
 | `point_radius` | µm | per platform | Visium 27.5, Xenium 5, HD from spacing |
 | `seed` | int | `7` | row shuffle |

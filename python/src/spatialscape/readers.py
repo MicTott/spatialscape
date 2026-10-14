@@ -68,6 +68,14 @@ def gene_names(adata: ad.AnnData, column: str | None) -> np.ndarray:
 
 def load_sample(spec: SampleSpec) -> SampleInput:
     adata = read_anndata(spec.path, spec.table)
+    if spec.subset is not None:
+        col = spec.subset.column
+        if col not in adata.obs:
+            raise KeyError(f"sample {spec.id}: subset column {col!r} not found; obs columns: {', '.join(map(str, adata.obs.columns))}")
+        keep = adata.obs[col].astype(str).isin([str(v) for v in spec.subset.values]).to_numpy()
+        if not keep.any():
+            raise ValueError(f"sample {spec.id}: subset {col} in {spec.subset.values} matches no observations")
+        adata = adata[keep].copy()
     coords = get_coords(adata, spec.coords)
     if coords.shape[0] != adata.n_obs:
         raise ValueError("coords length does not match n_obs")

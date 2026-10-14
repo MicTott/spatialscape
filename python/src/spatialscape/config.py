@@ -103,6 +103,14 @@ class PolygonSpec(_Model):
         return self
 
 
+class SubsetSpec(_Model):
+    """Keep only the observations whose `column` takes one of `values`, so one object can appear as several
+    samples (one panel per broad cell class, one per condition, ...)."""
+
+    column: str
+    values: list[str]
+
+
 class FieldMap(_Model):
     """Long form of a field mapping: `{column, scale}`. `scale` multiplies a numeric column (e.g. 100 to turn a
     ratio into a percent) so one field can be shared by samples that store the same quantity in different units."""
@@ -134,6 +142,7 @@ class SampleSpec(_Model):
     # explicit list, or "auto" to pick up image.ome.zarr / *.ome.zarr / spatial/tissue_hires_image.png next to the data
     images: list[ImageSpec] | Literal["auto"] = "auto"
     polygons: PolygonSpec | None = None
+    subset: SubsetSpec | None = None  # rows to keep; the default is every observation in the file
     extent: float = 5000.0  # embedding samples: rescale longest side to this many "um"
     point_radius: float | None = None  # um; default depends on platform
     seed: int = 7
@@ -184,6 +193,7 @@ class LayoutSpec(_Model):
     mode: LayoutMode = "grid"
     order: list[str] | None = None
     gutter_fraction: float = 0.1
+    columns: int | None = Field(default=None, ge=1)  # grid: a fixed number of columns (default: fitted to the window)
 
 
 class DefaultColorSpec(_Model):

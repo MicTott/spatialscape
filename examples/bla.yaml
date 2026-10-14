@@ -1,14 +1,16 @@
-# Basolateral amygdala snRNA-seq across species (Totty et al. 2024, BLA_crossSpecies): human, baboon and
-# rhesus macaque, one joint donor-corrected UMAP per species (examples/scripts/export_bla.R). Fine cell type
-# labels share one vocabulary across species, so colors match between the three embeddings.
+# Basolateral amygdala snRNA-seq across species (Totty et al. 2024, BLA_crossSpecies): human, rhesus macaque and
+# baboon. The published UMAPs were computed per broad cell class (excitatory, inhibitory, non-neuronal) and shipped
+# as one app per species; here each species is a row and each class a column: the same file three times with a
+# `subset`, on a 3-column grid. Fine cell type labels share one vocabulary across species, so colors match.
+# Inputs: examples/scripts/export_bla.R wrote the h5ad files; obsm/X_umap_class is the objects' own `umap`.
 id: bla_crossspecies
 name: Amygdala across species (snRNA-seq)
-description: Basolateral amygdala nuclei from human, baboon and rhesus macaque with conserved fine cell type labels, subregion of origin and donor; one UMAP per species.
+description: Basolateral amygdala nuclei from human, rhesus macaque and baboon with conserved fine cell type labels; one UMAP per species and broad cell class.
 default_gene: SLC17A7
 default_color: { field: celltype }
 palette: palettes/bla.json
-layout: { mode: grid }
-thumbnail_sample: sn_human
+layout: { mode: grid, columns: 3, gutter_fraction: 0.3 }
+thumbnail_sample: human_excit
 
 fields:
   - { id: celltype, name: Cell type, type: categorical, palette_key: celltype }
@@ -23,12 +25,19 @@ fields:
 platforms:
   snrnaseq:
     kind: embedding
-    coords: obsm/X_umap
+    coords: obsm/X_umap_class      # the published per-class UMAP; obsm/X_umap is a joint Harmony UMAP per species
     extent: 5000
     expression: { layer: X, normalized: lognorm }
     fields: { celltype: fine_celltype, broad: broad_celltype, subregion: subregion, donor: subject, sex: sex, total_counts: sum, detected_genes: detected, mito_percent: subsets_Mito_percent }
 
 samples:
-  - { id: sn_human,   name: Human (5 donors),          platform: snrnaseq, group: Human,   path: bla-src/sce_human.h5ad }
-  - { id: sn_baboon,  name: Baboon (2 donors),         platform: snrnaseq, group: Baboon,  path: bla-src/sce_baboon.h5ad }
-  - { id: sn_macaque, name: Rhesus macaque (5 donors), platform: snrnaseq, group: Macaque, path: bla-src/sce_macaque.h5ad }
+  # rows: species; columns: excitatory, inhibitory, non-neuronal
+  - { id: human_excit,     name: Human · Excitatory,             group: Human,          platform: snrnaseq, path: bla-src/sce_human.h5ad,   subset: { column: broad_celltype, values: [Excitatory] } }
+  - { id: human_inhib,     name: Human · Inhibitory,             group: Human,          platform: snrnaseq, path: bla-src/sce_human.h5ad,   subset: { column: broad_celltype, values: [Inhibitory] } }
+  - { id: human_nonneur,   name: Human · Non-neuronal,           group: Human,          platform: snrnaseq, path: bla-src/sce_human.h5ad,   subset: { column: broad_celltype, values: [Non-neuronal] } }
+  - { id: macaque_excit,   name: Rhesus macaque · Excitatory,    group: Rhesus macaque, platform: snrnaseq, path: bla-src/sce_macaque.h5ad, subset: { column: broad_celltype, values: [Excitatory] } }
+  - { id: macaque_inhib,   name: Rhesus macaque · Inhibitory,    group: Rhesus macaque, platform: snrnaseq, path: bla-src/sce_macaque.h5ad, subset: { column: broad_celltype, values: [Inhibitory] } }
+  - { id: macaque_nonneur, name: Rhesus macaque · Non-neuronal,  group: Rhesus macaque, platform: snrnaseq, path: bla-src/sce_macaque.h5ad, subset: { column: broad_celltype, values: [Non-neuronal] } }
+  - { id: baboon_excit,    name: Baboon · Excitatory,            group: Baboon,         platform: snrnaseq, path: bla-src/sce_baboon.h5ad,  subset: { column: broad_celltype, values: [Excitatory] } }
+  - { id: baboon_inhib,    name: Baboon · Inhibitory,            group: Baboon,         platform: snrnaseq, path: bla-src/sce_baboon.h5ad,  subset: { column: broad_celltype, values: [Inhibitory] } }
+  - { id: baboon_nonneur,  name: Baboon · Non-neuronal,          group: Baboon,         platform: snrnaseq, path: bla-src/sce_baboon.h5ad,  subset: { column: broad_celltype, values: [Non-neuronal] } }

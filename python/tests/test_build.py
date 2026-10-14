@@ -96,6 +96,33 @@ def test_palette_changes_apply_without_changing_codes(tmp_path):
     assert v2.colors[v2.categories.index(other)] == v1.colors[v1.categories.index(other)]
 
 
+def test_subset_and_fixed_columns(tmp_path):
+    """One file, several samples: `subset` keeps the rows of one class; `layout.columns` fixes the grid."""
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=200, n_genes=6)
+    doc = yaml.safe_load(cfg_path.read_text())
+    doc["layout"] = {"mode": "grid", "columns": 3}
+    base = {"platform": "snrnaseq", "kind": "embedding", "path": "sampleA.h5ad", "coords": "obsm/X_umap", "fields": {"cluster": "cluster"}}
+    doc["samples"] = [
+        {"id": "astro", "name": "Astro", **base, "subset": {"column": "cluster", "values": ["Astro"]}},
+        {"id": "excit", "name": "Excit", **base, "subset": {"column": "cluster", "values": ["Excit_L2", "Excit_L5"]}},
+        {"id": "all", "name": "All", **base},
+    ]
+    cfg_path.write_text(yaml.safe_dump(doc))
+    m = build_dataset(load_config(cfg_path), tmp_path / "bundle", log=lambda *_: None)
+    import anndata as ad
+
+    obs = ad.read_h5ad(tmp_path / "src" / "sampleA.h5ad").obs
+    by_id = {s.id: s for s in m.samples}
+    assert by_id["astro"].nObs == int((obs["cluster"] == "Astro").sum()) > 0
+    assert by_id["excit"].nObs == int(obs["cluster"].isin(["Excit_L2", "Excit_L5"]).sum())
+    assert by_id["all"].nObs == len(obs) and m.layout.columns == 3
+    assert validate_local(tmp_path / "bundle") == []
+    doc["samples"][0]["subset"] = {"column": "cluster", "values": ["Nope"]}
+    cfg_path.write_text(yaml.safe_dump(doc))
+    with pytest.raises(ValueError, match="matches no observations"):
+        build_dataset(load_config(cfg_path), tmp_path / "bundle2", log=lambda *_: None)
+
+
 def test_default_gene_is_the_most_variable_not_the_first(tmp_path):
     cfg_path = make_synthetic(tmp_path / "src", n_cells=300, n_genes=12)
     doc = yaml.safe_load(cfg_path.read_text())

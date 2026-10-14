@@ -124,6 +124,13 @@ The cache keeps every colData column, so editing `fields:` never reconverts. Re-
 changing `assay`, `sample_col`, `embedding` or `object` converts again and removes the old copy. The cache
 is a sibling of the bundle, so uploading `bundles/<id>` never includes it.
 
+## One file, several samples
+
+A sample may keep only part of a file: `subset: { column: broad_celltype, values: [Excitatory] }`. Three
+entries with the same `path` and different subsets turn one snRNA-seq object into three panels, which is how
+per-class UMAPs (excitatory, inhibitory, non-neuronal) are shown side by side. `layout: { columns: 3 }` then
+fixes the grid so rows and columns mean something (species by cell class, donor by condition).
+
 ## Globs and templates
 
 A `glob:` entry expands to one sample per matching path, sorted. Inside that entry these placeholders are filled per match:

@@ -15,6 +15,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `gf` | annotation for the expression-by-annotation panel | `gf=domain` |
 | `o` | outlines: `<field>:<style>:<width>` | `o=domain:light:1.5` |
 | `poly` | `0` disables cell polygons | `poly=0` |
+| `cl` | `0` hides the cluster names on the embedding | `cl=0` |
 | `img` | image opacity, `0` hides images | `img=0.6` |
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |

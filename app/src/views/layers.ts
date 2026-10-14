@@ -1,7 +1,7 @@
 /** Builds the deck.gl layer list from the store state and the caches. Nothing here mutates state. */
 import { PathLayer, TextLayer } from "@deck.gl/layers";
 import type { SampleData } from "../data/cache";
-import { fieldById } from "../data/manifest";
+import { fieldById, type CategoricalField } from "../data/manifest";
 import { ExpressionScatterLayer } from "../layers/ExpressionScatterLayer";
 import { imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
 import { blendLUT, categoryPalette, colormapLUT, hexToRGB } from "../layers/lut";
@@ -11,11 +11,19 @@ import { drawCount, intersects } from "./lod";
 import { filterRange, overlayProps, VIEWS, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
 
+interface Centroid {
+  code: number;
+  x: number;
+  y: number;
+  n: number;
+}
+
 export class LayerBuilder {
   private imageHandles = new Map<string, ImageHandle | "loading" | "error">();
   private inputs = new Map<string, SampleLayerInputs>();
   private lutCache = new Map<string, Uint8Array>();
   private paletteCache = new Map<string, Uint8Array>();
+  private centroidCache = new Map<string, Centroid[]>();
 
   constructor(private c: ViewerController) {}
 
@@ -143,6 +151,7 @@ export class LayerBuilder {
       }
       if (view === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
       if (view === "spatial" && s.showPolygons) layers.push(...this.polygonLayers(view, L));
+      if (view === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
       layers.push(...c.selection.layers(s, view, L));
       layers.push(...this.frameLayers(s, view, L));
     }
@@ -251,6 +260,93 @@ export class LayerBuilder {
     return out;
   }
 
+  /** Median position of every category in a sample (sample-local µm), from a uniform prefix of the shuffled rows. */
+  private centroids(sd: SampleData, field: string): Centroid[] {
+    const key = `${sd.id}|${field}`;
+    const hit = this.centroidCache.get(key);
+    if (hit) return hit;
+    const codes = sd.cat.get(field);
+    if (!codes) return []; // not loaded yet: do not cache the miss
+    const n = Math.min(sd.nObs, 60_000);
+    const xs = new Map<number, number[]>();
+    const ys = new Map<number, number[]>();
+    for (let i = 0; i < n; i++) {
+      const code = codes[i];
+      let ax = xs.get(code);
+      if (!ax) {
+        ax = [];
+        xs.set(code, ax);
+        ys.set(code, []);
+      }
+      ax.push(sd.xy[2 * i]);
+      ys.get(code)!.push(sd.xy[2 * i + 1]);
+    }
+    const minN = Math.max(5, Math.round(n * 0.002)); // stray cells get no label
+    const out: Centroid[] = [];
+    for (const [code, ax] of xs) {
+      if (ax.length < minN) continue;
+      const ay = ys.get(code)!;
+      ax.sort((a, b) => a - b);
+      ay.sort((a, b) => a - b);
+      out.push({ code, x: ax[ax.length >> 1], y: ay[ay.length >> 1], n: ax.length });
+    }
+    out.sort((a, b) => b.n - a.n); // large clusters win the collision test
+    this.centroidCache.set(key, out);
+    return out;
+  }
+
+  /** Category names floating at the centre of their cells: embedding samples colored by an annotation. */
+  private clusterLabelLayers(s: ViewerState, view: ViewId, L: LayoutResult, field: CategoricalField) {
+    const c = this.c;
+    const names = c.manifest!.vocabularies[field.vocabulary].categories;
+    const hidden = new Set(s.hiddenCategories[field.id] ?? []);
+    const vs = c.viewStates[view];
+    const scale = Math.pow(2, vs.zoom);
+    const [vw, vh] = c.viewSize(view);
+    const vb = c.viewBbox(view);
+    const taken: [number, number, number, number][] = [];
+    const labels: { pos: [number, number]; text: string }[] = [];
+    for (const [id, p] of L.placements) {
+      const smp = c.samplesById.get(id)!;
+      const sd = c.cache.samples.get(id);
+      if (smp.kind !== "embedding" || !sd || !smp.fields.includes(field.id) || !intersects(p.worldBbox, vb)) continue;
+      if ((p.worldBbox[2] - p.worldBbox[0]) * scale < 160) continue; // a panel this small has no room for names
+      for (const k of this.centroids(sd, field.id)) {
+        const text = names[k.code] ?? String(k.code);
+        if (hidden.has(k.code) || text === "NA") continue;
+        const [wx, wy] = p.modelMatrix.transformAsPoint([k.x, k.y, 0]);
+        const sx = (wx - vs.target[0]) * scale + vw / 2;
+        const sy = (wy - vs.target[1]) * scale + vh / 2;
+        const half = 3.3 * text.length + 5;
+        const box: [number, number, number, number] = [sx - half, sy - 9, sx + half, sy + 9];
+        if (taken.some((t) => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1])) continue;
+        taken.push(box);
+        labels.push({ pos: [wx, wy], text });
+      }
+    }
+    if (!labels.length) return [];
+    return [
+      new TextLayer({
+        ...overlayProps(view),
+        id: `cluster-labels-${view}`,
+        data: labels,
+        getPosition: (d: any) => d.pos,
+        getText: (d: any) => d.text,
+        getColor: [240, 244, 248, 240],
+        getSize: 11,
+        sizeUnits: "pixels",
+        getTextAnchor: "middle",
+        getAlignmentBaseline: "center",
+        fontFamily: "Inter, system-ui, sans-serif",
+        fontWeight: 600,
+        characterSet: "auto",
+        background: true,
+        getBackgroundColor: [14, 17, 22, 150],
+        backgroundPadding: [4, 2, 4, 2],
+      } as any),
+    ];
+  }
+
   /** Sample outlines (selected / focused / failed) and name labels, one layer each per view. */
   private frameLayers(s: ViewerState, view: ViewId, L: LayoutResult) {
     const c = this.c;
@@ -315,6 +411,7 @@ export class LayerBuilder {
         getPixelOffset: [2, -4],
         fontFamily: "Inter, system-ui, sans-serif",
         fontWeight: 600,
+        characterSet: "auto", // sample names may carry non-ASCII characters (Human · Excitatory, µm)
         background: true,
         getBackgroundColor: [14, 17, 22, 170],
         backgroundPadding: [4, 2, 4, 2],

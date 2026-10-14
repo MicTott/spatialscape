@@ -57,6 +57,7 @@ class Layout(_Model):
     mode: LayoutMode = "grid"
     gutterFraction: float = 0.1
     order: list[str] = Field(default_factory=list)
+    columns: int | None = None  # grid: a fixed number of columns
 
 
 class ImageChannel(_Model):

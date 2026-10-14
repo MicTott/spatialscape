@@ -63,6 +63,7 @@ export function computeLayout(
   gutterFraction: number,
   viewportAspect: number,
   hidden: ReadonlySet<string> = new Set(),
+  columns?: number | null,
 ): LayoutResult {
   const byId = new Map(samples.map((s) => [s.id, s]));
   const ids = order.filter((id) => byId.has(id) && !hidden.has(id));
@@ -77,7 +78,8 @@ export function computeLayout(
   const cellW = maxW * (1 + gutterFraction);
   const cellH = maxH * (1 + gutterFraction);
   const n = Math.max(1, ids.length);
-  const ncols = mode === "strip" ? n : Math.max(1, Math.min(n, Math.ceil(Math.sqrt((n * viewportAspect * cellH) / cellW))));
+  const fitted = Math.max(1, Math.min(n, Math.ceil(Math.sqrt((n * viewportAspect * cellH) / cellW))));
+  const ncols = mode === "strip" ? n : columns ? Math.max(1, Math.min(n, Math.round(columns))) : fitted;
   const nrows = Math.ceil(n / ncols);
   const placements = new Map<string, Placement>();
   ids.forEach((id, i) => {

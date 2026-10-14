@@ -34,6 +34,7 @@ export interface Layout {
   mode: LayoutMode;
   gutterFraction: number;
   order: string[];
+  columns?: number | null; // grid: a fixed number of columns
 }
 export interface ImageChannel {
   name: string;

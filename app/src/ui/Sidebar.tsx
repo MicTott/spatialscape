@@ -306,6 +306,7 @@ function DisplayPanel() {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
   const showPolygons = useViewer((s) => s.showPolygons);
+  const clusterLabels = useViewer((s) => s.clusterLabels);
   const imageOpacity = useViewer((s) => s.imageOpacity);
   const layoutMode = useViewer((s) => s.layoutMode);
   const set = store.getState().set;
@@ -324,6 +325,11 @@ function DisplayPanel() {
       {manifest.samples.some((s) => s.polygons) && (
         <label className="check">
           <input type="checkbox" checked={showPolygons} onChange={(e) => set({ showPolygons: e.target.checked })} /> cell boundaries when zoomed in
+        </label>
+      )}
+      {manifest.samples.some((s) => s.kind === "embedding") && (
+        <label className="check">
+          <input type="checkbox" checked={clusterLabels} onChange={(e) => set({ clusterLabels: e.target.checked })} /> label clusters in the embedding
         </label>
       )}
       {hasImages && (

@@ -63,6 +63,7 @@ export interface ViewerState {
   groupStats: GroupStats | null;
   tool: "pan" | "lasso";
   showPolygons: boolean;
+  clusterLabels: boolean; // category names at the centre of their cells, in the embedding view
   viewPx: Partial<Record<ViewId, number>>; // px per µm per view (scale bar)
   viewRects: Partial<Record<ViewId, { x: number; w: number }>>;
   selectionSummary: SelectionSummary | null;
@@ -149,6 +150,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   groupStats: null,
   tool: "pan",
   showPolygons: true,
+  clusterLabels: true,
   viewPx: {},
   viewRects: {},
   selectionSummary: null,
