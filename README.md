@@ -33,14 +33,14 @@ spatialscape was built for that one thing, and a few others follow from it:
 
 | | spatialscape | Shiny apps (spatialLIBD, iSEE) | Static multi-pane viewers (Vitessce) |
 |---|---|---|---|
-| Sections in view | the whole study on one canvas, one legend, one set of settings | one at a time, or a fixed grid of plots | one per pane; switching rebuilds the pane |
-| Platforms | Visium, Visium HD, Xenium and snRNA-seq in one dataset, laid out in microns, with one shared vocabulary so a label has the same color everywhere | one object per app | one dataset per view |
-| Changing the gene | one HTTP range request per section; a cached switch is a GPU upload, so a million cells recolor in milliseconds | a server-side redraw | a fetch per pane |
-| Hosting | static files: GitHub Pages, S3, Cloudflare R2, a lab web server | an R process per visitor | static files |
-| Sharing a view | the URL holds the gene, annotation, filters, camera and split, so a link reopens the exact view | screenshots | a view-config JSON |
-| Authoring | `init` writes one yaml from your `.rds` or AnnData; `build` applies every edit; `site.yaml` describes the gallery | R code | a Zarr export plus a JSON config per view |
+| Sections in view | the whole study, one legend | one at a time | one per pane |
+| Platforms | Visium, HD, Xenium, snRNA-seq in one dataset | one object per app | one dataset per view |
+| Changing the gene | one range request, then a GPU upload | a server-side redraw | a fetch per pane |
+| Hosting | static files anywhere | an R process per visitor | static files |
+| Sharing a view | the URL reopens the exact view | screenshots | a view-config JSON |
+| Authoring | one yaml from your `.rds`; `build` applies edits | R code | Zarr export plus JSON configs |
 
-The rest is what a published dataset needs around that: a gallery with real thumbnails, paper links, a navigation bar, outlines of spatial domains over any coloring, lasso statistics, and a build that validates itself.
+Everything is laid out in microns, so a Visium spot sits next to a Xenium cell at true size, and every section shares one vocabulary, so a label has the same color on Visium, on Xenium and in the snRNA-seq UMAP. A million cells recolor in milliseconds because a cached gene switch is a one-byte-per-cell upload. The rest is what a published dataset needs around that: a gallery with real thumbnails, paper links, a navigation bar, domain outlines over any coloring, lasso statistics, and a build that validates itself.
 
 ## Quick start
 
