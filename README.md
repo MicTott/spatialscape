@@ -7,7 +7,7 @@
 
 <p align="center">
   A static, reactive browser for spatial transcriptomics and snRNA-seq.<br>
-  One <code>pip install</code> turns a SpatialExperiment or AnnData into a dataset you can open locally or publish as a website.
+  Every section of a study on one map, instant at a million cells, hosted as plain files.
 </p>
 
 <p align="center">
@@ -25,17 +25,22 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
-<p align="center">
-  <a href="https://mictott.github.io/spatialscape/docs/"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/dacc-layers.png" width="920" alt="Seventeen Visium sections of human dACC on one canvas, H&E under cortical layer labels"></a>
-</p>
-<p align="center"><sub>Seventeen Visium sections of human dorsal anterior cingulate cortex on one canvas: H&amp;E under PRECAST layer labels, one legend for all of them.</sub></p>
+## Why spatialscape
 
-## Why
+The Lieber Institute publishes spatial transcriptomics studies that span many donors, often several platforms, and a paired snRNA-seq reference behind the labels. Putting one online used to mean a choice. A Shiny app needs a server, shows one section at a time and redraws a plot for every gene. A static viewer such as Vitessce needs no server and is fast, but gives each section its own small pane, rebuilds the pane when you switch, and leaves little room for the tissue. We built the amygdala browser both ways before writing this. Neither let a reader do what we do with these studies ourselves: look at every donor at once, under identical settings, and ask the same question of all of them.
 
-- **Every sample on one canvas.** All sections of a study sit side by side under identical settings. Double-click to focus, step through donors with the arrow keys, switch platforms with one click.
-- **Instant.** Expression is stored one byte per cell per gene in sharded Zarr, so a gene is one HTTP range request and a cached switch is a GPU upload. A million cells pan at 60 fps.
-- **Linked snRNA-seq.** Paired references render as embeddings beside the tissue with one shared cell type vocabulary, so a color means the same thing everywhere.
-- **Nothing to run.** The viewer is files and the data is files. Host them on GitHub Pages, S3, Cloudflare R2 or a lab server; every view state lives in the URL.
+spatialscape was built for that one thing, and a few others follow from it:
+
+| | spatialscape | Shiny apps (spatialLIBD, iSEE) | Static multi-pane viewers (Vitessce) |
+|---|---|---|---|
+| Sections in view | the whole study on one canvas, one legend, one set of settings | one at a time, or a fixed grid of plots | one per pane; switching rebuilds the pane |
+| Platforms | Visium, Visium HD, Xenium and snRNA-seq in one dataset, laid out in microns, with one shared vocabulary so a label has the same color everywhere | one object per app | one dataset per view |
+| Changing the gene | one HTTP range request per section; a cached switch is a GPU upload, so a million cells recolor in milliseconds | a server-side redraw | a fetch per pane |
+| Hosting | static files: GitHub Pages, S3, Cloudflare R2, a lab web server | an R process per visitor | static files |
+| Sharing a view | the URL holds the gene, annotation, filters, camera and split, so a link reopens the exact view | screenshots | a view-config JSON |
+| Authoring | `init` writes one yaml from your `.rds` or AnnData; `build` applies every edit; `site.yaml` describes the gallery | R code | a Zarr export plus a JSON config per view |
+
+The rest is what a published dataset needs around that: a gallery with real thumbnails, paper links, a navigation bar, outlines of spatial domains over any coloring, lasso statistics, and a build that validates itself.
 
 ## Quick start
 
@@ -77,6 +82,13 @@ The [documentation](https://mictott.github.io/spatialscape/docs/) walks through 
 [making changes](https://mictott.github.io/spatialscape/docs/guide/changes),
 [publishing a site](https://mictott.github.io/spatialscape/docs/guide/publish) and the
 [CLI reference](https://mictott.github.io/spatialscape/docs/reference/cli/).
+
+## What it looks like
+
+<p align="center">
+  <a href="https://mictott.github.io/spatialscape/docs/"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/dacc-layers.png" width="840" alt="Seventeen Visium sections of human dACC on one canvas, H&E under cortical layer labels"></a>
+</p>
+<p align="center"><sub>Seventeen Visium sections of human dorsal anterior cingulate cortex on one canvas: H&amp;E under PRECAST layer labels, one legend for all of them.</sub></p>
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/gallery.png" width="49%" alt="The landing gallery with thumbnails rendered at build time">
