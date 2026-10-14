@@ -1,0 +1,21 @@
+# The LIBD gallery. `spatialscape site build examples/site.yaml --link -o examples/site` previews it from the
+# bundles built on this machine; for the public site, set data_url to where the bundles are hosted.
+title: LIBD spatial data browser
+intro: Spatial transcriptomics and snRNA-seq datasets from the Lieber Institute for Brain Development, viewable in the browser without any installation.
+nav:
+  title: spatialscape
+  logo: favicon.svg
+  links:
+    - { label: Docs, url: https://mictott.github.io/spatialscape/docs/ }
+    - { label: GitHub, url: https://github.com/MicTott/spatialscape }
+# data_url: https://data.example.org        # bundles hosted elsewhere at <data_url>/<id>; the site then carries only the viewer
+datasets:
+  - bundle: amygdala
+    # paper: { title: Totty et al., url: https://doi.org/... }
+    tags: [amygdala, visium, visium-hd, xenium, snrnaseq]
+  - bundle: dacc
+    # paper: { title: ..., url: https://doi.org/... }
+    tags: [dACC, cortex, layers, visium, snrnaseq]
+  - bundle: bla
+    # paper: { title: Totty et al. 2024, url: https://doi.org/... }
+    tags: [amygdala, cross-species, snrnaseq]

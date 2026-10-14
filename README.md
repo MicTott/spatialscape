@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://mictott.github.io/spatialscape/docs/"><b>Documentation</b></a>
   &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/docs/guide/getting-started">Getting started</a>
-  &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/">Live demo</a>
+  &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/?d=examples/synthetic">Live demo</a>
   &nbsp;·&nbsp; <a href="CHANGELOG.md">Changelog</a>
 </p>
 

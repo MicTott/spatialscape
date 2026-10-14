@@ -14,7 +14,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: Open the demo
-      link: https://mictott.github.io/spatialscape/
+      link: https://mictott.github.io/spatialscape/?d=examples/synthetic
     - theme: alt
       text: GitHub
       link: https://github.com/MicTott/spatialscape

@@ -13,7 +13,7 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/cli/" },
-      { text: "Demo", link: "https://mictott.github.io/spatialscape/" },
+      { text: "Demo", link: "https://mictott.github.io/spatialscape/?d=examples/synthetic" },
       { text: "v0.1.0", items: [{ text: "Changelog", link: "/changelog" }, { text: "Contributing", link: "/contributing" }] },
     ],
     sidebar: {
