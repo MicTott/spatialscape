@@ -67,13 +67,14 @@ const CIVIDIS_STOPS: RGB[] = [
   [0.886, 0.756, 0.320],
   [0.995, 0.843, 0.232],
 ];
+// blue - grey - red: a light grey centre instead of white, so zero does not glow on the dark background
 const RDBU_STOPS: RGB[] = [
   [0.13, 0.4, 0.67],
-  [0.42, 0.68, 0.84],
-  [0.82, 0.9, 0.94],
-  [0.97, 0.97, 0.97],
-  [0.99, 0.86, 0.78],
-  [0.94, 0.54, 0.38],
+  [0.4, 0.66, 0.81],
+  [0.68, 0.76, 0.82],
+  [0.78, 0.78, 0.78],
+  [0.88, 0.72, 0.64],
+  [0.9, 0.45, 0.36],
   [0.7, 0.09, 0.17],
 ];
 function stops(st: RGB[], t: number): RGB {

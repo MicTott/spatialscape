@@ -30,7 +30,7 @@ section { border-top: 1px solid var(--border); padding: 10px 0; }
 section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
 .muted { color: var(--muted); font-weight: normal; text-transform: none; letter-spacing: 0; }
 .small { font-size: 11px; }
-.tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .tabs button, .legend-actions button, .overlay button { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 .tabs button.on { background: var(--accent); color: #041018; border-color: var(--accent); font-weight: 600; }
 .legend-actions { margin-left: auto; display: flex; gap: 4px; }

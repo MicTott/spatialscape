@@ -67,6 +67,7 @@ function ColorPanel({ genes }: { genes: string[] }) {
   const features = useViewer((s) => s.features);
   const color = useViewer((s) => s.color);
   const colormap = useViewer((s) => s.colormap);
+  const geneMin = useViewer((s) => s.geneMin);
   const vrange = useViewer((s) => s.vrange);
   const hideZeros = useViewer((s) => s.hideZeros);
   const scalePerSample = useViewer((s) => s.scalePerSample);
@@ -171,6 +172,7 @@ function ColorPanel({ genes }: { genes: string[] }) {
                   <option key={c}>{c}</option>
                 ))}
               </select>
+              {geneMin < 0 && <small className="muted">signed feature: drawn with a diverging map centred on zero</small>}
             </label>
           )}
           <RangeSlider value={vrange} onChange={(v) => set({ vrange: v })} label="range" />
