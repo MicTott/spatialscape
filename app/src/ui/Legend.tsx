@@ -1,6 +1,6 @@
 import { fieldById } from "../data/manifest";
 import { useEffect, useRef } from "react";
-import { BLEND_SCHEMES, BLEND_SIZE, blendLUT, colormapCSS } from "../layers/lut";
+import { BLEND_SCHEMES, BLEND_SIZE, blendLUT, colormapCSS, effectiveColormap } from "../layers/lut";
 import { store, useViewer } from "../store/store";
 
 function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[] }) {
@@ -52,6 +52,7 @@ export function Legend() {
   const colormap = useViewer((s) => s.colormap);
   const vrange = useViewer((s) => s.vrange);
   const geneMax = useViewer((s) => s.geneMax);
+  const geneMin = useViewer((s) => s.geneMin);
   const features = useViewer((s) => s.features);
   const platforms = useViewer((s) => s.platforms);
   const hiddenSamples = useViewer((s) => s.hiddenSamples);
@@ -122,8 +123,8 @@ export function Legend() {
     );
   }
   if (color.kind === "blend") return <BlendLegend scheme={color.scheme} a={color.a} b={color.b} />;
-  const lo = vrange[0] * geneMax;
-  const hi = vrange[1] * geneMax;
+  const lo = geneMin + vrange[0] * (geneMax - geneMin);
+  const hi = geneMin + vrange[1] * (geneMax - geneMin);
   const group = features?.groups.find((g) => g.features.some((f) => f.id === color.gene));
   const label = group?.features.find((f) => f.id === color.gene)?.label ?? color.gene;
   return (
@@ -132,7 +133,7 @@ export function Legend() {
         <span>{label}</span>
         <span className="muted">{group ? (group.units ?? group.name) : "log-normalized"}</span>
       </div>
-      <div className="ramp" style={{ background: colormapCSS(colormap) }} />
+      <div className="ramp" style={{ background: colormapCSS(effectiveColormap(colormap, geneMin < 0)) }} />
       <div className="ramp-labels">
         <span>{scalePerSample ? "0" : lo.toFixed(2)}</span>
         <span>{scalePerSample ? "max per sample" : hi.toFixed(2)}</span>

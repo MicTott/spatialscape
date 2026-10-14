@@ -4,7 +4,7 @@ import type { SampleData } from "../data/cache";
 import { fieldById, type CategoricalField } from "../data/manifest";
 import { ExpressionScatterLayer } from "../layers/ExpressionScatterLayer";
 import { imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
-import { blendLUT, categoryPalette, colormapLUT, hexToRGB } from "../layers/lut";
+import { blendLUT, categoryPalette, colormapLUT, effectiveColormap, hexToRGB } from "../layers/lut";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
 import { drawCount, intersects } from "./lod";
@@ -89,7 +89,8 @@ export class LayerBuilder {
     const layers: any[] = [];
     const colorField = s.color?.kind === "field" ? fieldById(c.manifest, s.color.field) : undefined;
     const baseMode: 0 | 1 | 3 = s.color?.kind === "blend" ? 3 : colorField?.type === "categorical" ? 1 : 0;
-    const lut = this.lut(s.color?.kind === "blend" ? `blend:${s.color.scheme}` : s.colormap);
+    const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
+    const lut = this.lut(s.color?.kind === "blend" ? `blend:${s.color.scheme}` : effectiveColormap(s.colormap, signed));
     const catColors = baseMode === 1 && colorField ? this.palette(colorField.id, s.hiddenCategories[colorField.id] ?? []) : this.palette("__none", []);
 
     for (const view of VIEWS) {
@@ -136,6 +137,7 @@ export class LayerBuilder {
             vmax: s.vrange[1],
             hideZeros: s.hideZeros,
             valueScale,
+            valueCenter: signed ? 0.5 : 0,
             filterOn: filterActive,
             filterMin: s.filter ? filterRange(s.filter)[0] : 0,
             filterMax: s.filter ? filterRange(s.filter)[1] : 1,

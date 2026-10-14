@@ -56,6 +56,8 @@ Gene colors share one scale across all samples on screen, so the same color mean
 
 ## Point size
 
+Features that take negative values (module scores, motif deviations) are stored symmetrically around zero and drawn with a diverging colormap centred on zero, whatever the colormap setting; the legend shows the real minimum and maximum.
+
 When an embedding is colored by an annotation, each category's name floats at the centre of its cells, largest clusters first and never overlapping; hidden categories lose their label. Turn it off under Display (`cl=0` in the URL).
 
 Each view has its own point-size slider at its bottom-left corner: one for the tissue sections, one for the embedding, so dense UMAPs and sparse Visium spots can be tuned independently. Double-click a slider to reset it. The values travel in the URL as `ps` (spatial) and `pse` (embedding).

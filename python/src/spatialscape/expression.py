@@ -20,6 +20,7 @@ class ExprResult:
     keep: np.ndarray  # bool (n_vars,) genes retained (non-zero)
     shard_genes: int
     sharded: bool
+    gmin: np.ndarray | None = None  # float32 (n_genes_kept,): 0 for non-negative features, -gmax for signed ones
 
 
 def get_matrix(adata: ad.AnnData, layer: str) -> sp.csr_matrix:
@@ -55,12 +56,26 @@ def choose_shard_genes(n_obs: int, requested: int) -> int:
     return int(max(1, min(requested, TARGET_SHARD_BYTES // max(n_obs, 1))))
 
 
-def quantize_block(block: np.ndarray, gmax: np.ndarray) -> np.ndarray:
-    """block (g, n) float32, gmax (g,) -> uint8 with nonzero preserved as >= 1."""
-    scale = np.where(gmax > 0, 255.0 / np.maximum(gmax, 1e-12), 0.0).astype(np.float32)
-    q = np.rint(block * scale[:, None])
+def feature_ranges(gmin: np.ndarray, gmax: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The [lo, hi] each feature is quantized over: [0, max] for non-negative features; for features with negative
+    values (motif deviations, module scores) a symmetric [-m, m] with m = max |x|, so zero sits at the centre."""
+    signed = gmin < 0
+    m = np.maximum(np.abs(gmin), np.abs(gmax))
+    lo = np.where(signed, -m, 0.0).astype(np.float32)
+    hi = np.where(signed, m, gmax).astype(np.float32)
+    return lo, hi
+
+
+def quantize_block(block: np.ndarray, gmax: np.ndarray, gmin: np.ndarray | None = None) -> np.ndarray:
+    """block (g, n) float32 -> uint8 over [gmin, gmax] (gmin defaults to 0). value = gmin + u8 / 255 * (gmax - gmin).
+    Non-negative features keep nonzero values >= 1, so an expressed cell never renders as zero."""
+    lo = np.zeros_like(gmax, dtype=np.float32) if gmin is None else gmin.astype(np.float32)
+    span = (gmax - lo).astype(np.float32)
+    scale = np.where(span > 0, 255.0 / np.maximum(span, 1e-12), 0.0).astype(np.float32)
+    q = np.rint((block - lo[:, None]) * scale[:, None])
     q = np.clip(q, 0, 255)
-    q[(block > 0) & (q < 1)] = 1
+    nonneg = lo >= 0
+    q[nonneg[:, None] & (block > 0) & (q < 1)] = 1
     return q.astype(np.uint8)
 
 
@@ -77,11 +92,15 @@ def write_expression(
     n_obs, n_vars = M.shape
     Mc = M.tocsc()
     gmax_all = np.zeros(n_vars, dtype=np.float32)
+    gmin_all = np.zeros(n_vars, dtype=np.float32)
     if Mc.nnz:
         gmax_all = np.asarray(Mc.max(axis=0).todense()).ravel().astype(np.float32)
-    keep = gmax_all > 0
+        gmin_all = np.asarray(Mc.min(axis=0).todense()).ravel().astype(np.float32)
+    lo_all, hi_all = feature_ranges(gmin_all, gmax_all)
+    keep = hi_all > 0  # all-zero features are dropped
     Mc = Mc[:, keep]
-    gmax = gmax_all[keep]
+    gmax = hi_all[keep]
+    gmin = lo_all[keep]
     G = int(keep.sum())
 
     S = choose_shard_genes(n_obs, shard_genes) if sharded else max(1, min(shard_genes, G))
@@ -107,7 +126,7 @@ def write_expression(
         for b0 in range(g0, g1, fblock):
             b1 = min(g1, b0 + fblock)
             dense = np.asarray(Mc[:, b0:b1].todense()).T.astype(np.float32)  # (g, n)
-            q[b0 - g0 : b1 - g0] = quantize_block(dense, gmax[b0:b1])
+            q[b0 - g0 : b1 - g0] = quantize_block(dense, gmax[b0:b1], gmin[b0:b1])
             if h is not None:
                 h[b0 - g0 : b1 - g0] = dense.astype(np.float16)
         u8[g0:g1, :] = q
@@ -117,4 +136,6 @@ def write_expression(
 
     root.create_array("gmax", shape=(G,), chunks=(max(G, 1),), dtype="float32", compressors=[ZstdCodec(level=3)])
     root["gmax"][:] = gmax
-    return ExprResult(gmax=gmax, keep=keep, shard_genes=S, sharded=sharded)
+    root.create_array("gmin", shape=(G,), chunks=(max(G, 1),), dtype="float32", compressors=[ZstdCodec(level=3)])
+    root["gmin"][:] = gmin
+    return ExprResult(gmax=gmax, keep=keep, shard_genes=S, sharded=sharded, gmin=gmin)

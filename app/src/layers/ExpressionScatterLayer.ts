@@ -19,6 +19,7 @@ export interface ExpressionScatterProps {
   filterMax: number;
   hideZeros: boolean;
   valueScale: number; // multiplies the unorm value before vmin/vmax mapping (per-sample max -> shared scale)
+  valueCenter: number; // the value the scale pivots on: 0, or 0.5 for signed features quantized symmetrically around zero
   lut: Uint8Array; // 256*4 RGBA (mode 0) or BLEND_SIZE*BLEND_SIZE*4 (mode 3)
   catColors: Uint8Array; // N*4 RGBA (alpha 0 = hidden)
   drawCount: number;
@@ -36,6 +37,7 @@ uniform sscapeUniforms {
   float hideZeros;
   float catCount;
   float valueScale;
+  float valueCenter;
 } sscape;
 `;
 
@@ -53,6 +55,7 @@ const sscapeModule = {
     hideZeros: "f32",
     catCount: "f32",
     valueScale: "f32",
+    valueCenter: "f32",
   },
 } as const;
 
@@ -66,6 +69,7 @@ const defaultProps = {
   filterMax: 1,
   hideZeros: false,
   valueScale: 1,
+  valueCenter: 0,
   lut: { type: "object", value: null, compare: false },
   catColors: { type: "object", value: null, compare: false },
   drawCount: { type: "number", value: Infinity, compare: false },
@@ -100,8 +104,8 @@ uniform sampler2D catTexture;
 {
   vec4 sc;
   bool drop = false;
-  float v1 = instanceValue * sscape.valueScale;
-  float v2 = instanceValue2 * sscape.valueScale;
+  float v1 = (instanceValue - sscape.valueCenter) * sscape.valueScale + sscape.valueCenter;
+  float v2 = (instanceValue2 - sscape.valueCenter) * sscape.valueScale + sscape.valueCenter;
   if (sscape.mode > 2.5) {
     float ta = clamp((v1 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
     float tb = clamp((v2 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
@@ -188,6 +192,7 @@ uniform sampler2D catTexture;
         hideZeros: p.hideZeros ? 1 : 0,
         catCount: this.state.catCount,
         valueScale: p.valueScale ?? 1,
+        valueCenter: p.valueCenter ?? 0,
       },
     });
     model.setBindings({ lutTexture: this.state.lutTex, catTexture: this.state.catTex });

@@ -74,13 +74,14 @@ export class Stats {
       const score = s.color?.kind === "blend" ? c.blend.score(sd, genes) : null;
       const g = score ?? c.cache.getGeneSync(sd.id, genes[0])?.value;
       const gmax = score ? 1 : c.geneGmax.get(`${sd.id}:${genes[0]}`);
+      const gmin = score ? 0 : (c.geneGmin.get(`${sd.id}:${genes[0]}`) ?? 0);
       if (!g || !cat || gmax === undefined) continue;
       const p = (per[sd.id] = { sum: new Float64Array(n), cnt: new Float64Array(n), pos: new Float64Array(n) });
-      const k = gmax / 255;
+      const k = (gmax - gmin) / 255;
       for (let i = 0; i < g.length; i++) {
         const cc = cat[i];
         if (cc >= n) continue;
-        const v = g[i] * k;
+        const v = gmin + g[i] * k;
         sum[cc] += v;
         cnt[cc]++;
         p.sum[cc] += v;

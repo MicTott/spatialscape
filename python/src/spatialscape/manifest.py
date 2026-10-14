@@ -14,7 +14,7 @@ FORMAT_VERSION = 1
 Platform = Literal["visium", "visium_hd", "xenium", "merfish", "snrnaseq", "other"]
 SampleKind = Literal["spatial", "embedding"]
 LayoutMode = Literal["grid", "strip"]
-BUILTIN_COLORMAPS = ["viridis", "magma", "inferno", "plasma", "cividis", "turbo", "greys"]
+BUILTIN_COLORMAPS = ["viridis", "magma", "inferno", "plasma", "cividis", "turbo", "greys", "rdbu"]
 
 
 class _Model(BaseModel):

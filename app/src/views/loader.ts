@@ -126,9 +126,12 @@ export class Loader {
     const genes = s.color?.kind === "gene" ? [s.color.gene] : s.color?.kind === "blend" ? [...s.color.a, ...s.color.b] : [];
     if (genes.length) {
       const ids = [...c.cache.samples.keys()];
-      Promise.all(genes.flatMap((g) => ids.map((id) => c.cache.gmax(id, g).then((v) => [id, g, v] as const)))).then((rows) => {
-        for (const [id, g, v] of rows) c.geneGmax.set(`${id}:${g}`, v);
-        if (s.color?.kind === "gene") store.getState().set({ geneMax: Math.max(0, ...rows.map((r) => r[2])) });
+      Promise.all(genes.flatMap((g) => ids.map((id) => c.cache.geneRange(id, g).then((r) => [id, g, r] as const)))).then((rows) => {
+        for (const [id, g, [lo, hi]] of rows) {
+          c.geneGmax.set(`${id}:${g}`, hi);
+          c.geneGmin.set(`${id}:${g}`, lo);
+        }
+        if (s.color?.kind === "gene") store.getState().set({ geneMax: Math.max(0, ...rows.map((r) => r[2][1])), geneMin: Math.min(0, ...rows.map((r) => r[2][0])) });
         c.blend.invalidate();
         c.stats.updateGroupStats();
         c.selection.updateSummary();

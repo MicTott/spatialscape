@@ -98,6 +98,7 @@ export interface ViewerState {
   filterHistogram: number[] | null;
   visibleCount: number | null;
   geneMax: number; // max gmax of current gene across loaded samples (legend labels)
+  geneMin: number; // min gmin across loaded samples: 0, or negative for signed features (module scores, motif deviations)
   scalePerSample: boolean; // gene colors: each sample stretched to its own max instead of one shared scale
   recentGenes: string[]; // last genes picked in the search box (not in the URL)
   debug: boolean; // ?debug=1: show timings in the status bar
@@ -165,6 +166,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   filterHistogram: null,
   visibleCount: null,
   geneMax: 0,
+  geneMin: 0,
   scalePerSample: false,
   recentGenes: [],
   debug: false,

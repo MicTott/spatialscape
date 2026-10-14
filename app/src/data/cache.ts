@@ -105,6 +105,14 @@ export class DataCache {
     return this.worker.gmax(sampleId, gi);
   }
 
+  /** [min, max] of a feature on one sample (min is 0 unless the feature has negative values). */
+  geneRange(sampleId: string, gene: string): Promise<[number, number]> {
+    const sd = this.samples.get(sampleId);
+    const gi = sd?.geneIndex.get(gene);
+    if (!sd || gi === undefined) return Promise.resolve([0, 0]);
+    return this.worker.geneRange(sampleId, gi);
+  }
+
   async getCategorical(sampleId: string, field: string): Promise<BinaryAttr<Uint16Array> | null> {
     const sd = this.samples.get(sampleId);
     if (!sd) return null;

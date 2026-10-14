@@ -32,6 +32,7 @@ export class ViewerController {
   viewStates: Record<ViewId, ViewState> = { spatial: { target: [0, 0, 0], zoom: 0 }, embedding: { target: [0, 0, 0], zoom: 0 } };
   rects: Partial<Record<ViewId, ViewRect>> = {};
   geneGmax = new Map<string, number>(); // `${sampleId}:${gene}` -> per-gene max (dequantization)
+  geneGmin = new Map<string, number>(); // `${sampleId}:${gene}` -> per-gene min: 0, or -max for signed features
   generation = 0; // bumped whenever color/filter/group change so stale loads are ignored
   destroyed = false;
 

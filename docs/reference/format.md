@@ -14,7 +14,8 @@
     genes.json                 gene order of the expression rows for this sample
     expr.zarr/                 Zarr v3 group
       u8      uint8   (nGenes, nObs)  chunk (1, nObs), shard (shardGenes, nObs), zstd
-      gmax    float32 (nGenes)        value = u8 / 255 * gmax[gene]
+      gmax    float32 (nGenes)        value = gmin + u8 / 255 * (gmax - gmin)
+      gmin    float32 (nGenes)        0 for non-negative features; -gmax for features with negative values (quantized symmetrically, zero at the centre)
       f16     float16 (nGenes, nObs)  optional; not read by the viewer
     obs.zarr/                  Zarr v3 group
       xy      float32 (nObs, 2)       microns, sample-local, y down, origin at bbox min

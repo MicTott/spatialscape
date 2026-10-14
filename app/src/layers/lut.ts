@@ -67,6 +67,15 @@ const CIVIDIS_STOPS: RGB[] = [
   [0.886, 0.756, 0.320],
   [0.995, 0.843, 0.232],
 ];
+const RDBU_STOPS: RGB[] = [
+  [0.13, 0.4, 0.67],
+  [0.42, 0.68, 0.84],
+  [0.82, 0.9, 0.94],
+  [0.97, 0.97, 0.97],
+  [0.99, 0.86, 0.78],
+  [0.94, 0.54, 0.38],
+  [0.7, 0.09, 0.17],
+];
 function stops(st: RGB[], t: number): RGB {
   const x = t * (st.length - 1);
   const i = Math.min(st.length - 2, Math.floor(x));
@@ -82,7 +91,14 @@ export const COLORMAPS: Record<string, (t: number) => RGB> = {
   turbo,
   cividis: (t) => stops(CIVIDIS_STOPS, t),
   greys: (t) => [0.95 - 0.9 * t, 0.95 - 0.9 * t, 0.95 - 0.9 * t],
+  rdbu: (t) => stops(RDBU_STOPS, t),
 };
+
+/** Diverging maps, centred at the middle of the range: the default for features that take negative values. */
+export const DIVERGING = new Set(["rdbu"]);
+export function effectiveColormap(name: string, signed: boolean): string {
+  return signed && !DIVERGING.has(name) ? "rdbu" : name;
+}
 
 export function colormapLUT(name: string, reverse = false): Uint8Array {
   const fn = COLORMAPS[name] ?? COLORMAPS.viridis;

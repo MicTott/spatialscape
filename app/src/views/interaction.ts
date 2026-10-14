@@ -130,8 +130,9 @@ export class Interaction {
       if (!sd.geneIndex.has(gene)) return rows.push({ label: prefix + label, value: "not measured" });
       const a = c.cache.getGeneSync(sd.id, gene);
       const gmax = c.geneGmax.get(`${sd.id}:${gene}`);
+      const gmin = c.geneGmin.get(`${sd.id}:${gene}`) ?? 0;
       if (!a || gmax === undefined) return rows.push({ label: prefix + label, value: "…" });
-      return rows.push({ label: prefix + label, value: a.value[i] === 0 ? "0" : fmtValue((a.value[i] / 255) * gmax) });
+      return rows.push({ label: prefix + label, value: a.value[i] === 0 && gmin >= 0 ? "0" : fmtValue(gmin + (a.value[i] / 255) * (gmax - gmin)) });
     };
     if (s.color?.kind === "gene") geneRow(s.color.gene);
     if (s.color?.kind === "blend") {

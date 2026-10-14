@@ -12,6 +12,7 @@ type Handles = {
   base: string; // .../samples/<id>
   u8: U8Array;
   gmax: Float32Array;
+  gmin: Float32Array; // 0 for non-negative features, -gmax for signed ones (older bundles: all 0)
   genes: string[];
   geneIndex: Map<string, number>;
   obs: zarr.Group<zarr.FetchStore>;
@@ -51,10 +52,18 @@ const api = {
         zarr.open.v3(zarr.root(new zarr.FetchStore(`${base}/obs.zarr`)), { kind: "group" }),
       ]);
       const gmaxChunk = await zarr.get(gmaxArr as zarr.Array<"float32", zarr.FetchStore>);
+      let gmin = new Float32Array((gmaxChunk.data as Float32Array).length);
+      try {
+        const gminArr = await zarr.open.v3(exprRoot.resolve("gmin"), { kind: "array" });
+        gmin = new Float32Array((await zarr.get(gminArr as zarr.Array<"float32", zarr.FetchStore>)).data as Float32Array);
+      } catch {
+        // bundles built before signed features existed: every feature starts at 0
+      }
       const h: Handles = {
         base,
         u8,
         gmax: new Float32Array(gmaxChunk.data as Float32Array),
+        gmin,
         genes,
         geneIndex: new Map(genes.map((g, i) => [g, i])),
         obs: obs as zarr.Group<zarr.FetchStore>,
@@ -86,6 +95,12 @@ const api = {
 
   gmax(sampleId: string, geneIdx: number): number {
     return samples.get(sampleId)?.gmax[geneIdx] ?? 0;
+  },
+
+  /** [min, max] a feature was quantized over: value = min + u8 / 255 * (max - min). */
+  geneRange(sampleId: string, geneIdx: number): [number, number] {
+    const h = samples.get(sampleId);
+    return h ? [h.gmin[geneIdx] ?? 0, h.gmax[geneIdx] ?? 0] : [0, 0];
   },
 
   /** uint8 column for one gene; one HTTP range request on sharded stores. */

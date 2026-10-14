@@ -131,15 +131,16 @@ export class Selection {
       if (gene) {
         const g = c.cache.getGeneSync(id, gene)?.value;
         const gmax = c.geneGmax.get(`${id}:${gene}`);
+        const gmin = c.geneGmin.get(`${id}:${gene}`) ?? 0;
         if (g && gmax !== undefined) {
-          const k = gmax / 255;
+          const k = (gmax - gmin) / 255;
           for (const i of idx) {
-            gSum += g[i] * k;
+            gSum += gmin + g[i] * k;
             gN++;
             if (g[i] > 0) gPos++;
           }
           for (let i = 0; i < g.length; i++) {
-            aSum += g[i] * k;
+            aSum += gmin + g[i] * k;
             aN++;
             if (g[i] > 0) aPos++;
           }

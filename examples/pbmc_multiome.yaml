@@ -1,0 +1,36 @@
+# 10x Genomics public PBMC multiome (RNA + ATAC in the same nuclei), prepared by examples/scripts/pbmc_multiome.py.
+# Two embeddings of the same cells, RNA and ATAC, side by side with one cell type vocabulary; gene activity,
+# marker-set scores (signed) and the most variable peaks are feature tabs next to the genes.
+id: pbmc_multiome
+name: PBMC multiome (10x public)
+description: 10k PBMCs profiled for RNA and chromatin accessibility in the same nuclei; RNA and ATAC embeddings share one cell type vocabulary, with gene activity, marker-set scores and the most variable peaks as feature tabs.
+default_gene: MS4A1
+default_color: { field: cell_type }
+layout: { mode: grid, columns: 2 }
+thumbnail_sample: rna
+
+feature_groups:
+  - { id: activity, name: Gene activity (ATAC), pattern: "^activity: ", units: log-normalized fragments }
+  - { id: scores, name: Marker-set scores, pattern: "^score: ", units: score }
+  - { id: peaks, name: Peaks, pattern: "^peak: ", units: log-normalized accessibility }
+
+fields:
+  - { id: cell_type, name: Cell type, type: categorical }
+  - { id: leiden, name: Leiden (RNA), type: categorical }
+  - { id: total_counts, name: RNA UMIs, type: continuous }
+  - { id: detected_genes, name: Detected genes, type: continuous }
+  - { id: mito_percent, name: Mito %, type: continuous }
+  - { id: atac_fragments, name: ATAC fragments, type: continuous }
+  - { id: tss_fraction, name: TSS fraction, type: continuous }
+  - { id: frip, name: Fraction in peaks, type: continuous }
+
+platforms:
+  snrnaseq:
+    kind: embedding
+    extent: 5000
+    expression: { layer: X, normalized: lognorm }
+    fields: { cell_type: cell_type, leiden: leiden, total_counts: total_counts, detected_genes: n_genes, mito_percent: pct_mito, atac_fragments: atac_fragments, tss_fraction: tss_fraction, frip: frip }
+
+samples:
+  - { id: rna,  name: RNA UMAP,  group: PBMC, platform: snrnaseq, path: multiome-src/pbmc.h5ad, coords: obsm/X_umap_rna }
+  - { id: atac, name: ATAC UMAP, group: PBMC, platform: snrnaseq, path: multiome-src/pbmc.h5ad, coords: obsm/X_umap_atac }

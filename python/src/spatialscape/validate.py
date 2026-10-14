@@ -64,6 +64,8 @@ def validate_local(root: Path) -> list[str]:
                 _problem(p, f"{s.id}: expr u8 chunk shape {u8.chunks} is not gene-major (1, n_obs)")
             if g["gmax"].shape[0] != s.nGenes:
                 _problem(p, f"{s.id}: gmax length mismatch")
+            if "gmin" in g and g["gmin"].shape[0] != s.nGenes:
+                _problem(p, f"{s.id}: gmin length mismatch")
             if s.nGenes:
                 _ = u8[0, :]  # exercise one chunk read (and the shard index)
         except Exception as e:

@@ -1,6 +1,6 @@
 /** Composes the current GL frame with a legend and scale bar onto a 2D canvas and triggers a download. */
 import { fieldById } from "../data/manifest";
-import { colormapLUT } from "../layers/lut";
+import { colormapLUT, effectiveColormap } from "../layers/lut";
 import { store, type ViewId } from "../store/store";
 import { niceScale } from "../ui/ScaleBar";
 import type { ViewRect } from "./types";
@@ -44,9 +44,9 @@ export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, rects:
   } else if (s.color?.kind === "gene") {
     const grp = s.features?.groups.find((g) => g.features.some((f) => f.id === (s.color as any).gene));
     title = grp?.features.find((f) => f.id === (s.color as any).gene)?.label ?? s.color.gene;
-    const lo = s.vrange[0] * s.geneMax;
-    const hi = s.vrange[1] * s.geneMax;
-    ramp = { lut: colormapLUT(s.colormap), lo: s.scalePerSample ? "0" : lo.toFixed(2), hi: s.scalePerSample ? "max per sample" : hi.toFixed(2) };
+    const lo = s.geneMin + s.vrange[0] * (s.geneMax - s.geneMin);
+    const hi = s.geneMin + s.vrange[1] * (s.geneMax - s.geneMin);
+    ramp = { lut: colormapLUT(effectiveColormap(s.colormap, s.geneMin < 0)), lo: s.scalePerSample ? (s.geneMin < 0 ? "min" : "0") : lo.toFixed(2), hi: s.scalePerSample ? "max per sample" : hi.toFixed(2) };
   } else if (s.color?.kind === "blend") {
     title = `Blend: A = ${s.color.a.join(", ") || "(empty)"} · B = ${s.color.b.join(", ") || "(empty)"}`;
   }

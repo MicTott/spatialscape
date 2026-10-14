@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import scipy.sparse as sp
 import zarr
 
@@ -27,6 +28,30 @@ def test_quantize_round_trip_and_nonzero_preserved():
     # values below half a step are floored up to code 1 on purpose (expressed cells never render as 0)
     assert err[block[2] >= step / 2].max() <= step / 2 + 1e-6
     assert err.max() <= step + 1e-6
+
+
+def test_signed_features_quantize_symmetrically_around_zero(tmp_path):
+    from spatialscape.expression import feature_ranges
+
+    rng = np.random.default_rng(4)
+    M = sp.random(300, 6, density=0.5, random_state=5, format="csr", dtype=np.float32)
+    M.data[:] = rng.uniform(0.1, 2, M.nnz)
+    M = M.tolil()
+    M[:, 2] = rng.normal(0, 1, 300)  # a signed feature, e.g. a module score
+    M[:, 4] = -rng.uniform(0, 3, 300)  # entirely negative
+    M = M.tocsr()
+    lo, hi = feature_ranges(np.asarray(M.min(axis=0).todense()).ravel(), np.asarray(M.max(axis=0).todense()).ravel())
+    assert lo[0] == 0 and hi[0] > 0 and lo[2] == -hi[2] and hi[2] == pytest.approx(np.abs(M[:, 2].toarray()).max())
+    res = write_expression(M, tmp_path, shard_genes=8, sharded=False)
+    g = zarr.open_group(str(tmp_path / "expr.zarr"), mode="r")
+    gmin, gmax = g["gmin"][:], g["gmax"][:]
+    assert res.gmin is not None and np.allclose(res.gmin, gmin)
+    assert (gmin <= 0).all() and gmin[0] == 0 and gmin[2] < 0 and gmin[4] < 0
+    u8 = g["u8"][2, :].astype(np.float32)
+    deq = gmin[2] + u8 / 255 * (gmax[2] - gmin[2])
+    truth = M[:, 2].toarray().ravel()
+    assert np.abs(deq - truth).max() <= (gmax[2] - gmin[2]) / 255 + 1e-6
+    assert abs(float(gmin[2] + g["u8"][2, :][np.argmin(np.abs(truth))] / 255 * (gmax[2] - gmin[2]))) < (gmax[2] - gmin[2]) / 100  # zero sits near the centre
 
 
 def test_detect_lognorm():
