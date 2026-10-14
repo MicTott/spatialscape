@@ -5,7 +5,36 @@ import { fieldById } from "../data/manifest";
 import { store, useViewer } from "../store/store";
 
 const PEAK = /^(?:peak: )?(chr\w+):(\d+)-(\d+)$/;
+const HOSTED_GENOMES = new Set(["hg38", "hg19", "hg18", "mm10", "mm39", "rn6", "rn7", "danRer11", "dm6", "ce11", "sacCer3"]); // igv.js brings sequence and gene models for these
 type Span = { chr: string; start: number; end: number };
+
+/** igv.js renders into a shadow root with its own light stylesheet; this moves it onto the dark panel. */
+const DARK = `
+  .igv-container, .igv-column-container, .igv-navbar, .igv-viewport, .igv-axis-column, .igv-sample-name-column, .igv-scrollbar-column, .igv-track-drag-column, .igv-gear-menu-column { background: #11151b !important; color: #e6edf3 !important; }
+  .igv-navbar { border-bottom: 1px solid #2a3140 !important; }
+  .igv-logo { display: none !important; }
+  .igv-current-genome, .igv-windowsize-panel-container, .igv-navbar-genomic-location { color: #9aa5b1 !important; }
+  .igv-search-input, .igv-chromosome-select-widget-container select { background: #1a2029 !important; color: #e6edf3 !important; border: 1px solid #2a3140 !important; }
+  .igv-navbar-icon-button, .igv-navbar-toggle-button-container { background: #1a2029 !important; border-color: #2a3140 !important; }
+  .igv-track-label { background: rgba(26, 32, 41, 0.9) !important; color: #e6edf3 !important; border: 1px solid #2a3140 !important; font-size: 11px !important; }
+  .igv-viewport, .igv-column { border-color: #2a3140 !important; }
+  .igv-center-line, .igv-cursor-guide-vertical, .igv-cursor-guide-horizontal { border-color: #40c4ff !important; }
+  .igv-zoom-in-notice-container { color: #9aa5b1 !important; }
+  .igv-gear-menu-column > div, .igv-scrollbar-column > div, .igv-track-drag-column > div { background: transparent !important; }
+  /* igv paints axis boxes and annotation tracks on white canvases; inverting them keeps the drawing and darkens the paper */
+  .igv-axis-column canvas, .sscape-invert canvas { filter: invert(0.9) hue-rotate(180deg); }
+`;
+
+const LIGHT_TRACK = /^(peaks|genes|links)$|refseq|gene/i;
+
+/** Annotation tracks (peaks, gene models, links) draw on white; tag their viewports so the dark filter applies.
+ *  Found through the DOM, since each track's label sits inside its viewport. */
+function tagLightViewports(shadow: ShadowRoot | null) {
+  if (!shadow) return;
+  for (const label of shadow.querySelectorAll(".igv-track-label")) {
+    if (LIGHT_TRACK.test(label.textContent ?? "")) label.closest(".igv-viewport")?.classList.add("sscape-invert");
+  }
+}
 
 export function GenomePanel() {
   const manifest = useViewer((s) => s.manifest);
@@ -41,8 +70,15 @@ export function GenomePanel() {
         return;
       }
       browserRef.current = b;
+      const shadow = el.shadowRoot;
+      if (shadow) {
+        const style = document.createElement("style");
+        style.textContent = DARK;
+        shadow.appendChild(style);
+      }
       if (tracks.genes) {
-        await b.loadTrack({ type: "annotation", format: "bed", url: base + tracks.genes, name: "Genes", displayMode: "COLLAPSED", color: "#9aa5b1", height: 32, order: 1000 });
+        // hosted genomes already come with full gene models (exons, strand); our spans only serve the locus lookup then
+        if (!HOSTED_GENOMES.has(tracks.genome)) await b.loadTrack({ type: "annotation", format: "bed", url: base + tracks.genes, name: "Genes", displayMode: "COLLAPSED", color: "#4d6a8a", height: 32, order: 1000 });
         void fetch(base + tracks.genes)
           .then((r) => r.text())
           .then((text) => {
@@ -55,8 +91,10 @@ export function GenomePanel() {
             setReady((n) => n + 1); // re-run the locus effect now that genes are known
           });
       }
-      if (tracks.peaks) await b.loadTrack({ type: "annotation", format: "bed", url: base + tracks.peaks, name: "Peaks", displayMode: "COLLAPSED", color: "#40c4ff", height: 22, order: 999 });
+      if (tracks.peaks) await b.loadTrack({ type: "annotation", format: "bed", url: base + tracks.peaks, name: "Peaks", displayMode: "COLLAPSED", color: "#b45309", height: 22, order: 999 });
       if (tracks.links) await b.loadTrack({ type: "interact", format: "bedpe", url: base + tracks.links, name: "Links", height: 60, order: 1001 });
+      tagLightViewports(shadow);
+      setTimeout(() => tagLightViewports(el.shadowRoot), 500); // igv's own gene track appears after the genome loads
       // a click on a peak colors everything by that peak's accessibility
       b.on("trackclick", (track: any, data: any) => {
         if (track?.name !== "Peaks" || !Array.isArray(data)) return undefined;
@@ -106,13 +144,16 @@ export function GenomePanel() {
         loadedRef.current.add(w.name);
         await b.loadTrack({ type: "wig", format: "bigWig", url: w.url, name: w.name, color: w.color, autoscaleGroup: "accessibility", height: 36, order: w.order });
       }
+      tagLightViewports(ref.current?.shadowRoot ?? null);
     })();
   }, [ready, manifest, tracks, base, colorField, hidden]);
 
-  // the locus follows the current feature: a peak, a gene, or a gene's activity score
+  // the locus follows the current feature: a peak, a gene, or a gene's activity score (the dataset's default gene until one is chosen)
+  const target = colorGene ?? manifest?.defaultGene ?? null;
   useEffect(() => {
     const b = browserRef.current;
-    if (!b || !colorGene) return;
+    if (!b || !target) return;
+    const colorGene = target;
     const m = PEAK.exec(colorGene);
     if (m) {
       b.search(`${m[1]}:${Math.max(1, +m[2] - 10_000)}-${+m[3] + 10_000}`);
@@ -120,7 +161,7 @@ export function GenomePanel() {
     }
     const span = genesRef.current.get(colorGene.replace(/^activity: /, ""));
     if (span) b.search(`${span.chr}:${Math.max(1, span.start - 50_000)}-${span.end + 50_000}`);
-  }, [ready, colorGene]);
+  }, [ready, target]);
 
   if (!on || !tracks) return null;
   return <div className={`genome${sidebarOpen ? " with-sidebar" : ""}`} ref={ref} />;

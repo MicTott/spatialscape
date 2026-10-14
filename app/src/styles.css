@@ -20,13 +20,6 @@ button, input, select { font: inherit; color: inherit; }
 .map.with-genome { bottom: 306px; }
 .genome { position: absolute; left: 0; right: 0; bottom: 26px; height: 280px; z-index: 2; background: var(--panel); border-top: 1px solid var(--border); overflow: hidden; }
 .genome.with-sidebar { right: 320px; }
-/* igv.js ships a light theme; the few rules below move it onto the dark panel */
-.genome .igv-container, .genome .igv-root-div, .genome .igv-navbar, .genome .igv-column-container, .genome .igv-viewport, .genome .igv-track-label { background: var(--panel) !important; color: var(--fg) !important; border-color: var(--border) !important; }
-.genome .igv-navbar { border-bottom: 1px solid var(--border) !important; }
-.genome .igv-navbar input, .genome .igv-search-container input { background: var(--panel2) !important; color: var(--fg) !important; border: 1px solid var(--border) !important; }
-.genome .igv-track-label { border: 1px solid var(--border) !important; font-size: 11px !important; }
-.genome .igv-ruler-tick, .genome .igv-ruler-label, .genome svg text { fill: var(--fg) !important; }
-.genome .igv-navbar-button, .genome .igv-navbar-icon-container, .genome .igv-chromosome-select-widget-container select { background: var(--panel2) !important; color: var(--fg) !important; border-color: var(--border) !important; }
 .map canvas { outline: none; left: 0 !important; top: 0 !important; }
 .map > div { position: absolute; left: 0; top: 0; }
 
