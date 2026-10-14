@@ -103,6 +103,21 @@ class PolygonSpec(_Model):
         return self
 
 
+class TracksSpec(_Model):
+    """Genome tracks for an ATAC sample: pseudobulk accessibility (insertions per million, binned) per category of
+    each field in `by`, built from a Cell Ranger style `fragments.tsv.gz`, plus the sample's peaks and optional gene
+    models and peak-gene links. Shown by the viewer's genome panel. Needs `pip install "spatialscape[tracks]"`."""
+
+    fragments: Path
+    by: list[str]  # categorical field ids to aggregate by
+    genome: str = "hg38"  # igv.js genome id; also selects the default chromosome sizes
+    bin: int = Field(default=25, ge=1)  # bp per bin
+    chrom_sizes: Path | None = None  # two-column chrom\tsize file; default: the genome's primary chromosomes
+    barcode_column: str | None = None  # obs column holding the fragment-file barcode; default: the observation names
+    genes: Path | None = None  # BED of gene spans (name = symbol), drawn under the tracks
+    links: Path | None = None  # BEDPE of peak-gene links, drawn as arcs
+
+
 class SubsetSpec(_Model):
     """Keep only the observations whose `column` takes one of `values`, so one object can appear as several
     samples (one panel per broad cell class, one per condition, ...)."""
@@ -143,6 +158,7 @@ class SampleSpec(_Model):
     images: list[ImageSpec] | Literal["auto"] = "auto"
     polygons: PolygonSpec | None = None
     subset: SubsetSpec | None = None  # rows to keep; the default is every observation in the file
+    tracks: TracksSpec | None = None  # genome tracks from a fragment file (ATAC)
     extent: float = 5000.0  # embedding samples: rescale longest side to this many "um"
     point_radius: float | None = None  # um; default depends on platform
     seed: int = 7
@@ -307,6 +323,11 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
                 im.path = res(im.path)
         if s.polygons and s.polygons.path is not None:
             s.polygons.path = res(s.polygons.path)
+        if s.tracks is not None:
+            s.tracks.fragments = res(s.tracks.fragments)
+            s.tracks.chrom_sizes = res(s.tracks.chrom_sizes)
+            s.tracks.genes = res(s.tracks.genes)
+            s.tracks.links = res(s.tracks.links)
     return cfg
 
 

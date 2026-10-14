@@ -71,6 +71,21 @@ export interface Sample {
   polygons?: { path: string; cells: number; vertices: number; scale: number } | null;
   idBlock: number;
   suggestedGene?: string | null; // most variable gene; the dataset default when none is configured
+  tracks?: TracksInfo | null; // genome tracks (ATAC samples)
+}
+export interface TrackSet {
+  field: string;
+  categories: Record<string, string>; // category label -> bigWig path relative to the sample folder
+}
+export interface TracksInfo {
+  genome: string;
+  bin: number;
+  all: string;
+  by: TrackSet[];
+  peaks?: string | null;
+  genes?: string | null;
+  links?: string | null;
+  chromSizes?: string;
 }
 export interface FeatureGroup {
   id: string;

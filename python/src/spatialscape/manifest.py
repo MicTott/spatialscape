@@ -91,6 +91,24 @@ class PolygonInfo(_Model):
     scale: float = 0.1  # µm per int16 unit (deltas from the cell centroid)
 
 
+class TrackSet(_Model):
+    field: str
+    categories: dict[str, str]  # category label -> bigWig path relative to the sample folder
+
+
+class TracksInfo(_Model):
+    """Genome tracks of an ATAC sample (see tracks.py): bigWigs of insertions per million per category."""
+
+    genome: str
+    bin: int
+    all: str  # bigWig of every cell
+    by: list[TrackSet] = Field(default_factory=list)
+    peaks: str | None = None  # BED of the sample's peak features
+    genes: str | None = None  # BED of gene spans
+    links: str | None = None  # BEDPE of peak-gene links
+    chromSizes: str = "tracks/chrom.sizes"
+
+
 class Sample(_Model):
     id: str
     name: str
@@ -110,6 +128,7 @@ class Sample(_Model):
     polygons: PolygonInfo | None = None
     idBlock: int = 65536
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
+    tracks: TracksInfo | None = None  # genome tracks (ATAC samples)
 
 
 class FeatureGroup(_Model):

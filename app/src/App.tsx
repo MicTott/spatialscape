@@ -13,6 +13,7 @@ import { ScaleBar } from "./ui/ScaleBar";
 import { PointSizeControls } from "./ui/PointSizeControl";
 import { HelpOverlay } from "./ui/HelpOverlay";
 import { TopNav } from "./ui/TopNav";
+import { GenomePanel } from "./ui/GenomePanel";
 import { useRegistry } from "./ui/registry";
 
 
@@ -24,6 +25,7 @@ export function App() {
   const datasetUrl = useViewer((s) => s.datasetUrl);
   const sidebarOpen = useViewer((s) => s.sidebarOpen);
   const hasManifest = useViewer((s) => !!s.manifest);
+  const hasGenome = useViewer((s) => s.genome && !!s.manifest?.samples.some((x) => x.tracks));
   const hasNav = !!useRegistry()?.site;
 
   useEffect(() => {
@@ -50,11 +52,12 @@ export function App() {
   return (
     <div className={`app${hasNav ? " with-nav" : ""}`}>
       <TopNav />
-      <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}`} ref={mapRef}>
+      <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}${hasGenome ? " with-genome" : ""}`} ref={mapRef}>
         <SplitDivider mapRef={mapRef} />
         <ScaleBar />
         <PointSizeControls />
       </div>
+      <GenomePanel />
       {status === "idle" && !datasetUrl && <Landing />}
       {status === "error" && (
         <div className="overlay error">

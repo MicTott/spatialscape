@@ -8,6 +8,8 @@ export function PlatformBar() {
   const manifest = useViewer((s) => s.manifest);
   const platforms = useViewer((s) => s.platforms);
   const split = useViewer((s) => s.split);
+  const genome = useViewer((s) => s.genome);
+  const hasTracks = useViewer((s) => !!s.manifest?.samples.some((x) => x.tracks));
   const tool = useViewer((s) => s.tool);
   if (!manifest) return null;
   const present = ORDER.filter((p) => manifest.samples.some((s) => s.kind !== "embedding" && s.platform === p));
@@ -49,6 +51,17 @@ export function PlatformBar() {
           </button>
           <button className={split.on && split.side === "right" ? "on" : ""} onClick={() => set({ split: { ...split, on: true, side: "right" } })}>
             right
+          </button>
+        </span>
+      )}
+      {hasTracks && (
+        <span className="split-ctl">
+          <span className="muted">genome</span>
+          <button className={!genome ? "on" : ""} onClick={() => set({ genome: false })}>
+            off
+          </button>
+          <button className={genome ? "on" : ""} onClick={() => set({ genome: true })}>
+            on
           </button>
         </span>
       )}

@@ -33,6 +33,11 @@ Visium with 36k genes writes ~1 GB of uint8 before compression. Most of the time
 
 `build` compares each sample's `build.json` with the yaml and the input files. Touching a source file (a fresh export with identical content, a copy that reset modification times) counts as `source changed`; editing a declared field's `aliases`, `categories`, `type` or `vocabulary` rebuilds every sample that maps it; `--no-shard` on and off flips every sample. The reason is printed next to each sample. Bundles built before fingerprints existed are rebuilt once in full.
 
+## "genome tracks need pyBigWig"
+
+Building `tracks:` needs the optional dependency: `pip install "spatialscape[tracks]"`. On platforms without a
+prebuilt wheel it compiles against zlib and libcurl; a C compiler and those headers are enough.
+
 ## An R object was converted again
 
 The conversion cache under `bundles/.cache/<id>/` is keyed on the object's path, size and modification time plus `assay`, `sample_col`, `embedding` and `object`. Re-saving the object or changing any of those converts again; editing `fields:` or anything else never does.

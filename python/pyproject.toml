@@ -50,6 +50,7 @@ Changelog = "https://github.com/mictott/spatialscape/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 spatialdata = ["spatialdata>=0.4"]
+tracks = ["pyBigWig>=0.3.18"]
 dev = ["pytest>=8", "ruff>=0.5", "h5py>=3.10", "build>=1.2"]
 
 [project.scripts]

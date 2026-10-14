@@ -131,6 +131,31 @@ entries with the same `path` and different subsets turn one snRNA-seq object int
 per-class UMAPs (excitatory, inhibitory, non-neuronal) are shown side by side. `layout: { columns: 3 }` then
 fixes the grid so rows and columns mean something (species by cell class, donor by condition).
 
+## Genome tracks for ATAC samples
+
+A sample with a fragment file can carry genome tracks: pseudobulk accessibility (Tn5 insertions per million,
+binned) per category of the fields you name, built once by `build` and streamed by the viewer's genome panel.
+
+```yaml
+  - id: atac
+    platform: snrnaseq
+    kind: embedding
+    path: pbmc.h5ad
+    coords: obsm/X_umap_atac
+    tracks:
+      fragments: atac_fragments.tsv.gz    # Cell Ranger (ARC / ATAC) fragments, coordinate-sorted, bgzipped
+      by: [cell_type]                     # one track per category of each field listed
+      genome: hg38                        # igv.js genome id; also the default chromosome sizes
+      genes: genes.bed                    # optional: gene spans (name = symbol) under the tracks
+      # links: links.bedpe                # optional: peak-gene links drawn as arcs
+      # bin: 25, chrom_sizes: sizes.tsv, barcode_column: barcode
+```
+
+Fragment barcodes are matched to the observation names (or to `barcode_column`). Peaks are recognised among the
+sample's features by name (`chr1:9790-10675`, with or without a `peak: ` prefix) and written as a BED track.
+Building tracks needs `pip install "spatialscape[tracks]"` (pyBigWig); streaming a 2 GB fragment file takes a
+few minutes and never decompresses it to disk.
+
 ## Globs and templates
 
 A `glob:` entry expands to one sample per matching path, sorted. Inside that entry these placeholders are filled per match:

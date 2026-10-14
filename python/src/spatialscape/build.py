@@ -177,6 +177,15 @@ def build_sample(
             nums[fid] = arr * np.float32(scale) if scale != 1.0 else arr
     ids = [str(s) for s in adata.obs_names[perm]]
     write_obs(out_dir, xy=xy, order=perm.astype(np.uint32), ids=ids, cats=cats, nums=nums)
+    tracks_info = None
+    if spec.tracks is not None:
+        from .tracks import write_tracks
+
+        barcodes = [str(b) for b in adata.obs[spec.tracks.barcode_column].iloc[perm]] if spec.tracks.barcode_column else None
+        tracks_info = write_tracks(
+            spec.tracks, out_dir, ids=ids, barcodes=barcodes, cats=cats,
+            categories={fid: list(vocab.vocabs[vocab.vocab_id(fid)]["categories"]) for fid in cats}, feature_names=genes, log=log,
+        )
     outlines: list[str] = []
     if spec.kind == "spatial" and outline_fields is not False:
         for fid, codes in cats.items():
@@ -276,6 +285,7 @@ def build_sample(
         outlines=outlines,
         polygons=poly_info,
         suggestedGene=suggested,
+        tracks=tracks_info,
     )
 
 

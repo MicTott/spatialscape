@@ -1,6 +1,7 @@
 """Public 10x PBMC multiome (Cell Ranger ARC 2.0.0, "10k PBMCs, granulocytes removed") -> one h5ad for spatialscape.
 
     python examples/scripts/pbmc_multiome.py <folder with the 10x files> examples/multiome-src/pbmc.h5ad
+    python examples/scripts/pbmc_multiome.py genes <folder with the 10x files> examples/multiome-src/genes.bed
 
 Needs scanpy, leidenalg, igraph and scikit-learn (any environment; the spatialscape venv does not carry them).
 Inputs: filtered_feature_bc_matrix.h5 (RNA + peaks), atac_peak_annotation.tsv, per_barcode_metrics.csv.
@@ -141,5 +142,31 @@ def main(data: Path, out: Path) -> None:
     log(f"wrote {out}: {final.n_obs} cells x {final.n_vars} features ({rna.n_vars} genes, {act.n_vars} activities, {len(score_cols)} scores, {peaks.n_vars} peaks)")
 
 
+def write_gene_bed(data: Path, out: Path) -> None:
+    """Gene spans from the matrix's `interval` column (Cell Ranger ARC), as a BED for the genome panel's gene track."""
+    import h5py
+
+    with h5py.File(data / "filtered_feature_bc_matrix.h5") as f:
+        feats = f["matrix/features"]
+        ft = feats["feature_type"][:].astype(str)
+        names = feats["name"][:].astype(str)[ft == "Gene Expression"]
+        iv = feats["interval"][:].astype(str)[ft == "Gene Expression"]
+    rows = []
+    for name, span in zip(names, iv, strict=False):
+        if ":" not in span:
+            continue
+        chrom, rng = span.split(":")
+        start, end = rng.split("-")
+        rows.append((chrom, int(start), int(end), name))
+    rows.sort(key=lambda r: (r[0], r[1]))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w") as fh:
+        fh.writelines(f"{c}\t{s}\t{e}\t{n}\n" for c, s, e, n in rows)
+    log(f"wrote {out}: {len(rows)} gene spans")
+
+
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), Path(sys.argv[2]))
+    if sys.argv[1] == "genes":
+        write_gene_bed(Path(sys.argv[2]), Path(sys.argv[3]))
+    else:
+        main(Path(sys.argv[1]), Path(sys.argv[2]))

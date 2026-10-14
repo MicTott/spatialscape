@@ -1,4 +1,5 @@
 # 10x Genomics public PBMC multiome (RNA + ATAC in the same nuclei), prepared by examples/scripts/pbmc_multiome.py.
+# The ATAC sample carries genome tracks (needs `pip install "spatialscape[tracks]"` and the fragment file).
 # Two embeddings of the same cells, RNA and ATAC, side by side with one cell type vocabulary; gene activity,
 # marker-set scores (signed) and the most variable peaks are feature tabs next to the genes.
 id: pbmc_multiome
@@ -33,4 +34,14 @@ platforms:
 
 samples:
   - { id: rna,  name: RNA UMAP,  group: PBMC, platform: snrnaseq, path: multiome-src/pbmc.h5ad, coords: obsm/X_umap_rna }
-  - { id: atac, name: ATAC UMAP, group: PBMC, platform: snrnaseq, path: multiome-src/pbmc.h5ad, coords: obsm/X_umap_atac }
+  - id: atac
+    name: ATAC UMAP
+    group: PBMC
+    platform: snrnaseq
+    path: multiome-src/pbmc.h5ad
+    coords: obsm/X_umap_atac
+    tracks:                                   # genome panel: insertions per million per cell type, from the fragment file
+      fragments: ${PBMC_MULTIOME}/atac_fragments.tsv.gz   # export PBMC_MULTIOME=<folder with the 10x files>
+      by: [cell_type]
+      genome: hg38
+      genes: multiome-src/genes.bed           # gene spans from the matrix (examples/scripts/pbmc_multiome.py genes ...)

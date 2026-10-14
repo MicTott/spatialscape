@@ -56,6 +56,16 @@ Gene colors share one scale across all samples on screen, so the same color mean
 
 ## Point size
 
+## Genome panel
+
+An ATAC sample built with `tracks:` ([dataset.yaml](./dataset-yaml#genome-tracks-for-atac-samples)) adds a genome
+browser (igv.js) under the maps. It shows one accessibility track per visible category of the current annotation,
+in the vocabulary's colors and on one shared scale, so hiding a category in the legend removes its track; when
+you color by a feature instead, it shows every cell. Under the tracks sit the sample's peaks, gene spans and, when
+built, peak-gene links. The locus follows what you color by: a gene (plus or minus 50 kb), a gene's activity
+score, or a peak (plus or minus 10 kb); the panel's own search box and drag navigation work as in IGV. Clicking a
+peak colors the maps by that peak's accessibility. The `genome` switch in the top bar hides the panel (`gb=0` in the URL).
+
 Features that take negative values (module scores, motif deviations) are stored symmetrically around zero and drawn with a diverging colormap centred on zero, whatever the colormap setting; the legend shows the real minimum and maximum.
 
 When an embedding is colored by an annotation, each category's name floats at the centre of its cells, largest clusters first and never overlapping; hidden categories lose their label. Turn it off under Display (`cl=0` in the URL).

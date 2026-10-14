@@ -56,6 +56,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `images` | list of image specs or `auto` | `auto` | |
 | `polygons` | `{path \| obsm, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (long-format parquet) or `obsm` (n, v, 2); `affine` maps vertices into the coordinate frame |
 | `subset` | `{column, values}` | all rows | keep only observations whose obs column takes one of the values; one file can then appear as several samples (one panel per cell class, per condition, ...) |
+| `tracks` | `{fragments, by, genome, bin, chrom_sizes, barcode_column, genes, links}` | | genome tracks for ATAC samples: `fragments` (bgzipped fragment file), `by` (categorical field ids, one bigWig per category), `genome` (`hg38`), `bin` (`25` bp), optional `chrom_sizes`, `barcode_column`, `genes` BED and `links` BEDPE. See [Genome tracks](../guide/dataset-yaml#genome-tracks-for-atac-samples) |
 | `extent` | number | `5000` | embeddings: world size of the longest side |
 | `point_radius` | µm | per platform | Visium 27.5, Xenium 5, HD from spacing |
 | `seed` | int | `7` | row shuffle |
