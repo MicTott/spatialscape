@@ -7,7 +7,7 @@
 
 <p align="center">
   A static, reactive browser for spatial transcriptomics and snRNA-seq.<br>
-  Every section of a study on one map, instant at a million cells, hosted as plain files.
+  One <code>pip install</code> turns a SpatialExperiment or AnnData into a dataset you can open locally or publish as a website.
 </p>
 
 <p align="center">
@@ -25,22 +25,14 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
-## Why spatialscape
+## Why
 
-The Lieber Institute publishes spatial transcriptomics studies that span many donors, often several platforms, and a paired snRNA-seq reference behind the labels. Putting one online used to mean a choice. A Shiny app needs a server, shows one section at a time and redraws a plot for every gene. A static viewer such as Vitessce needs no server and is fast, but gives each section its own small pane, rebuilds the pane when you switch, and leaves little room for the tissue. We built the amygdala browser both ways before writing this. Neither let a reader do what we do with these studies ourselves: look at every donor at once, under identical settings, and ask the same question of all of them.
+Browsing a spatial transcriptomics or snRNA-seq dataset should feel immediate: every section of a study in view at once, a new gene in milliseconds, a link that reopens the exact view, and nothing to run but a static web host. spatialscape is a viewer built for that, and the command line that turns your data into something it can show.
 
-spatialscape was built for that one thing, and a few others follow from it:
-
-| | spatialscape | Shiny apps (spatialLIBD, iSEE) | Static multi-pane viewers (Vitessce) |
-|---|---|---|---|
-| Sections in view | the whole study, one legend | one at a time | one per pane |
-| Platforms | Visium, HD, Xenium, snRNA-seq in one dataset | one object per app | one dataset per view |
-| Changing the gene | one range request, then a GPU upload | a server-side redraw | a fetch per pane |
-| Hosting | static files anywhere | an R process per visitor | static files |
-| Sharing a view | the URL reopens the exact view | screenshots | a view-config JSON |
-| Authoring | one yaml from your `.rds`; `build` applies edits | R code | Zarr export plus JSON configs |
-
-Everything is laid out in microns, so a Visium spot sits next to a Xenium cell at true size, and every section shares one vocabulary, so a label has the same color on Visium, on Xenium and in the snRNA-seq UMAP. A million cells recolor in milliseconds because a cached gene switch is a one-byte-per-cell upload. The rest is what a published dataset needs around that: a gallery with real thumbnails, paper links, a navigation bar, domain outlines over any coloring, lasso statistics, and a build that validates itself.
+- **Every sample on one canvas.** All sections of a study sit side by side under identical settings. Double-click to focus, step through donors with the arrow keys, switch platforms with one click.
+- **Instant.** Expression is stored one byte per cell per gene in sharded Zarr, so a gene is one HTTP range request and a cached switch is a GPU upload. A million cells pan at 60 fps.
+- **Linked snRNA-seq.** Paired references render as embeddings beside the tissue with one shared cell type vocabulary, so a color means the same thing everywhere.
+- **Nothing to run.** The viewer is files and the data is files. Host them on GitHub Pages, S3, Cloudflare R2 or a lab server; every view state lives in the URL.
 
 ## Quick start
 
@@ -135,6 +127,6 @@ python/.venv/bin/python -m pytest python/tests && npm test && npm run e2e
 
 ## Status
 
-Built for the Lieber Institute for Brain Development's spatial transcriptomics and snRNA-seq data releases, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints, more LIBD datasets.
+Developed at the Lieber Institute for Brain Development for its spatial transcriptomics and snRNA-seq data releases, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints, more LIBD datasets.
 
 MIT license. Cite with [CITATION.cff](CITATION.cff).
