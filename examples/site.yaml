@@ -1,5 +1,5 @@
-# The LIBD gallery. `spatialscape site build examples/site.yaml --link -o examples/site` previews it from the
-# bundles built on this machine; for the public site, set data_url to where the bundles are hosted.
+# The LIBD gallery. `spatialscape site build examples/site.yaml -o <dir>` writes the viewer and the registry; the
+# bundles live in the S3 bucket behind data_url (uploaded with `aws s3 sync examples/<name> s3://<bucket>/<id>`).
 title: LIBD spatial data browser
 intro: Spatial transcriptomics and snRNA-seq datasets from the Lieber Institute for Brain Development, viewable in the browser without any installation.
 nav:
@@ -8,7 +8,7 @@ nav:
   links:
     - { label: Docs, url: https://mictott.github.io/spatialscape/docs/ }
     - { label: GitHub, url: https://github.com/MicTott/spatialscape }
-# data_url: https://data.example.org        # bundles hosted elsewhere at <data_url>/<id>; the site then carries only the viewer
+data_url: https://d1zhz42bsrntt0.cloudfront.net      # S3 bucket behind CloudFront; the site carries only the viewer and the registry
 datasets:
   - bundle: amygdala
     # paper: { title: Totty et al., url: https://doi.org/... }
