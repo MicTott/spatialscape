@@ -44,4 +44,5 @@ samples:
       fragments: ${PBMC_MULTIOME}/atac_fragments.tsv.gz   # export PBMC_MULTIOME=<folder with the 10x files>
       by: [cell_type]
       genome: hg38
-      genes: multiome-src/genes.bed           # gene spans from the matrix (examples/scripts/pbmc_multiome.py genes ...)
+      genes: ${PBMC_MULTIOME}/genes.gtf.gz    # gene models from the reference's GTF (refdata-cellranger-arc-GRCh38-2020-A/genes/genes.gtf.gz);
+                                              # leave it out to download UCSC RefSeq for hg38 once instead

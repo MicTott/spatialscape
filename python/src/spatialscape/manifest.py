@@ -104,7 +104,7 @@ class TracksInfo(_Model):
     all: str  # bigWig of every cell
     by: list[TrackSet] = Field(default_factory=list)
     peaks: str | None = None  # BED of the sample's peak features
-    genes: str | None = None  # BED of gene spans
+    genes: str | None = None  # folder of gene models: index.json (names per chromosome) + <chrom>.json (see genes.py)
     links: str | None = None  # BEDPE of peak-gene links
     chromSizes: str = "tracks/chrom.sizes"
 

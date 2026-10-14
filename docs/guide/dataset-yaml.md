@@ -145,9 +145,9 @@ binned) per category of the fields you name, built once by `build` and streamed 
     tracks:
       fragments: atac_fragments.tsv.gz    # Cell Ranger (ARC / ATAC) fragments, coordinate-sorted, bgzipped
       by: [cell_type]                     # one track per category of each field listed
-      genome: hg38                        # igv.js genome id; also the default chromosome sizes
-      genes: genes.bed                    # optional: gene spans (name = symbol) under the tracks
-      # links: links.bedpe                # optional: peak-gene links drawn as arcs
+      genome: hg38                        # assembly: names the RefSeq gene models and the default chromosome sizes
+      # genes: genes.gtf.gz               # gene models: a GTF, a UCSC genePred table or a BED (default `refseq`)
+      # links: links.bedpe                # optional: peak-gene links
       # bin: 25, chrom_sizes: sizes.tsv, barcode_column: barcode
 ```
 
@@ -155,6 +155,13 @@ Fragment barcodes are matched to the observation names (or to `barcode_column`).
 sample's features by name (`chr1:9790-10675`, with or without a `peak: ` prefix) and written as a BED track.
 Building tracks needs `pip install "spatialscape[tracks]"` (pyBigWig); streaming a 2 GB fragment file takes a
 few minutes and never decompresses it to disk.
+
+Gene models come from `genes:`: the reference's own GTF (for 10x data, `genes/genes.gtf.gz` inside the Cell Ranger
+reference, which matches the matrix exactly), a UCSC genePred table such as `refGene.txt.gz`, or a BED (12 columns
+with blocks, or plain spans). Without `genes:`, `refseq` downloads UCSC's RefSeq table for the genome once (about
+8 MB for hg38, kept in `~/.cache/spatialscape`); `none` leaves the gene track out, as does a genome UCSC does not
+know. Transcripts of a gene are collapsed into one model per locus (the union of their exons) and written per
+chromosome, so the viewer loads only the chromosome on screen.
 
 ## Globs and templates
 

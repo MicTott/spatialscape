@@ -6,10 +6,12 @@ interface Props {
   onPick: (gene: string) => void;
   /** When given, Enter on a comma/space/newline separated list adds every gene at once. */
   onPickMany?: (genes: string[]) => void;
+  /** Tried on Enter when the text is not a gene; true means it was handled (the genome panel's loci). */
+  onSubmit?: (text: string) => boolean;
   placeholder?: string;
 }
 
-export function GeneSearch({ genes, value, onPick, onPickMany, placeholder }: Props) {
+export function GeneSearch({ genes, value, onPick, onPickMany, onSubmit, placeholder }: Props) {
   const [q, setQ] = useState(value ?? "");
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
@@ -66,6 +68,12 @@ export function GeneSearch({ genes, value, onPick, onPickMany, placeholder }: Pr
             e.preventDefault();
           } else if (e.key === "Enter") {
             const exact = genes.find((g) => g.toLowerCase() === q.trim().toLowerCase());
+            if (!exact && onSubmit?.(q)) {
+              setOpen(false);
+              ref.current?.blur();
+              e.preventDefault();
+              return;
+            }
             const g = exact ?? matches[hi];
             if (g) pick(g);
           } else if (e.key === "Escape") {

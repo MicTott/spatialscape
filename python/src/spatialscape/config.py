@@ -110,12 +110,17 @@ class TracksSpec(_Model):
 
     fragments: Path
     by: list[str]  # categorical field ids to aggregate by
-    genome: str = "hg38"  # igv.js genome id; also selects the default chromosome sizes
+    genome: str = "hg38"  # assembly id (hg38, mm10, ...): names the RefSeq gene models and the default chromosome sizes
     bin: int = Field(default=25, ge=1)  # bp per bin
     chrom_sizes: Path | None = None  # two-column chrom\tsize file; default: the genome's primary chromosomes
     barcode_column: str | None = None  # obs column holding the fragment-file barcode; default: the observation names
-    genes: Path | None = None  # BED of gene spans (name = symbol), drawn under the tracks
+    genes: str | None = "refseq"  # gene models: a GTF, UCSC genePred table or BED; `refseq` downloads UCSC's table for `genome` once; `none` for no gene track
     links: Path | None = None  # BEDPE of peak-gene links, drawn as arcs
+
+    @property
+    def genes_file(self) -> Path | None:
+        """The gene-model file, or None for the `refseq` / `none` keywords."""
+        return None if self.genes is None or self.genes in ("refseq", "none") else Path(self.genes)
 
 
 class SubsetSpec(_Model):
@@ -326,7 +331,8 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
         if s.tracks is not None:
             s.tracks.fragments = res(s.tracks.fragments)
             s.tracks.chrom_sizes = res(s.tracks.chrom_sizes)
-            s.tracks.genes = res(s.tracks.genes)
+            if s.tracks.genes_file is not None:
+                s.tracks.genes = str(res(s.tracks.genes_file))
             s.tracks.links = res(s.tracks.links)
     return cfg
 

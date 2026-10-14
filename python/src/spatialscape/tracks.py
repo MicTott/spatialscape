@@ -1,7 +1,7 @@
 """Genome tracks for ATAC samples: pseudobulk accessibility per annotation category, from a fragment file.
 
 For every field listed in `tracks.by`, one bigWig per category holds Tn5 insertions per million (both ends of
-every fragment, binned), plus one for all cells; igv.js in the viewer stacks them under the current locus,
+every fragment, binned), plus one for all cells; the viewer's genome panel stacks them under the current locus,
 colored from the shared vocabulary. The fragment file is streamed once (it is coordinate-sorted, so one
 chromosome is in memory at a time) and never decompressed to disk. Needs pyBigWig (`pip install "spatialscape[tracks]"`).
 
@@ -9,7 +9,8 @@ chromosome is in memory at a time) and never decompressed to disk. Needs pyBigWi
       all.bw                   every cell
       <field>/<category>.bw    one per category label (file names sanitized; the manifest maps labels to paths)
       peaks.bed                the sample's peak features, when their names are chr:start-end
-      genes.bed, links.bedpe   copied from the yaml when given
+      genes/                   gene models, one JSON per chromosome plus an index of names (see genes.py)
+      links.bedpe              copied from the yaml when given
       chrom.sizes
 """
 from __future__ import annotations
@@ -24,9 +25,11 @@ import numpy as np
 import pandas as pd
 
 from .config import TracksSpec
+from .genes import gene_models_for, write_gene_models
 from .manifest import TrackSet, TracksInfo
 
 Log = Callable[[str], None]
+TRACKS_RECIPE = 2  # bump when write_tracks writes something different for the same inputs and settings
 PEAK_RE = re.compile(r"^(?:peak: )?(chr[0-9XYM]+|[0-9XYM]+):(\d+)-(\d+)$")
 
 # GRCh38 primary chromosomes (the 10x references use these names and lengths)
@@ -210,9 +213,12 @@ def write_tracks(
             fh.writelines(f"{c}\t{s}\t{e}\t{n}\n" for c, s, e, n in peak_rows)
         peaks_path = "tracks/peaks.bed"
     genes_path = links_path = None
-    if spec.genes is not None:
-        shutil.copy2(spec.genes, tdir / "genes.bed")
-        genes_path = "tracks/genes.bed"
+    gm = gene_models_for(spec.genes, spec.genome, sizes, log=log)
+    if gm is not None:
+        models, source = gm
+        n_genes = write_gene_models(models, tdir / "genes", source=source, order=list(sizes))
+        log(f"  tracks: gene models: {n_genes:,} genes from {source}")
+        genes_path = "tracks/genes"
     if spec.links is not None:
         shutil.copy2(spec.links, tdir / "links.bedpe")
         links_path = "tracks/links.bedpe"

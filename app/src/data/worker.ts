@@ -3,9 +3,11 @@
  * Data worker: owns the zarr handles for every sample, fetches + decodes gene columns and
  * obs arrays, and builds KDBush spatial indexes. All big arrays are transferred, not copied.
  */
+import { BigWig } from "@gmod/bbi";
 import * as Comlink from "comlink";
 import KDBush from "kdbush";
 import * as zarr from "zarrita";
+import { rasterize } from "../genome/raster";
 
 type U8Array = zarr.Array<"uint8", zarr.FetchStore>;
 type Handles = {
@@ -22,6 +24,7 @@ type Handles = {
 
 const samples = new Map<string, Handles>();
 const inflight = new Map<string, Promise<unknown>>();
+const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
 
 function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const cur = inflight.get(key) as Promise<T> | undefined;
@@ -135,6 +138,24 @@ const api = {
   },
 
   /** Cell boundary polygons: decode int16 centroid deltas into absolute µm positions + start indices. */
+  /** Mean signal of a bigWig over `n` bins of `bin` bp from `start`, from the zoom level that is at least that fine
+   *  (genome panel coverage). Unknown chromosomes and empty regions come back as zeros. */
+  async bigwigBins(url: string, chrom: string, start: number, bin: number, n: number): Promise<Float32Array> {
+    let bw = bigwigs.get(url);
+    if (!bw) {
+      bw = new BigWig({ url });
+      bigwigs.set(url, bw);
+    }
+    let out: Float32Array;
+    try {
+      const f = await bw.getFeaturesAsArrays(chrom, start, start + n * bin, { basesPerSpan: bin / 2 });
+      out = rasterize(f.starts, f.ends, f.scores, start, bin, n);
+    } catch {
+      out = new Float32Array(n);
+    }
+    return Comlink.transfer(out, [out.buffer]);
+  },
+
   async getPolygons(sampleId: string, xy: Float32Array, scale: number): Promise<{ positions: Float32Array; startIndices: Uint32Array }> {
     const h = samples.get(sampleId)!;
     const [offBuf, dBuf] = await Promise.all([

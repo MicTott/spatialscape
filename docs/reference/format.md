@@ -30,7 +30,8 @@
     tracks/                    ATAC samples built with `tracks:` (manifest samples[].tracks)
       all.bw                   insertions per million, every cell, binned (bigWig)
       <field>/<label>.bw       one per category of each `tracks.by` field
-      peaks.bed, genes.bed, links.bedpe, chrom.sizes
+      peaks.bed, links.bedpe, chrom.sizes
+      genes/index.json         gene names per chromosome (search); genes/<chrom>.json: [name, strand, start, end, exon starts, exon ends]
     thumbnail.png
 ```
 

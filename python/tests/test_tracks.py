@@ -1,6 +1,8 @@
 """Genome tracks from a fragment file: one bigWig per category, insertions per million."""
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 import yaml
@@ -36,9 +38,12 @@ def test_tracks_per_category_and_all(tmp_path):
     cfg_path.write_text(yaml.safe_dump(doc))
     m = build_dataset(load_config(cfg_path), tmp_path / "bundle", log=lambda *_: None)
     t = m.samples[0].tracks
-    assert t is not None and t.by[0].field == "cluster" and t.genes == "tracks/genes.bed" and t.peaks is None
+    assert t is not None and t.by[0].field == "cluster" and t.genes == "tracks/genes" and t.peaks is None
     root = tmp_path / "bundle" / "samples" / "sampleA"
     assert (root / "tracks" / "chrom.sizes").read_text().startswith("chr1\t100000")
+    # the BED of spans became gene models: an index of names plus one file per chromosome
+    assert json.loads((root / "tracks" / "genes" / "index.json").read_text())["chroms"] == {"chr1": ["GENE1"]}
+    assert json.loads((root / "tracks" / "genes" / "chr1.json").read_text()) == [["GENE1", 0, 900, 1200, [900], [1200]]]
     astro = pyBigWig.open(str(root / t.by[0].categories["Astro"]))
     # insertions per million: the whole track sums to 1e6 (each fragment counts both ends)
     total = sum(v[2] for v in astro.intervals("chr1") or []) + sum(v[2] for v in (astro.intervals("chr2") or []))
@@ -58,3 +63,21 @@ def test_tracks_reject_unknown_barcodes(tmp_path):
     cfg_path.write_text(yaml.safe_dump(doc))
     with pytest.raises(ValueError, match="no fragment barcodes matched"):
         build_dataset(load_config(cfg_path), tmp_path / "bundle", log=lambda *_: None)
+
+
+def test_tracks_without_gene_models(tmp_path):
+    """`genome: custom` has no RefSeq table, so the default `genes: refseq` quietly leaves the gene track out."""
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=30, n_genes=4)
+    import anndata as ad
+
+    obs = ad.read_h5ad(tmp_path / "src" / "sampleA.h5ad").obs
+    frag = write_fragments(tmp_path / "src" / "frag.tsv.gz", [("chr1", 10, 70, str(obs.index[0]))])
+    (tmp_path / "src" / "chrom.sizes").write_text("chr1\t1000\n")
+    doc = yaml.safe_load(cfg_path.read_text())
+    doc["samples"] = [doc["samples"][0]]
+    doc["samples"][0]["tracks"] = {"fragments": frag.name, "by": ["cluster"], "genome": "custom", "chrom_sizes": "chrom.sizes"}
+    cfg_path.write_text(yaml.safe_dump(doc))
+    logs = []
+    m = build_dataset(load_config(cfg_path), tmp_path / "bundle", log=logs.append)
+    assert m.samples[0].tracks is not None and m.samples[0].tracks.genes is None
+    assert any("no RefSeq gene table" in line for line in logs)

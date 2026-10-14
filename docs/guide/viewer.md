@@ -59,12 +59,21 @@ Gene colors share one scale across all samples on screen, so the same color mean
 ## Genome panel
 
 An ATAC sample built with `tracks:` ([dataset.yaml](./dataset-yaml#genome-tracks-for-atac-samples)) adds a genome
-browser (igv.js) under the maps. It shows one accessibility track per visible category of the current annotation,
-in the vocabulary's colors and on one shared scale, so hiding a category in the legend removes its track; when
-you color by a feature instead, it shows every cell. Under the tracks sit the sample's peaks, gene spans and, when
-built, peak-gene links. The locus follows what you color by: a gene (plus or minus 50 kb), a gene's activity
-score, or a peak (plus or minus 10 kb); the panel's own search box and drag navigation work as in IGV. Clicking a
-peak colors the maps by that peak's accessibility. The `genome` switch in the top bar hides the panel (`gb=0` in the URL).
+panel under the maps, drawn by the same renderer as the maps: scroll to zoom around the cursor, drag to pan,
+double-click to zoom in, and drag the panel's top edge to resize it. From top to bottom it shows the coordinate
+axis, one accessibility track per visible category of the annotation you last colored by (in the vocabulary's
+colors, on one shared scale printed in the header, so hiding a category in the legend removes its track), the
+sample's peaks, and gene models with exons and strand arrows. Coloring by a gene keeps the per-category tracks,
+so a locus reads per cell type.
+
+![The genome panel: six cell-type accessibility tracks over the peaks and gene models of chr1:1.0-1.2 Mb](/screenshots/genome-panel.png)
+
+The locus follows what you color by: a gene (with room around it), a gene's activity score, or a peak (plus or
+minus 10 kb), and a band marks it. The search box takes a gene name, completed from the genome's gene models, or
+a locus such as `chr11:60,405,808-60,512,181`; the chromosome menu shows a whole chromosome. Hovering shows the
+position and the value of the track under the cursor; clicking a gene colors the maps by its expression (or its
+activity score when the sample has no RNA), clicking a peak colors them by that peak's accessibility. The locus
+travels in the URL as `gl`; the `genome` switch in the top bar hides the panel (`gb=0`).
 
 Features that take negative values (module scores, motif deviations) are stored symmetrically around zero and drawn with a diverging colormap centred on zero, whatever the colormap setting; the legend shows the real minimum and maximum.
 

@@ -1,6 +1,7 @@
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import type { FeatureList, LayoutMode, Manifest } from "../data/manifest";
+import type { Locus } from "../genome/model";
 
 export type BlendScheme = "yb" | "cm" | "rg";
 export type ColorSpec = { kind: "gene"; gene: string } | { kind: "field"; field: string } | { kind: "blend"; a: string[]; b: string[]; scheme: BlendScheme };
@@ -64,7 +65,9 @@ export interface ViewerState {
   tool: "pan" | "lasso";
   showPolygons: boolean;
   clusterLabels: boolean; // category names at the centre of their cells, in the embedding view
-  genome: boolean; // the genome panel (igv.js) under the maps, when a sample carries tracks
+  genome: boolean; // the genome panel under the maps, when a sample carries tracks
+  genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
+  locus: Locus | null; // what the genome panel shows (gl in the URL)
   viewPx: Partial<Record<ViewId, number>>; // px per µm per view (scale bar)
   viewRects: Partial<Record<ViewId, { x: number; w: number }>>;
   selectionSummary: SelectionSummary | null;
@@ -116,6 +119,16 @@ export interface ViewerState {
   toggleSample: (id: string) => void;
 }
 
+export const GENOME_HEIGHT_KEY = "sscape.genomeHeight";
+function storedGenomeHeight(): number {
+  try {
+    const v = Number(localStorage.getItem(GENOME_HEIGHT_KEY));
+    return v >= 160 && v <= 2000 ? v : 300;
+  } catch {
+    return 300;
+  }
+}
+
 export const DEFAULTS = {
   colormap: "viridis",
   vrange: [0, 1] as [number, number],
@@ -154,6 +167,8 @@ export const store = createStore<ViewerState>((set, get) => ({
   showPolygons: true,
   clusterLabels: true,
   genome: true,
+  genomeHeight: storedGenomeHeight(),
+  locus: null,
   viewPx: {},
   viewRects: {},
   selectionSummary: null,

@@ -76,6 +76,8 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("poly") === "0") out.showPolygons = false;
   if (q.get("cl") === "0") out.clusterLabels = false;
   if (q.get("gb") === "0") out.genome = false;
+  const gl = /^([^:]+):(\d+)-(\d+)$/.exec(q.get("gl") ?? "");
+  if (gl && +gl[3] > +gl[2]) out.locus = { chrom: gl[1], start: +gl[2], end: +gl[3] };
   if (q.get("p")) out.platforms = q.get("p")!.split(",").filter(Boolean);
   if (q.get("sv")) {
     const v = q.get("sv")!;
@@ -120,6 +122,7 @@ export function serialize(s: ViewerState): string {
   if (!s.showPolygons) q.set("poly", "0");
   if (!s.clusterLabels) q.set("cl", "0");
   if (!s.genome) q.set("gb", "0");
+  if (s.locus) q.set("gl", `${s.locus.chrom}:${Math.round(s.locus.start)}-${Math.round(s.locus.end)}`);
   if (s.outline.field) q.set("o", `${s.outline.field}:${s.outline.style}:${s.outline.width}`);
   if (!s.split.on) q.set("sv", "0");
   else if (s.split.side !== "left" || Math.abs(s.split.fraction - 0.38) > 0.005) q.set("sv", `${s.split.side[0]}:${s.split.fraction.toFixed(2)}`);
@@ -142,7 +145,7 @@ export function bindUrl(): () => void {
       const keys = (Object.keys(s) as (keyof ViewerState)[]).filter((k) => s[k] !== prev[k]);
       if (keys.every((k) => k === "hover" || k === "pending" || k === "timings" || k === "categoryCounts" || k === "visibleCount" || k === "filterHistogram")) return;
     }
-    const slow = s.viewState !== prev.viewState;
+    const slow = s.viewState !== prev.viewState || s.locus !== prev.locus;
     if (timer) window.clearTimeout(timer);
     timer = window.setTimeout(write, slow ? 250 : 0);
   });

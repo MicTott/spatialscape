@@ -1,5 +1,6 @@
 /** window.__sscape test/automation hooks (dev + e2e builds). */
 import { store, type ViewerState } from "./store/store";
+import type { GenomeView } from "./genome/GenomeView";
 import type { ViewerController } from "./views/ViewerController";
 
 declare global {
@@ -9,6 +10,7 @@ declare global {
       readyAtMs: number | null;
       store: typeof store;
       controller: ViewerController;
+      genome?: GenomeView | null; // the genome panel's canvas, while shown
       setGene: (gene: string) => Promise<number>;
       getState: () => ViewerState;
       pixelProbe: () => Promise<{ nonBackground: number; total: number }>;
