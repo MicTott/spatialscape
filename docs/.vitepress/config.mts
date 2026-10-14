@@ -7,7 +7,7 @@ export default defineConfig({
   base: "/spatialscape/docs/",
   lastUpdated: true,
   cleanUrls: true,
-  head: [["link", { rel: "icon", href: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='6' fill='%2340c4ff'/></svg>" }]],
+  head: [["link", { rel: "icon", type: "image/svg+xml", href: "/spatialscape/docs/logo.svg" }]],
   themeConfig: {
     logo: { light: "/logo.svg", dark: "/logo.svg" },
     nav: [

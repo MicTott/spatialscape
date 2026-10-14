@@ -1,4 +1,9 @@
-<h1 align="center">spatialscape</h1>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/brand/banner-dark.svg">
+    <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/brand/banner-light.svg" width="372" alt="spatialscape">
+  </picture>
+</p>
 
 <p align="center">
   A static, reactive browser for spatial transcriptomics and snRNA-seq.<br>

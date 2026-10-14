@@ -2,6 +2,7 @@
   "title": "LIBD spatial data browser",
   "site": {
     "title": "spatialscape",
+    "logo": "favicon.svg",
     "links": [
       {
         "label": "Docs",
