@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 (2026-10-14)
+
+**One yaml per dataset, one command.** `init` reads an R object (`.rds` / `.rda`) or AnnData files and writes a dataset yaml that is a menu of the data; `build` converts R objects once, rebuilds only what changed and applies every edit; `site.yaml` describes the gallery (`site init`, `site build`). Removed `convert`, `plan`, `refresh` and `add-sample`. Per-sample `subset`, fixed grid `columns`, cluster names on embeddings, a shared gene color scale, per-view point sizes, the viewer shipped inside the package (`serve`, `site build`), and the S3 + CloudFront hosting recipe.
+
 ## 0.1.0 (2026-10-06)
 
 First public version.
