@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://mictott.github.io/spatialscape/"
+Homepage = "https://mictott.github.io/spatialscape/docs/"
 Documentation = "https://mictott.github.io/spatialscape/docs/"
 Repository = "https://github.com/mictott/spatialscape"
 Issues = "https://github.com/mictott/spatialscape/issues"
