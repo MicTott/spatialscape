@@ -6,8 +6,8 @@ hero:
   text: One fast map for every section.
   tagline: A static, reactive browser for spatial transcriptomics and snRNA-seq. One pip install turns AnnData or SpatialExperiment into a dataset you can open locally or publish as a site.
   image:
-    src: /brand/mark.svg
-    alt: the spatialscape mark, a tissue section whose domains roll like hills
+    src: /hero.png
+    alt: a human amygdala Visium section colored by spatial domain
   actions:
     - theme: brand
       text: Get started
