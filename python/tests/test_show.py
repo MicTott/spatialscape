@@ -92,3 +92,34 @@ def test_show_a_file_builds_from_a_menu(tmp_path, cache):
     logs.clear()
     spatialscape.show(path, log=logs.append)
     assert "cached" in logs[-1]
+
+
+def test_build_lock_waits_for_the_other_builder_and_clears_stale_locks(tmp_path):
+    import threading
+    import time
+
+    from spatialscape.session import _build_lock
+
+    out = tmp_path / "bundle"
+    order: list[str] = []
+    logs: list[str] = []
+
+    def first():
+        with _build_lock(out, logs.append):
+            order.append("first-in")
+            time.sleep(0.8)
+            order.append("first-out")
+
+    t = threading.Thread(target=first)
+    t.start()
+    time.sleep(0.2)
+    with _build_lock(out, logs.append) as waited:
+        order.append("second-in")
+    t.join()
+    assert order == ["first-in", "first-out", "second-in"] and waited and any("waiting" in m for m in logs)
+    # a lock left by a process that no longer exists does not block
+    lock = out.with_name("bundle.lock")
+    lock.write_text("999999999")
+    with _build_lock(out, logs.append) as waited:
+        assert not waited
+    assert not lock.exists()

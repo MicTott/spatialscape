@@ -13,14 +13,17 @@ serves every bundle shown so far (the gallery lists them); the viewer posts each
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import os
 import re
+import sys
 import threading
 import time
 import urllib.request
 import webbrowser
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -141,6 +144,55 @@ def _config_for_adata(adata, *, key: str, name: str, coords: str, platform: str 
             rows[sid] = np.flatnonzero(values == v)
     cfg = DatasetConfig(id=key, name=name, default_color=default_color, default_gene=default_gene, samples=specs)
     return cfg, rows
+
+
+# ---------------------------------------------------------------- one builder per bundle folder
+def _alive(pid: int) -> bool:
+    if sys.platform == "win32":  # os.kill(pid, 0) would terminate the process there; trust the lock's age instead
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+@contextlib.contextmanager
+def _build_lock(out: Path, log: Log, *, timeout: float = 7200) -> Iterator[bool]:
+    """Two sessions showing the same object build the same folder; the second waits for the first instead of
+    writing into it. An O_EXCL lock file holds the owner's pid; a lock whose owner is gone (or, on Windows,
+    older than the timeout) is stale. Yields whether we waited, so the caller re-checks what exists."""
+    lock = out.with_name(out.name + ".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.monotonic()
+    waited = False
+    while True:
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            break
+        except FileExistsError:
+            try:
+                pid = int(lock.read_text().strip() or 0)
+                age = time.time() - lock.stat().st_mtime
+            except (OSError, ValueError):
+                pid, age = 0, 0.0
+            if (pid and not _alive(pid)) or age > timeout:
+                lock.unlink(missing_ok=True)
+                continue
+            if time.monotonic() - t0 > timeout:
+                raise TimeoutError(f"another process has been building {out} for over {timeout:.0f} s; remove {lock} if it is stale") from None
+            if not waited:
+                log(f"another process is building this object (pid {pid or '?'}); waiting for it")
+                waited = True
+            time.sleep(0.5)
+    try:
+        yield waited
+    finally:
+        lock.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------- the server thread
@@ -282,16 +334,17 @@ def show(
         name = name or f"AnnData {adata.n_obs:,} cells x {adata.n_vars:,} features"
         cfg, rows = _config_for_adata(adata, key=key, name=name, coords=coords, platform=platform, sample=sample, fields=fields, color=color, layer=layer, normalized=normalized)
         out = root / key
-        built = not (out / "manifest.json").exists()
-        if built:
-            readers.MEMORY[key] = adata
-            try:
-                build_dataset(cfg, out, log=blog)
-            finally:
-                readers.MEMORY.pop(key, None)
-            np.savez(out / "rows.npz", **rows)
-        else:
-            rows = dict(np.load(out / "rows.npz"))
+        with _build_lock(out, log):
+            built = not (out / "manifest.json").exists()
+            if built:
+                readers.MEMORY[key] = adata
+                try:
+                    build_dataset(cfg, out, log=blog)
+                finally:
+                    readers.MEMORY.pop(key, None)
+                np.savez(out / "rows.npz", **rows)
+            else:
+                rows = dict(np.load(out / "rows.npz"))
     else:
         key, out, built = _show_path(Path(str(data)).expanduser(), root, color=color, coords=coords, sample=sample, platform=platform, log=blog)
     url_root = _ensure_server(root, port=port)
@@ -336,6 +389,7 @@ def _show_path(path: Path, root: Path, *, color, coords, sample, platform, log: 
         if color or coords or sample:
             log("note: color/coords/sample apply to in-memory objects; for files edit the menu yaml the first call wrote: " + str(menu))
     out = root / key
-    res = build_bundle(cfg, out, log=log)
+    with _build_lock(out, log):
+        res = build_bundle(cfg, out, log=log)
     built = any(a.build for a in res.plan.actions)
     return key, out, built

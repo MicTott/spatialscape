@@ -35,7 +35,7 @@ from .config import DatasetConfig, RObjectEntry, _merged_entry, config_from_raw
 from .rds import RExperiment, RImage, read_experiment
 
 Log = Callable[[str], None]
-CONVERT_VERSION = 1  # bump when the cache layout or its contents change for the same object
+CONVERT_VERSION = 2  # bump when the cache layout or its contents change for the same object
 VISIUM_SPOT_UM = 55.0
 VISIUM_SPACING_UM = 100.0
 EMBEDDING_PREFERENCE = ("UMAP", "umap", "X_umap", "UMAP-HARMONY", "UMAP_HARMONY", "UMAP.HARMONY")
@@ -136,6 +136,10 @@ def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, lo
         a.write_h5ad(d / "adata.h5ad")
         names.append(d.name)
         log(f"  {d.name}: {a.n_obs} cells, {len([k for k in sf if k.startswith('tissue_')])} image(s)")
+    ids = {i.image_id for i in x.images}
+    if ids and ids <= {"lowres"}:
+        log("  note: the object holds only the low-resolution H&E (SpaceRanger's tissue_lowres_image, about 600-1200 px wide)."
+            " For detail, point `images:` in the yaml at tissue_hires_image.png or the full-resolution scan of each sample.")
     return names
 
 

@@ -48,6 +48,8 @@ into `bundles/.cache/<id>/`: `adata.h5ad` (the assay as `X`, every `colData` col
 spacing. That is the SpaceRanger layout, so no image or scale settings are needed. Later builds reuse the
 cache; it is replaced when the object or its conversion settings change.
 
+Most objects carry only SpaceRanger's low-resolution H&E (`lowres`, 600-1200 px wide, about 20 µm per pixel), which looks blocky up close; `build` says so when that is all it found. For detail, give each sample an `images:` entry pointing at `tissue_hires_image.png` or the full-resolution scan, as in [dataset.yaml](./dataset-yaml).
+
 A `SingleCellExperiment` without `spatialCoords` (an snRNA-seq reference) becomes one embedding sample drawn
 by its UMAP (`platform: snrnaseq`, `kind: embedding`, `coords: obsm/X_umap`, all set for you).
 

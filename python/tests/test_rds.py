@@ -136,3 +136,17 @@ def test_inspect_reads_r_objects():
     r = runner.invoke(app, ["inspect", str(FIX / "tiny_spe.rds")])
     assert r.exit_code == 0, r.output
     assert "SpatialExperiment" in r.output and "A (20)" in r.output and "lowres" in r.output and "spatialscape init" in r.output
+
+
+def test_raster_colours_are_stored_row_by_row():
+    """R rasters are the one R matrix stored row-major: as.vector(as.raster(m)) walks row 1 first. Decoding them
+    column-major turns an H&E into vertical streaks (seen on a real SpatialExperiment)."""
+    from spatialscape.rds import _hex_to_rgb
+
+    # a 2 x 3 raster whose colour encodes (row, col) as (R, G), in the order R serialises it
+    flat = [f"#{i * 16:02X}{j * 16:02X}00" for i in (1, 2) for j in (1, 2, 3)]
+    rgb = _hex_to_rgb(flat, 2, 3)
+    assert rgb.shape == (2, 3, 3)
+    assert rgb[0, 2, :2].tolist() == [16, 48] and rgb[1, 0, :2].tolist() == [32, 16]
+    # magick-made rasters carry an alpha byte (#RRGGBBAA); it is ignored
+    assert _hex_to_rgb(["#102030ff"], 1, 1)[0, 0].tolist() == [16, 32, 48]

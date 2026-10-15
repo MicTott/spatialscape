@@ -1,8 +1,9 @@
 # Try spatialscape.show() from R: the viewer on an object, then the lasso back as colnames.
 #
-# Until the release that carries show() is on PyPI, point reticulate at a checkout's venv:
-#   reticulate::use_python("~/Documents/Web/spatialscape/python/.venv/bin/python", required = TRUE)
-# Afterwards:  reticulate::py_require("spatialscape")
+# Run this in a fresh R session: reticulate binds one Python per session, and it must be told which one BEFORE
+# it initialises. Until the release that carries show() is on PyPI, that is a checkout's venv:
+Sys.setenv(RETICULATE_PYTHON = path.expand("~/Documents/Web/spatialscape/python/.venv/bin/python"))
+# (after the PyPI release: drop the line above and use reticulate::py_require("spatialscape") instead)
 
 library(reticulate)
 ss <- import("spatialscape")

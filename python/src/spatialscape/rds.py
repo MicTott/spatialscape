@@ -152,12 +152,14 @@ def _dimnames(o: Any) -> tuple[list[str] | None, list[str] | None]:
 
 
 def _hex_to_rgb(colors: list[str | None], h: int, w: int) -> np.ndarray:
+    """An R `raster` (dim = rows x columns of colour strings) as an (h, w, 3) uint8 array. Unlike every other R
+    matrix, a raster is stored row by row (`as.raster` transposes on the way in), so the flat vector is C order."""
     arr = np.array([c if c else "#000000" for c in colors], dtype="U9")
     hexs = np.char.lstrip(arr, "#")
     rgb = np.zeros((len(arr), 3), dtype=np.uint8)
     for k in range(3):
         rgb[:, k] = [int(s[2 * k : 2 * k + 2], 16) if len(s) >= 6 else 0 for s in hexs]
-    return rgb.reshape(w, h, 3).transpose(1, 0, 2)  # raster is stored column-major (h x w)
+    return rgb.reshape(h, w, 3)
 
 
 def _images(int_metadata: dict[str, Any]) -> list[RImage]:
