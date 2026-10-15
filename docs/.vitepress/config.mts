@@ -22,6 +22,7 @@ export default defineConfig({
           text: "Guide",
           items: [
             { text: "Getting started", link: "/guide/getting-started" },
+            { text: "In a notebook: show()", link: "/guide/notebooks" },
             { text: "Writing dataset.yaml", link: "/guide/dataset-yaml" },
             { text: "Inputs: what the CLI reads", link: "/guide/preparing-data" },
             { text: "Building and validating", link: "/guide/building" },

@@ -28,12 +28,14 @@ RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 class RangeCORSHandler(SimpleHTTPRequestHandler):
     app_dir: Path | None = None
     data_dir: Path
+    session: bool = False  # `spatialscape.show()`: answers /_api/ping and stores the viewer's lasso selections
+    _selections: dict[str, dict] = {}
     _registry_cache: tuple[float, bytes] | None = None
     _registry_lock = threading.Lock()
 
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Range, Content-Type")
         self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges, ETag")
@@ -68,7 +70,41 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         if self._is_registry_request():
             self._send_registry(head=False)
             return
+        if self.session and self.path.startswith("/_api/"):
+            self._api_get()
+            return
         super().do_GET()
+
+    def do_POST(self):
+        if not (self.session and self.path.split("?", 1)[0] == "/_api/selection"):
+            self.send_error(405)
+            return
+        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            doc = json.loads(self.rfile.read(n) or b"{}")
+            key = str(doc.get("dataset") or "")
+        except ValueError:
+            self.send_error(400)
+            return
+        type(self)._selections[key] = {"version": doc.get("version", 0), "samples": doc.get("samples") or {}, "time": time.time()}
+        self.send_response(204)
+        self.end_headers()
+
+    def _api_get(self) -> None:
+        route, _, query = self.path.partition("?")
+        if route == "/_api/ping":
+            body = b'{"session": true}'
+        elif route == "/_api/selection":
+            key = dict(p.split("=", 1) for p in query.split("&") if "=" in p).get("d", "")
+            body = json.dumps(type(self)._selections.get(key) or {"version": 0, "samples": {}}).encode()
+        else:
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_HEAD(self):
         if self._is_registry_request():
@@ -156,14 +192,15 @@ class _LimitedFile:
         self.f.close()
 
 
-def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_dir: Path | None = None) -> ThreadingHTTPServer:
-    """A ready-to-run server. `app_dir=None` means: use the packaged viewer unless `directory` is itself a built site."""
+def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_dir: Path | None = None, session: bool = False) -> ThreadingHTTPServer:
+    """A ready-to-run server. `app_dir=None` means: use the packaged viewer unless `directory` is itself a built site.
+    `session=True` adds the /_api routes `spatialscape.show()` uses to read lasso selections back."""
     directory = Path(directory).resolve()
     if (directory / "index.html").exists():
         app_dir = None  # a built site: serve it as-is
     elif app_dir is None:
         app_dir = packaged_app_dir()
-    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory})
+    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "_selections": {}})
     factory = partial(handler, directory=str(directory))
     factory.extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".json": "application/json", "": "application/octet-stream"}  # type: ignore[attr-defined]
     return ThreadingHTTPServer((host, port), factory)

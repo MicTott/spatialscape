@@ -1,4 +1,5 @@
 /** Lasso selection: drawing state, point-in-polygon, highlight layers, summary and CSV export. */
+import { postSelection } from "../data/sessionApi";
 import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { Matrix4 } from "@math.gl/core";
 import { store, type ViewId, type ViewerState } from "../store/store";
@@ -92,6 +93,7 @@ export class Selection {
   clear() {
     this.current = null;
     store.getState().set({ selectionSummary: null });
+    void postSelection(store.getState().datasetUrl, this.version, null);
     this.c.requestLayers();
   }
 
@@ -159,6 +161,7 @@ export class Selection {
         gene: gene && gN ? { name: c.interaction.featureLabel(gene), mean: gSum / gN, frac: gPos / gN, meanAll: aN ? aSum / aN : 0, fracAll: aN ? aPos / aN : 0 } : null,
       },
     });
+    void postSelection(s.datasetUrl, this.version, sel.samples); // a Python session reads this back as rows of the object
   }
 
   /** Download the selected cell ids as CSV (sample, cell_id). */

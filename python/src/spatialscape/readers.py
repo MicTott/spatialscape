@@ -20,7 +20,15 @@ class SampleInput:
     uns: dict[str, Any] = field(default_factory=dict)
 
 
+MEMORY: dict[str, ad.AnnData] = {}  # objects handed to the build without a file (`spatialscape.show(adata)`); path "memory:<key>"
+
+
 def read_anndata(path: Path, table: str | None = None) -> ad.AnnData:
+    if str(path).startswith("memory:"):
+        key = str(path)[len("memory:") :]
+        if key not in MEMORY:
+            raise KeyError(f"in-memory object {key!r} is no longer registered; call spatialscape.show() again")
+        return MEMORY[key]
     path = Path(path)
     if path.is_file():
         if path.suffix == ".h5ad":

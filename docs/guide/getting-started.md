@@ -12,6 +12,13 @@ spatialscape --version
 
 Python 3.11 or newer. `sscape` is a short alias for every command.
 
+## Just looking at an object?
+
+In a notebook, `spatialscape.show(adata)` builds the object straight from memory and opens the viewer under the
+cell; `s.selection()` hands back the cells you lasso. The same works from R through reticulate and one
+`saveRDS`. See [In a notebook: show()](./notebooks). The rest of this page is the path to a dataset you edit,
+rebuild and publish.
+
 ## Try it in two minutes
 
 ```bash

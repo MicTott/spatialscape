@@ -75,6 +75,19 @@ The [documentation](https://mictott.github.io/spatialscape/docs/) walks through 
 [publishing a site](https://mictott.github.io/spatialscape/docs/guide/publish) and the
 [CLI reference](https://mictott.github.io/spatialscape/docs/reference/cli/).
 
+## In a notebook or an R session
+
+No yaml, no site: show the object you have in memory, lasso cells, take them back out.
+
+```python
+import spatialscape
+s = spatialscape.show(adata, color="cell_type")   # builds once into a cache, opens under the cell
+cells = s.selection()                              # obs names inside the last lasso
+sub = adata[cells]                                 # straight into a DE test
+```
+
+From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("spe.rds")` does the same for a SpatialExperiment ([guide](https://mictott.github.io/spatialscape/docs/guide/notebooks)).
+
 ## What it looks like
 
 <p align="center">
