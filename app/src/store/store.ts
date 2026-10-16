@@ -5,6 +5,27 @@ import type { Locus } from "../genome/model";
 
 export type BlendScheme = "yb" | "cm" | "rg";
 export type ColorSpec = { kind: "gene"; gene: string } | { kind: "field"; field: string } | { kind: "blend"; a: string[]; b: string[]; scheme: BlendScheme };
+/** A lasso kept as part of a region group, in the coordinates of the section it was drawn on. */
+export interface RegionPolygon {
+  id: string;
+  seq: number; // draw order across groups: the last lasso wins where polygons overlap
+  sample: string;
+  view: ViewId;
+  local: [number, number][];
+}
+export interface RegionGroup {
+  id: string;
+  name: string;
+  color: string;
+  polygons: RegionPolygon[];
+}
+export interface Regions {
+  groups: RegionGroup[];
+  active: string | null; // the group new lassos go into
+  seq: number;
+}
+export const REGION_COLORS = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac", "#1f77b4", "#d62728"];
+export const EMPTY_REGIONS: Regions = { groups: [], active: null, seq: 0 };
 export type FilterSpec =
   | { kind: "gene"; gene: string; range: [number, number] }
   | { kind: "field"; field: string; range: [number, number] }
@@ -68,6 +89,7 @@ export interface ViewerState {
   genome: boolean; // the genome panel under the maps, when a sample carries tracks
   genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
   locus: Locus | null; // what the genome panel shows (gl in the URL)
+  regions: Regions; // annotation drawn in the viewer: groups of lassos, exposed as the "regions" field
   viewPx: Partial<Record<ViewId, number>>; // px per µm per view (scale bar)
   viewRects: Partial<Record<ViewId, { x: number; w: number }>>;
   selectionSummary: SelectionSummary | null;
@@ -117,6 +139,13 @@ export interface ViewerState {
   setHiddenCategories: (field: string, codes: number[]) => void;
   setFocus: (id: string | null) => void;
   toggleSample: (id: string) => void;
+  addRegionGroup: (name?: string) => string;
+  setActiveRegion: (id: string | null) => void;
+  updateRegionGroup: (id: string, patch: Partial<Pick<RegionGroup, "name" | "color">>) => void;
+  removeRegionGroup: (id: string) => void;
+  addRegionPolygon: (groupId: string, poly: Omit<RegionPolygon, "id" | "seq">) => void;
+  undoRegionPolygon: (groupId: string) => void;
+  setRegions: (groups: RegionGroup[]) => void;
 }
 
 export const GENOME_HEIGHT_KEY = "sscape.genomeHeight";
@@ -169,6 +198,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   genome: true,
   genomeHeight: storedGenomeHeight(),
   locus: null,
+  regions: EMPTY_REGIONS,
   viewPx: {},
   viewRects: {},
   selectionSummary: null,
@@ -212,6 +242,29 @@ export const store = createStore<ViewerState>((set, get) => ({
   },
   setHiddenCategories: (field, codes) => set({ hiddenCategories: { ...get().hiddenCategories, [field]: codes } }),
   setFocus: (focus) => set({ focus, selected: focus ?? get().selected }),
+  addRegionGroup: (name) => {
+    const r = get().regions;
+    const id = `r${Date.now().toString(36)}${r.groups.length}`;
+    const group: RegionGroup = { id, name: name ?? `Region ${r.groups.length + 1}`, color: REGION_COLORS[r.groups.length % REGION_COLORS.length], polygons: [] };
+    set({ regions: { ...r, groups: [...r.groups, group], active: id }, tool: "lasso" });
+    return id;
+  },
+  setActiveRegion: (active) => set({ regions: { ...get().regions, active }, tool: active ? "lasso" : get().tool }),
+  updateRegionGroup: (id, patch) => set({ regions: { ...get().regions, groups: get().regions.groups.map((g) => (g.id === id ? { ...g, ...patch } : g)) } }),
+  removeRegionGroup: (id) => {
+    const r = get().regions;
+    set({ regions: { ...r, groups: r.groups.filter((g) => g.id !== id), active: r.active === id ? null : r.active } });
+  },
+  addRegionPolygon: (groupId, poly) => {
+    const r = get().regions;
+    const seq = r.seq + 1;
+    set({ regions: { ...r, seq, groups: r.groups.map((g) => (g.id === groupId ? { ...g, polygons: [...g.polygons, { ...poly, id: `p${seq}`, seq }] } : g)) } });
+  },
+  undoRegionPolygon: (groupId) => {
+    const r = get().regions;
+    set({ regions: { ...r, groups: r.groups.map((g) => (g.id === groupId ? { ...g, polygons: g.polygons.slice(0, -1) } : g)) } });
+  },
+  setRegions: (groups) => set({ regions: { groups, active: null, seq: groups.reduce((m, g) => Math.max(m, ...g.polygons.map((p) => p.seq)), 0) } }),
   toggleSample: (id) => {
     const cur = new Set(get().hiddenSamples);
     if (cur.has(id)) cur.delete(id);

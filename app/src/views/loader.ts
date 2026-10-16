@@ -29,6 +29,7 @@ export class Loader {
     }
     c.manifest = manifest;
     c.samplesById = new Map(manifest.samples.map((x) => [x.id, x]));
+    c.regions.reset(manifest);
     void fetch(`${url.replace(/\/$/, "")}/features.json`)
       .then((r) => (r.ok ? r.json() : fetch(`${url.replace(/\/$/, "")}/genes.json`).then((g) => g.json()).then((genes) => ({ genes, groups: [] }))))
       .then((features) => store.getState().set({ features }))

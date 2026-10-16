@@ -2,6 +2,7 @@
 selection posted the way the viewer does comes back as rows of the object."""
 from __future__ import annotations
 
+import base64
 import json
 import urllib.request
 
@@ -123,3 +124,23 @@ def test_build_lock_waits_for_the_other_builder_and_clears_stale_locks(tmp_path)
     with _build_lock(out, logs.append) as waited:
         assert not waited
     assert not lock.exists()
+
+
+def test_regions_come_back_as_a_series(tmp_path, cache):
+    """The viewer posts region codes per sample (uint16 in bundle order, base64); regions() maps them to obs names."""
+    make_synthetic(tmp_path / "src", n_cells=90, n_genes=5)
+    adata = ad.read_h5ad(tmp_path / "src" / "sampleA.h5ad")
+    s = spatialscape.show(adata, log=lambda *_: None)
+    order = np.asarray(zarr.open_group(str(s.bundle / "samples" / "all" / "obs.zarr"), mode="r")["order"][:])
+    codes = np.full(adata.n_obs, 2, dtype="<u2")  # 2 groups -> code 2 is "unassigned"
+    codes[[0, 1]] = 0
+    codes[[5]] = 1
+    body = {"dataset": s.key, "version": 1, "groups": [{"name": "CeA", "color": "#111111"}, {"name": "BLA", "color": "#222222"}], "codes": {"all": base64.b64encode(codes.tobytes()).decode()}}
+    req = urllib.request.Request(f"{s.api}/regions", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=5) as r:
+        assert r.status == 204
+    reg = s.regions()
+    assert reg.name == "region" and reg.notna().sum() == 3
+    assert set(reg[adata.obs_names[order[[0, 1]]]]) == {"CeA"} and reg[adata.obs_names[order[5]]] == "BLA"
+    # nothing drawn: an all-None series, not an error
+    assert spatialscape.show(ad.read_h5ad(tmp_path / "src" / "sampleB.h5ad"), log=lambda *_: None).regions().notna().sum() == 0

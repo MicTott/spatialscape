@@ -45,6 +45,11 @@ export class Selection {
     this.lassoActive = false;
     const { view, world } = this.lassoPts;
     this.lassoPts = null;
+    if (world.length >= 3 && store.getState().regions.active) {
+      // drawing a region: the lasso joins the active group and the tool stays on for the next one
+      if (!this.c.regions.addFromLasso(view, world)) this.c.requestLayers();
+      return;
+    }
     if (world.length >= 3) this.apply(view, world);
     else this.c.requestLayers();
   }

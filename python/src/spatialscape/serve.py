@@ -28,8 +28,9 @@ RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 class RangeCORSHandler(SimpleHTTPRequestHandler):
     app_dir: Path | None = None
     data_dir: Path
-    session: bool = False  # `spatialscape.show()`: answers /_api/ping and stores the viewer's lasso selections
+    session: bool = False  # `spatialscape.show()`: answers /_api/ping and stores the viewer's lasso selections and regions
     _selections: dict[str, dict] = {}
+    _regions: dict[str, dict] = {}
     _registry_cache: tuple[float, bytes] | None = None
     _registry_lock = threading.Lock()
 
@@ -76,7 +77,8 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        if not (self.session and self.path.split("?", 1)[0] == "/_api/selection"):
+        route = self.path.split("?", 1)[0]
+        if not (self.session and route in ("/_api/selection", "/_api/regions")):
             self.send_error(405)
             return
         n = int(self.headers.get("Content-Length") or 0)
@@ -86,7 +88,10 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         except ValueError:
             self.send_error(400)
             return
-        type(self)._selections[key] = {"version": doc.get("version", 0), "samples": doc.get("samples") or {}, "time": time.time()}
+        if route == "/_api/selection":
+            type(self)._selections[key] = {"version": doc.get("version", 0), "samples": doc.get("samples") or {}, "time": time.time()}
+        else:
+            type(self)._regions[key] = {"version": doc.get("version", 0), "groups": doc.get("groups") or [], "codes": doc.get("codes") or {}, "time": time.time()}
         self.send_response(204)
         self.end_headers()
 
@@ -94,9 +99,12 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         route, _, query = self.path.partition("?")
         if route == "/_api/ping":
             body = b'{"session": true}'
-        elif route == "/_api/selection":
+        elif route in ("/_api/selection", "/_api/regions"):
             key = dict(p.split("=", 1) for p in query.split("&") if "=" in p).get("d", "")
-            body = json.dumps(type(self)._selections.get(key) or {"version": 0, "samples": {}}).encode()
+            if route == "/_api/selection":
+                body = json.dumps(type(self)._selections.get(key) or {"version": 0, "samples": {}}).encode()
+            else:
+                body = json.dumps(type(self)._regions.get(key) or {"version": 0, "groups": [], "codes": {}}).encode()
         else:
             self.send_error(404)
             return
@@ -137,6 +145,8 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
                 title="spatialscape",
                 intro=f"Bundles in {self.data_dir.name or self.data_dir}/ on this machine. Open any of them, or paste another bundle URL below.",
             )
+            if self.session:
+                doc["api"] = "/_api"  # the viewer posts lasso selections and regions here (spatialscape.show)
             body = json.dumps(doc).encode()
             cls._registry_cache = (now, body)
             return body
@@ -200,7 +210,7 @@ def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_
         app_dir = None  # a built site: serve it as-is
     elif app_dir is None:
         app_dir = packaged_app_dir()
-    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "_selections": {}})
+    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "_selections": {}, "_regions": {}})
     factory = partial(handler, directory=str(directory))
     factory.extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".json": "application/json", "": "application/octet-stream"}  # type: ignore[attr-defined]
     return ThreadingHTTPServer((host, port), factory)

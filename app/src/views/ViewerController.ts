@@ -15,6 +15,7 @@ import type { Manifest, Sample } from "../data/manifest";
 import { store, type ViewId, type ViewerState, type ViewState } from "../store/store";
 import { Blend } from "./blend";
 import { Interaction } from "./interaction";
+import { RegionsManager } from "./regions";
 import { LayerBuilder } from "./layers";
 import { computeLayout, fitBbox, type LayoutResult } from "./layout";
 import { Loader } from "./loader";
@@ -28,6 +29,7 @@ export class ViewerController {
   cache = new DataCache();
   manifest: Manifest | null = null;
   samplesById = new Map<string, Sample>();
+  regions: RegionsManager;
   layouts: Record<ViewId, LayoutResult | null> = { spatial: null, embedding: null };
   viewStates: Record<ViewId, ViewState> = { spatial: { target: [0, 0, 0], zoom: 0 }, embedding: { target: [0, 0, 0], zoom: 0 } };
   rects: Partial<Record<ViewId, ViewRect>> = {};
@@ -66,6 +68,7 @@ export class ViewerController {
       onResize: () => this.onResize(),
     });
     this.interaction = new Interaction(this);
+    this.regions = new RegionsManager(this);
     this.unsub = store.subscribe((s, prev) => this.onStore(s, prev));
   }
 
@@ -207,6 +210,10 @@ export class ViewerController {
     if (s.groupField !== prev.groupField) {
       this.generation++;
       void this.loader.loadChannels();
+    }
+    if (s.regions !== prev.regions) this.regions.onChange(prev.regions);
+    if (s.sampleStatus !== prev.sampleStatus && s.regions.groups.length) {
+      for (const [id, st] of Object.entries(s.sampleStatus)) if (st === "ready" && prev.sampleStatus[id] !== "ready") this.regions.recompute(id);
     }
     if (s.layoutMode !== prev.layoutMode || s.hiddenSamples !== prev.hiddenSamples || s.platforms !== prev.platforms) {
       for (const v of VIEWS) if (this.rects[v]) this.relayout(v, true);

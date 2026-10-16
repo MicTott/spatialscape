@@ -201,9 +201,20 @@ export class Interaction {
       s.set({ help: !s.help });
     } else if (e.key === "Escape") {
       if (s.help) s.set({ help: false });
-      else if (c.selection.current) c.selection.clear();
-      else if (s.tool === "lasso") s.set({ tool: "pan" });
+      else if (c.selection.lassoActive) {
+        c.selection.cancelDrawing();
+        c.requestLayers();
+      } else if (c.selection.current) c.selection.clear();
+      else if (s.regions.active) {
+        s.setActiveRegion(null);
+        s.set({ tool: "pan" });
+      } else if (s.tool === "lasso") s.set({ tool: "pan" });
       else s.setFocus(null);
+    } else if (e.key >= "1" && e.key <= "9" && !e.metaKey && !e.ctrlKey && !e.altKey && s.regions.groups[+e.key - 1]) {
+      s.setActiveRegion(s.regions.groups[+e.key - 1].id);
+    } else if ((e.key === "Backspace" || e.key === "Delete") && s.regions.active && s.tool === "lasso") {
+      s.undoRegionPolygon(s.regions.active);
+      e.preventDefault();
     } else if (e.key === "l") {
       s.set({ tool: s.tool === "lasso" ? "pan" : "lasso" });
     } else if (e.key === "Enter" && s.selected) {

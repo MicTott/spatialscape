@@ -13,6 +13,7 @@ serves every bundle shown so far (the gallery lists them); the viewer posts each
 """
 from __future__ import annotations
 
+import base64
 import contextlib
 import hashlib
 import json
@@ -259,6 +260,36 @@ class Session:
         """What the viewer last posted: {version, samples: {sample id: bundle-order indices}}."""
         with urllib.request.urlopen(f"{self.api}/selection?d={self.key}", timeout=5) as r:
             return json.loads(r.read() or b"{}")
+
+    def raw_regions(self) -> dict:
+        """The regions drawn in the viewer: {version, groups: [{name, color}], codes: {sample id: base64 uint16}}."""
+        with urllib.request.urlopen(f"{self.api}/regions?d={self.key}", timeout=5) as r:
+            return json.loads(r.read() or b"{}")
+
+    def regions(self) -> pd.Series | dict[str, str]:
+        """The region each cell was drawn into (the Regions panel of the viewer), as a pandas Series indexed by obs
+        names (None outside every region) for an in-memory object, or {id: region} for data shown from a path."""
+        doc = self.raw_regions()
+        names = [g["name"] for g in doc.get("groups") or []]
+        per_sample = {sid: np.frombuffer(base64.b64decode(b64), dtype="<u2") for sid, b64 in (doc.get("codes") or {}).items()}
+        if self.adata is not None and self.rows is not None:
+            out = pd.Series([None] * self.adata.n_obs, index=self.adata.obs_names, dtype=object, name="region")
+            for sid, codes in per_sample.items():
+                if sid not in self.rows:
+                    continue
+                if sid not in self._orders:
+                    self._orders[sid] = self._obs(sid, "order")
+                hit = np.flatnonzero(codes < len(names))
+                rows = self.rows[sid][self._orders[sid][hit]]
+                out.iloc[rows] = [names[c] for c in codes[hit]]
+            return out
+        result: dict[str, str] = {}
+        for sid, codes in per_sample.items():
+            if sid not in self._ids:
+                self._ids[sid] = self._ids_of(sid)
+            for i in np.flatnonzero(codes < len(names)):
+                result[str(self._ids[sid][i])] = names[codes[i]]
+        return result
 
     def selection(self, *, as_mask: bool = False):
         """The cells inside the last lasso. For an in-memory object: their obs names (a pandas Index you can index

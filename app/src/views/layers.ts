@@ -36,6 +36,12 @@ export class LayerBuilder {
     return l;
   }
 
+  /** Forget what was cached for a field whose colours or codes changed under the same name (the drawn regions). */
+  clearField(field: string) {
+    for (const k of [...this.paletteCache.keys()]) if (k.startsWith(`${field}|`)) this.paletteCache.delete(k);
+    for (const k of [...this.centroidCache.keys()]) if (k.endsWith(`|${field}`)) this.centroidCache.delete(k);
+  }
+
   private palette(field: string, hidden: number[]): Uint8Array {
     const m = this.c.manifest;
     const f = m && fieldById(m, field);
@@ -154,6 +160,7 @@ export class LayerBuilder {
       if (view === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
       if (view === "spatial" && s.showPolygons) layers.push(...this.polygonLayers(view, L));
       if (view === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
+      layers.push(...c.regions.layers(s, view, L));
       layers.push(...c.selection.layers(s, view, L));
       layers.push(...this.frameLayers(s, view, L));
     }
@@ -316,6 +323,7 @@ export class LayerBuilder {
       for (const k of this.centroids(sd, field.id)) {
         const text = names[k.code] ?? String(k.code);
         if (hidden.has(k.code) || text === "NA") continue;
+        if (field.id === c.regions.field && k.code === names.length - 1) continue; // "unassigned" is not a cluster
         const [wx, wy] = p.modelMatrix.transformAsPoint([k.x, k.y, 0]);
         const sx = (wx - vs.target[0]) * scale + vw / 2;
         const sy = (wy - vs.target[1]) * scale + vh / 2;

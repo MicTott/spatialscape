@@ -4,6 +4,7 @@ import { GeneSearch } from "./GeneSearch";
 import { BlendPanel } from "./BlendPanel";
 import { GeneByAnnotation } from "./GeneByAnnotation";
 import { SelectionPanel } from "./SelectionPanel";
+import { RegionsPanel } from "./RegionsPanel";
 import { Legend } from "./Legend";
 import { SampleStrip } from "./SampleStrip";
 
@@ -29,6 +30,7 @@ export function Sidebar() {
             {manifest.description && <p className="muted">{manifest.description}</p>}
           </header>
           <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
+          <RegionsPanel />
           <ColorPanel genes={genes} />
           <Legend />
           <GeneByAnnotation />

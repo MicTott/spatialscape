@@ -56,6 +56,21 @@ Gene colors share one scale across all samples on screen, so the same color mean
 
 ## Point size
 
+## Regions: your own annotation
+
+The Regions panel turns the lasso into an annotation tool. Add a group, then lasso as many areas as you like, in
+any section or in the embedding; each lasso becomes a translucent polygon in the group's colour, labelled, and
+stays attached to its section through layout changes. Add the next group and keep going; click a group (or press
+`1`–`9`) to draw into it, Backspace removes the last area, Esc stops drawing. Where lassos overlap, the last one
+drawn wins. Double-click a name to rename it; the swatch changes the colour.
+
+The groups are a live annotation called *Regions*: colour the cells by it, and the legend shows the counts per
+region (plus "unassigned", which you can hide), hover rows name the region, the dot plot can be grouped by it and
+filters can use it. *export CSV* writes `sample, cell_id, region` for every cell inside a region; *save* writes
+the drawing itself (groups and polygons) as JSON and *load* brings it back, including onto a rebuilt bundle, since
+polygons are stored in each section's own coordinates. In a notebook, `s.regions()` returns the same table as a
+pandas Series aligned with your object ([In a notebook](./notebooks)).
+
 ## Genome panel
 
 An ATAC sample built with `tracks:` ([dataset.yaml](./dataset-yaml#genome-tracks-for-atac-samples)) adds a genome

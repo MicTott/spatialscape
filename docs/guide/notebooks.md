@@ -35,7 +35,13 @@ sub = adata[cells]               # straight into scanpy, decoupler, a pseudobulk
 mask = s.selection(as_mask=True) # or a boolean array over adata.obs
 ```
 
-Every lasso replaces the previous one; `s.selection()` always returns the latest. For data shown from a path the
+Every lasso replaces the previous one; `s.selection()` always returns the latest.
+
+Drawn regions (the Regions panel: named groups of lassos across sections) come back the same way:
+
+```python
+adata.obs["region"] = s.regions()    # a Series aligned with adata.obs: the group name, or None
+``` For data shown from a path the
 selection comes back as the cell ids. Under the hood the viewer posts the selection to the session's own server
 (`/_api/selection`); a viewer served from anywhere else never makes that request.
 
