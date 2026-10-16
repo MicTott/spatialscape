@@ -104,7 +104,10 @@ def _write_image(img: RImage, dest: Path) -> bool:
         iio.imwrite(dest, img.rgb)
         return True
     if img.path and Path(img.path).exists():
-        iio.imwrite(dest, iio.imread(img.path)[..., :3])
+        arr = np.asarray(iio.imread(img.path))
+        if arr.ndim == 2:  # grayscale: three equal planes, never a 3-pixel-wide slice
+            arr = np.stack([arr, arr, arr], axis=-1)
+        iio.imwrite(dest, arr[..., :3])
         return True
     return False
 
@@ -127,11 +130,16 @@ def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, lo
                 sf[f"tissue_{_safe(img.image_id)}_scalef"] = img.scale_factor
             else:
                 log(f"  warning: image {img.image_id!r} of sample {s} could not be written ({img.path or 'no pixels in the object'})")
-        if len(rows) > 1:  # Visium rule: neighbouring spots are 100 um apart, a spot is 55 um wide
+        finite = coords[np.isfinite(coords).all(axis=1)]
+        if len(finite) > 1:  # Visium rule: neighbouring spots are 100 um apart, a spot is 55 um wide
             from scipy.spatial import cKDTree
 
-            nn = cKDTree(coords).query(coords, k=2)[0][:, 1]
-            sf["spot_diameter_fullres"] = float(np.median(nn) * VISIUM_SPOT_UM / VISIUM_SPACING_UM)
+            nn = cKDTree(finite).query(finite, k=2)[0][:, 1]
+            spacing = float(np.median(nn))
+            if spacing > 0:
+                sf["spot_diameter_fullres"] = spacing * VISIUM_SPOT_UM / VISIUM_SPACING_UM
+            else:
+                log(f"  warning: {d.name}: coordinates repeat (median spot spacing 0); set `microns:` for this sample")
         (d / "spatial" / "scalefactors_json.json").write_text(json.dumps(sf, indent=1))
         a.write_h5ad(d / "adata.h5ad")
         names.append(d.name)

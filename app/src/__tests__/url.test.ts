@@ -54,4 +54,12 @@ describe("scale and debug flags", () => {
     expect(r.debug).toBe(true);
     g.window = saved;
   });
+
+  it("keeps image visibility and opacity apart and quotes feature ids that contain colons", () => {
+    const s = { ...store.getState(), datasetUrl: "http://x/y", showImages: false, imageOpacity: 0.6, filter: { kind: "gene", gene: "peak: chr1:100-200", range: [0.1, 1] } } as ViewerState;
+    const q = new URLSearchParams(serialize(s));
+    expect(q.get("imgs")).toBe("0");
+    expect(q.get("img")).toBe("0.60");
+    expect(q.get("fl")).toBe("g:peak: chr1:100-200:0.100,1.000");
+  });
 });

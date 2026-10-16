@@ -398,16 +398,18 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
             pat = str(Path(os.path.expandvars(str(pattern))).expanduser())
             if not Path(pat).is_absolute():
                 pat = str(base / pat)
-            matches = sorted(_glob.glob(pat))
+            matches = sorted(_glob.glob(pat, recursive=True))
             if not matches:
                 raise ValueError(f"glob matched nothing: {pattern} (paths in dataset.yaml are relative to its folder, {base})")
+        names = [_template_vars(Path(m), i)["name"] for i, m in enumerate(matches) if m is not None]
+        flat = len(set(names)) < len(names)  # samples/A.h5ad, samples/B.h5ad: the folder name is shared, the stem is the sample
         for i, m in enumerate(matches):
             e = dict(entry)
             if m is not None:
                 e["path"] = m
                 vars_ = _template_vars(Path(m), i)
                 e = _render(e, vars_)
-                e.setdefault("id", re.sub(r"[^A-Za-z0-9_.-]+", "_", vars_["name"]))
+                e.setdefault("id", re.sub(r"[^A-Za-z0-9_.-]+", "_", vars_["stem" if flat else "name"]))
             merged = _merged_entry(e, raw)
             if m is not None:
                 merged = _render(merged, _template_vars(Path(m), i))

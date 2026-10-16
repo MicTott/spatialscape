@@ -24,6 +24,7 @@ export class LayerBuilder {
   private lutCache = new Map<string, Uint8Array>();
   private paletteCache = new Map<string, Uint8Array>();
   private centroidCache = new Map<string, Centroid[]>();
+  private outlinePending = new Set<string>(); // outline fetches already counted in store.pending
 
   constructor(private c: ViewerController) {}
 
@@ -34,6 +35,16 @@ export class LayerBuilder {
       this.lutCache.set(name, l);
     }
     return l;
+  }
+
+  /** A new dataset: every cache here belonged to the old one. */
+  reset() {
+    this.imageHandles.clear();
+    this.inputs.clear();
+    this.lutCache.clear();
+    this.paletteCache.clear();
+    this.centroidCache.clear();
+    this.outlinePending.clear();
   }
 
   /** Forget what was cached for a field whose colours or codes changed under the same name (the drawn regions). */
@@ -239,13 +250,18 @@ export class LayerBuilder {
       if (!smp.outlines?.includes(field)) continue;
       const data = c.cache.getOutlines(s.datasetUrl, id, field);
       if (data instanceof Promise) {
-        store.getState().set({ pending: store.getState().pending + 1 });
-        data
-          .catch((e) => console.warn("outline load failed", id, field, e))
-          .finally(() => {
-            store.getState().set({ pending: Math.max(0, store.getState().pending - 1) });
-            c.requestLayers();
-          });
+        const key = `${id}/${field}`;
+        if (!this.outlinePending.has(key)) {
+          this.outlinePending.add(key); // count the fetch once, not once per frame while it is in flight
+          store.getState().set({ pending: store.getState().pending + 1 });
+          data
+            .catch((e) => console.warn("outline load failed", id, field, e))
+            .finally(() => {
+              this.outlinePending.delete(key);
+              store.getState().set({ pending: Math.max(0, store.getState().pending - 1) });
+              c.requestLayers();
+            });
+        }
         continue;
       }
       const style = s.outline.style;

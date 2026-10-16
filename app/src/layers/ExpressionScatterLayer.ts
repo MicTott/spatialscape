@@ -110,14 +110,14 @@ uniform sampler2D catTexture;
     float ta = clamp((v1 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
     float tb = clamp((v2 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
     sc = texture(lutTexture, vec2(ta, tb));
-    if (sscape.hideZeros > 0.5 && instanceValue < 0.001 && instanceValue2 < 0.001) drop = true;
+    if (sscape.hideZeros > 0.5 && abs(instanceValue - sscape.valueCenter) < 0.0025 && abs(instanceValue2 - sscape.valueCenter) < 0.0025) drop = true;
   } else if (sscape.mode > 1.5) {
     sc = vec4(0.36, 0.39, 0.44, 1.0);
   } else if (sscape.mode < 0.5) {
     float t = (v1 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6);
     t = clamp(t, 0.0, 1.0);
     sc = texture(lutTexture, vec2((t * 255.0 + 0.5) / 256.0, 0.5));
-    if (sscape.hideZeros > 0.5 && instanceValue < 0.001) drop = true;
+    if (sscape.hideZeros > 0.5 && abs(instanceValue - sscape.valueCenter) < 0.0025) drop = true;
   } else {
     float code = floor(instanceCategory * 65535.0 + 0.5);
     sc = texture(catTexture, vec2((code + 0.5) / sscape.catCount, 0.5));

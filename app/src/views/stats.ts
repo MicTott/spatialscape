@@ -38,7 +38,9 @@ export class Stats {
     const bins = new Array<number>(64).fill(0);
     let visible = 0;
     const range = filterRange(s.filter);
+    const hiddenSamples = this.c.hiddenSampleSet(s);
     for (const sd of this.c.cache.samples.values()) {
+      if (hiddenSamples.has(sd.id)) continue;
       const arr = this.filterAttr(sd, s.filter)?.value;
       if (!arr) continue;
       const lo = range[0] * 255;
@@ -86,7 +88,7 @@ export class Stats {
         cnt[cc]++;
         p.sum[cc] += v;
         p.cnt[cc]++;
-        if (g[i] > 0) {
+        if (v > 0) {
           pos[cc]++;
           p.pos[cc]++;
         }

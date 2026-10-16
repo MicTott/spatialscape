@@ -6,13 +6,15 @@ import type { ViewerController } from "./ViewerController";
  * Mean of the genes per cell, in expression units, then mapped to 0..255 against `scaleMax`.
  * `cols` are uint8 columns quantized against `gmax[j]` (value = u8 / 255 * gmax).
  */
-export function blendScore(cols: Uint8Array[], gmax: number[], n: number, scaleMax: number): Uint8Array {
+export function blendScore(cols: Uint8Array[], gmax: number[], n: number, scaleMax: number, gmin: number[] = []): Uint8Array {
   const out = new Uint8Array(n);
   if (!cols.length || scaleMax <= 0) return out;
   const acc = new Float32Array(n);
   cols.forEach((col, j) => {
-    const k = gmax[j] / 255;
-    for (let i = 0; i < n; i++) acc[i] += col[i] * k;
+    const lo = gmin[j] ?? 0;
+    const k = (gmax[j] - lo) / 255;
+    // value = gmin + u8 * (gmax - gmin) / 255; a signed feature contributes only where it is positive
+    for (let i = 0; i < n; i++) acc[i] += Math.max(0, lo + col[i] * k);
   });
   const f = 255 / (cols.length * scaleMax);
   for (let i = 0; i < n; i++) out[i] = Math.min(255, Math.round(acc[i] * f));
@@ -21,11 +23,13 @@ export function blendScore(cols: Uint8Array[], gmax: number[], n: number, scaleM
 
 export class Blend {
   private cache = new Map<string, { attr: BinaryAttr<Uint8Array>; key: string }>();
+  private scaleCache = new Map<string, number>();
 
   constructor(private c: ViewerController) {}
 
   invalidate() {
     this.cache.clear();
+    this.scaleCache.clear();
   }
 
   score(sd: SampleData, genes: string[]): Uint8Array | null {
@@ -34,6 +38,9 @@ export class Blend {
 
   /** Largest per-gene max for these genes: across every loaded sample (shared scale) or within this sample. */
   scaleMax(sd: SampleData, genes: string[], perSample: boolean): number {
+    const key = `${perSample ? sd.id : "*"}|${genes.join(",")}|${this.c.geneGmax.size}`; // geneGmax only grows: its size dates the answer
+    const hit = this.scaleCache.get(key);
+    if (hit !== undefined) return hit;
     let m = 0;
     for (const [k, v] of this.c.geneGmax) {
       const i = k.indexOf(":");
@@ -41,6 +48,7 @@ export class Blend {
       if (perSample && k.slice(0, i) !== sd.id) continue;
       if (v > m) m = v;
     }
+    this.scaleCache.set(key, m);
     return m;
   }
 
@@ -49,6 +57,7 @@ export class Blend {
     if (!present.length) return undefined;
     const cols: Uint8Array[] = [];
     const gmax: number[] = [];
+    const gmin: number[] = [];
     let missingMax = false;
     for (const g of present) {
       const col = this.c.cache.getGeneSync(sd.id, g)?.value;
@@ -57,6 +66,7 @@ export class Blend {
       if (gm === undefined) missingMax = true;
       cols.push(col);
       gmax.push(gm ?? 1);
+      gmin.push(this.c.geneGmin.get(`${sd.id}:${g}`) ?? 0);
     }
     if (!cols.length) return undefined;
     const perSample = !!this.c.storeState().scalePerSample;
@@ -73,7 +83,7 @@ export class Blend {
       for (const col of cols) for (let i = 0; i < sd.nObs; i++) acc[i] += col[i];
       const k = 1 / cols.length;
       for (let i = 0; i < sd.nObs; i++) out[i] = Math.round(acc[i] * k);
-    } else out = blendScore(cols, gmax, sd.nObs, scaleMax);
+    } else out = blendScore(cols, gmax, sd.nObs, scaleMax, gmin);
     const attr = { value: out, size: 1 };
     this.cache.set(cacheKey, { attr, key });
     return attr;

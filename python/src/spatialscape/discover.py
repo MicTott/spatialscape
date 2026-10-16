@@ -58,12 +58,14 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
     # 2. SpaceRanger layout: spatial/tissue_hires_image.png + scalefactors (coords are full-res pixels)
     sp = d / "spatial"
     sf = sp / "scalefactors_json.json"
-    for png in ("tissue_hires_image.png", "tissue_lowres_image.png"):
-        if (sp / png).exists() and sf.exists():
-            scale = json.loads(sf.read_text())
-            key = "tissue_hires_scalef" if "hires" in png else "tissue_lowres_scalef"
+    if sf.exists():
+        scale = json.loads(sf.read_text())
+        # tissue_<id>_image.png with a tissue_<id>_scalef: hires first, then any other id, lowres last
+        pngs = sorted(sp.glob("tissue_*_image.png"), key=lambda q: (0 if "hires" in q.name else 2 if "lowres" in q.name else 1, q.name))
+        for png in pngs:
+            key = png.name.replace("tissue_", "tissue_", 1).replace("_image.png", "_scalef")
             if key in scale:
-                return [ImageSpec(id="he", name="H&E", path=sp / png, pixel_size="auto", pixels_per_unit=float(scale[key]))], MicronsSpec(scalefactors_json=sf)
+                return [ImageSpec(id="he", name="H&E", path=png, pixel_size="auto", pixels_per_unit=float(scale[key]))], MicronsSpec(scalefactors_json=sf)
     if sf.exists():  # scale factors without an image (e.g. `convert` of an object whose image file was gone)
         return [], MicronsSpec(scalefactors_json=sf)
     # 3. Xenium morphology image

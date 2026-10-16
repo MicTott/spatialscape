@@ -62,7 +62,7 @@ def _strings(o: Any) -> list[str | None]:
     if _is_null(o):
         return []
     d = o.get("data", [])
-    return [None if (s is None or s == "NA") else str(s) for s in d]
+    return [None if s is None else str(s) for s in d]  # rds2py already maps NA_character_ to None; "NA" can be a real label
 
 
 def _named_list(o: Any) -> dict[str, Any]:
@@ -100,11 +100,15 @@ def _vector_to_series(o: Any, n: int) -> pd.Series | None:
         if arr.ndim != 1 or len(arr) != n:
             return None
         if t == "integer":
-            arr = arr.astype(np.float64)
-            arr[arr == R_NA_INT] = np.nan
-        elif t == "boolean":
+            na = arr == R_NA_INT
+            if na.any():  # nullable integers: cluster ids stay integers instead of turning into 1.0, 2.0
+                return pd.Series(pd.arrays.IntegerArray(np.where(na, 0, arr).astype(np.int64), na))
+            return pd.Series(arr.astype(np.int64))
+        if t == "boolean":
             if arr.dtype.kind == "f":  # NA logicals arrive as NaN
                 return pd.Series(pd.array(np.where(np.isnan(arr), None, arr == 1), dtype="boolean"))
+            if arr.dtype == object:  # or as None among bools
+                return pd.Series(pd.array([None if v is None else bool(v) for v in arr], dtype="boolean"))
             return pd.Series(pd.array(arr.astype(bool), dtype="boolean"))
         return pd.Series(arr)
     if t == "string":

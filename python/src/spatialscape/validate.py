@@ -66,6 +66,9 @@ def validate_local(root: Path) -> list[str]:
                 _problem(p, f"{s.id}: gmax length mismatch")
             if "gmin" in g and g["gmin"].shape[0] != s.nGenes:
                 _problem(p, f"{s.id}: gmin length mismatch")
+            gmax = np.asarray(g["gmax"][:])
+            if gmax.size and (not np.all(np.isfinite(gmax)) or (gmax <= 0).any()):
+                _problem(p, f"{s.id}: gmax has non-finite or non-positive values")
             if s.nGenes:
                 _ = u8[0, :]  # exercise one chunk read (and the shard index)
         except Exception as e:
@@ -79,6 +82,10 @@ def validate_local(root: Path) -> list[str]:
                 _problem(p, f"{s.id}: obs xy shape {og['xy'].shape}")
             if tuple(og["order"].shape) != (s.nObs,):
                 _problem(p, f"{s.id}: obs order shape")
+            elif s.nObs:
+                order = np.asarray(og["order"][:])
+                if order.min() != 0 or order.max() != s.nObs - 1 or np.unique(order).size != s.nObs:
+                    _problem(p, f"{s.id}: obs order is not a permutation of the rows")
             for fid in s.fields:
                 if fid not in field_ids:
                     _problem(p, f"{s.id}: field {fid!r} not declared in manifest.fields")
@@ -90,24 +97,44 @@ def validate_local(root: Path) -> list[str]:
                         continue
                     codes = og["cat"][fid][:]
                     ncat = len(m.vocabularies[f.vocabulary].categories)
+                    if codes.shape != (s.nObs,):
+                        _problem(p, f"{s.id}: obs.zarr/cat/{fid} has {codes.shape[0]} rows, expected {s.nObs}")
                     if codes.size and int(codes.max()) >= ncat:
                         _problem(p, f"{s.id}: field {fid} has code {int(codes.max())} >= {ncat} categories")
                 else:
                     if fid not in og["num"]:
                         _problem(p, f"{s.id}: obs.zarr/num/{fid} missing")
+                    elif tuple(og["num"][fid].shape) != (s.nObs,):
+                        _problem(p, f"{s.id}: obs.zarr/num/{fid} has {og['num'][fid].shape[0]} rows, expected {s.nObs}")
         except Exception as e:
             _problem(p, f"{s.id}: obs.zarr unreadable: {e}")
         nblocks = -(-s.nObs // s.idBlock)
         for b in range(nblocks):
-            if not (d / "ids" / f"{b}.json").exists():
+            fb = d / "ids" / f"{b}.json"
+            if not fb.exists():
                 _problem(p, f"{s.id}: ids/{b}.json missing")
                 break
+            want = min(s.idBlock, s.nObs - b * s.idBlock)
+            try:
+                got = len(json.loads(fb.read_text()))
+            except ValueError:
+                got = -1
+            if got != want:
+                _problem(p, f"{s.id}: ids/{b}.json has {got} ids, expected {want}")
+                break
+        for fid in s.outlines or []:
+            if not (d / "outlines" / f"{fid}.json").exists():
+                _problem(p, f"{s.id}: outlines/{fid}.json listed but missing")
         if s.polygons:
             off = d / "polygons.offsets.u32"
             dl = d / "polygons.i16"
             if not off.exists() or not dl.exists():
                 _problem(p, f"{s.id}: polygon files missing")
-            elif off.stat().st_size != 4 * (s.nObs + 1) or dl.stat().st_size != 4 * s.polygons.vertices:
+            elif off.stat().st_size == 4 * (s.nObs + 1) and dl.stat().st_size == 4 * s.polygons.vertices:
+                offs = np.fromfile(off, dtype=np.uint32)
+                if offs[0] != 0 or offs[-1] != s.polygons.vertices or (np.diff(offs.astype(np.int64)) < 0).any():
+                    _problem(p, f"{s.id}: polygon offsets are not a non-decreasing 0..vertices run")
+            else:
                 _problem(p, f"{s.id}: polygon file sizes do not match nObs/vertices")
         for im in s.images:
             try:

@@ -13,8 +13,10 @@ jobs:
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Tests first; a tag must not publish what the test workflows would reject
+        run: pip install -e "python[dev,tracks]" && ruff check python && pytest -q python/tests && npm ci && npm test --workspace app
       - name: Build the viewer and copy it into the package
-        run: npm ci && npm run build && python python/scripts/bundle_app.py
+        run: npm run build && python python/scripts/bundle_app.py
       - run: pip install build && python -m build python --outdir dist
       - name: The wheel must carry the viewer
         run: python -c "import zipfile,glob; w=zipfile.ZipFile(glob.glob('dist/*.whl')[0]); assert any(n.endswith('_app/index.html') for n in w.namelist()), 'viewer missing from wheel'"

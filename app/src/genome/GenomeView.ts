@@ -36,6 +36,7 @@ export interface GenomeViewOptions {
   onHover: (h: HoverInfo | null) => void;
   onClick: (hit: Hit) => void;
   onScale: (yMax: number) => void;
+  onError?: (message: string | null) => void; // tracks that could not be read, for the panel header
 }
 
 const AXIS_H = 22;
@@ -59,6 +60,7 @@ interface Cached {
   end: number;
   values: Float32Array;
   polygon: Float64Array; // step outline in (bp, -value); the layer's model matrix maps it into its row
+  data: Cached[]; // the layer's `data` prop: one stable array, so deck never re-tesselates on a pan
 }
 
 function polygonFor(values: Float32Array, start: number, bin: number): Float64Array {
@@ -97,6 +99,7 @@ export class GenomeView {
   yMax = 1;
   private cache = new Map<string, Cached>();
   private inflight = new Set<string>();
+  private errors = new Map<string, string>(); // track id -> why it could not be read (no retries until the tracks change)
   private gen = 0;
   private fetchTimer: number | null = null;
   private frame: number | null = null;
@@ -164,14 +167,16 @@ export class GenomeView {
   }
 
   /** What the controller or a transition proposes, clamped: x only, inside the chromosome, between the zoom limits. */
-  private onViewState(vs: { target: number[]; zoom: number | number[] }) {
+  private onViewState(vs: { target: number[]; zoom: number | number[]; transitionDuration?: number; transitionInterpolator?: unknown; transitionEasing?: unknown }) {
     const len = this.len();
     const zx = Array.isArray(vs.zoom) ? vs.zoom[0] : vs.zoom;
     const span = this.clampSpan(this.width / 2 ** zx);
     const cx = span >= len ? len / 2 : Math.min(len - span / 2, Math.max(span / 2, vs.target[0]));
     this.start = cx - span / 2;
     this.end = cx + span / 2;
-    this.deck.setProps({ viewState: this.viewState() as any });
+    // the controller's inertia arrives as an end state plus transition props: keep them, or a flick snaps instead of gliding
+    const glide = vs.transitionDuration ? { transitionDuration: vs.transitionDuration, transitionInterpolator: vs.transitionInterpolator, transitionEasing: vs.transitionEasing } : {};
+    this.deck.setProps({ viewState: { ...this.viewState(), ...glide } as any });
     this.changed();
   }
 
@@ -221,6 +226,10 @@ export class GenomeView {
   setTracks(tracks: CoverageTrack[]) {
     const ids = new Set(tracks.map((t) => t.id));
     for (const id of [...this.cache.keys()]) if (!ids.has(id)) this.cache.delete(id);
+    if (this.errors.size) {
+      this.errors.clear();
+      this.opts.onError?.(null);
+    }
     this.tracks = tracks;
     this.annot = null; // rows move when the track count changes
     this.changed();
@@ -268,7 +277,7 @@ export class GenomeView {
     if (n <= 0) return;
     for (const t of this.tracks) {
       const c = this.cache.get(t.id);
-      if (c && covers(c, this.chrom, this.start, this.end, bin)) continue;
+      if (this.errors.has(t.id) || (c && covers(c, this.chrom, this.start, this.end, bin))) continue;
       const key = `${t.id}|${this.chrom}|${bin}|${win.start}|${n}`;
       if (this.inflight.has(key)) continue;
       this.inflight.add(key);
@@ -278,10 +287,19 @@ export class GenomeView {
         .fetchBins(t.url, chrom, win.start, bin, n)
         .then((values) => {
           if (this.destroyed || gen !== this.gen || chrom !== this.chrom || !this.tracks.some((x) => x.id === t.id)) return;
-          this.cache.set(t.id, { chrom, bin, start: win.start, end: win.start + n * bin, values, polygon: polygonFor(values, win.start, bin) });
+          const prev = this.cache.get(t.id);
+          const wantBin = binFor(1 / this.pxPerBp(), this.opts.trackBin);
+          if (prev && prev.chrom === chrom && prev.bin < bin && covers(prev, chrom, this.start, this.end, wantBin)) return; // finer data arrived first: keep it
+          const entry: Cached = { chrom, bin, start: win.start, end: win.start + n * bin, values, polygon: polygonFor(values, win.start, bin), data: [] };
+          entry.data = [entry];
+          this.cache.set(t.id, entry);
           this.changed();
         })
-        .catch(() => undefined)
+        .catch((e) => {
+          if (this.destroyed || gen !== this.gen) return;
+          this.errors.set(t.id, `${t.name}: ${(e as Error)?.message ?? e}`);
+          this.opts.onError?.([...this.errors.values()].join(" · "));
+        })
         .finally(() => this.inflight.delete(key));
     }
   }
@@ -365,7 +383,7 @@ export class GenomeView {
         id: "tick-labels",
         data: major,
         getPosition: (t: number) => [t, 3],
-        getText: (t: number) => tickLabel(t, step),
+        getText: (t: number) => tickLabel(t + 1, step), // 1-based, like the locus readout and the hover tip
         getColor: MUTED,
         getSize: 10,
         sizeUnits: "pixels",
@@ -384,7 +402,7 @@ export class GenomeView {
       layers.push(
         new SolidPolygonLayer({
           id: `cov-${t.id}`,
-          data: [c],
+          data: c.data,
           getPolygon: (d: Cached) => d.polygon as any,
           positionFormat: "XY",
           getFillColor: [...t.color, 235] as RGBA,

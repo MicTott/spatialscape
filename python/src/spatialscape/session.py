@@ -63,6 +63,10 @@ def _hash_adata(adata, params: dict, *, obs_columns: list[str], obsm_key: str | 
     h = hashlib.sha1()
     _hash_bytes(h, json.dumps(params, sort_keys=True, default=str))
     _hash_bytes(h, adata.shape)
+    if getattr(adata, "isbacked", False):  # on disk: the file identity stands in for the matrix
+        p = Path(str(adata.filename))
+        st = p.stat() if p.exists() else None
+        _hash_bytes(h, f"backed:{p}:{st.st_size if st else 0}:{st.st_mtime_ns if st else 0}")
     _hash_bytes(h, pd.util.hash_pandas_object(pd.Series(np.asarray(adata.obs_names, dtype=str)), index=False).to_numpy())
     _hash_bytes(h, pd.util.hash_pandas_object(pd.Series(np.asarray(adata.var_names, dtype=str)), index=False).to_numpy())
     for col in obs_columns:
@@ -70,14 +74,17 @@ def _hash_adata(adata, params: dict, *, obs_columns: list[str], obsm_key: str | 
             _hash_bytes(h, pd.util.hash_pandas_object(adata.obs[col].astype(str), index=False).to_numpy())
     if obsm_key is not None and obsm_key in adata.obsm:
         _hash_bytes(h, np.asarray(adata.obsm[obsm_key])[:, :2].astype(np.float64))
+    if getattr(adata, "isbacked", False):
+        return h.hexdigest()[:16]
     X = adata.X if layer == "X" else adata.layers[layer]
-    if hasattr(X, "nnz"):
+    if hasattr(X, "nnz") and hasattr(X, "data"):
         _hash_bytes(h, X.nnz)
         _hash_bytes(h, np.asarray(X.data[:: max(1, X.nnz // 200_000)]))
         if hasattr(X, "indptr"):
             _hash_bytes(h, np.asarray(X.indptr[:: max(1, len(X.indptr) // 50_000)]))
-    else:
-        arr = np.asarray(X)
+    else:  # dense (or array-like): a strided sample of rows, never the whole matrix
+        step = max(1, adata.n_obs // 500)
+        arr = np.asarray(X[::step])
         _hash_bytes(h, arr.ravel()[:: max(1, arr.size // 200_000)])
     return h.hexdigest()[:16]
 
@@ -182,7 +189,12 @@ def _build_lock(out: Path, log: Log, *, timeout: float = 7200) -> Iterator[bool]
             except (OSError, ValueError):
                 pid, age = 0, 0.0
             if (pid and not _alive(pid)) or age > timeout:
-                lock.unlink(missing_ok=True)
+                claim = lock.with_name(f"{lock.name}.stale{os.getpid()}")
+                try:
+                    os.replace(lock, claim)  # atomic: only one waiter wins the stale lock, the others see it gone and retry
+                    claim.unlink(missing_ok=True)
+                except FileNotFoundError:
+                    pass
                 continue
             if time.monotonic() - t0 > timeout:
                 raise TimeoutError(f"another process has been building {out} for over {timeout:.0f} s; remove {lock} if it is stale") from None
@@ -359,11 +371,15 @@ def show(
 
         adata = data
         coords = _coords_for(adata, coords)
-        params = {"coords": coords, "sample": sample, "platform": platform, "fields": fields, "color": color, "layer": layer, "normalized": normalized, "recipe": 1}
-        used_cols = [c for c in [sample, color] if c] + (list(fields.values()) if isinstance(fields, dict) else list(fields or []) if fields != "auto" else list(map(str, adata.obs.columns)))
-        key = _hash_adata(adata, params, obs_columns=used_cols, obsm_key=coords[5:] if coords.startswith("obsm/") else None, layer=layer)
+        params = {"coords": coords, "sample": sample, "platform": platform, "fields": fields, "color": color, "layer": layer, "normalized": normalized, "recipe": 2}
         name = name or f"AnnData {adata.n_obs:,} cells x {adata.n_vars:,} features"
-        cfg, rows = _config_for_adata(adata, key=key, name=name, coords=coords, platform=platform, sample=sample, fields=fields, color=color, layer=layer, normalized=normalized)
+        # the menu decides which obs columns are shown; they must be part of the hash, or re-clustering shows stale labels
+        cfg, rows = _config_for_adata(adata, key="pending", name=name, coords=coords, platform=platform, sample=sample, fields=fields, color=color, layer=layer, normalized=normalized)
+        used_cols = sorted({c for c in [sample, color] if c} | {c for sp in cfg.samples for c in (list(map(str, adata.obs.columns)) if sp.fields == "auto" else sp.fields.values())})
+        key = _hash_adata(adata, params, obs_columns=used_cols, obsm_key=coords[5:] if coords.startswith("obsm/") else None, layer=layer)
+        cfg.id = key
+        for sp in cfg.samples:
+            sp.path = Path(f"memory:{key}")
         out = root / key
         with _build_lock(out, log):
             built = not (out / "manifest.json").exists()

@@ -19,7 +19,8 @@ function parseFilter(s: string | null): FilterSpec | null {
   if (!s) return null;
   const c = /^c:([^:]+):(.*)$/.exec(s);
   if (c) return { kind: "category", field: c[1], codes: c[2].split(".").map(Number).filter((n) => Number.isFinite(n)) };
-  const m = /^(g|f):([^:]+):([^,]*),(.*)$/.exec(s);
+  // g:<id>:<lo>,<hi>, split from the right: feature ids may themselves contain ':' (peaks like chr1:100-200)
+  const m = /^(g|f):(.+):([^:,]*),([^:,]*)$/.exec(s);
   if (!m) return null;
   const range: [number, number] = [num(m[3], 0), num(m[4], 1)];
   return m[1] === "g" ? { kind: "gene", gene: m[2], range } : { kind: "field", field: m[2], range };
@@ -60,8 +61,9 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("img") != null) {
     const v = num(q.get("img"), 1);
     out.imageOpacity = v;
-    out.showImages = v > 0;
+    if (v <= 0) out.showImages = false; // links written before `imgs` existed
   }
+  if (q.get("imgs") === "0") out.showImages = false;
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
   if (q.get("s")) out.focus = q.get("s");
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
@@ -109,8 +111,8 @@ export function serialize(s: ViewerState): string {
     .map(([f, codes]) => `${f}:${codes.join(".")}`)
     .join(";");
   if (h) q.set("h", h);
-  if (!s.showImages) q.set("img", "0");
-  else if (s.imageOpacity !== 1) q.set("img", s.imageOpacity.toFixed(2));
+  if (!s.showImages) q.set("imgs", "0");
+  if (s.imageOpacity !== 1) q.set("img", s.imageOpacity.toFixed(2));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);
   if (s.hiddenSamples.length) q.set("hs", s.hiddenSamples.join(","));
   if (s.scalePerSample) q.set("sps", "1");
@@ -136,8 +138,12 @@ export function bindUrl(): () => void {
     timer = null;
     const qs = serialize(store.getState());
     if (qs === last) return;
-    last = qs;
-    history.replaceState(null, "", `${location.pathname}?${qs}${location.hash}`);
+    try {
+      history.replaceState(null, "", `${location.pathname}?${qs}${location.hash}`);
+      last = qs;
+    } catch {
+      timer = window.setTimeout(write, 1000); // Safari rate-limits replaceState; the state is written once it lets us
+    }
   };
   return store.subscribe((s, prev) => {
     if (s.hover !== prev.hover || s.pending !== prev.pending || s.timings !== prev.timings) {
@@ -147,6 +153,6 @@ export function bindUrl(): () => void {
     }
     const slow = s.viewState !== prev.viewState || s.locus !== prev.locus;
     if (timer) window.clearTimeout(timer);
-    timer = window.setTimeout(write, slow ? 250 : 0);
+    timer = window.setTimeout(write, slow ? 250 : 120); // sliders fire per pixel; browsers budget history writes
   });
 }

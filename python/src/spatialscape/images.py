@@ -13,7 +13,7 @@ from .geometry import transform_image
 TILE = 512
 
 
-def read_image(path: Path) -> np.ndarray:
+def read_image(path: Path, *, rgb: bool = True) -> np.ndarray:
     """Return (c, y, x). Supports OME-Zarr dirs, tiff, png/jpg."""
     path = Path(path)
     if path.is_dir():
@@ -27,17 +27,18 @@ def read_image(path: Path) -> np.ndarray:
         import imageio.v3 as iio
 
         arr = np.asarray(iio.imread(path))
-    return _to_cyx(arr)
+    return _to_cyx(arr, rgb=rgb)
 
 
-def _to_cyx(arr: np.ndarray) -> np.ndarray:
+def _to_cyx(arr: np.ndarray, *, rgb: bool = True) -> np.ndarray:
+    """(c, y, x). A 4th plane is alpha only for an RGB image; a 4-channel fluorescence stack keeps all four."""
     arr = np.squeeze(arr)
     if arr.ndim == 2:
         return arr[None, :, :]
     if arr.ndim == 3:
         if arr.shape[-1] in (3, 4) and arr.shape[0] not in (3, 4):
             arr = np.moveaxis(arr, -1, 0)
-        if arr.shape[0] == 4:
+        if arr.shape[0] == 4 and rgb:
             arr = arr[:3]
         return np.ascontiguousarray(arr)
     raise ValueError(f"cannot interpret image with shape {arr.shape}")
@@ -160,15 +161,33 @@ def write_ome_zarr(
     return [tuple(lv.shape) for lv in levels]
 
 
-def prepare_image(path: Path, flip: str, rotate: int, max_size: int | None) -> np.ndarray:
-    img = read_image(path)
+def prepare_image(path: Path, flip: str, rotate: int, max_size: int | None, *, rgb: bool = True) -> np.ndarray:
+    img = read_image(path, rgb=rgb)
     img = limit_size(img, max_size)
     return transform_image(img, flip, rotate)
 
 
-def read_image_shape(path: Path) -> tuple[int, int, int]:
-    """(c, y, x) at level 0 without loading full data when possible."""
+def read_image_shape(path: Path, *, rgb: bool = True) -> tuple[int, int, int]:
+    """(c, y, x) at level 0 from the file header: TIFF series metadata, PNG/JPEG headers, OME-Zarr attributes."""
     path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix in (".tif", ".tiff"):
+        import tifffile
+
+        with tifffile.TiffFile(str(path)) as tf:
+            series = tf.series[0]
+            shape, axes = tuple(series.shape), str(series.axes)
+        if {"Y", "X"} <= set(axes):
+            c = shape[axes.index("C")] if "C" in axes else shape[axes.index("S")] if "S" in axes else 1
+            return (3 if c == 4 and rgb else c, shape[axes.index("Y")], shape[axes.index("X")])
+        return _to_cyx(np.zeros(shape, dtype=np.uint8), rgb=rgb).shape
+    if suffix in (".png", ".jpg", ".jpeg"):
+        from PIL import Image
+
+        with Image.open(path) as im:
+            w, h = im.size
+            c = len(im.getbands())
+        return (3 if c == 4 and rgb else c, h, w)
     if path.is_dir():
         g = zarr.open_group(str(path), mode="r")
         attrs = dict(g.attrs)
@@ -178,8 +197,8 @@ def read_image_shape(path: Path) -> tuple[int, int, int]:
         if axes and set(axes) >= {"y", "x"}:
             c = shape[axes.index("c")] if "c" in axes else 1
             return (c, shape[axes.index("y")], shape[axes.index("x")])
-        return _to_cyx(np.zeros(shape, dtype=np.uint8)).shape
-    return read_image(path).shape
+        return _to_cyx(np.zeros(shape, dtype=np.uint8), rgb=rgb).shape
+    return read_image(path, rgb=rgb).shape
 
 
 def json_dump(obj, path: Path) -> None:

@@ -9,7 +9,7 @@ import { GeneSearch } from "../ui/GeneSearch";
 import { GenomeView, type CoverageTrack, type HoverInfo } from "./GenomeView";
 import { formatLocus, formatSpan, geneFromRow, padGene, padPeak, parseLocus, type Gene, type GeneRow, type Peak } from "./model";
 
-const PEAK = /^(?:peak: )?(chr\w+):(\d+)-(\d+)$/;
+const PEAK = /^(?:peak: )?((?:chr)?[0-9A-Za-z_.]+)[:-](\d+)-(\d+)$/; // chr1:100-200, 1:100-200 or chr1-100-200
 const ALL: [number, number, number] = [154, 165, 177];
 const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
@@ -32,9 +32,10 @@ async function text(url: string): Promise<string> {
 async function loadAssets(base: string, tracks: TracksInfo): Promise<Assets> {
   const sizes = new Map<string, number>();
   for (const line of (await text(base + (tracks.chromSizes ?? "tracks/chrom.sizes"))).split("\n")) {
-    const [c, n] = line.split("\t");
+    const [c, n] = line.split(/\s+/);
     if (c && +n > 0) sizes.set(c, +n);
   }
+  if (!sizes.size) throw new Error("chrom.sizes lists no chromosomes");
   const peaks = new Map<string, Peak[]>();
   if (tracks.peaks) {
     for (const line of (await text(base + tracks.peaks)).split("\n")) {
@@ -121,9 +122,11 @@ export function GenomePanel() {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [yMax, setYMax] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [trackError, setTrackError] = useState<string | null>(null);
+  const followDefault = useRef(true); // the dataset's default gene is a starting point, not something to return to
   const colorField = color?.kind === "field" ? color.field : null;
   const colorGene = color?.kind === "gene" ? color.gene : null;
-  const target = colorGene ?? manifest?.defaultGene ?? null;
+  const defaultGene = manifest?.defaultGene ?? null;
 
   useEffect(() => {
     setAssets(null);
@@ -156,6 +159,7 @@ export function GenomePanel() {
         if (!cur || cur.chrom !== l.chrom || Math.abs(cur.start - l.start) > 0.5 || Math.abs(cur.end - l.end) > 0.5) store.getState().set({ locus: l });
       },
       onHover: setHover,
+      onError: setTrackError,
       onScale: (m) => setYMax((prev) => (Math.abs(prev - m) > 0.005 * (m || 1) ? m : prev)),
       onClick: (hit) => {
         const st = store.getState();
@@ -164,6 +168,7 @@ export function GenomePanel() {
       },
     });
     const l = store.getState().locus;
+    followDefault.current = !l;
     if (l && assets.sizes.has(l.chrom)) {
       v.setLocus(l, false);
       skipFollow.current = true;
@@ -198,19 +203,24 @@ export function GenomePanel() {
     view.setTracks(wanted);
   }, [view, manifest, tracks, base, colorField, hidden]);
 
-  // the locus follows what is colored by: a gene, a gene's activity score, or a peak; the band marks it
+  // the locus follows what is colored by: a gene, a gene's activity score, or a peak; the band marks it.
+  // The default gene is followed once, on a fresh open; switching from a gene to an annotation moves nothing.
   useEffect(() => {
-    if (!view || !assets || !target) return;
+    if (!view || !assets) return;
     const move = !skipFollow.current;
     skipFollow.current = false;
+    const target = colorGene ?? (followDefault.current ? defaultGene : null);
+    followDefault.current = false;
+    if (!target) return;
     let cancelled = false;
     void (async () => {
       const m = PEAK.exec(target);
       if (m) {
-        const len = assets.sizes.get(m[1]);
-        if (len == null || cancelled) return;
-        view.setHighlight({ chrom: m[1], start: +m[2], end: +m[3] });
-        if (move) view.setLocus({ chrom: m[1], ...padPeak(+m[2], +m[3], len) });
+        const chrom = assets.sizes.has(m[1]) ? m[1] : assets.sizes.has(`chr${m[1]}`) ? `chr${m[1]}` : null;
+        const len = chrom ? assets.sizes.get(chrom) : undefined;
+        if (!chrom || len == null || cancelled) return;
+        view.setHighlight({ chrom, start: +m[2], end: +m[3] });
+        if (move) view.setLocus({ chrom, ...padPeak(+m[2], +m[3], len) });
         return;
       }
       const g = await assets.find(target.replace(/^activity: /, ""));
@@ -221,7 +231,7 @@ export function GenomePanel() {
     return () => {
       cancelled = true;
     };
-  }, [view, assets, target]);
+  }, [view, assets, colorGene, defaultGene]);
 
   const goToGene = async (name: string) => {
     if (!view || !assets) return;
@@ -276,7 +286,7 @@ export function GenomePanel() {
         <span className="right">
           {yMax > 0 && <span title="insertions per million, one scale for every track">0 – {yMax.toPrecision(2)} / M</span>}
           {assets?.source && <span className="muted"> · genes: {assets.source}</span>}
-          {error && <span className="warn"> {error}</span>}
+          {(error || trackError) && <span className="warn"> {error ?? trackError}</span>}
         </span>
       </div>
       <div className="g-body" ref={bodyRef}>

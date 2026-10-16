@@ -39,8 +39,9 @@ def detect_lognorm(M: sp.csr_matrix, sample: int = 1_000_000) -> bool:
     if data.size > sample:
         rng = np.random.default_rng(0)
         data = data[rng.choice(data.size, sample, replace=False)]
-    is_int = np.allclose(data, np.rint(data))
-    return not (is_int and data.max() > 20)
+    # log-normalized data is essentially never all-integer; raw counts always are (also at low depth, where the
+    # old "max <= 20" rule mistook Visium HD bins and small-panel runs for normalized data)
+    return not np.allclose(data, np.rint(data))
 
 
 def log1p_cp10k(M: sp.csr_matrix) -> sp.csr_matrix:
@@ -94,6 +95,11 @@ def write_expression(
     gmax_all = np.zeros(n_vars, dtype=np.float32)
     gmin_all = np.zeros(n_vars, dtype=np.float32)
     if Mc.nnz:
+        if not np.all(np.isfinite(Mc.data)):
+            bad = np.unique(Mc.indices[~np.isfinite(Mc.data)]) if hasattr(Mc, "indices") else []
+            cols = np.repeat(np.arange(n_vars), np.diff(Mc.indptr))[~np.isfinite(Mc.data)] if hasattr(Mc, "indptr") else bad
+            names = ", ".join(str(c) for c in np.unique(cols)[:5])
+            raise ValueError(f"expression has NaN or infinite values (feature columns {names}{'...' if len(np.unique(cols)) > 5 else ''}); fix or drop those features before building")
         gmax_all = np.asarray(Mc.max(axis=0).todense()).ravel().astype(np.float32)
         gmin_all = np.asarray(Mc.min(axis=0).todense()).ravel().astype(np.float32)
     lo_all, hi_all = feature_ranges(gmin_all, gmax_all)

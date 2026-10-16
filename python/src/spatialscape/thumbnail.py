@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import zarr
-from PIL import Image, ImageDraw
+from PIL import Image, ImageColor, ImageDraw
 
 from .manifest import Manifest
 
@@ -13,8 +13,11 @@ BG = (17, 21, 27)
 
 
 def _hex(c: str) -> tuple[int, int, int]:
-    c = c.lstrip("#")
-    return (int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16))
+    try:
+        r, g, b = ImageColor.getrgb(c)[:3]  # #rrggbb, #rgb and CSS names alike
+        return (r, g, b)
+    except ValueError:
+        return (136, 136, 136)
 
 
 def pick_field(m: Manifest, sample) -> str | None:

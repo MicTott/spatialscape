@@ -245,7 +245,10 @@ export const store = createStore<ViewerState>((set, get) => ({
   addRegionGroup: (name) => {
     const r = get().regions;
     const id = `r${Date.now().toString(36)}${r.groups.length}`;
-    const group: RegionGroup = { id, name: name ?? `Region ${r.groups.length + 1}`, color: REGION_COLORS[r.groups.length % REGION_COLORS.length], polygons: [] };
+    const taken = new Set(r.groups.map((g) => g.name));
+    let n = r.groups.length + 1;
+    while (taken.has(`Region ${n}`)) n++; // names are categories and keys: never reuse one that is still there
+    const group: RegionGroup = { id, name: name ?? `Region ${n}`, color: REGION_COLORS[r.groups.length % REGION_COLORS.length], polygons: [] };
     set({ regions: { ...r, groups: [...r.groups, group], active: id }, tool: "lasso" });
     return id;
   },

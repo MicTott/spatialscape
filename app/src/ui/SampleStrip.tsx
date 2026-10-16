@@ -38,16 +38,18 @@ export function SampleStrip() {
 }
 
 function SampleRow({ id, s, focus, selected, status }: { id: string; s: Sample; focus: string | null; selected: string | null; status?: string }) {
-  const cls = [id === focus ? "focus" : "", id === selected ? "sel" : "", status ?? ""].join(" ");
+  const st = store.getState();
+  const hidden = st.hiddenSamples.includes(id) || (!!st.platforms && s.kind !== "embedding" && !st.platforms.includes(s.platform));
+  const cls = [id === focus ? "focus" : "", id === selected ? "sel" : "", status ?? "", hidden ? "hidden" : ""].join(" ");
   return (
-    <li className={cls}>
-      <button className="sample-btn" onClick={() => store.getState().set({ selected: id })} onDoubleClick={() => store.getState().setFocus(id)} title="double-click to focus">
+    <li className={cls} title={hidden ? "hidden by the platform bar or the sample list" : undefined}>
+      <button className="sample-btn" onClick={() => st.set({ selected: id })} onDoubleClick={() => !hidden && st.setFocus(id)} title={hidden ? "hidden" : "double-click to focus"}>
         <span className="s-name">{s.name}</span>
         <span className="s-meta">
           {s.platform} · {s.nObs.toLocaleString()}
         </span>
       </button>
-      <button className="focus-btn" onClick={() => store.getState().setFocus(id === focus ? null : id)} title={id === focus ? "back to all" : "focus"}>
+      <button className="focus-btn" disabled={hidden} onClick={() => st.setFocus(id === focus ? null : id)} title={id === focus ? "back to all" : "focus"}>
         {id === focus ? "⤢" : "⤡"}
       </button>
     </li>

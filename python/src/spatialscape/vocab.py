@@ -50,6 +50,24 @@ def load_palette(path: Path | None) -> dict[str, dict[str, str]]:
     return out
 
 
+MAX_CATEGORIES = 65_535  # codes are uint16
+
+
+def _label(c) -> str:
+    """A category label as text: integral numbers without a trailing .0, so an int column in one sample and a
+    float column (NaN forced it) in another meet in the same category."""
+    if isinstance(c, (float, np.floating)):
+        return str(int(c)) if np.isfinite(c) and float(c).is_integer() else str(c)
+    return str(c)
+
+
+def _label_strings(s: pd.Series) -> pd.Series:
+    if pd.api.types.is_numeric_dtype(s.dtype) and not pd.api.types.is_bool_dtype(s.dtype):
+        v = pd.to_numeric(s, errors="coerce")
+        return v.map(lambda x: None if pd.isna(x) else _label(float(x))).astype("string")
+    return s.astype("string")
+
+
 class VocabRegistry:
     """Append-only registry: codes never change once assigned, so a rebuilt sample stays consistent with the others."""
 
@@ -139,6 +157,8 @@ class VocabRegistry:
         cats = v["categories"]
         if label in cats:
             return cats.index(label)
+        if len(cats) >= MAX_CATEGORIES:
+            raise ValueError(f"vocabulary {vid!r}: more than {MAX_CATEGORIES:,} categories across samples")
         cats.append(label)
         v["colors"].append(self._color_for(vid, label, len(cats) - 1))
         return len(cats) - 1
@@ -148,8 +168,10 @@ class VocabRegistry:
         aliases = self.vocabs[vid]["aliases"]
         s = values
         if not isinstance(s.dtype, pd.CategoricalDtype):
-            s = s.astype("string").astype("category")
-        labels = [aliases.get(str(c), str(c)) for c in s.cat.categories]
+            s = _label_strings(s).astype("category")
+        labels = [aliases.get(_label(c), _label(c)) for c in s.cat.categories]
+        if len(labels) > MAX_CATEGORIES:
+            raise ValueError(f"field {field_id!r}: {len(labels):,} categories (at most {MAX_CATEGORIES:,}); map a coarser column, or leave this one out of `fields:`")
         # preserve source category order for first-seen appends
         code_map = np.empty(len(labels) + 1, dtype=np.uint16)
         for i, lab in enumerate(labels):

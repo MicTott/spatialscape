@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import posixpath
 import re
 import threading
 import time
@@ -54,8 +55,16 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
     # ---- routing: data folder first, then the packaged viewer
+    def list_directory(self, path):
+        """Only the root of a folder served without a viewer lists its bundles (there is nothing else to show
+        there); inside bundles nothing is browsed, they are addressed through manifest.json."""
+        if self.app_dir is None and Path(path).resolve() == self.data_dir.resolve():
+            return super().list_directory(path)
+        self.send_error(404, "no directory listings")
+        return None
+
     def translate_path(self, path: str) -> str:
-        rel = path.split("?", 1)[0].split("#", 1)[0]
+        rel = posixpath.normpath(path.split("?", 1)[0].split("#", 1)[0])
         data = Path(super().translate_path(rel))  # inside data_dir (SimpleHTTPRequestHandler blocks traversal)
         is_root = rel.strip("/") == ""
         if data.is_file() or (data.is_dir() and not is_root):
@@ -81,11 +90,13 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         if not (self.session and route in ("/_api/selection", "/_api/regions")):
             self.send_error(405)
             return
-        n = int(self.headers.get("Content-Length") or 0)
         try:
+            n = int(self.headers.get("Content-Length") or 0)
             doc = json.loads(self.rfile.read(n) or b"{}")
+            if not isinstance(doc, dict):
+                raise ValueError("body must be a JSON object")
             key = str(doc.get("dataset") or "")
-        except ValueError:
+        except (ValueError, TypeError):
             self.send_error(400)
             return
         if route == "/_api/selection":
@@ -158,7 +169,7 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         if not rng or os.path.isdir(path) or not os.path.exists(path):
             return super().send_head()
         m = RANGE_RE.match(rng)
-        if not m:
+        if not m or "," in rng:  # multiple ranges: answer with the whole file (200), which every client accepts
             return super().send_head()
         size = os.path.getsize(path)
         start_s, end_s = m.groups()
@@ -170,12 +181,12 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         else:
             start = int(start_s)
             end = int(end_s) if end_s else size - 1
-        if start >= size:
+        end = min(end, size - 1)
+        if start >= size or end < start:
             self.send_response(416)
             self.send_header("Content-Range", f"bytes */{size}")
             self.end_headers()
             return None
-        end = min(end, size - 1)
         f = open(path, "rb")  # noqa: SIM115 - streamed and closed by the handler
         f.seek(start)
         self.send_response(206)
@@ -210,9 +221,9 @@ def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_
         app_dir = None  # a built site: serve it as-is
     elif app_dir is None:
         app_dir = packaged_app_dir()
-    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "_selections": {}, "_regions": {}})
+    extensions = {**SimpleHTTPRequestHandler.extensions_map, ".json": "application/json", ".bw": "application/octet-stream", ".bed": "text/plain", "": "application/octet-stream"}
+    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "_selections": {}, "_regions": {}, "extensions_map": extensions})
     factory = partial(handler, directory=str(directory))
-    factory.extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".json": "application/json", "": "application/octet-stream"}  # type: ignore[attr-defined]
     return ThreadingHTTPServer((host, port), factory)
 
 

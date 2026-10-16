@@ -150,7 +150,7 @@ def build_sample(
     coords = sinput.coords
     auto_px_images = [im for im in spec.images if im.pixel_size == "auto"]
     if auto_px_images:
-        _c, h, w = read_image_shape(auto_px_images[0].path)
+        _c, h, w = read_image_shape(auto_px_images[0].path, rgb=auto_px_images[0].kind == "rgb")
         frame_w, frame_h = w / auto_px_images[0].pixels_per_unit, h / auto_px_images[0].pixels_per_unit
     else:
         frame_w, frame_h = float(coords[:, 0].max()), float(coords[:, 1].max())
@@ -172,7 +172,7 @@ def build_sample(
         if f.type == "categorical":
             cats[fid] = vocab.encode(fid, series.reset_index(drop=True))
         else:
-            arr = pd.to_numeric(series, errors="coerce").to_numpy(dtype=np.float32)
+            arr = pd.to_numeric(series, errors="coerce").to_numpy(dtype=np.float32, na_value=np.nan)
             scale = spec.field_scales.get(fid, 1.0)
             nums[fid] = arr * np.float32(scale) if scale != 1.0 else arr
     ids = [str(s) for s in adata.obs_names[perm]]
@@ -236,11 +236,11 @@ def build_sample(
     images: list[SampleImage] = []
     for im in spec.images:
         log(f"[{spec.id}] image {im.path}")
-        img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, im.max_size)
         rgb = im.kind == "rgb"
+        img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, im.max_size, rgb=rgb)
         if im.pixel_size == "auto":
             # pixels_per_unit image px per coord unit; after max_size downsampling the ratio changes
-            _c, h0, w0 = read_image_shape(im.path)
+            _c, h0, w0 = read_image_shape(im.path, rgb=rgb)
             ds = max(h0, w0) / max(img.shape[1], img.shape[2]) if im.max_size else 1.0
             pixel_size = upu / im.pixels_per_unit * ds
         else:
@@ -289,6 +289,17 @@ def build_sample(
     )
 
 
+def _any_feature(genes: list[str], groups: list[dict]) -> str:
+    """Something to color by when the dataset has no categorical field and no default: the first gene, else the
+    first grouped feature (a peaks-only dataset), else a clear error instead of an IndexError after a long build."""
+    if genes:
+        return genes[0]
+    for g in groups:
+        if g.get("features"):
+            return g["features"][0]["id"]
+    raise ValueError("the dataset has no features to color by; check `expression:` and the inputs")
+
+
 def _split_features(cfg: DatasetConfig, names: list[str]) -> tuple[list[str], list[dict]]:
     """Split the feature union into plain genes and configured groups (first matching pattern wins)."""
     groups = [{"id": g.id, "name": g.name, "units": g.units, "features": []} for g in cfg.feature_groups]
@@ -334,7 +345,7 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         dc = ColorSpec(kind="gene", gene=cfg.default_gene)
     else:
         cat_fields = [f for f in cfg.fields if f.type == "categorical"]
-        dc = ColorSpec(kind="field", field=cat_fields[0].id) if cat_fields else ColorSpec(kind="gene", gene=suggested_default(samples, genes) or genes[0])
+        dc = ColorSpec(kind="field", field=cat_fields[0].id) if cat_fields else ColorSpec(kind="gene", gene=suggested_default(samples, genes) or _any_feature(genes, groups))
     default_gene = cfg.default_gene or (dc.gene if dc.kind == "gene" else suggested_default(samples, genes))
     order = cfg.layout.order or [s.id for s in samples]
     manifest = Manifest(
@@ -461,17 +472,24 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force:
     vocab = _registry_for(cfg, plan.existing, plan.reused)
     by_id = {s.id: s for s in plan.existing.samples} if plan.existing else {}
     samples: list[Sample] = []
+    built: list[tuple[Path, dict]] = []
     for a in plan.actions:
         if a.build:
             s = build_sample(a.spec, cfg, out / "samples" / a.spec.id, vocab, sharded=sharded, log=log)
-            write_sidecar(out / "samples" / a.spec.id, a.fingerprint)
+            built.append((out / "samples" / a.spec.id, a.fingerprint))
         else:
             s = by_id[a.spec.id].model_copy(update={"name": a.spec.name or a.spec.id, "group": a.spec.group})
         samples.append(s)
     for sid in plan.removed:
         shutil.rmtree(out / "samples" / sid, ignore_errors=True)
         log(f"removed sample {sid}")
-    return _write_dataset_files(out, cfg, samples, vocab)
+    manifest = _write_dataset_files(out, cfg, samples, vocab)
+    # Sidecars last: a sample is "current" only together with the manifest whose vocabularies its codes were
+    # assigned against. A run that dies before this point leaves the new folders without sidecars (rebuilt next
+    # time) and the old manifest intact, instead of a sample that decodes against the wrong categories.
+    for d, fp in built:
+        write_sidecar(d, fp)
+    return manifest
 
 
 @dataclass

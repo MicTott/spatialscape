@@ -29,8 +29,8 @@ from .genes import gene_models_for, write_gene_models
 from .manifest import TrackSet, TracksInfo
 
 Log = Callable[[str], None]
-TRACKS_RECIPE = 2  # bump when write_tracks writes something different for the same inputs and settings
-PEAK_RE = re.compile(r"^(?:peak: )?(chr[0-9XYM]+|[0-9XYM]+):(\d+)-(\d+)$")
+TRACKS_RECIPE = 3  # bump when write_tracks writes something different for the same inputs and settings
+PEAK_RE = re.compile(r"^(?:peak: )?(chr[0-9XYM]+|[0-9XYM]+)[:-](\d+)-(\d+)$")  # chr1:100-200 (10x) or chr1-100-200 (Signac)
 
 # GRCh38 primary chromosomes (the 10x references use these names and lengths)
 GRCH38 = {
@@ -66,7 +66,9 @@ def _slug(label: str) -> str:
 
 
 def _write_bigwig(pybigwig, path: Path, sizes: dict[str, int], per_chrom: dict[str, tuple[np.ndarray, np.ndarray]], bin_: int, scale: float) -> None:
-    """per_chrom: chrom -> (bin indices, counts) for the non-zero bins. Values are counts * scale."""
+    """per_chrom: chrom -> (bin indices, counts) for the non-zero bins. Values are counts * scale. The gaps between
+    them are written as explicit zero runs: a bigWig's zoom levels average over covered bases only, so without
+    them a lone 25 bp bin would be reported at full height for a whole 250 bp zoom bin once zoomed out."""
     bw = pybigwig.open(str(path), "w")
     bw.addHeader(list(sizes.items()))
     for chrom in sizes:
@@ -74,9 +76,17 @@ def _write_bigwig(pybigwig, path: Path, sizes: dict[str, int], per_chrom: dict[s
         if hit is None or len(hit[0]) == 0:
             continue
         idx, cnt = hit
-        starts = (idx.astype(np.int64) * bin_)
-        ends = np.minimum(starts + bin_, sizes[chrom])
-        bw.addEntries([chrom] * len(starts), starts.tolist(), ends=ends.tolist(), values=(cnt.astype(np.float64) * scale).tolist())
+        size = sizes[chrom]
+        starts = idx.astype(np.int64) * bin_
+        ends = np.minimum(starts + bin_, size)
+        gap_s = np.concatenate([[0], ends])
+        gap_e = np.concatenate([starts, [size]])
+        keep = gap_e > gap_s
+        all_s = np.concatenate([starts, gap_s[keep]])
+        all_e = np.concatenate([ends, gap_e[keep]])
+        all_v = np.concatenate([cnt.astype(np.float64) * scale, np.zeros(int(keep.sum()))])
+        order = np.argsort(all_s, kind="stable")
+        bw.addEntries([chrom] * len(order), all_s[order].tolist(), ends=all_e[order].tolist(), values=all_v[order].tolist())
     bw.close()
 
 
@@ -140,7 +150,7 @@ def write_tracks(
     def start(chrom: str) -> None:
         nonlocal cur, acc_all, acc
         cur = chrom
-        nbins = sizes[chrom] // bin_ + 1
+        nbins = -(-sizes[chrom] // bin_)  # the last bin ends at the chromosome end, never past it
         acc_all = np.zeros(nbins, dtype=np.int32)
         acc = {f: np.zeros((ncat[f], nbins), dtype=np.int32) for f in fields}
 
@@ -169,16 +179,19 @@ def write_tracks(
                 start(chrom)
                 seen_chroms.append(chrom)
             r = rows[grp.index.to_numpy()]
+            nbins = len(acc_all)
             pos = np.concatenate([grp["start"].to_numpy(), grp["end"].to_numpy() - 1]) // bin_
-            pos = np.clip(pos, 0, sizes[chrom] // bin_)
+            pos = np.clip(pos, 0, nbins - 1)
             rr = np.concatenate([r, r])
-            np.add.at(acc_all, pos, 1)
+            acc_all += np.bincount(pos, minlength=nbins).astype(np.int32)  # bincount: ~20x faster than add.at
             total_all += len(pos)
             n_used += len(grp)
             for f in fields:
                 ck = codes[f][rr]
-                np.add.at(acc[f], (ck, pos), 1)
-                totals[f] += np.bincount(ck, minlength=ncat[f])
+                counts = np.bincount(ck, minlength=ncat[f])
+                totals[f] += counts
+                for k in np.flatnonzero(counts):
+                    acc[f][k] += np.bincount(pos[ck == k], minlength=nbins).astype(np.int32)
     flush()
     log(f"  tracks: {n_used:,} fragments from {len(bc):,} barcodes over {len(seen_chroms)} chromosomes")
     if n_used == 0:
@@ -190,10 +203,17 @@ def write_tracks(
         fdir = tdir / f
         fdir.mkdir()
         paths: dict[str, str] = {}
+        used: set[str] = set()
         for k, label in enumerate(categories[f]):
             if totals[f][k] == 0 or label == "NA":  # unlabelled cells are not a group anyone wants a track for
                 continue
-            p = fdir / f"{_slug(label)}.bw"
+            slug = _slug(label)
+            n = 2
+            while slug in used:  # "NK/T cells" and "NK T cells" must not share a file
+                slug = f"{_slug(label)}_{n}"
+                n += 1
+            used.add(slug)
+            p = fdir / f"{slug}.bw"
             _write_bigwig(pybigwig, p, sizes, nonzero[f][k], bin_, 1e6 / totals[f][k])
             paths[label] = f"tracks/{f}/{p.name}"
         by.append(TrackSet(field=f, categories=paths))

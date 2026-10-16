@@ -95,6 +95,11 @@ export class Selection {
     c.requestLayers();
   }
 
+  /** Sections moved: the lasso outline was drawn in the old world frame, the highlighted cells move with their section. */
+  onRelayout(view: ViewId) {
+    if (this.current && this.current.view === view && this.current.polygon.length) this.current = { ...this.current, polygon: [] };
+  }
+
   clear() {
     this.current = null;
     store.getState().set({ selectionSummary: null });
@@ -229,7 +234,8 @@ export class Selection {
           } as any),
         );
       }
-      out.push(
+      if (this.current.polygon.length)
+        out.push(
         new PathLayer({
           ...common,
           id: `sel-poly-${view}`,

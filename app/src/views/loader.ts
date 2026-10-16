@@ -13,10 +13,17 @@ export class Loader {
     this.geneSwitchStart = performance.now();
   }
 
+  private loadId = 0;
+
   async load(url: string) {
     const c = this.c;
     const s = store.getState();
-    s.set({ status: "loading", error: null, datasetUrl: url, manifest: null, features: null, sampleStatus: {} });
+    const id = ++this.loadId; // a newer load (or a destroyed controller) makes this one stop at its next await
+    if (c.manifest || c.cache.samples.size) c.resetForDataset();
+    s.set({
+      status: "loading", error: null, datasetUrl: url, manifest: null, features: null, sampleStatus: {},
+      regions: { groups: [], active: null, seq: 0 }, categoryCounts: {}, filterHistogram: null, visibleCount: null, groupStats: null, selectionSummary: null, hover: null,
+    });
     let manifest: Manifest;
     try {
       const r = await fetch(`${url.replace(/\/$/, "")}/manifest.json`);
@@ -24,9 +31,10 @@ export class Loader {
       manifest = await r.json();
       assertManifest(manifest);
     } catch (e) {
-      s.set({ status: "error", error: `Could not load dataset at ${url}: ${(e as Error).message}. If the data is on another host, it must send CORS headers and support HTTP Range requests.` });
+      if (id === this.loadId && !c.destroyed) s.set({ status: "error", error: `Could not load dataset at ${url}: ${(e as Error).message}. If the data is on another host, it must send CORS headers and support HTTP Range requests.` });
       return;
     }
+    if (id !== this.loadId || c.destroyed) return;
     c.manifest = manifest;
     c.samplesById = new Map(manifest.samples.map((x) => [x.id, x]));
     c.regions.reset(manifest);

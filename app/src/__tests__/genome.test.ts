@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binFor, chevronPositions, covers, formatLocus, formatSpan, niceStep, packLanes, padGene, parseLocus, tickLabel, ticks, windowFor } from "../genome/model";
+import { binFor, chevronPositions, covers, formatLocus, formatSpan, geneFromRow, niceStep, packLanes, padGene, padPeak, parseLocus, tickLabel, ticks, windowFor } from "../genome/model";
 import { rasterize } from "../genome/raster";
 
 const sizes = new Map([
@@ -83,5 +83,31 @@ describe("genes", () => {
   it("pads a gene by 1.5 lengths, at least 5 kb", () => {
     expect(padGene(10_000, 12_000, 1e6)).toEqual({ start: 5000, end: 17_000 });
     expect(padGene(100_000, 110_000, 1e6)).toEqual({ start: 85_000, end: 125_000 });
+  });
+});
+
+
+describe("edges the helpers exist for", () => {
+  it("rejects an inverted or empty range and unknown chromosome names", () => {
+    expect(parseLocus("chr1:200-100", sizes)).toBeNull();
+    expect(parseLocus("chr1:100-100", sizes)).toEqual({ chrom: "chr1", start: 99, end: 100 }); // a single base is a locus
+    expect(parseLocus("chr1:100-99", sizes)).toBeNull();
+    expect(parseLocus("chr1:abc", sizes)).toBeNull();
+  });
+  it("labels Mb steps with the decimals the step needs and ticks stop at the chromosome end", () => {
+    expect(tickLabel(2_500_000, 2_500_000)).toBe("2.5 Mb");
+    expect(ticks(990, 1000, 5)).toEqual([990, 995, 1000]);
+    expect(niceStep(366_667, 1500)).toBe(25_000); // the 2.5 branch
+  });
+  it("rasterizes spans that straddle the window and a partial last bin", () => {
+    expect([...rasterize([-50], [150], [2], 0, 100, 1)]).toEqual([2]);
+    expect([...rasterize([50], [250], [4], 0, 100, 2)]).toEqual([2, 4]);
+    expect([...rasterize([0], [0], [9], 0, 100, 1)]).toEqual([0]);
+  });
+  it("places minus-strand chevrons and pads peaks by 10 kb inside the chromosome", () => {
+    const minus = { name: "M", strand: -1, start: 0, end: 1000, exonStarts: [0, 900], exonEnds: [100, 1000] };
+    expect(chevronPositions(minus, 1, 0, 1000, 100)).toHaveLength(8);
+    expect(padPeak(5000, 5500, 12_000)).toEqual({ start: 0, end: 12_000 });
+    expect(geneFromRow(["G", 1, 10, 20, [10], [20]])).toEqual({ name: "G", strand: 1, start: 10, end: 20, exonStarts: [10], exonEnds: [20] });
   });
 });

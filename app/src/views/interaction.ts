@@ -1,6 +1,7 @@
 /** Pointer and keyboard handling: hover (KDBush lookup + tooltip rows), click/double-click, lasso gestures, shortcuts. */
 import { Matrix4 } from "@math.gl/core";
 import type { SampleData } from "../data/cache";
+import { drawCount } from "./lod";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import { fmtValue, VIEWS } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -96,7 +97,9 @@ export class Interaction {
     const inv = new Matrix4(p.modelMatrix).invert();
     const [lx, ly] = inv.transformAsPoint([hit.world[0], hit.world[1], 0]);
     const r = Math.max(smp.pointRadius * s.pointScale[hit.view], 6 / scale);
-    const hits = sd.index.within(lx, ly, r);
+    const [vw, vh] = c.viewSize(hit.view);
+    const drawn = drawCount(sd.nObs, p.worldBbox, c.viewStates[hit.view].zoom, [vw, vh]); // rows past this are not on screen
+    const hits = sd.index.within(lx, ly, r).filter((h) => h < drawn);
     if (!hits.length) {
       if (s.hover) s.set({ hover: null });
       return;
@@ -191,6 +194,7 @@ export class Interaction {
     if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
     const c = this.c;
     const s = store.getState();
+    if (e.metaKey || e.ctrlKey || e.altKey) return; // Cmd+F, Cmd+L, Alt+Arrow belong to the browser
     if (e.key === "ArrowRight" || e.key === "PageDown") {
       c.stepFocus(1);
       e.preventDefault();

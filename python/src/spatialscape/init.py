@@ -17,6 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from .config import is_r_object
 from .discover import SKIP_COLUMNS, field_id
@@ -92,11 +93,18 @@ def describe_columns(obs: pd.DataFrame) -> list[Column]:
                 numeric_labels = vals.str.fullmatch(r"-?\d+(\.\d+)?").mean()
                 out.append(Column(name, "categorical", levels=k, examples=ex, named=bool(numeric_labels < 0.5)))
         elif pd.api.types.is_numeric_dtype(s):
-            v = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float)
-            if not np.isfinite(v).any():
+            v = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+            finite = v[np.isfinite(v)]
+            if not finite.size:
                 out.append(Column(name, "empty"))
+                continue
+            k = len(np.unique(finite))
+            # integer cluster ids (BayesSpace, Leiden from R) are labels, not measurements
+            if 2 <= k <= MAX_MENU_LEVELS and np.all(finite == np.rint(finite)) and (DOMAIN_RE.search(name) or CELLTYPE_RE.search(name)):
+                ex = [str(int(x)) for x in np.unique(finite)[:4]]
+                out.append(Column(name, "categorical", levels=k, examples=ex, named=False))
             else:
-                out.append(Column(name, "numeric", lo=float(np.nanmin(v)), hi=float(np.nanmax(v))))
+                out.append(Column(name, "numeric", lo=float(finite.min()), hi=float(finite.max())))
         else:
             out.append(Column(name, "empty"))
     return out
@@ -156,7 +164,8 @@ def suggest_fields(columns: list[Column], *, skip: set[str] | None = None) -> Me
         hit = next((c for c in nums if rx.match(c.name) and c.name not in used), None)
         if hit is None:
             continue
-        ratio = fid == "mito_percent" and (re.search(r"ratio|frac", hit.name, re.I) is not None or (hit.hi is not None and hit.hi <= 1.0))
+        says_percent = re.search(r"percent|pct|perc", hit.name, re.I) is not None
+        ratio = fid == "mito_percent" and not says_percent and (re.search(r"ratio|frac", hit.name, re.I) is not None or (hit.hi is not None and hit.hi <= 1.0))
         menu.mapped[fid] = {"column": hit.name, "scale": 100} if ratio else hit.name
         menu.kinds[fid] = "continuous"
         menu.notes[fid] = hit.note + (" -> shown as percent" if ratio else "")
@@ -238,7 +247,7 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
 def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Path, log: Log) -> EntryMenu:
     from .readers import peek
 
-    matches = sorted(_glob.glob(os.path.expanduser(pattern)))
+    matches = sorted(_glob.glob(os.path.expanduser(pattern), recursive=True))
     cols: list[Column] = []
     spatial_like = True
     if matches:
@@ -271,7 +280,13 @@ YAML_RESERVED = {"true", "false", "null", "yes", "no", "on", "off", "~"}
 def _ystr(s: str) -> str:
     """A YAML scalar: plain when it is unambiguous, double-quoted otherwise (templates, colons, hashes)."""
     plain = (len(s) == 1 and s.isalnum()) or (YAML_PLAIN.fullmatch(s) is not None and ": " not in s and " #" not in s)
-    return s if plain and s.lower() not in YAML_RESERVED else json.dumps(s, ensure_ascii=False)
+    if plain and s.lower() not in YAML_RESERVED:
+        try:  # numbers, dates, octal: YAML would type them, so they need quotes
+            if yaml.safe_load(s) == s:
+                return s
+        except yaml.YAMLError:
+            pass
+    return json.dumps(s, ensure_ascii=False)
 
 
 def _pad(text: str, comment: str, width: int = 44) -> str:

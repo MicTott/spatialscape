@@ -48,7 +48,7 @@ export function RegionsPanel() {
         </span>
       </h2>
       <input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => e.target.files?.[0] && load(e.target.files[0])} />
-      {problem && <div className="warn small">{problem}</div>}
+      {problem && <div className="muted small">{problem}</div>}
       {regions.groups.length === 0 ? (
         <p className="muted small">Your own annotation: add a group, lasso one or more areas in any section, then add the next group. Keys 1–9 switch groups, Backspace removes the last area.</p>
       ) : (

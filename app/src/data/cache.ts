@@ -36,21 +36,47 @@ export class DataCache {
   samples = new Map<string, SampleData>();
   genes = new ByteLRU<Uint8Array>(GENE_BUDGET_BYTES);
   private geneAttrs = new Map<string, BinaryAttr<Uint8Array>>();
+  private inflight = new Map<string, Promise<unknown>>(); // one request per key, however many callers ask meanwhile
+  private readonly rawWorker: Worker;
   worker: Comlink.Remote<DataWorkerAPI>;
 
   constructor() {
-    const w = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
-    this.worker = Comlink.wrap<DataWorkerAPI>(w);
+    this.rawWorker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+    this.worker = Comlink.wrap<DataWorkerAPI>(this.rawWorker);
   }
 
-  async openSample(datasetUrl: string, id: string, nObs: number): Promise<SampleData> {
+  /** Stop the worker and drop every array: the dataset is being replaced or the viewer removed. */
+  dispose() {
+    this.rawWorker.terminate();
+    this.samples.clear();
+    this.genes = new ByteLRU<Uint8Array>(GENE_BUDGET_BYTES);
+    this.geneAttrs.clear();
+    this.inflight.clear();
+    this.polygons.clear();
+    this.outlines.clear();
+  }
+
+  private dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const cur = this.inflight.get(key) as Promise<T> | undefined;
+    if (cur) return cur;
+    const p = fn().finally(() => this.inflight.delete(key));
+    this.inflight.set(key, p);
+    return p;
+  }
+
+  openSample(datasetUrl: string, id: string, nObs: number): Promise<SampleData> {
     const existing = this.samples.get(id);
-    if (existing) return existing;
+    if (existing) return Promise.resolve(existing);
+    return this.dedupe(`open:${id}`, () => this.openSampleNow(datasetUrl, id, nObs));
+  }
+
+  private async openSampleNow(datasetUrl: string, id: string, nObs: number): Promise<SampleData> {
     const { genes } = await this.worker.openSample(datasetUrl, id);
     const { xy, index } = await this.worker.getXYAndIndex(id);
+    if (xy.length / 2 !== nObs) console.warn(`sample ${id}: manifest says ${nObs} cells, obs.zarr holds ${xy.length / 2}; using the arrays`);
     const sd: SampleData = {
       id,
-      nObs,
+      nObs: xy.length / 2,
       genes,
       geneIndex: new Map(genes.map((g, i) => [g, i])),
       xy,
@@ -93,8 +119,9 @@ export class DataCache {
     if (!sd) return null;
     const gi = sd.geneIndex.get(gene);
     if (gi === undefined) return null; // gene not on this sample's panel
-    const arr = await this.worker.getGene(sampleId, gi);
-    this.genes.set(this.geneKey(sampleId, gene), arr);
+    const key = this.geneKey(sampleId, gene);
+    const arr = await this.dedupe(`gene:${key}`, () => this.worker.getGene(sampleId, gi));
+    this.genes.set(key, arr);
     return this.getGeneSync(sampleId, gene)!;
   }
 
@@ -118,11 +145,20 @@ export class DataCache {
     if (!sd) return null;
     let a = sd.catAttr.get(field);
     if (a) return a;
-    const codes = await this.worker.getCategorical(sampleId, field);
+    const codes = await this.dedupe(`cat:${sampleId}:${field}`, () => this.worker.getCategorical(sampleId, field));
+    a = sd.catAttr.get(field); // another caller may have filled it while we waited
+    if (a) return a;
     sd.cat.set(field, codes);
     a = { value: codes, size: 1 };
     sd.catAttr.set(field, a);
     return a;
+  }
+
+  /** Forget the derived masks of a categorical field whose codes changed in place (the drawn regions). */
+  invalidateCategory(sampleId: string, field: string) {
+    const sd = this.samples.get(sampleId);
+    if (!sd) return;
+    for (const k of [...sd.numU8.keys()]) if (k.startsWith(`cat:${field}:`)) sd.numU8.delete(k);
   }
 
   async getContinuousU8(sampleId: string, field: string, range?: [number, number]): Promise<BinaryAttr<Uint8Array> | null> {
@@ -130,7 +166,7 @@ export class DataCache {
     if (!sd) return null;
     let vals = sd.num.get(field);
     if (!vals) {
-      vals = await this.worker.getContinuous(sampleId, field);
+      vals = await this.dedupe(`num:${sampleId}:${field}`, () => this.worker.getContinuous(sampleId, field));
       sd.num.set(field, vals);
     }
     let r = range ?? sd.numRange.get(field);
@@ -159,20 +195,27 @@ export class DataCache {
     return { value: u8, size: 1 };
   }
 
-  private polygons = new Map<string, { positions: Float32Array; startIndices: Uint32Array } | Promise<unknown>>();
+  private polygons = new Map<string, { positions: Float32Array; startIndices: Uint32Array } | Promise<unknown> | "error">();
 
-  /** Decoded boundary polygons for a sample (cached); returns undefined while loading. */
+  /** Decoded boundary polygons for a sample (cached); undefined while loading or after a failed load (logged once). */
   getPolygons(sampleId: string, scale: number): { positions: Float32Array; startIndices: Uint32Array } | undefined {
     const sd = this.samples.get(sampleId);
     if (!sd) return undefined;
     const v = this.polygons.get(sampleId);
+    if (v === "error") return undefined;
     if (v && !(v instanceof Promise)) return v;
     if (!v) {
       const xyCopy = sd.xy.slice();
-      const p = this.worker.getPolygons(sampleId, Comlink.transfer(xyCopy, [xyCopy.buffer]), scale).then((res) => {
-        this.polygons.set(sampleId, res);
-        return res;
-      });
+      const p = this.worker
+        .getPolygons(sampleId, Comlink.transfer(xyCopy, [xyCopy.buffer]), scale)
+        .then((res) => {
+          this.polygons.set(sampleId, res);
+          return res;
+        })
+        .catch((e) => {
+          console.warn(`polygons of ${sampleId} unavailable:`, e);
+          this.polygons.set(sampleId, "error");
+        });
       this.polygons.set(sampleId, p);
     }
     return undefined;

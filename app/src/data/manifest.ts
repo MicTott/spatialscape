@@ -130,6 +130,11 @@ export function assertManifest(m: unknown): asserts m is Manifest {
   for (const s of x.samples) {
     if (!s.id || !Number.isFinite(s.nObs) || !Array.isArray(s.bbox)) throw new Error(`bad sample entry ${JSON.stringify(s).slice(0, 80)}`);
   }
+  for (const f of x.fields ?? []) {
+    if (f.type !== "categorical") continue;
+    const v = x.vocabularies?.[f.vocabulary];
+    if (!v || !Array.isArray(v.categories) || !Array.isArray(v.colors) || v.categories.length !== v.colors.length) throw new Error(`field ${f.id}: vocabulary ${f.vocabulary} missing or malformed`);
+  }
 }
 
 export function fieldById(m: Manifest, id: string): ObsField | undefined {

@@ -17,6 +17,16 @@ def _scalar(v: Any) -> float:
     return float(np.asarray(v).ravel()[0])
 
 
+def _no_spot_rule_for_hd(spec: SampleSpec, sf: dict[str, Any]) -> None:
+    """The 55 um spot / 100 um spacing rule is Visium geometry; applied to Visium HD bins it inflates the scale
+    by the bin pitch / 100 um, silently. HD needs SpaceRanger's microns_per_pixel."""
+    if spec.platform == "visium_hd" and "microns_per_pixel" not in sf:
+        raise ValueError(
+            f"sample {spec.id}: Visium HD cannot use the Visium spot-spacing rule; set `microns: {{ microns_per_unit: <SpaceRanger microns_per_pixel> }}`"
+            " (bin coordinates in full-resolution pixels) or `already_microns: true`"
+        )
+
+
 def _from_scalefactors(sf: dict[str, Any]) -> float | None:
     if "microns_per_pixel" in sf:
         return float(sf["microns_per_pixel"])
@@ -38,7 +48,9 @@ def microns_per_unit(spec: SampleSpec, sinput: SampleInput) -> float:
         return VISIUM_SPOT_SPACING_UM / float(m.spot_spacing)
     if m.scalefactors_json is not None:
         with open(m.scalefactors_json) as fh:
-            v = _from_scalefactors(json.load(fh))
+            sf = json.load(fh)
+        _no_spot_rule_for_hd(spec, sf)
+        v = _from_scalefactors(sf)
         if v is None:
             raise ValueError(f"{m.scalefactors_json}: no microns_per_pixel / spot_diameter_fullres")
         return v
@@ -55,6 +67,7 @@ def microns_per_unit(spec: SampleSpec, sinput: SampleInput) -> float:
     if isinstance(spatial, dict):
         for lib in spatial.values():
             if isinstance(lib, dict) and isinstance(lib.get("scalefactors"), dict):
+                _no_spot_rule_for_hd(spec, lib["scalefactors"])
                 v = _from_scalefactors(lib["scalefactors"])
                 if v is not None:
                     return v

@@ -81,7 +81,21 @@ export class ViewerController {
       clearTimeout(this.raf);
       this.raf = null;
     }
+    if (this.vsTimer) window.clearTimeout(this.vsTimer);
+    this.cache.dispose();
     this.deck.finalize();
+  }
+
+  /** Forget everything that belonged to the previous dataset: arrays, worker handles, scales, derived caches. */
+  resetForDataset() {
+    this.cache.dispose();
+    this.cache = new DataCache();
+    this.geneGmax.clear();
+    this.geneGmin.clear();
+    this.layersBuilder.reset();
+    this.blend.invalidate();
+    if (this.selection.current) this.selection.clear();
+    this.layouts = { spatial: null, embedding: null };
   }
 
   // ---------------------------------------------------------------- public API used by the UI and tests
@@ -219,6 +233,7 @@ export class ViewerController {
       for (const v of VIEWS) if (this.rects[v]) this.relayout(v, true);
       if (s.color?.kind === "field") this.stats.updateCategoryCounts(s.color.field);
       this.stats.updateGroupStats();
+      this.stats.updateFilterHistogram();
       this.requestLayers();
     }
     if (s.focus !== prev.focus) {
@@ -250,6 +265,7 @@ export class ViewerController {
     const [w, h] = this.viewSize(view);
     const samples = this.manifest.samples.filter((x) => (x.kind === "embedding") === (view === "embedding"));
     this.layouts[view] = computeLayout(samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenSampleSet(s), this.manifest.layout.columns);
+    this.selection.onRelayout(view);
     const focusHere = s.focus && this.viewOf(s.focus) === view;
     if (focusHere && this.layouts[view]!.placements.has(s.focus!)) this.focusSample(s.focus!, animate);
     else if (focusHere) s.set({ focus: null });

@@ -7,7 +7,7 @@ import { Matrix4 } from "@math.gl/core";
 import type { Manifest } from "../data/manifest";
 import { postRegions } from "../data/sessionApi";
 import { hexToRGB } from "../layers/lut";
-import { store, type RegionGroup, type RegionPolygon, type Regions, type ViewerState, type ViewId } from "../store/store";
+import { REGION_COLORS, store, type RegionGroup, type RegionPolygon, type Regions, type ViewerState, type ViewId } from "../store/store";
 import { pointInPolygon } from "./geometry";
 import type { LayoutResult } from "./layout";
 import { overlayProps } from "./types";
@@ -54,17 +54,45 @@ export class RegionsManager {
     return true;
   }
 
-  /** Store changed: refresh the field, the codes, the layers, and the session. */
+  /** Store changed: the field, codes, layers and session follow, each only when its inputs changed. A colour
+   *  picker tick renames nothing and moves no cell, so it must not recompute membership over every sample. */
   onChange(prev: Regions) {
     const cur = store.getState().regions;
-    if (cur.groups !== prev.groups || cur.active !== prev.active) {
-      this.syncManifest();
-      if (cur.groups !== prev.groups) {
-        this.recompute();
-        void this.post();
-      }
-      this.c.requestLayers();
+    if (cur.groups === prev.groups && cur.active === prev.active) return;
+    const shape = (r: Regions) => r.groups.map((g) => `${g.id}:${g.polygons.map((p) => p.seq).join(",")}`).join("|");
+    const labels = (r: Regions) => r.groups.map((g) => `${g.name}\u0000${g.color}`).join("|");
+    const geometry = shape(cur) !== shape(prev);
+    const cosmetics = labels(cur) !== labels(prev);
+    if (geometry) this.reconcileStore(prev, cur);
+    if (geometry || cosmetics) this.syncManifest();
+    if (geometry) this.recompute();
+    if (geometry || cosmetics) void this.post();
+    this.c.requestLayers();
+  }
+
+  /** Codes are group positions: when a group goes, hidden categories, category filters and the dot-plot
+   *  grouping that pointed at codes must follow the groups they meant, or be dropped. */
+  private reconcileStore(prev: Regions, cur: Regions) {
+    const s = store.getState();
+    const field = this.field;
+    const upd: Partial<ViewerState> = {};
+    const remap = new Map<number, number>();
+    prev.groups.forEach((g, i) => {
+      const j = cur.groups.findIndex((h) => h.id === g.id);
+      if (j >= 0) remap.set(i, j);
+    });
+    remap.set(prev.groups.length, cur.groups.length); // "unassigned" keeps its meaning
+    const hidden = s.hiddenCategories[field];
+    if (hidden?.length) {
+      const next = hidden.map((c) => remap.get(c)).filter((c): c is number => c !== undefined);
+      upd.hiddenCategories = { ...s.hiddenCategories, [field]: cur.groups.length ? next : [] };
     }
+    if (s.filter?.kind === "category" && s.filter.field === field) {
+      const codes = s.filter.codes.map((c) => remap.get(c)).filter((c): c is number => c !== undefined);
+      upd.filter = codes.length && cur.groups.length ? { ...s.filter, codes } : null;
+    }
+    if (s.groupField === field && !cur.groups.length) upd.groupField = null;
+    if (Object.keys(upd).length) s.set(upd);
   }
 
   private syncManifest() {
@@ -118,9 +146,12 @@ export class RegionsManager {
       }
       sd.cat.set(field, codes);
       sd.catAttr.set(field, { value: codes, size: 1 });
+      c.cache.invalidateCategory(sd.id, field); // category-filter masks were built from the old codes
     }
     c.layersBuilder.clearField(field);
     if (groups.length) c.stats.updateCategoryCounts(field);
+    const s = store.getState();
+    if (s.filter?.kind === "category" && s.filter.field === field) c.stats.updateFilterHistogram();
     if (c.selection.current) c.selection.updateSummary();
     c.requestLayers();
   }
@@ -224,15 +255,34 @@ export class RegionsManager {
       return "not a JSON file";
     }
     if (!doc || !Array.isArray(doc.groups)) return "not a regions file (expected { groups: [...] })";
+    const known = new Set(this.c.manifest?.samples.map((x) => x.id) ?? []);
+    const isPoint = (q: unknown) => Array.isArray(q) && q.length >= 2 && Number.isFinite(q[0]) && Number.isFinite(q[1]);
     let seq = 0;
-    const groups: RegionGroup[] = doc.groups.map((g: any, i: number) => ({
-      id: `r${Date.now().toString(36)}${i}`,
-      name: String(g.name ?? `Region ${i + 1}`),
-      color: typeof g.color === "string" ? g.color : "#4e79a7",
-      polygons: (g.polygons ?? []).map((p: any) => ({ id: `p${++seq}`, seq, sample: String(p.sample), view: p.view === "embedding" ? "embedding" : "spatial", local: p.local })),
-    }));
-    store.getState().setRegions(groups);
-    return null;
+    const groups: RegionGroup[] = [];
+    const names = new Set<string>();
+    let dropped = 0;
+    for (const [i, g] of (doc.groups as any[]).entries()) {
+      if (!g || typeof g !== "object") return `group ${i + 1} is not an object`;
+      let name = String(g.name ?? `Region ${i + 1}`);
+      while (names.has(name)) name += " (2)";
+      names.add(name);
+      const polygons: RegionPolygon[] = [];
+      for (const p of Array.isArray(g.polygons) ? g.polygons : []) {
+        if (!p || !Array.isArray(p.local) || p.local.length < 3 || !p.local.every(isPoint)) return `group "${name}" has an area without valid coordinates`;
+        if (!known.has(String(p.sample))) {
+          dropped++; // drawn on a section this dataset does not have
+          continue;
+        }
+        polygons.push({ id: `p${++seq}`, seq, sample: String(p.sample), view: p.view === "embedding" ? "embedding" : "spatial", local: p.local.map((q: number[]) => [q[0], q[1]] as [number, number]) });
+      }
+      groups.push({ id: `r${Date.now().toString(36)}${i}`, name, color: typeof g.color === "string" && /^#[0-9a-fA-F]{6}$/.test(g.color) ? g.color : REGION_COLORS[i % REGION_COLORS.length], polygons });
+    }
+    try {
+      store.getState().setRegions(groups);
+    } catch (e) {
+      return `could not apply the drawing: ${(e as Error).message}`;
+    }
+    return dropped ? `${dropped} area${dropped === 1 ? "" : "s"} skipped: drawn on sections this dataset does not have` : null;
   }
 
   private async post() {

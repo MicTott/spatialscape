@@ -146,26 +146,23 @@ const api = {
       bw = new BigWig({ url });
       bigwigs.set(url, bw);
     }
-    let out: Float32Array;
-    try {
-      const f = await bw.getFeaturesAsArrays(chrom, start, start + n * bin, { basesPerSpan: bin / 2 });
-      out = rasterize(f.starts, f.ends, f.scores, start, bin, n);
-    } catch {
-      out = new Float32Array(n);
-    }
+    const f = await bw.getFeaturesAsArrays(chrom, start, start + n * bin, { basesPerSpan: bin / 2 });
+    const out = rasterize(f.starts, f.ends, f.scores, start, bin, n);
     return Comlink.transfer(out, [out.buffer]);
   },
 
   async getPolygons(sampleId: string, xy: Float32Array, scale: number): Promise<{ positions: Float32Array; startIndices: Uint32Array }> {
     const h = samples.get(sampleId)!;
-    const [offBuf, dBuf] = await Promise.all([
-      fetch(`${h.base}/polygons.offsets.u32`).then((r) => r.arrayBuffer()),
-      fetch(`${h.base}/polygons.i16`).then((r) => r.arrayBuffer()),
-    ]);
+    const ok = async (r: Response) => {
+      if (!r.ok) throw new Error(`${r.status} for ${r.url}`);
+      return r.arrayBuffer();
+    };
+    const [offBuf, dBuf] = await Promise.all([fetch(`${h.base}/polygons.offsets.u32`).then(ok), fetch(`${h.base}/polygons.i16`).then(ok)]);
     const offsets = new Uint32Array(offBuf);
     const deltas = new Int16Array(dBuf);
     const n = offsets.length - 1;
     const nv = deltas.length / 2;
+    if (n !== xy.length / 2 || offsets[0] !== 0 || offsets[n] !== nv) throw new Error(`polygon files do not match the sample (${n} cells, ${offsets[n]} vs ${nv} vertices)`);
     // closed loops: repeat the first vertex so PathLayer draws the last edge
     const positions = new Float32Array((nv + n) * 2);
     const startIndices = new Uint32Array(n + 1);

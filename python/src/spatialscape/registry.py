@@ -7,6 +7,7 @@ one on the fly for every bundle in the served folder; `spatialscape site build` 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -64,8 +65,11 @@ def build_registry(bundles: list[Path], *, url_for: Any, title: str | None = Non
     """A datasets.json document from bundles alone. `url_for(bundle_dir, manifest_id) -> str` decides where each is served."""
     datasets = []
     for b in bundles:
-        m_id = json.loads((b / "manifest.json").read_text()).get("id") or b.name
-        datasets.append(bundle_entry(b, url_for(b, m_id)))
+        try:
+            m_id = json.loads((b / "manifest.json").read_text()).get("id") or b.name
+            datasets.append(bundle_entry(b, url_for(b, m_id)))
+        except Exception as e:  # one stale or half-written bundle must not take the gallery down with it
+            print(f"registry: skipping {b}: {str(e).splitlines()[0][:160]}", file=sys.stderr)
     doc: dict[str, Any] = {"title": title or "spatialscape"}
     if intro is not None:
         doc["intro"] = intro

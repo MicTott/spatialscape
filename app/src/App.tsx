@@ -36,8 +36,7 @@ export function App() {
     const ctrl = new ViewerController(mapRef.current);
     ctrlRef.current = ctrl;
     installTestHooks(ctrl);
-    const unbind = bindUrl();
-    if (initial.datasetUrl) void resolveDataset(initial.datasetUrl).then((u) => ctrl.load(u));
+    const unbind = bindUrl(); // the dataset itself is loaded by the effect below, once, when datasetUrl is set
     return () => {
       unbind();
       ctrl.destroy();
