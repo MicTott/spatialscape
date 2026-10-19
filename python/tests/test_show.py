@@ -144,3 +144,30 @@ def test_regions_come_back_as_a_series(tmp_path, cache):
     assert set(reg[adata.obs_names[order[[0, 1]]]]) == {"CeA"} and reg[adata.obs_names[order[5]]] == "BLA"
     # nothing drawn: an all-None series, not an error
     assert spatialscape.show(ad.read_h5ad(tmp_path / "src" / "sampleB.h5ad"), log=lambda *_: None).regions().notna().sum() == 0
+
+
+def test_regions_drawing_saves_loads_and_preloads(tmp_path, cache):
+    """The session holds the drawing: save_regions writes it, load_regions / show(regions=) hand it back."""
+    make_synthetic(tmp_path / "src", n_cells=50, n_genes=4)
+    adata = ad.read_h5ad(tmp_path / "src" / "sampleA.h5ad")
+    s = spatialscape.show(adata, log=lambda *_: None)
+    drawing = [{"name": "CeA", "color": "#111111", "polygons": [{"sample": "all", "view": "spatial", "local": [[0, 0], [10, 0], [10, 10]]}]}]
+    body = {"dataset": s.key, "version": 3, "groups": drawing, "codes": {}}
+    req = urllib.request.Request(f"{s.api}/regions", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=5) as r:
+        assert r.status == 204
+    out = s.save_regions(tmp_path / "drawing.json")
+    saved = json.loads(out.read_text())
+    assert saved["groups"][0]["polygons"][0]["local"] == [[0, 0], [10, 0], [10, 10]]
+    # a fresh session for the same object: nothing drawn until the file is loaded
+    spatialscape.stop()
+    s2 = spatialscape.show(adata, log=lambda *_: None)
+    assert s2.raw_regions()["groups"] == []
+    assert s2.load_regions(out) == 1 and s2.raw_regions()["groups"][0]["name"] == "CeA"
+    spatialscape.stop()
+    logs: list[str] = []
+    s3 = spatialscape.show(adata, regions=out, log=logs.append)
+    assert s3.raw_regions()["groups"][0]["name"] == "CeA" and any("1 area" in m for m in logs)
+    with pytest.raises(ValueError, match="not a regions file"):
+        (tmp_path / "bad.json").write_text("[]")
+        s3.load_regions(tmp_path / "bad.json")

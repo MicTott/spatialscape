@@ -278,6 +278,27 @@ class Session:
         with urllib.request.urlopen(f"{self.api}/regions?d={self.key}", timeout=5) as r:
             return json.loads(r.read() or b"{}")
 
+    def save_regions(self, path) -> Path:
+        """Write the drawing (groups, colours, polygons in each section's coordinates) as JSON, the same file the
+        viewer's *save* button makes; load it again with load_regions() or `show(..., regions=path)`."""
+        doc = self.raw_regions()
+        out = Path(path).expanduser()
+        out.write_text(json.dumps({"spatialscape_regions": 1, "dataset": self.key, "groups": doc.get("groups") or []}))
+        return out
+
+    def load_regions(self, path) -> int:
+        """Hand a saved drawing to the session; the viewer picks it up when it (re)opens this dataset. Returns the
+        number of areas. Cell membership follows once the viewer has recomputed it, so call regions() after that."""
+        doc = json.loads(Path(path).expanduser().read_text())
+        groups = doc.get("groups") if isinstance(doc, dict) else None
+        if not isinstance(groups, list):
+            raise ValueError(f"{path}: not a regions file (expected {{groups: [...]}})")
+        body = json.dumps({"dataset": self.key, "version": 0, "groups": groups, "codes": {}}).encode()
+        req = urllib.request.Request(f"{self.api}/regions", data=body, headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=5):
+            pass
+        return sum(len(g.get("polygons") or []) for g in groups)
+
     def regions(self) -> pd.Series | dict[str, str]:
         """The region each cell was drawn into (the Regions panel of the viewer), as a pandas Series indexed by obs
         names (None outside every region) for an in-memory object, or {id: region} for data shown from a path."""
@@ -347,6 +368,7 @@ def show(
     height: int = 650,
     port: int | None = None,
     open_browser: bool = False,
+    regions=None,
     verbose: bool = False,
     log: Log = print,
 ) -> Session:
@@ -356,6 +378,7 @@ def show(
     color: an obs column or a gene to color by at first. coords: obsm key (default: spatial, else the UMAP-like
     one). sample: obs column that splits the object into one panel per value. fields: obs columns to expose
     besides the ones picked automatically, a {field id: column} map, or "auto" for every usable column.
+    regions: a drawing saved by save_regions() or the viewer's *save* button, restored when the viewer opens.
     """
     from .build import build_dataset
 
@@ -400,7 +423,11 @@ def show(
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     what = "built" if built else "cached"
     log(f"{what} in {time.perf_counter() - t0:.1f} s → {url}" + ("" if built else " (same data as before: no rebuild)"))
-    return Session(url=url, api=f"{url_root}_api", key=key, bundle=out, adata=adata, rows=rows, height=height)
+    session = Session(url=url, api=f"{url_root}_api", key=key, bundle=out, adata=adata, rows=rows, height=height)
+    if regions is not None:
+        n = session.load_regions(regions)
+        log(f"regions: {n} area{'s' if n != 1 else ''} from {regions}, restored when the viewer opens")
+    return session
 
 
 def _show_path(path: Path, root: Path, *, color, coords, sample, platform, log: Log) -> tuple[str, Path, bool]:

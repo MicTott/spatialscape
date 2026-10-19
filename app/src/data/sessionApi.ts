@@ -20,7 +20,25 @@ function datasetKey(datasetUrl: string): string {
 let lastPosted = "";
 
 /** Region membership for a Python session: group names and colours plus per-sample codes (Uint16, base64). */
-export async function postRegions(datasetUrl: string | null, version: number, groups: { name: string; color: string }[], codes: Map<string, Uint16Array>): Promise<void> {
+export interface RegionsDoc {
+  version: number;
+  groups: { name: string; color: string; polygons: { sample: string; view: string; local: [number, number][] }[] }[];
+  codes: Record<string, string>;
+}
+
+/** The drawing the session holds for this dataset (what the viewer last posted, or what Python loaded). */
+export async function fetchRegions(datasetUrl: string | null): Promise<RegionsDoc | null> {
+  const api = await sessionApi(datasetUrl);
+  if (!api || !datasetUrl) return null;
+  try {
+    const r = await fetch(`${api}/regions?d=${encodeURIComponent(datasetKey(datasetUrl))}`);
+    return r.ok ? ((await r.json()) as RegionsDoc) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function postRegions(datasetUrl: string | null, version: number, groups: RegionsDoc["groups"], codes: Map<string, Uint16Array>): Promise<void> {
   const api = await sessionApi(datasetUrl);
   if (!api || !datasetUrl) return;
   const enc = (u: Uint16Array) => {

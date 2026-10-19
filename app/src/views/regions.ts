@@ -5,7 +5,7 @@
 import { PathLayer, SolidPolygonLayer, TextLayer } from "@deck.gl/layers";
 import { Matrix4 } from "@math.gl/core";
 import type { Manifest } from "../data/manifest";
-import { postRegions } from "../data/sessionApi";
+import { fetchRegions, postRegions } from "../data/sessionApi";
 import { hexToRGB } from "../layers/lut";
 import { REGION_COLORS, store, type RegionGroup, type RegionPolygon, type Regions, type ViewerState, type ViewId } from "../store/store";
 import { pointInPolygon } from "./geometry";
@@ -19,6 +19,7 @@ export class RegionsManager {
   /** The manifest as loaded; the one in the store gains the "regions" field while groups exist. */
   private base: Manifest | null = null;
   private version = 0;
+  private postTimer: number | null = null;
 
   constructor(private c: ViewerController) {}
 
@@ -27,10 +28,19 @@ export class RegionsManager {
     return this.base?.fields.some((f) => f.id === "regions") ? "regions_drawn" : "regions";
   }
 
-  /** A new dataset: forget the previous drawing. */
+  /** A new dataset: forget the previous drawing, then bring back what the session holds for this one (a reload
+   *  or a kernel restart must not cost an afternoon of lassos). */
   reset(manifest: Manifest) {
     this.base = manifest;
     if (store.getState().regions.groups.length) store.getState().set({ regions: { groups: [], active: null, seq: 0 } });
+    void this.restore(manifest);
+  }
+
+  private async restore(manifest: Manifest) {
+    const doc = await fetchRegions(store.getState().datasetUrl);
+    if (!doc?.groups?.some((g) => g.polygons?.length) || this.c.manifest !== manifest || store.getState().regions.groups.length) return;
+    const problem = this.importJSON(JSON.stringify({ groups: doc.groups }));
+    if (problem) console.warn("regions from the session:", problem);
   }
 
   /** A lasso drawn while a group is active: it belongs to the section most of its points fall on, in that
@@ -66,8 +76,17 @@ export class RegionsManager {
     if (geometry) this.reconcileStore(prev, cur);
     if (geometry || cosmetics) this.syncManifest();
     if (geometry) this.recompute();
-    if (geometry || cosmetics) void this.post();
+    if (geometry || cosmetics) this.schedulePost();
     this.c.requestLayers();
+  }
+
+  /** One POST per burst: a restore recomputes once per sample as they arrive. */
+  private schedulePost() {
+    if (this.postTimer != null) window.clearTimeout(this.postTimer);
+    this.postTimer = window.setTimeout(() => {
+      this.postTimer = null;
+      void this.post();
+    }, 250);
   }
 
   /** Codes are group positions: when a group goes, hidden categories, category filters and the dot-plot
@@ -153,6 +172,7 @@ export class RegionsManager {
     const s = store.getState();
     if (s.filter?.kind === "category" && s.filter.field === field) c.stats.updateFilterHistogram();
     if (c.selection.current) c.selection.updateSummary();
+    if (groups.length) this.schedulePost(); // samples that finished loading after a restore must reach the session too
     c.requestLayers();
   }
 
@@ -294,7 +314,8 @@ export class RegionsManager {
       const u = sd.cat.get(field);
       if (u) codes.set(sd.id, u);
     }
-    await postRegions(store.getState().datasetUrl, ++this.version, groups.map((g) => ({ name: g.name, color: g.color })), codes);
+    const drawing = groups.map((g) => ({ name: g.name, color: g.color, polygons: g.polygons.map((p) => ({ sample: p.sample, view: p.view, local: p.local })) }));
+    await postRegions(store.getState().datasetUrl, ++this.version, drawing, codes);
   }
 }
 

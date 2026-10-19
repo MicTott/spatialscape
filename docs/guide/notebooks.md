@@ -41,7 +41,13 @@ Drawn regions (the Regions panel: named groups of lassos across sections) come b
 
 ```python
 adata.obs["region"] = s.regions()    # a Series aligned with adata.obs: the group name, or None
-``` For data shown from a path the
+s.save_regions("amygdala-regions.json")   # the drawing itself (the viewer's *save* button writes the same file)
+```
+
+The session keeps the drawing: reloading the viewer, or opening the same object again from the same kernel, brings the
+polygons back. Across kernels, `spatialscape.show(adata, regions="amygdala-regions.json")` (or
+`s.load_regions(path)`) restores a saved drawing onto the same object, so you can annotate in several sittings,
+switching between cell type maps and genes while you draw. For data shown from a path the
 selection comes back as the cell ids. Under the hood the viewer posts the selection to the session's own server
 (`/_api/selection`); a viewer served from anywhere else never makes that request.
 
