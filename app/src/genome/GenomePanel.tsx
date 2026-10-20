@@ -199,7 +199,7 @@ export function GenomePanel() {
         const p = set.categories[label];
         if (p && !hid.has(i)) wanted.push({ id: `${f.id}:${label}`, name: label, url: base + p, color: hex(vocab.colors[i]) });
       });
-    } else wanted.push({ id: "all", name: "All cells", url: base + tracks.all, color: ALL });
+    } else if (tracks.all) wanted.push({ id: "all", name: "All cells", url: base + tracks.all, color: ALL });
     view.setTracks(wanted);
   }, [view, manifest, tracks, base, colorField, hidden]);
 
@@ -266,6 +266,7 @@ export function GenomePanel() {
   };
 
   if (!on || !tracks) return null;
+  const units = tracks.units ?? "insertions per million";
   return (
     <div className={`genome${sidebarOpen ? " with-sidebar" : ""}`}>
       <div className="g-handle" onPointerDown={onHandleDown} title="drag to resize" />
@@ -284,7 +285,12 @@ export function GenomePanel() {
           </span>
         )}
         <span className="right">
-          {yMax > 0 && <span title="insertions per million, one scale for every track">0 – {yMax.toPrecision(2)} / M</span>}
+          {yMax > 0 && (
+            <span title={`${units}, one scale for every track`}>
+              0 – {yMax.toPrecision(2)}
+              {units === "insertions per million" ? " / M" : ""}
+            </span>
+          )}
           {assets?.source && <span className="muted"> · genes: {assets.source}</span>}
           {(error || trackError) && <span className="warn"> {error ?? trackError}</span>}
         </span>

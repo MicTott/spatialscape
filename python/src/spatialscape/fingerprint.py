@@ -68,7 +68,7 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
     if resolved.tracks is not None:
         from .tracks import TRACKS_RECIPE
 
-        paths += [resolved.tracks.fragments, resolved.tracks.chrom_sizes, resolved.tracks.genes_file, resolved.tracks.links]
+        paths += resolved.tracks.input_files
         spec_json["tracks"]["recipe"] = TRACKS_RECIPE  # a changed track writer rebuilds only the samples that carry tracks
     inputs = {str(p): _stat(p) for p in paths if p is not None}
     fields = []

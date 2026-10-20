@@ -101,7 +101,8 @@ class TracksInfo(_Model):
 
     genome: str
     bin: int
-    all: str  # bigWig of every cell
+    all: str | None = None  # bigWig of every cell: built from fragments, or given with bigwigs
+    units: str = "insertions per million"  # what the tracks measure, for the panel's scale
     by: list[TrackSet] = Field(default_factory=list)
     peaks: str | None = None  # BED of the sample's peak features
     genes: str | None = None  # folder of gene models: index.json (names per chromosome) + <chrom>.json (see genes.py)

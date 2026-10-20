@@ -80,7 +80,8 @@ export interface TrackSet {
 export interface TracksInfo {
   genome: string;
   bin: number;
-  all: string;
+  all?: string | null; // every cell: built from fragments, or given with exported bigWigs
+  units?: string; // what the tracks measure (default insertions per million)
   by: TrackSet[];
   peaks?: string | null;
   genes?: string | null;

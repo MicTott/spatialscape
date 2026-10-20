@@ -27,9 +27,10 @@
     polygons.offsets.u32       uint32[nObs+1] vertex start per cell
     polygons.i16               int16 (dx, dy) × 10 deltas from the cell centroid
     <imageId>.ome.zarr/        OME-Zarr NGFF 0.4 (zarr v2), axes c,y,x, 512² chunks
-    tracks/                    ATAC samples built with `tracks:` (manifest samples[].tracks)
-      all.bw                   insertions per million, every cell, binned (bigWig)
-      <field>/<label>.bw       one per category of each `tracks.by` field
+    tracks/                    ATAC samples built with `tracks:` (manifest samples[].tracks: genome, bin, units, all?, by)
+      all.bw                   every cell, binned (bigWig): built from fragments, or copied when `bigwigs.all` was given
+      <field>/<label>.bw       one per category of each `tracks.by` field: insertions per million from fragments
+                               (summed over runs before scaling), or exported bigWigs copied as they are
       peaks.bed, links.bedpe, chrom.sizes
       genes/index.json         gene names per chromosome (search); genes/<chrom>.json: [name, strand, start, end, exon starts, exon ends]
     thumbnail.png

@@ -103,24 +103,83 @@ class PolygonSpec(_Model):
         return self
 
 
-class TracksSpec(_Model):
-    """Genome tracks for an ATAC sample: pseudobulk accessibility (insertions per million, binned) per category of
-    each field in `by`, built from a Cell Ranger style `fragments.tsv.gz`, plus the sample's peaks and optional gene
-    models and peak-gene links. Shown by the viewer's genome panel. Needs `pip install "spatialscape[tracks]"`."""
+class BigWigsSpec(_Model):
+    """Tracks another tool exported (ArchR `getGroupBW`, Signac `ExportGroupBW`, deepTools `bamCoverage` per group):
+    one bigWig per category of each field, named by a path template with `{label}` or listed label by label."""
 
-    fragments: Path
-    by: list[str]  # categorical field ids to aggregate by
+    by: dict[str, str | dict[str, Path]]  # field id -> "GroupBigWigs/{label}.bw" or {category label: path}
+    all: Path | None = None  # a bigWig of every cell, when there is one
+
+    @model_validator(mode="after")
+    def _templates(self):
+        for f, v in self.by.items():
+            if isinstance(v, str) and "{label}" not in v:
+                raise ValueError(f"tracks.bigwigs.by.{f}: a path template needs `{{label}}` (or list the files per category label)")
+        return self
+
+
+class TracksSpec(_Model):
+    """Genome tracks for an ATAC sample, shown by the viewer's genome panel: pseudobulk accessibility per category of
+    each field in `by`. Built from Cell Ranger style fragment files (insertions per million, binned; one file, or
+    one per run for an object pooled from several 10x runs) or copied from bigWigs another tool exported, plus the
+    sample's peaks and optional gene models and peak-gene links. Needs `pip install "spatialscape[tracks]"`."""
+
+    fragments: Path | dict[str, Path] | None = None  # fragments.tsv.gz, or run id -> file when the object pools several 10x runs
+    bigwigs: BigWigsSpec | None = None  # tracks that already exist, instead of `fragments`
+    by: list[str] = Field(default_factory=list)  # categorical field ids to aggregate by (with `bigwigs`: its fields)
     genome: str = "hg38"  # assembly id (hg38, mm10, ...): names the RefSeq gene models and the default chromosome sizes
-    bin: int = Field(default=25, ge=1)  # bp per bin
+    bin: int | None = Field(default=None, ge=1)  # bp per bin: 25 for fragments; read from the files for bigwigs
     chrom_sizes: Path | None = None  # two-column chrom\tsize file; default: the genome's primary chromosomes
-    barcode_column: str | None = None  # obs column holding the fragment-file barcode; default: the observation names
+    sample_column: str | None = None  # obs column naming the run each observation came from (required with several fragment files)
+    barcode_column: str | None = None  # obs column holding the fragment-file barcode; default: the observation names, minus a run prefix or suffix
+    units: str | None = None  # what the tracks measure, for the panel's scale: "insertions per million" for fragments, "signal" for bigwigs
     genes: str | None = "refseq"  # gene models: a GTF, UCSC genePred table or BED; `refseq` downloads UCSC's table for `genome` once; `none` for no gene track
     links: Path | None = None  # BEDPE of peak-gene links, drawn as arcs
+
+    @model_validator(mode="after")
+    def _one_source(self):
+        if (self.fragments is None) == (self.bigwigs is None):
+            raise ValueError("tracks: give either `fragments` or `bigwigs`")
+        if isinstance(self.fragments, dict):
+            if not self.fragments:
+                raise ValueError("tracks.fragments: no files")
+            if not self.sample_column:
+                raise ValueError("tracks: several fragment files need `sample_column`, the obs column naming each observation's run")
+        if self.bigwigs is not None:
+            extra = [f for f in self.by if f not in self.bigwigs.by]
+            if extra:
+                raise ValueError(f"tracks.by lists {extra} but `bigwigs.by` has no files for them")
+            if not self.by:
+                self.by = list(self.bigwigs.by)
+        elif not self.by:
+            raise ValueError("tracks: `by` names the categorical fields to aggregate by")
+        return self
 
     @property
     def genes_file(self) -> Path | None:
         """The gene-model file, or None for the `refseq` / `none` keywords."""
         return None if self.genes is None or self.genes in ("refseq", "none") else Path(self.genes)
+
+    @property
+    def fragment_files(self) -> list[tuple[str | None, Path]]:
+        """(run id, file) pairs; the run is None for a single file."""
+        if isinstance(self.fragments, dict):
+            return [(str(k), Path(v)) for k, v in self.fragments.items()]
+        return [(None, Path(self.fragments))] if self.fragments is not None else []
+
+    @property
+    def input_files(self) -> list[Path]:
+        """Every file the tracks are built from, for the build fingerprint: fragment files, bigWigs (a template is
+        globbed), chromosome sizes, gene models and links."""
+        files: list[Path | str | None] = [p for _, p in self.fragment_files] + [self.chrom_sizes, self.genes_file, self.links]
+        if self.bigwigs is not None:
+            files.append(self.bigwigs.all)
+            for v in self.bigwigs.by.values():
+                if isinstance(v, dict):
+                    files.extend(v.values())
+                else:
+                    files.extend(sorted(_glob.glob(str(v).replace("{label}", "*"))))
+        return [Path(f) for f in files if f is not None]
 
 
 class SubsetSpec(_Model):
@@ -329,11 +388,17 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
         if s.polygons and s.polygons.path is not None:
             s.polygons.path = res(s.polygons.path)
         if s.tracks is not None:
-            s.tracks.fragments = res(s.tracks.fragments)
-            s.tracks.chrom_sizes = res(s.tracks.chrom_sizes)
-            if s.tracks.genes_file is not None:
-                s.tracks.genes = str(res(s.tracks.genes_file))
-            s.tracks.links = res(s.tracks.links)
+            t = s.tracks
+            t.fragments = {k: res(v) for k, v in t.fragments.items()} if isinstance(t.fragments, dict) else res(t.fragments)
+            if t.bigwigs is not None:
+                t.bigwigs.all = res(t.bigwigs.all)
+                t.bigwigs.by = {
+                    f: str(res(Path(v))) if isinstance(v, str) else {lab: res(pth) for lab, pth in v.items()} for f, v in t.bigwigs.by.items()
+                }
+            t.chrom_sizes = res(t.chrom_sizes)
+            if t.genes_file is not None:
+                t.genes = str(res(t.genes_file))
+            t.links = res(t.links)
     return cfg
 
 

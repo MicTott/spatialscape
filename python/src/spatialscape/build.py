@@ -180,10 +180,16 @@ def build_sample(
     if spec.tracks is not None:
         from .tracks import write_tracks
 
-        barcodes = [str(b) for b in adata.obs[spec.tracks.barcode_column].iloc[perm]] if spec.tracks.barcode_column else None
+        tr = spec.tracks
+        for col, key in ((tr.barcode_column, "barcode_column"), (tr.sample_column, "sample_column")):
+            if col and col not in adata.obs:
+                raise KeyError(f"sample {spec.id}: tracks.{key} {col!r} is not an obs column")
+        barcodes = [str(b) for b in adata.obs[tr.barcode_column].iloc[perm]] if tr.barcode_column else None
+        runs = [str(r) for r in adata.obs[tr.sample_column].iloc[perm]] if tr.sample_column else None
         tracks_info = write_tracks(
-            spec.tracks, out_dir, ids=ids, barcodes=barcodes, cats=cats,
-            categories={fid: list(vocab.vocabs[vocab.vocab_id(fid)]["categories"]) for fid in cats}, feature_names=genes, log=log,
+            tr, out_dir, ids=ids, barcodes=barcodes, runs=runs, cats=cats,
+            categories={fid: list(vocab.vocabs[vocab.vocab_id(fid)]["categories"]) for fid in cats},
+            aliases={fid: dict(vocab.vocabs[vocab.vocab_id(fid)]["aliases"]) for fid in cats}, feature_names=genes, log=log,
         )
     outlines: list[str] = []
     if spec.kind == "spatial" and outline_fields is not False:
