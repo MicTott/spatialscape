@@ -11,12 +11,12 @@ sample that did not change takes none.
 
 ## What happens per sample
 
-1. **Read** the AnnData / SpatialData table (R objects were converted first, see below), resolve `fields: auto` and `images: auto`, declare any undeclared fields.
-2. **Expression**: detect counts vs log-normalized, drop all-zero genes, compute each gene's maximum, quantize to 8 bits (`round(255 · x / max)`, with any non-zero value kept ≥ 1), and write a gene-major Zarr v3 array sharded into ~128 MB files. Optionally keep a float16 copy (`keep_f16`).
+1. **Read** the AnnData / SpatialData table (R objects were converted first, see below): only the expression layer the sample uses, `obs`, `var` and the `obsm` keys it needs are loaded, not every layer and pairwise matrix in the file. Resolve `fields: auto` and `images: auto`, declare any undeclared fields.
+2. **Expression**: detect counts vs log-normalized, drop all-zero genes, compute each gene's range, quantize to 8 bits (`round(255 · x / max)`, with any non-zero value kept ≥ 1), and write a gene-major Zarr v3 array sharded into ~128 MB files. Only the stored values are quantized (one pass over the non-zeros, scattered straight into the shards in the shuffled row order); the matrix is never densified. Optionally keep a float16 copy (`keep_f16`).
 3. **Geometry**: convert coordinates to microns, apply `transform`, shift the origin to the bounding box corner, record the bounding box and a default point radius per platform.
 4. **Observations**: shuffle rows once with a fixed seed (the viewer draws a prefix of the shuffled rows at low zoom), write positions, categorical codes against the dataset vocabularies, numeric columns, and the cell ids in blocks.
 5. **Polygons** (if configured): match `cell_id` to the object, pack vertices as centroid deltas.
-6. **Images**: convert to an OME-Zarr pyramid with the same flip/rotation as the points, record pixel size and offset in microns.
+6. **Images**: convert to an OME-Zarr pyramid with the same flip/rotation as the points, record pixel size and offset in microns. A pyramidal source (OME-Zarr, pyramidal or OME-TIFF) is read at the level `max_size` asks for and downsampled in strips, so a full-resolution scan is never decoded whole.
 7. **Outlines**: for every categorical field on spatial samples, trace region boundaries (rasterize, majority-smooth over 150 µm, remove features under 300 µm, marching squares, simplify).
 8. **Fingerprint**: write `build.json` into the sample folder (what the next build compares against).
 

@@ -23,7 +23,10 @@ class SampleInput:
 MEMORY: dict[str, ad.AnnData] = {}  # objects handed to the build without a file (`spatialscape.show(adata)`); path "memory:<key>"
 
 
-def read_anndata(path: Path, table: str | None = None) -> ad.AnnData:
+def read_anndata(path: Path, table: str | None = None, *, layer: str | None = None, obsm_keys: list[str] | None = None) -> ad.AnnData:
+    """An AnnData from an h5ad, an AnnData Zarr store or a SpatialData table. With `layer` given, only that matrix,
+    obs, var, uns and the `obsm_keys` are read: a processed object's other layers, graphs and embeddings stay on
+    disk instead of multiplying the build's memory."""
     if str(path).startswith("memory:"):
         key = str(path)[len("memory:") :]
         if key not in MEMORY:
@@ -31,20 +34,49 @@ def read_anndata(path: Path, table: str | None = None) -> ad.AnnData:
         return MEMORY[key]
     path = Path(path)
     if path.is_file():
-        if path.suffix == ".h5ad":
+        if path.suffix != ".h5ad":
+            raise ValueError(f"unsupported file type: {path}")
+        if layer is None:
             return ad.read_h5ad(path)
-        raise ValueError(f"unsupported file type: {path}")
+        import h5py
+
+        with h5py.File(path, "r") as f:
+            return _read_parts(f, layer, obsm_keys or [])
     if not path.is_dir():
         raise FileNotFoundError(path)
-    tables = path / "tables"
-    if tables.is_dir():  # SpatialData store
-        if table is None:
-            keys = sorted(p.name for p in tables.iterdir() if p.is_dir())
-            if len(keys) != 1:
-                raise ValueError(f"SpatialData store has tables {keys}; set `table:`")
-            table = keys[0]
-        return ad.read_zarr(tables / table)
-    return ad.read_zarr(path)
+    target = _table_dir(path, table) if (path / "tables").is_dir() else path  # SpatialData store or AnnData Zarr
+    if layer is None:
+        return ad.read_zarr(target)
+    import zarr
+
+    return _read_parts(zarr.open_group(str(target), mode="r"), layer, obsm_keys or [])
+
+
+def _read_parts(g, layer: str, obsm_keys: list[str]) -> ad.AnnData:
+    from anndata.io import read_elem
+
+    if layer == "X":
+        if "X" not in g:
+            raise KeyError("the object has no X")
+        X = read_elem(g["X"])
+    else:
+        if "layers" not in g or layer not in g["layers"]:
+            raise KeyError(f"layer {layer!r} not found; layers: {list(g['layers'].keys()) if 'layers' in g else []}")
+        X = read_elem(g["layers"][layer])
+    obs = read_elem(g["obs"])
+    var = read_elem(g["var"]) if "var" in g else pd.DataFrame(index=[str(i) for i in range(X.shape[1])])
+    keys = list(obsm_keys)
+    if "obsm" in g:  # polygon stacks (n_obs, n_vertices, 2) are auto-detected by the build, so they come along
+        for k in g["obsm"]:
+            shape = getattr(g["obsm"][k], "shape", None)
+            if k not in keys and shape is not None and len(shape) == 3 and shape[-1] == 2:
+                keys.append(k)
+    obsm = {k: read_elem(g["obsm"][k]) for k in keys if "obsm" in g and k in g["obsm"]}
+    try:
+        uns = read_elem(g["uns"]) if "uns" in g else {}
+    except Exception:  # an uns entry anndata cannot read must not stop a build; nothing here needs it but scale factors
+        uns = {}
+    return ad.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns)
 
 
 def get_coords(adata: ad.AnnData, spec: str) -> np.ndarray:
@@ -75,7 +107,10 @@ def gene_names(adata: ad.AnnData, column: str | None) -> np.ndarray:
 
 
 def load_sample(spec: SampleSpec) -> SampleInput:
-    adata = read_anndata(spec.path, spec.table)
+    wanted = [spec.coords[len("obsm/") :]] if spec.coords.startswith("obsm/") else []
+    if spec.polygons is not None and spec.polygons.obsm:
+        wanted.append(spec.polygons.obsm)
+    adata = read_anndata(spec.path, spec.table, layer=spec.expression.layer, obsm_keys=wanted)
     if spec.subset is not None:
         col = spec.subset.column
         if col not in adata.obs:

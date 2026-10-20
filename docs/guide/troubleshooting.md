@@ -27,7 +27,7 @@ The selected feature is not measured on that sample (a gene missing from a Xeniu
 
 ## The build is slow
 
-Visium with 36k genes writes ~1 GB of uint8 before compression. Most of the time is the dense conversion per shard; `--no-shard` is not faster. After the first build only the samples whose inputs or settings changed are rebuilt, so edits to names, colors and defaults take seconds; `spatialscape build <yaml> --dry-run` shows what a run would do before it starts.
+Expression is written in one pass over the stored values: a Visium donor with 36k genes and 30k spots takes 3–6 s, a 15k-nucleus snRNA-seq object about 4 s, and `--no-shard` is not faster. A slow build is almost always the input: a large `.h5ad` on a network drive, an R object converted on first use (into `bundles/.cache`, once), or a full-resolution image without pyramid levels (export it as a pyramidal OME-TIFF or OME-Zarr, which `build` reads at the level `max_size` asks for). Peak memory is about the matrix of the largest sample, twice that for files that store it row-wise (CSR is transposed once), plus one 128 MB shard. After the first build only the samples whose inputs or settings changed are rebuilt, so edits to names, colors and defaults take seconds; `spatialscape build <yaml> --dry-run` shows what a run would do before it starts.
 
 ## A sample was rebuilt that I did not change
 

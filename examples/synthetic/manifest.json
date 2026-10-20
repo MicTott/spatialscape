@@ -24,7 +24,8 @@
   "plasma",
   "cividis",
   "turbo",
-  "greys"
+  "greys",
+  "rdbu"
  ],
  "vocabularies": {
   "cluster": {
@@ -127,7 +128,8 @@
     "vertices": 12000,
     "scale": 0.1
    },
-   "idBlock": 65536
+   "idBlock": 65536,
+   "suggestedGene": "G049"
   },
   {
    "id": "sampleB",
@@ -192,7 +194,8 @@
     "vertices": 16800,
     "scale": 0.1
    },
-   "idBlock": 65536
+   "idBlock": 65536,
+   "suggestedGene": "G049"
   },
   {
    "id": "umapA",
@@ -232,7 +235,8 @@
    ],
    "images": [],
    "outlines": [],
-   "idBlock": 65536
+   "idBlock": 65536,
+   "suggestedGene": "G049"
   }
  ]
 }

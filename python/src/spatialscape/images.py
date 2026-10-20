@@ -13,21 +13,42 @@ from .geometry import transform_image
 TILE = 512
 
 
-def read_image(path: Path, *, rgb: bool = True) -> np.ndarray:
-    """Return (c, y, x). Supports OME-Zarr dirs, tiff, png/jpg."""
+def read_image(path: Path, *, rgb: bool = True, max_size: int | None = None) -> np.ndarray:
+    """Return (c, y, x). Supports OME-Zarr dirs, tiff, png/jpg. With `max_size`, a pyramidal source (OME-Zarr
+    multiscales, pyramidal/OME-TIFF) is read at the smallest level that is still at least that large, so a 40x
+    scan is never decoded in full just to be shrunk."""
     path = Path(path)
     if path.is_dir():
-        return _read_ome_zarr(path)
+        return _read_ome_zarr(path, max_size=max_size)
     suf = path.suffix.lower()
     if suf in (".tif", ".tiff", ".btf"):
         import tifffile
 
-        arr = np.asarray(tifffile.imread(path))
+        with tifffile.TiffFile(str(path)) as tf:
+            series = tf.series[0]
+            level = _pick_level([tuple(lv.shape) for lv in series.levels], series.axes, max_size) if max_size and len(series.levels) > 1 else 0
+            arr = np.asarray(series.levels[level].asarray()) if level else np.asarray(series.asarray())
     else:
         import imageio.v3 as iio
 
         arr = np.asarray(iio.imread(path))
     return _to_cyx(arr, rgb=rgb)
+
+
+def _pick_level(shapes: list[tuple[int, ...]], axes: str | list[str], max_size: int | None) -> int:
+    """The last pyramid level whose longer side is still >= max_size (finer levels add nothing after limit_size)."""
+    if not max_size:
+        return 0
+    axes = [a.lower() for a in axes]
+    yi = axes.index("y") if "y" in axes else -2
+    xi = axes.index("x") if "x" in axes else -1
+    pick = 0
+    for i, shape in enumerate(shapes):
+        if max(shape[yi], shape[xi]) >= max_size:
+            pick = i
+        else:
+            break
+    return pick
 
 
 def _to_cyx(arr: np.ndarray, *, rgb: bool = True) -> np.ndarray:
@@ -44,15 +65,16 @@ def _to_cyx(arr: np.ndarray, *, rgb: bool = True) -> np.ndarray:
     raise ValueError(f"cannot interpret image with shape {arr.shape}")
 
 
-def _read_ome_zarr(path: Path) -> np.ndarray:
+def _read_ome_zarr(path: Path, *, max_size: int | None = None) -> np.ndarray:
     g = zarr.open_group(str(path), mode="r")
     attrs = dict(g.attrs)
     ms = attrs.get("multiscales") or attrs.get("ome", {}).get("multiscales")
     if not ms:
         raise ValueError(f"{path}: no multiscales metadata")
-    level0 = ms[0]["datasets"][0]["path"]
     axes = [a["name"] if isinstance(a, dict) else a for a in ms[0].get("axes", [])]
-    arr = np.asarray(g[level0][:])
+    paths = [d["path"] for d in ms[0]["datasets"]]
+    level = _pick_level([tuple(g[p].shape) for p in paths], axes or ["c", "y", "x"][-len(g[paths[0]].shape) :], max_size) if max_size else 0
+    arr = np.asarray(g[paths[level]][:])
     if axes:
         # drop t/z if singleton, then order to c,y,x
         order = []
@@ -70,15 +92,27 @@ def _read_ome_zarr(path: Path) -> np.ndarray:
     return _to_cyx(arr)
 
 
-def downsample2(img: np.ndarray) -> np.ndarray:
-    """(c, y, x) -> 2x mean downsample, keeping dtype."""
+def downsample2(img: np.ndarray, strip: int = 1024) -> np.ndarray:
+    """(c, y, x) -> 2x mean downsample, keeping dtype. Integer images are summed in uint32 strip by strip, so the
+    working memory is a slice of the output, not a float32 copy of the whole image."""
     c, h, w = img.shape
     h2, w2 = h // 2, w // 2
     if h2 == 0 or w2 == 0:
         return img
-    crop = img[:, : h2 * 2, : w2 * 2].astype(np.float32)
-    out = crop.reshape(c, h2, 2, w2, 2).mean(axis=(2, 4))
-    return np.rint(out).astype(img.dtype)
+    out = np.empty((c, h2, w2), dtype=img.dtype)
+    integer = np.issubdtype(img.dtype, np.integer)
+    for y in range(0, h2, strip):
+        y1 = min(h2, y + strip)
+        blk = img[:, 2 * y : 2 * y1, : 2 * w2]
+        if integer:
+            acc = blk[:, 0::2, 0::2].astype(np.uint32)
+            acc += blk[:, 1::2, 0::2]
+            acc += blk[:, 0::2, 1::2]
+            acc += blk[:, 1::2, 1::2]
+            out[:, y:y1] = ((acc + 2) >> 2).astype(img.dtype)
+        else:
+            out[:, y:y1] = blk.astype(np.float32).reshape(c, y1 - y, 2, w2, 2).mean(axis=(2, 4)).astype(img.dtype)
+    return out
 
 
 def limit_size(img: np.ndarray, max_size: int | None) -> np.ndarray:
@@ -162,7 +196,7 @@ def write_ome_zarr(
 
 
 def prepare_image(path: Path, flip: str, rotate: int, max_size: int | None, *, rgb: bool = True) -> np.ndarray:
-    img = read_image(path, rgb=rgb)
+    img = read_image(path, rgb=rgb, max_size=max_size)
     img = limit_size(img, max_size)
     return transform_image(img, flip, rotate)
 

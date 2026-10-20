@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import json
 import re
 import shutil
@@ -12,12 +13,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
 
 from . import __version__
 from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
 from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, auto_images, infer_field_spec
-from .expression import detect_lognorm, get_matrix, log1p_cp10k, write_expression
+from .expression import column_moments, detect_lognorm, get_matrix, log1p_cp10k, write_expression
 from .fingerprint import read_sidecar, sample_fingerprint, why_stale, write_sidecar
 from .geometry import default_point_radius, microns_per_unit, transform_points
 from .images import prepare_image, read_image_shape, write_ome_zarr
@@ -65,16 +67,14 @@ def most_variable_gene(M, keep: np.ndarray, genes: list[str], *, seed: int = 0, 
     if not genes:
         return None
     n = M.shape[0]
-    rng = np.random.default_rng(seed)
-    rows = np.sort(rng.choice(n, size=min(n, max_rows), replace=False)) if n > max_rows else slice(None)
-    sub = M[rows][:, keep] if hasattr(M, "tocsr") else np.asarray(M)[rows][:, keep]
-    if hasattr(sub, "multiply"):
-        mean = np.asarray(sub.mean(axis=0)).ravel()
-        sq = np.asarray(sub.multiply(sub).mean(axis=0)).ravel()
+    rows = np.sort(np.random.default_rng(seed).choice(n, size=max_rows, replace=False)) if n > max_rows else None
+    if sp.issparse(M):
+        sub = (M[rows] if rows is not None else M).tocsc()
+        _mean, var = column_moments(sub)
     else:
-        mean = sub.mean(axis=0)
-        sq = (sub * sub).mean(axis=0)
-    var = sq - mean * mean
+        sub = np.asarray(M, dtype=np.float64)
+        var = (sub[rows] if rows is not None else sub).var(axis=0)
+    var = var[keep]
     if not np.isfinite(var).any():
         return genes[0]
     return genes[int(np.nanargmax(var))]
@@ -134,11 +134,10 @@ def build_sample(
     if mode == "counts":
         M = log1p_cp10k(M)
     rng = np.random.default_rng(spec.seed)
-    perm = rng.permutation(n_obs)
-    M = M[perm]  # rows shuffled once so any prefix is a uniform subsample
+    perm = rng.permutation(n_obs)  # rows are written shuffled once, so any prefix is a uniform subsample
     log(f"[{spec.id}] writing expression ({M.shape[1]} genes x {n_obs} obs)")
     res = write_expression(
-        M, out_dir, shard_genes=cfg.shard_genes, sharded=sharded, keep_f16=spec.expression.keep_f16, log=log
+        M, out_dir, shard_genes=cfg.shard_genes, sharded=sharded, keep_f16=spec.expression.keep_f16, order=perm, log=log
     )
     genes = [str(g) for g in sinput.gene_names[res.keep]]
     with open(out_dir / "genes.json", "w") as fh:
@@ -476,6 +475,7 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force:
     for a in plan.actions:
         if a.build:
             s = build_sample(a.spec, cfg, out / "samples" / a.spec.id, vocab, sharded=sharded, log=log)
+            gc.collect()  # an AnnData is a reference cycle: free this sample's object before the next one is read
             built.append((out / "samples" / a.spec.id, a.fingerprint))
         else:
             s = by_id[a.spec.id].model_copy(update={"name": a.spec.name or a.spec.id, "group": a.spec.group})
