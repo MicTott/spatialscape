@@ -17,6 +17,7 @@ class SampleInput:
     adata: ad.AnnData
     coords: np.ndarray  # (n_obs, 2) float64 in source units
     gene_names: np.ndarray  # (n_vars,) str
+    name_column: str | None = None  # var column the names came from (symbols for an Ensembl-indexed object)
     uns: dict[str, Any] = field(default_factory=dict)
 
 
@@ -98,9 +99,28 @@ def get_coords(adata: ad.AnnData, spec: str) -> np.ndarray:
     raise ValueError(f"unrecognised coords spec: {spec!r}")
 
 
+SYMBOL_COLUMNS = ("gene_name", "gene_symbol", "symbol", "Symbol", "gene_symbols", "feature_name", "features")
+
+
+def symbol_column(adata: ad.AnnData) -> str | None:
+    """The var column to name genes by when var_names are Ensembl ids (what people search for is the symbol)."""
+    idx = pd.Index(adata.var_names.astype(str))
+    head = idx[:2000]
+    if len(head) == 0 or head.str.match(r"^ENS[A-Z]*G\d+").mean() < 0.9:
+        return None
+    return next((c for c in SYMBOL_COLUMNS if c in adata.var.columns), None)
+
+
 def gene_names(adata: ad.AnnData, column: str | None) -> np.ndarray:
-    names = adata.var[column] if column else adata.var_names
-    names = pd.Index(np.asarray(names, dtype=str))
+    """Feature names in var order: `column` when given, else the symbol column for Ensembl-indexed objects, else
+    var_names. A missing symbol keeps its id; duplicates get .1, .2 suffixes."""
+    column = column or symbol_column(adata)
+    ids = pd.Index(adata.var_names.astype(str))
+    if column:
+        col = adata.var[column].astype(object)
+        names = pd.Index(np.where(col.isna() | (col.astype(str).str.strip() == ""), ids, col.astype(str)).astype(str))
+    else:
+        names = ids
     if names.has_duplicates:
         names = ad.utils.make_index_unique(names, join=".")
     return np.asarray(names, dtype=str)
@@ -123,7 +143,8 @@ def load_sample(spec: SampleSpec) -> SampleInput:
     if coords.shape[0] != adata.n_obs:
         raise ValueError("coords length does not match n_obs")
     uns = dict(adata.uns) if adata.uns is not None else {}
-    return SampleInput(adata=adata, coords=coords, gene_names=gene_names(adata, spec.gene_column), uns=uns)
+    name_col = spec.gene_column or symbol_column(adata)
+    return SampleInput(adata=adata, coords=coords, gene_names=gene_names(adata, name_col), uns=uns, name_column=name_col)
 
 
 @dataclass

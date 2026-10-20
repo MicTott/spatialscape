@@ -61,6 +61,25 @@ def _fields_manifest(fields: list[FieldSpec], vocab: VocabRegistry):
     return out
 
 
+def crop_to_points(img: np.ndarray, pixel_size: float, translate: tuple[float, float], bbox: tuple[float, float, float, float], margin: float = 0.03) -> tuple[np.ndarray, tuple[float, float]]:
+    """Cut an image (c, y, x) placed at `translate` (um) with `pixel_size` um/px down to the points' bounding box plus
+    a margin (a fraction of its longer side), and return the image with its new translate. A slide scan reaches well
+    past the capture area; without this the H&E, not the tissue, sets the size of every grid cell."""
+    x0, y0, x1, y1 = bbox
+    pad = margin * max(x1 - x0, y1 - y0)
+    _c, h, w = img.shape
+    px0 = int(np.clip(np.floor((x0 - pad - translate[0]) / pixel_size), 0, w))
+    px1 = int(np.clip(np.ceil((x1 + pad - translate[0]) / pixel_size), 0, w))
+    py0 = int(np.clip(np.floor((y0 - pad - translate[1]) / pixel_size), 0, h))
+    py1 = int(np.clip(np.ceil((y1 + pad - translate[1]) / pixel_size), 0, h))
+    if px1 - px0 < 2 or py1 - py0 < 2:  # the points lie outside the image: leave it alone
+        return img, translate
+    if (px0, py0, px1, py1) == (0, 0, w, h):
+        return img, translate
+    out = np.ascontiguousarray(img[:, py0:py1, px0:px1])
+    return out, (translate[0] + px0 * pixel_size, translate[1] + py0 * pixel_size)
+
+
 def most_variable_gene(M, keep: np.ndarray, genes: list[str], *, seed: int = 0, max_rows: int = 4000) -> str | None:
     """Gene with the largest variance of normalized expression over a row subsample: a better opening gene than the
     alphabetically first one. `M` is (n_obs, n_vars) normalized; `keep` selects the retained genes."""
@@ -105,6 +124,8 @@ def build_sample(
     sinput = load_sample(spec)
     adata = sinput.adata
     n_obs = adata.n_obs
+    if sinput.name_column and not spec.gene_column:
+        log(f"[{spec.id}] gene names from var column {sinput.name_column!r} (var_names are Ensembl ids)")
     if spec.fields == "auto":
         spec = spec.model_copy(update={"fields": auto_fields(adata, spec)})
         log(f"[{spec.id}] auto fields: {list(spec.fields)}")
@@ -250,6 +271,10 @@ def build_sample(
             pixel_size = upu / im.pixels_per_unit * ds
         else:
             pixel_size = float(im.pixel_size)
+        translate = (float(-shift[0] + im.translate[0]), float(-shift[1] + im.translate[1]))
+        if im.crop:
+            img, translate = crop_to_points(img, pixel_size, translate, bbox)
+            log(f"[{spec.id}] image cropped to the points: {img.shape[2]} x {img.shape[1]} px")
         names = [ch.name for ch in im.channels] if im.channels else None
         colors = [ch.color for ch in im.channels] if im.channels else None
         wins = [ch.window for ch in im.channels] if im.channels and all(ch.window for ch in im.channels) else None
@@ -266,7 +291,7 @@ def build_sample(
                 path=out_path.name,
                 kind=im.kind,
                 pixelSize=pixel_size,
-                translate=(float(-shift[0] + im.translate[0]), float(-shift[1] + im.translate[1])),
+                translate=translate,
                 size=(int(img.shape[1]), int(img.shape[2])),
                 channels=chans,
                 defaultOpacity=im.default_opacity,

@@ -78,6 +78,7 @@ class ImageSpec(_Model):
     channels: list[ImageChannelSpec] | None = None
     default_opacity: float = 1.0
     max_size: int | None = None  # optionally downsample level 0 to at most this many px per side
+    crop: bool = True  # keep only the part of the image around the points (3% margin); slide scans reach far past the capture area
 
 
 class PolygonSpec(_Model):

@@ -60,7 +60,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `extent` | number | `5000` | embeddings: world size of the longest side |
 | `point_radius` | µm | per platform | Visium 27.5, Xenium 5, HD from spacing |
 | `seed` | int | `7` | row shuffle |
-| `gene_column` | var column | `var_names` | |
+| `gene_column` | var column | `var_names` | feature names; when `var_names` are Ensembl ids and a `gene_name` / `symbol` column exists, that column is used by default (missing symbols keep their id, duplicates get `.1`, `.2`) |
 
 ## Image spec
 
@@ -75,3 +75,4 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `channels` | list of `{name, color, window}` | |
 | `default_opacity` | 0..1 | `1` |
 | `max_size` | int | | downsample level 0 to this many pixels per side |
+| `crop` | bool | `true` | keep only the part of the image around the points (3% margin), so a slide scan does not size the grid cell; `false` keeps the whole image |

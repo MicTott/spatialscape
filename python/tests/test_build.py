@@ -32,10 +32,12 @@ def test_synthetic_build_validates(tmp_path):
     assert sorted(order.tolist()) == list(range(m.samples[0].nObs))
     ids = json.loads((out / "samples/sampleA/ids/0.json").read_text())
     assert ids[0] == f"cell_{order[0]}"
-    # image placed in microns: 512 px * 10 um
+    # image placed in microns (10 um per px) and cropped to the points' box: smaller than the 384 x 512 scan, shifted by whole pixels
     img = m.samples[0].images[0]
     assert img.pixelSize == pytest.approx(10.0)
-    assert img.size == (384, 512)
+    assert img.size[0] <= 384 and img.size[1] <= 512 and img.size != (384, 512)
+    bx = m.samples[0].bbox  # the points stay inside the cropped image
+    assert img.translate[0] <= bx[0] + 1e-6 and img.translate[0] + img.size[1] * img.pixelSize >= bx[2] - 1e-6
 
 
 def test_rebuilding_one_sample_keeps_codes_stable(tmp_path):
@@ -133,3 +135,48 @@ def test_default_gene_is_the_most_variable_not_the_first(tmp_path):
     genes = json.loads((tmp_path / "bundle" / "genes.json").read_text())
     assert all(s.suggestedGene in genes for s in m.samples)
     assert m.defaultGene == next(s.suggestedGene for s in m.samples if s.kind == "spatial")
+
+
+def test_images_are_cropped_to_the_points_by_default(tmp_path):
+    """The synthetic H&E is larger than the tissue ellipse: by default the written image keeps only the points' box
+    plus a margin, with the translate moved accordingly; `crop: false` keeps the whole scan."""
+    import yaml
+
+    from spatialscape.build import crop_to_points
+    from spatialscape.synthetic import make_synthetic
+
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=200, n_genes=5)
+    full = build_dataset(load_config(cfg_path), tmp_path / "cropped", log=lambda *_: None)
+    img = full.samples[0].images[0]
+    doc = yaml.safe_load(cfg_path.read_text())
+    for smp in doc["samples"]:
+        for im in smp.get("images", []):
+            im["crop"] = False
+    cfg_path.write_text(yaml.safe_dump(doc))
+    whole = build_dataset(load_config(cfg_path), tmp_path / "whole", log=lambda *_: None)
+    img0 = whole.samples[0].images[0]
+    assert img.size[0] < img0.size[0] or img.size[1] < img0.size[1]
+    assert img.translate[0] >= img0.translate[0] and img.translate[1] >= img0.translate[1]
+    bx = full.samples[0].bbox
+    assert img.translate[0] <= bx[0] + 1e-6 and img.translate[0] + img.size[1] * img.pixelSize >= bx[2] - 1e-6  # the points stay inside
+    # the helper itself: a 100x100 image at 2 um/px placed at (-40, -40), points in [0, 60] -> a window with a 3% margin
+    arr = np.zeros((3, 100, 100), dtype=np.uint8)
+    out, tr = crop_to_points(arr, 2.0, (-40.0, -40.0), (0.0, 0.0, 60.0, 60.0))
+    assert out.shape[1:] == (32, 32) and tr == (-2.0, -2.0)
+    same, tr2 = crop_to_points(arr, 2.0, (0.0, 0.0), (0.0, 0.0, 400.0, 400.0))  # points wider than the image: untouched
+    assert same.shape == arr.shape and tr2 == (0.0, 0.0)
+
+
+def test_ensembl_indexed_objects_are_named_by_their_symbols():
+    import anndata as ad
+    import pandas as pd
+
+    from spatialscape.readers import gene_names, symbol_column
+
+    var = pd.DataFrame({"gene_name": ["GAD1", "GAD2", None, "GAD1"]}, index=["ENSG00000128683", "ENSG00000136750", "ENSG00000000001", "ENSG00000000002"])
+    a = ad.AnnData(X=np.zeros((2, 4), dtype=np.float32), var=var)
+    assert symbol_column(a) == "gene_name"
+    assert gene_names(a, None).tolist() == ["GAD1", "GAD2", "ENSG00000000001", "GAD1.1"]  # missing symbol keeps the id; duplicates suffixed
+    assert gene_names(a, "gene_name").tolist() == gene_names(a, None).tolist()
+    b = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32), var=pd.DataFrame({"gene_name": ["x", "y"]}, index=["GAD1", "GAD2"]))
+    assert symbol_column(b) is None and gene_names(b, None).tolist() == ["GAD1", "GAD2"]  # symbols already: var_names stay

@@ -157,7 +157,7 @@ class Reader:
             return obj
         if t == SYMSXP:
             name = self.charsxp()
-            obj = {"type": "symbol", "data": [name]}
+            obj = NULL if name == "\x01NULL\x01" else {"type": "symbol", "data": [name]}  # an S4 slot holding NULL
             self.refs.append(obj)
             return obj
         if t == ENVSXP:

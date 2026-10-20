@@ -16,7 +16,7 @@ Many files of one kind go in as a single `glob:` entry (`glob: visium/*/adata.h5
 - **Expression**: `X` or a layer, cells × genes. Counts are detected and converted to log1p CP10k; log-normalized data is used as is (`expression.normalized` overrides the guess).
 - **Coordinates**: `obsm/spatial` by default, or any `obsm` key, or two obs columns (`coords: "obs/x,obs/y"`). Units can be pixels or microns; see [scale](#getting-the-scale-right).
 - **Annotations**: obs columns, categorical or numeric. `init` maps the likely ones and lists the rest as comments.
-- **Gene names**: `var_names`, or a var column via `gene_column`.
+- **Gene names**: `var_names`, or a var column via `gene_column`. An object indexed by Ensembl ids with a `gene_name` or `symbol` column is named by the symbols on its own, so genes match across samples and are what the search box expects.
 - **Images** (optional): see [images](#images).
 
 ## From R

@@ -559,7 +559,7 @@ def read_experiment(path: str | Path, object_name: str | None = None) -> RExperi
         rownames = _strings(a["NAMES"])
     col_rn, col_cols = _dframe(a["colData"])
     dn_rows, dn_cols = _dimnames(_named_list(assays_list)[next(iter(assays))])
-    if rownames is None:
+    if rownames is None or len(rownames) != n_vars:
         rownames = dn_rows
     colnames = col_rn if col_rn else dn_cols
     if rownames is None or len(rownames) != n_vars:
