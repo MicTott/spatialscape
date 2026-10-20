@@ -6,7 +6,7 @@ import type { FeatureList, TracksInfo } from "../data/manifest";
 import { fieldById } from "../data/manifest";
 import { GENOME_HEIGHT_KEY, store, useViewer } from "../store/store";
 import { GeneSearch } from "../ui/GeneSearch";
-import { GenomeView, type CoverageTrack, type HoverInfo } from "./GenomeView";
+import { DEFAULT_SMOOTH_BP, GenomeView, type CoverageTrack, type HoverInfo } from "./GenomeView";
 import { formatLocus, formatSpan, geneFromRow, padGene, padPeak, parseLocus, type Gene, type GeneRow, type Peak } from "./model";
 
 const PEAK = /^(?:peak: )?((?:chr)?[0-9A-Za-z_.]+)[:-](\d+)-(\d+)$/; // chr1:100-200, 1:100-200 or chr1-100-200
@@ -101,6 +101,17 @@ function tipText(h: HoverInfo, chrom: string | undefined, features: FeatureList 
 }
 
 const clampHeight = (h: number) => Math.max(160, Math.min(Math.max(160, window.innerHeight - 200), Math.round(h)));
+const SMOOTH_KEY = "spatialscape.genomeSmooth";
+const SMOOTH_CHOICES = [0, 100, 200, 500, 1000];
+function storedSmooth(): number {
+  try {
+    const raw = localStorage.getItem(SMOOTH_KEY);
+    const v = raw === null ? NaN : Number(raw);
+    return SMOOTH_CHOICES.includes(v) ? v : DEFAULT_SMOOTH_BP;
+  } catch {
+    return DEFAULT_SMOOTH_BP;
+  }
+}
 
 export function GenomePanel() {
   const manifest = useViewer((s) => s.manifest);
@@ -121,6 +132,7 @@ export function GenomePanel() {
   const [view, setView] = useState<GenomeView | null>(null);
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [yMax, setYMax] = useState(0);
+  const [smoothBp, setSmoothBp] = useState(storedSmooth);
   const [error, setError] = useState<string | null>(null);
   const [trackError, setTrackError] = useState<string | null>(null);
   const followDefault = useRef(true); // the dataset's default gene is a starting point, not something to return to
@@ -161,6 +173,7 @@ export function GenomePanel() {
       onHover: setHover,
       onError: setTrackError,
       onScale: (m) => setYMax((prev) => (Math.abs(prev - m) > 0.005 * (m || 1) ? m : prev)),
+      smoothBp: storedSmooth(),
       onClick: (hit) => {
         const st = store.getState();
         const id = hit?.kind === "peak" ? peakFeature(st.features, hit.peak.name) : hit?.kind === "gene" ? geneFeature(st.features, hit.gene.name) : null;
@@ -286,11 +299,32 @@ export function GenomePanel() {
         )}
         <span className="right">
           {yMax > 0 && (
-            <span title={`${units}, one scale for every track`}>
+            <span title={`${units}; one scale for every track, set by the highest value in view`}>
               0 – {yMax.toPrecision(2)}
               {units === "insertions per million" ? " / M" : ""}
             </span>
           )}
+          <select
+            className="smooth"
+            value={smoothBp}
+            title="display smoothing: rolling mean over this many bp, the same for every track"
+            onChange={(e) => {
+              const bp = Number(e.target.value);
+              setSmoothBp(bp);
+              view?.setSmooth(bp);
+              try {
+                localStorage.setItem(SMOOTH_KEY, String(bp));
+              } catch {
+                /* private mode */
+              }
+            }}
+          >
+            {SMOOTH_CHOICES.map((bp) => (
+              <option key={bp} value={bp}>
+                {bp ? `${bp} bp` : "raw bins"}
+              </option>
+            ))}
+          </select>
           {assets?.source && <span className="muted"> · genes: {assets.source}</span>}
           {(error || trackError) && <span className="warn"> {error ?? trackError}</span>}
         </span>

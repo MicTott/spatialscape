@@ -138,6 +138,8 @@ class TracksSpec(_Model):
     by: list[str] = Field(default_factory=list)  # categorical field ids to aggregate by (with `bigwigs`: its fields)
     genome: str = "hg38"  # assembly id (hg38, mm10, ...): names the RefSeq gene models and the default chromosome sizes
     bin: int | None = Field(default=None, ge=1)  # bp per bin: 25 for fragments; read from the files for bigwigs
+    normalize: Literal["nfrags", "tss", "cells"] = "nfrags"  # per group: per million insertions; per million insertions at gene TSSs (robust to background, ArchR's ReadsInTSS); per nucleus
+    tss_window: int = Field(default=50, ge=1)  # bp either side of a TSS that count as "at the TSS" for `normalize: tss`
     chrom_sizes: Path | None = None  # two-column chrom\tsize file; default: the genome's primary chromosomes
     sample_column: str | None = None  # obs column naming the run each observation came from (required with several fragment files)
     barcode_column: str | None = None  # obs column holding the fragment-file barcode; default: the observation names, minus a run prefix or suffix

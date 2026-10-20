@@ -20,6 +20,11 @@ def quiet(*_):
     pass
 
 
+def _per_million(bw, chrom: str, bin_: int) -> float:
+    """Sum of a track over a chromosome in bin units: value x bins covered, so merged equal-valued intervals count fully."""
+    return sum(v * (e - s) / bin_ for s, e, v in (bw.intervals(chrom) or []))
+
+
 def test_tracks_per_category_and_all(tmp_path):
     import anndata as ad
 
@@ -50,8 +55,9 @@ def test_tracks_per_category_and_all(tmp_path):
     assert json.loads((root / "tracks" / "genes" / "index.json").read_text())["chroms"] == {"chr1": ["GENE1"]}
     assert json.loads((root / "tracks" / "genes" / "chr1.json").read_text()) == [["GENE1", 0, 900, 1200, [900], [1200]]]
     astro = pyBigWig.open(str(root / t.by[0].categories["Astro"]))
-    # insertions per million: the whole track sums to 1e6 (each fragment counts both ends)
-    total = sum(v[2] for v in astro.intervals("chr1") or []) + sum(v[2] for v in (astro.intervals("chr2") or []))
+    # insertions per million: the whole track sums to 1e6 (each fragment counts both ends); intervals may span
+    # several equal-valued bins, so weight each by the bins it covers
+    total = sum(_per_million(astro, c, 10) for c in ("chr1", "chr2"))
     assert total == pytest.approx(1e6, rel=1e-3)
     assert astro.stats("chr1", 1000, 1100, type="max")[0] > 0 and not astro.intervals("chr2")
     allbw = pyBigWig.open(str(root / "tracks" / "all.bw"))
@@ -143,9 +149,8 @@ def test_tracks_pool_several_runs_with_colliding_barcodes(tmp_path):
     assert micro.stats("chr1", 5000, 5110, type="max")[0] > 0 and not (micro.stats("chr1", 1000, 1110, type="max")[0] or 0)
     # per million over the cells pooled from both runs; chr1 came from both files and chr2 from one
     allbw = pyBigWig.open(str(root / "tracks" / "all.bw"))
-    total = sum(sum(v[2] for v in (allbw.intervals(c) or [])) for c in ("chr1", "chr2"))
-    assert total == pytest.approx(1e6, rel=1e-3) and allbw.intervals("chr2")
-    assert sum(v[2] for v in astro.intervals("chr1")) + sum(v[2] for v in (astro.intervals("chr2") or [])) == pytest.approx(1e6, rel=1e-3)
+    assert sum(_per_million(allbw, c, 10) for c in ("chr1", "chr2")) == pytest.approx(1e6, rel=1e-3) and allbw.intervals("chr2")
+    assert sum(_per_million(astro, c, 10) for c in ("chr1", "chr2")) == pytest.approx(1e6, rel=1e-3)
     assert any("A.tsv.gz (A)" in line for line in logs) and any("B.tsv.gz (B)" in line for line in logs)
 
 

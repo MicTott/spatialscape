@@ -54,6 +54,8 @@ samples:
         S11_Hb_KDM: ssh://${JHPCE_USER}@jhpce-transfer01.jhsph.edu/dcs04/lieber/lcolladotor/Habenula_R01_LIBD4270/Hb_multiome/processed-data/cellrangerARC/S11_Hb_KDM/outs/atac_fragments.tsv.gz
       sample_column: fragment_run             # both columns come from the Fragment records inside the Seurat object
       barcode_column: fragment_barcode
-      by: [celltype]
+      by: [celltype, donor]                   # one track set per cell type (pooled over the runs) and one per donor
+      bin: 100                                # 100 bp tiles (ArchR's default); 25 bp made 3.4 GB of bigWigs for two runs
+      normalize: tss                          # scale each group by its insertions at gene TSSs (ArchR's ReadsInTSS), not by all insertions
       genome: hg38
       genes: ~/Library/Caches/org.R-project.R/R/BiocFileCache/e7c024baa500_gencode.v32.annotation.gtf.gz   # the Cell Ranger ARC 2020-A annotation

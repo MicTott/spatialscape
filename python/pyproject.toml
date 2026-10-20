@@ -38,7 +38,6 @@ dependencies = [
   "tifffile>=2024.1",
   "scikit-image>=0.22",
   "pillow>=10",
-  "rdata>=1.1",
 ]
 
 [project.urls]

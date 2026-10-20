@@ -1,6 +1,6 @@
 """Read SpatialExperiment / SingleCellExperiment / Seurat objects straight from .rds / .rda files, without R.
 
-Uses the rdata package to parse the serialized objects into plain Python structures, then picks out what the
+Parses the serialized objects with the reader in rdsread.py into plain Python structures, then picks out what the
 viewer needs: assays (sparse or dense), colData, rowData, spatialCoords, reducedDims and imgData. For a Seurat
 object: the layers of one assay, `meta.data`, the ident, the reductions, the other assays as prefixed feature
 sets (ATAC peaks, gene activity, motif scores) and the fragment files a ChromatinAssay points at.
@@ -209,14 +209,23 @@ def _dimnames(o: Any) -> tuple[list[str] | None, list[str] | None]:
     return out[0], out[1]
 
 
-def _hex_to_rgb(colors: list[str | None], h: int, w: int) -> np.ndarray:
-    """An R `raster` (dim = rows x columns of colour strings) as an (h, w, 3) uint8 array. Unlike every other R
-    matrix, a raster is stored row by row (`as.raster` transposes on the way in), so the flat vector is C order."""
-    arr = np.array([c if c else "#000000" for c in colors], dtype="U9")
-    hexs = np.char.lstrip(arr, "#")
-    rgb = np.zeros((len(arr), 3), dtype=np.uint8)
-    for k in range(3):
-        rgb[:, k] = [int(s[2 * k : 2 * k + 2], 16) if len(s) >= 6 else 0 for s in hexs]
+def _hex_to_rgb(colors, h: int, w: int) -> np.ndarray:
+    """An R `raster` (dim = rows x columns of "#RRGGBB" strings, a numpy `U` array or a list) as an (h, w, 3) uint8
+    array, decoded without touching the strings one by one. Unlike every other R matrix, a raster is stored row by
+    row (`as.raster` transposes on the way in), so the flat vector is C order."""
+    arr = np.asarray(colors if not isinstance(colors, list) else [c if c else "#000000" for c in colors], dtype="U9")
+    n = len(arr)
+    codes = arr.view(np.uint32).reshape(n, 9)  # UTF-32 code points, 0-padded
+    hexpos = np.where(codes[:, :1] == ord("#"), 1, 0)  # "#RRGGBB" or "RRGGBB"
+    idx = hexpos + np.arange(6)[None, :]
+    digits = np.take_along_axis(codes, idx, axis=1).astype(np.int64)
+    val = digits - 48  # '0'..'9'
+    val = np.where(digits >= 97, digits - 87, val)  # 'a'..'f'
+    val = np.where((digits >= 65) & (digits < 97), digits - 55, val)  # 'A'..'F'
+    val = np.clip(val, 0, 15)
+    rgb = (val[:, 0::2] * 16 + val[:, 1::2]).astype(np.uint8)  # (n, 3)
+    short = (codes[:, 6] == 0) & (hexpos[:, 0] == 0)  # fewer than 6 hex digits: black, as before
+    rgb[short] = 0
     return rgb.reshape(h, w, 3)
 
 
@@ -243,7 +252,7 @@ def _images(int_metadata: dict[str, Any]) -> list[RImage]:
             raster = a.get("image")
             dim = [int(v) for v in np.asarray(_attrs(raster)["dim"]["data"])] if "dim" in _attrs(raster) else None
             if dim:
-                rgb = _hex_to_rgb(_strings(raster), dim[0], dim[1])
+                rgb = _hex_to_rgb(raster.get("data", []), dim[0], dim[1])
         elif cls == "StoredSpatialImage":
             path = (_strings(a.get("path")) or [None])[0]
         elif cls == "RemoteSpatialImage":
@@ -252,112 +261,21 @@ def _images(int_metadata: dict[str, Any]) -> list[RImage]:
     return entries
 
 
-# ---------------------------------------------------------------- parsing (rdata, mapped onto plain dicts)
-# Every parsed value is a dict {"type", "class_name", "data", "attributes"}: "integer" / "double" / "boolean" /
-# "string" vectors (numpy arrays; strings as lists with None for NA), "vector" for lists, "S4" with the class name,
-# "null", and "unsupported" for closures, environments, language objects and bytecode (Seurat stores the
-# functions it was called with in @commands; they are walked past, never needed).
-
-R_LATIN1 = 1 << 2
-R_UTF8 = 1 << 3
-
-
-def _load_rdata():
-    try:
-        import rdata
-        from rdata.parser import RObjectType
-    except ImportError as e:  # pragma: no cover
-        raise ImportError("reading R objects needs the rdata package: pip install rdata") from e
-    return rdata, RObjectType
-
-
-def _sym_name(node, T) -> str | None:
-    """The name of a symbol node (a later use of a symbol is a reference to its first occurrence)."""
-    while node is not None and node.info.type == T.REF:
-        node = node.referenced_object
-    if node is None or node.info.type != T.SYM:
-        return None
-    v = node.value
-    while v is not None and v.info.type == T.REF:
-        v = v.referenced_object
-    return v.value.decode("utf-8", "replace") if isinstance(v.value, bytes) else (None if v.value is None else str(v.value))
-
-
-def _pairs(node, T) -> list[tuple[str | None, Any]]:
-    out = []
-    while node is not None and node.info.type == T.LIST:
-        car, cdr = node.value
-        out.append((_sym_name(node.tag, T), car))
-        node = cdr
-    return out
-
-
-def _char(node) -> str | None:
-    v = node.value
-    if v is None:
-        return None
-    if isinstance(v, bytes):
-        return v.decode("latin-1" if node.info.gp & R_LATIN1 and not node.info.gp & R_UTF8 else "utf-8", "replace")
-    return str(v)
-
-
-def _convert(o, T) -> Any:
-    """rdata's object tree -> the dict form the readers above work on."""
-    if o is None:
-        return {"type": "null"}
-    t = o.info.type
-    if t == T.REF:
-        return _convert(o.referenced_object, T)
-    if t in (T.NIL, T.NILVALUE):
-        return {"type": "null"}
-    attrs = {k: _convert(v, T) for k, v in _pairs(o.attributes, T) if k is not None} if o.attributes is not None else {}
-    if t == T.S4:
-        cls = attrs.get("class", {}).get("data") or [None]
-        pkg = (attrs.get("class", {}).get("attributes", {}).get("package", {}).get("data") or [None])[0]
-        return {"type": "S4", "class_name": cls[0], "package_name": pkg, "attributes": attrs}
-    if t in (T.VEC, T.EXPR):
-        return {"type": "vector", "class_name": "vector", "data": [_convert(x, T) for x in o.value], "attributes": attrs}
-    if t == T.LIST:  # a pairlist used as data (rare): a named list
-        items = _pairs(o, T)
-        attrs["names"] = {"type": "string", "class_name": "string_vector", "data": [k for k, _ in items], "attributes": {}}
-        return {"type": "vector", "class_name": "vector", "data": [_convert(v, T) for _, v in items], "attributes": attrs}
-    if t == T.STR:
-        return {"type": "string", "class_name": "string_vector", "data": [_char(c) for c in o.value], "attributes": attrs}
-    if t == T.CHAR:
-        return {"type": "string", "class_name": "string_vector", "data": [_char(o)], "attributes": attrs}
-    if t == T.INT:
-        v = o.value
-        data = np.asarray(v.filled(R_NA_INT) if np.ma.isMaskedArray(v) else v, dtype=np.int32)
-        return {"type": "integer", "class_name": "integer_vector", "data": data, "attributes": attrs}
-    if t == T.LGL:
-        v = o.value
-        if np.ma.isMaskedArray(v):
-            data = np.where(np.ma.getmaskarray(v), np.nan, v.filled(False).astype(np.float64))  # NA logicals as NaN
-        else:
-            data = np.asarray(v, dtype=bool)
-        return {"type": "boolean", "class_name": "boolean_vector", "data": data, "attributes": attrs}
-    if t == T.REAL:
-        return {"type": "double", "class_name": "double_vector", "data": np.asarray(o.value, dtype=np.float64), "attributes": attrs}
-    if t == T.CPLX:
-        return {"type": "complex", "class_name": "complex_vector", "data": np.asarray(o.value), "attributes": attrs}
-    if t == T.RAW:
-        return {"type": "raw", "class_name": "raw_vector", "data": o.value, "attributes": attrs}
-    return {"type": "unsupported", "class_name": t.name, "attributes": attrs}
+# ---------------------------------------------------------------- parsing (our own reader, see rdsread.py)
+# Slots nobody here needs and that are large in Seurat objects: walked past without being built.
+SKIP_SLOTS = frozenset({"scale.data", "graphs", "neighbors", "commands", "tools", "feature.loadings", "feature.loadings.projected", "jackstraw", "misc"})
 
 
 def _parse(path: Path, object_name: str | None):
     """Parse an .rds (one object) or .rda / .RData (named objects -> dict) file."""
-    rdata, T = _load_rdata()
-    parsed = rdata.parser.parse_file(str(path))
-    root = parsed.object
+    from .rdsread import read_rda, read_rds
+
     if path.suffix.lower() in (".rda", ".rdata"):
-        objs = {k: v for k, v in _pairs(root, T) if k is not None}
-        if object_name is not None:
-            if object_name not in objs:
-                raise KeyError(f"{path}: no object named {object_name!r}; found {list(objs)}")
-            return {object_name: _convert(objs[object_name], T)}
-        return {k: _convert(v, T) for k, v in objs.items()}
-    return _convert(root, T)
+        objs = read_rda(path, skip=SKIP_SLOTS, only=object_name)
+        if object_name is not None and object_name not in objs:
+            raise KeyError(f"{path}: no object named {object_name!r}; found {list(read_rda(path, skip=SKIP_SLOTS))}")
+        return objs
+    return read_rds(path, skip=SKIP_SLOTS)
 
 
 # ---------------------------------------------------------------- Seurat objects

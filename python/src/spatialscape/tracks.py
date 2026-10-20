@@ -35,12 +35,13 @@ import numpy as np
 import pandas as pd
 
 from .config import TracksSpec, is_remote
-from .genes import gene_models_for, write_gene_models
+from .genes import GeneModel, gene_models_for, write_gene_models
 from .manifest import TrackSet, TracksInfo
 
 Log = Callable[[str], None]
-TRACKS_RECIPE = 3  # bump when write_tracks writes something different for the same inputs and settings
+TRACKS_RECIPE = 4  # bump when write_tracks writes something different for the same inputs and settings
 DEFAULT_BIN = 25  # bp per bin for tracks built from fragments
+UNITS = {"nfrags": "insertions per million", "tss": "per million TSS insertions", "cells": "insertions per cell"}
 PEAK_RE = re.compile(r"^(?:peak: )?(chr[0-9XYM]+|[0-9XYM]+)[:-](\d+)-(\d+)$")  # chr1:100-200 (10x) or chr1-100-200 (Signac)
 
 # GRCh38 primary chromosomes (the 10x references use these names and lengths)
@@ -112,7 +113,15 @@ def _write_bigwig(pybigwig, path: Path, sizes: dict[str, int], per_chrom: dict[s
         all_e = np.concatenate([ends, gap_e[keep]])
         all_v = np.concatenate([cnt.astype(np.float64) * scale, np.zeros(int(keep.sum()))])
         order = np.argsort(all_s, kind="stable")
-        bw.addEntries([chrom] * len(order), all_s[order].tolist(), ends=all_e[order].tolist(), values=all_v[order].tolist())
+        all_s, all_e, all_v = all_s[order], all_e[order], all_v[order]
+        # the entries tile the chromosome without gaps: merge neighbours with the same value (runs of 1s, long zero
+        # stretches) into one interval each, which is what keeps a dense track's file size in check
+        first = np.ones(len(all_s), dtype=bool)
+        first[1:] = all_v[1:] != all_v[:-1]
+        s_ = all_s[first]
+        e_ = np.append(s_[1:], all_e[-1])
+        v_ = all_v[first]
+        bw.addEntries([chrom] * len(s_), s_.tolist(), ends=e_.tolist(), values=v_.tolist())
     bw.close()
 
 
@@ -124,6 +133,25 @@ def _bare_barcode(name: str, run: str) -> str:
         if name.endswith(sep + run):
             return name[: -len(run) - 1]
     return name
+
+
+def tss_positions(models: dict[str, list[GeneModel]]) -> dict[str, np.ndarray]:
+    """Per chromosome, the sorted TSS positions of the gene models (start on +, last base on -, start when unknown)."""
+    out = {}
+    for chrom, ms in models.items():
+        pos = np.fromiter(((m.end - 1) if m.strand < 0 else m.start for m in ms), dtype=np.int64, count=len(ms))
+        out[chrom] = np.unique(pos)
+    return out
+
+
+def near_tss(pos: np.ndarray, tss: np.ndarray | None, window: int) -> np.ndarray:
+    """Which insertion positions lie within `window` bp of a TSS (sorted positions), as a boolean mask."""
+    if tss is None or len(tss) == 0:
+        return np.zeros(len(pos), dtype=bool)
+    i = np.searchsorted(tss, pos)
+    left = tss[np.clip(i - 1, 0, len(tss) - 1)]
+    right = tss[np.clip(i, 0, len(tss) - 1)]
+    return (np.abs(pos - left) <= window) | (np.abs(right - pos) <= window)
 
 
 def _merge_hits(store: dict[str, Hits], chrom: str, acc: np.ndarray) -> None:
@@ -143,34 +171,48 @@ def _merge_hits(store: dict[str, Hits], chrom: str, acc: np.ndarray) -> None:
 
 class _Insertions:
     """Insertion counts per bin, per category of each field and for every cell: one chromosome's dense accumulators
-    at a time, kept as non-zero bins once the chromosome is done, summed over fragment files."""
+    at a time, kept as non-zero bins once the chromosome is done, summed over fragment files. Alongside, what each
+    group's track is scaled by: its insertions, its insertions at TSSs, or its number of cells."""
 
-    def __init__(self, sizes: dict[str, int], bin_: int, fields: list[str], ncat: dict[str, int]):
+    def __init__(
+        self, sizes: dict[str, int], bin_: int, fields: list[str], ncat: dict[str, int], *, tss: dict[str, np.ndarray] | None = None, window: int = 50
+    ):
         self.sizes, self.bin, self.fields, self.ncat = sizes, bin_, fields, ncat
+        self.tss, self.window = tss, window
         self.by: dict[str, list[dict[str, Hits]]] = {f: [{} for _ in range(ncat[f])] for f in fields}
         self.all: dict[str, Hits] = {}
         self.totals = {f: np.zeros(ncat[f], dtype=np.int64) for f in fields}
+        self.tss_totals = {f: np.zeros(ncat[f], dtype=np.int64) for f in fields}
         self.total_all = 0
+        self.tss_total_all = 0
         self.cur: str | None = None
+        self.cur_tss: np.ndarray | None = None
         self.acc: dict[str, np.ndarray] = {}
         self.acc_all = np.zeros(0, dtype=np.int32)
 
     def start(self, chrom: str) -> None:
         self.flush()
         self.cur = chrom
+        self.cur_tss = self.tss.get(chrom) if self.tss is not None else None
         nbins = -(-self.sizes[chrom] // self.bin)  # the last bin ends at the chromosome end, never past it
         self.acc_all = np.zeros(nbins, dtype=np.int32)
         self.acc = {f: np.zeros((self.ncat[f], nbins), dtype=np.int32) for f in self.fields}
 
-    def add(self, pos: np.ndarray, rows: np.ndarray, codes: dict[str, np.ndarray]) -> None:
-        """pos: bin per insertion; rows: observation per insertion."""
+    def add(self, bp: np.ndarray, rows: np.ndarray, codes: dict[str, np.ndarray]) -> None:
+        """bp: insertion positions; rows: observation per insertion."""
         nbins = len(self.acc_all)
+        pos = np.clip(bp // self.bin, 0, nbins - 1)
         self.acc_all += np.bincount(pos, minlength=nbins).astype(np.int32)  # bincount: ~20x faster than add.at
         self.total_all += len(pos)
+        at_tss = near_tss(bp, self.cur_tss, self.window) if self.tss is not None else None
+        if at_tss is not None:
+            self.tss_total_all += int(at_tss.sum())
         for f in self.fields:
             ck = codes[f][rows]
             counts = np.bincount(ck, minlength=self.ncat[f])
             self.totals[f] += counts
+            if at_tss is not None:
+                self.tss_totals[f] += np.bincount(ck[at_tss], minlength=self.ncat[f])
             for k in np.flatnonzero(counts):
                 self.acc[f][k] += np.bincount(pos[ck == k], minlength=nbins).astype(np.int32)
 
@@ -246,9 +288,8 @@ def _consume(reader, ins: _Insertions, bc: pd.Index, rows_of_run: np.ndarray, co
                 ins.start(chrom)
                 seen.append(chrom)
             r = rows[grp.index.to_numpy()]
-            nbins = len(ins.acc_all)
-            pos = np.clip(np.concatenate([grp["start"].to_numpy(), grp["end"].to_numpy() - 1]) // ins.bin, 0, nbins - 1)
-            ins.add(pos, np.concatenate([r, r]), codes)
+            bp = np.concatenate([grp["start"].to_numpy(), grp["end"].to_numpy() - 1])  # both Tn5 insertion sites
+            ins.add(bp, np.concatenate([r, r]), codes)
             n_used += len(grp)
     return n_used
 
@@ -266,12 +307,15 @@ def _tracks_from_fragments(
     cats: dict[str, np.ndarray],
     categories: dict[str, list[str]],
     fields: list[str],
+    tss: dict[str, np.ndarray] | None,
     log: Log,
 ) -> tuple[str, list[TrackSet]]:
     codes = {f: np.asarray(cats[f], dtype=np.int64) for f in fields}
-    ins = _Insertions(sizes, bin_, fields, {f: len(categories[f]) for f in fields})
+    ncat = {f: len(categories[f]) for f in fields}
+    ins = _Insertions(sizes, bin_, fields, ncat, tss=tss if spec.normalize == "tss" else None, window=spec.tss_window)
     given = np.asarray([str(b) for b in barcodes], dtype=object) if barcodes is not None else None
     run_of = np.asarray([str(r) for r in runs], dtype=object) if runs is not None else None
+    covered = np.zeros(len(ids), dtype=bool)  # observations whose run has a fragment file (what `cells` divides by)
     for run, path in spec.fragment_files:
         if run is None:
             rows_of_run = np.arange(len(ids))
@@ -282,6 +326,7 @@ def _tracks_from_fragments(
                 have = sorted(set(run_of.tolist())) if run_of is not None else []
                 raise ValueError(f"tracks: no observation has {spec.sample_column} == {run!r} (values: {have[:8]})")
             names = given[rows_of_run] if given is not None else np.asarray([_bare_barcode(str(ids[i]), run) for i in rows_of_run], dtype=object)
+        covered[rows_of_run] = True
         bc = pd.Index(names)
         if bc.has_duplicates:
             raise ValueError(f"tracks: fragment barcodes are not unique per observation{f' in run {run}' if run else ''}")
@@ -294,21 +339,40 @@ def _tracks_from_fragments(
                 f"tracks: no fragment barcodes matched the observation names{f' of run {run}' if run else ''} ({_file_label(path)}); "
                 "set `barcode_column:` to the obs column that holds them"
             )
-    _write_bigwig(pybigwig, tdir / "all.bw", sizes, ins.all, bin_, 1e6 / max(ins.total_all, 1))
+    def scale(total: int, at_tss: int, n_cells: int) -> float | None:
+        """What divides a group's counts: None when the group has nothing to scale by (no track is written)."""
+        if spec.normalize == "tss":
+            return 1e6 / at_tss if at_tss > 0 else None
+        if spec.normalize == "cells":
+            return 1.0 / n_cells if n_cells > 0 else None
+        return 1e6 / total if total > 0 else None
+
+    n_cells = {f: np.bincount(codes[f][covered], minlength=ncat[f]) for f in fields}
+    if spec.normalize == "tss":
+        log(f"  tracks: scaling by insertions within {spec.tss_window} bp of a TSS ({ins.tss_total_all:,} of {ins.total_all:,})")
+    s_all = scale(ins.total_all, ins.tss_total_all, int(covered.sum()))
+    if s_all is None:
+        raise ValueError("tracks: nothing to scale the tracks by (no insertions at TSSs?); check `genes:` or use normalize: nfrags")
+    _write_bigwig(pybigwig, tdir / "all.bw", sizes, ins.all, bin_, s_all)
     by: list[TrackSet] = []
     for f in fields:
         fdir = tdir / f
         fdir.mkdir()
         paths: dict[str, str] = {}
         used: set[str] = set()
+        skipped: list[str] = []
         for k, label in enumerate(categories[f]):
             if ins.totals[f][k] == 0 or label == "NA":  # unlabelled cells are not a group anyone wants a track for
                 continue
+            sk = scale(int(ins.totals[f][k]), int(ins.tss_totals[f][k]), int(n_cells[f][k]))
+            if sk is None:
+                skipped.append(label)
+                continue
             p = fdir / f"{_unique_slug(label, used)}.bw"
-            _write_bigwig(pybigwig, p, sizes, ins.by[f][k], bin_, 1e6 / ins.totals[f][k])
+            _write_bigwig(pybigwig, p, sizes, ins.by[f][k], bin_, sk)
             paths[label] = f"tracks/{f}/{p.name}"
         by.append(TrackSet(field=f, categories=paths))
-        log(f"  tracks: {f}: {len(paths)} categories")
+        log(f"  tracks: {f}: {len(paths)} categories" + (f" (no TSS insertions for {', '.join(skipped)})" if skipped else ""))
     return "tracks/all.bw", by
 
 
@@ -392,8 +456,10 @@ def _copy_bigwigs(
     return common, bin_, all_path, by
 
 
-def _write_annotations(spec: TracksSpec, tdir: Path, sizes: dict[str, int], feature_names: list[str], log: Log) -> tuple[str | None, str | None, str | None]:
-    """peaks.bed from the sample's features, gene models, the links file; (peaks, genes, links) paths."""
+def _write_annotations(
+    spec: TracksSpec, tdir: Path, sizes: dict[str, int], feature_names: list[str], log: Log, gm: tuple[dict[str, list[GeneModel]], str] | None = None
+) -> tuple[str | None, str | None, str | None]:
+    """peaks.bed from the sample's features, gene models (`gm` when already computed), the links file; (peaks, genes, links) paths."""
     peaks_path = None
     peak_rows = []
     for name in feature_names:
@@ -408,7 +474,8 @@ def _write_annotations(spec: TracksSpec, tdir: Path, sizes: dict[str, int], feat
             fh.writelines(f"{c}\t{s}\t{e}\t{n}\n" for c, s, e, n in peak_rows)
         peaks_path = "tracks/peaks.bed"
     genes_path = links_path = None
-    gm = gene_models_for(spec.genes, spec.genome, sizes, log=log)
+    if gm is None:
+        gm = gene_models_for(spec.genes, spec.genome, sizes, log=log)
     if gm is not None:
         models, source = gm
         n_genes = write_gene_models(models, tdir / "genes", source=source, order=list(sizes))
@@ -450,17 +517,24 @@ def write_tracks(
     missing = [f for f in spec.by if f not in cats]
     if missing:
         raise KeyError(f"tracks.by: field(s) {missing} are not categorical fields of this sample")
+    gm = None
     if spec.bigwigs is not None:
         sizes, bin_, all_path, by = _copy_bigwigs(pybigwig, spec, tdir, fields, categories, aliases or {}, log)
         units = spec.units or "signal"
     else:
         sizes = chrom_sizes(spec)
         bin_ = spec.bin or DEFAULT_BIN
+        tss = None
+        if spec.normalize == "tss":  # the gene models are needed before the fragments are read
+            gm = gene_models_for(spec.genes, spec.genome, sizes, log=log)
+            if gm is None:
+                raise ValueError("tracks: `normalize: tss` needs gene models; set `genes:` to a GTF, genePred or BED (or use nfrags / cells)")
+            tss = tss_positions(gm[0])
         all_path, by = _tracks_from_fragments(
-            pybigwig, spec, tdir, sizes, bin_, ids=ids, barcodes=barcodes, runs=runs, cats=cats, categories=categories, fields=fields, log=log
+            pybigwig, spec, tdir, sizes, bin_, ids=ids, barcodes=barcodes, runs=runs, cats=cats, categories=categories, fields=fields, tss=tss, log=log
         )
-        units = spec.units or "insertions per million"
-    peaks_path, genes_path, links_path = _write_annotations(spec, tdir, sizes, feature_names, log)
+        units = spec.units or UNITS[spec.normalize]
+    peaks_path, genes_path, links_path = _write_annotations(spec, tdir, sizes, feature_names, log, gm)
     with open(tdir / "chrom.sizes", "w") as fh:
         fh.writelines(f"{c}\t{n}\n" for c, n in sizes.items())
     return TracksInfo(

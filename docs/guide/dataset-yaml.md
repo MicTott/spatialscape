@@ -172,6 +172,12 @@ Observations are matched within their run, by `barcode_column` or by their names
 removed (`Br2743#AAAC…-1` as ArchR names cells, `Br2743_AAAC…-1`, `AAAC…-1_Br2743`). A category's track sums
 its cells over every run and is then scaled to insertions per million, so donors weigh in by their cell numbers.
 
+`normalize:` sets what each group's track is scaled by: `nfrags` (default) divides by the group's total insertions
+(per million; Signac's `RC`, ArchR's `nFrags`); `tss` divides by its insertions within `tss_window` bp (50) of a gene
+TSS (ArchR's `ReadsInTSS`), which keeps a group with noisier libraries from looking weaker everywhere; `cells` divides
+by its number of nuclei. `bin:` (25 bp) sets the tile size; dense pooled data is better served by `bin: 100`, ArchR's
+default, which also keeps the bigWigs a fraction of the size.
+
 A fragment file may live on another machine: `ssh://host/abs/path/atac_fragments.tsv.gz` is read through
 `ssh host cat …` in one pass while the tracks are counted, so nothing is copied to the building machine (a
 rebuild streams it again). The build asks the same host for the file's size and date to decide whether the

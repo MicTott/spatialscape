@@ -77,7 +77,7 @@ An ATAC sample built with `tracks:` ([dataset.yaml](./dataset-yaml#genome-tracks
 panel under the maps, drawn by the same renderer as the maps: scroll to zoom around the cursor, drag to pan,
 double-click to zoom in, and drag the panel's top edge to resize it. From top to bottom it shows the coordinate
 axis, one accessibility track per visible category of the annotation you last colored by (in the vocabulary's
-colors, on one shared scale printed in the header, so hiding a category in the legend removes its track), the
+colors, on one shared scale printed in the header and set by the highest value in view, drawn through a rolling mean the header lets you set from raw bins to 1 kb, so hiding a category in the legend removes its track), the
 sample's peaks, and gene models with exons and strand arrows. Coloring by a gene keeps the per-category tracks,
 so a locus reads per cell type.
 

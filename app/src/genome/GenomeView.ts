@@ -37,7 +37,10 @@ export interface GenomeViewOptions {
   onClick: (hit: Hit) => void;
   onScale: (yMax: number) => void;
   onError?: (message: string | null) => void; // tracks that could not be read, for the panel header
+  smoothBp?: number; // display smoothing: rolling mean over this many bp, the same for every track (0 = raw bins)
 }
+
+export const DEFAULT_SMOOTH_BP = 200;
 
 const AXIS_H = 22;
 const PEAKS_H = 16;
@@ -58,9 +61,28 @@ interface Cached {
   bin: number;
   start: number;
   end: number;
-  values: Float32Array;
+  values: Float32Array; // as fetched
+  display: Float32Array; // smoothed for drawing and hovering (see smoothBp)
   polygon: Float64Array; // step outline in (bp, -value); the layer's model matrix maps it into its row
   data: Cached[]; // the layer's `data` prop: one stable array, so deck never re-tesselates on a pan
+}
+
+/** Centred rolling mean over `k` bins (k forced odd), the edges averaging what is there. A single noisy bin of a
+ *  small group shrinks by k while a promoter-wide peak keeps its height, which is what makes lanes comparable. */
+export function smooth(values: Float32Array, k: number): Float32Array {
+  const n = values.length;
+  if (k <= 1 || n === 0) return values;
+  if (k % 2 === 0) k += 1;
+  const half = (k - 1) / 2;
+  const cum = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) cum[i + 1] = cum[i] + values[i];
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - half);
+    const b = Math.min(n, i + half + 1);
+    out[i] = (cum[b] - cum[a]) / (b - a);
+  }
+  return out;
 }
 
 function polygonFor(values: Float32Array, start: number, bin: number): Float64Array {
@@ -97,6 +119,7 @@ export class GenomeView {
   peaks: Peak[] = [];
   highlight: Span | null = null;
   yMax = 1;
+  smoothBp = DEFAULT_SMOOTH_BP;
   private cache = new Map<string, Cached>();
   private inflight = new Set<string>();
   private errors = new Map<string, string>(); // track id -> why it could not be read (no retries until the tracks change)
@@ -113,6 +136,7 @@ export class GenomeView {
     private opts: GenomeViewOptions,
   ) {
     const first = opts.sizes.keys().next().value as string;
+    this.smoothBp = opts.smoothBp ?? DEFAULT_SMOOTH_BP;
     this.chrom = first;
     this.start = 0;
     this.end = opts.sizes.get(first)!;
@@ -235,6 +259,18 @@ export class GenomeView {
     this.changed();
   }
 
+  /** Change the display smoothing (bp): every cached track is re-smoothed, nothing is fetched again. */
+  setSmooth(bp: number) {
+    if (bp === this.smoothBp) return;
+    this.smoothBp = bp;
+    for (const c of this.cache.values()) {
+      c.display = smooth(c.values, Math.round(bp / c.bin));
+      c.polygon = polygonFor(c.display, c.start, c.bin);
+      c.data = [c];
+    }
+    this.changed();
+  }
+
   setHighlight(h: Span | null) {
     this.highlight = h;
     this.annot = null; // the highlighted peak changes colour
@@ -290,7 +326,8 @@ export class GenomeView {
           const prev = this.cache.get(t.id);
           const wantBin = binFor(1 / this.pxPerBp(), this.opts.trackBin);
           if (prev && prev.chrom === chrom && prev.bin < bin && covers(prev, chrom, this.start, this.end, wantBin)) return; // finer data arrived first: keep it
-          const entry: Cached = { chrom, bin, start: win.start, end: win.start + n * bin, values, polygon: polygonFor(values, win.start, bin), data: [] };
+          const display = smooth(values, Math.round(this.smoothBp / bin));
+          const entry: Cached = { chrom, bin, start: win.start, end: win.start + n * bin, values, display, polygon: polygonFor(display, win.start, bin), data: [] };
           entry.data = [entry];
           this.cache.set(t.id, entry);
           this.changed();
@@ -321,7 +358,7 @@ export class GenomeView {
       if (!c || c.chrom !== this.chrom) continue;
       const a = Math.max(0, Math.floor((this.start - c.start) / c.bin));
       const b = Math.min(c.values.length, Math.ceil((this.end - c.start) / c.bin));
-      for (let i = a; i < b; i++) if (c.values[i] > m) m = c.values[i];
+      for (let i = a; i < b; i++) if (c.display[i] > m) m = c.display[i];
     }
     return m > 0 ? m : 1;
   }
@@ -534,7 +571,7 @@ export class GenomeView {
       let value = 0;
       if (c && c.chrom === this.chrom) {
         const k = Math.floor((bp - c.start) / c.bin);
-        if (k >= 0 && k < c.values.length) value = c.values[k];
+        if (k >= 0 && k < c.display.length) value = c.display[k];
       }
       return { kind: "track", track: t, value };
     }
