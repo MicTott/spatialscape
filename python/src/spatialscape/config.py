@@ -103,6 +103,15 @@ class PolygonSpec(_Model):
         return self
 
 
+def is_remote(p: object) -> bool:
+    """`ssh://host/path`: read over ssh at build time, nothing stored locally."""
+    return isinstance(p, str) and p.startswith("ssh://")
+
+
+def _file_or_url(v: str | Path) -> Path | str:
+    return v if is_remote(v) else Path(v)
+
+
 class BigWigsSpec(_Model):
     """Tracks another tool exported (ArchR `getGroupBW`, Signac `ExportGroupBW`, deepTools `bamCoverage` per group):
     one bigWig per category of each field, named by a path template with `{label}` or listed label by label."""
@@ -124,7 +133,7 @@ class TracksSpec(_Model):
     one per run for an object pooled from several 10x runs) or copied from bigWigs another tool exported, plus the
     sample's peaks and optional gene models and peak-gene links. Needs `pip install "spatialscape[tracks]"`."""
 
-    fragments: Path | dict[str, Path] | None = None  # fragments.tsv.gz, or run id -> file when the object pools several 10x runs
+    fragments: str | Path | dict[str, str | Path] | None = None  # fragments.tsv.gz, or run id -> file for an object pooled from runs; a file may be `ssh://host/path` (streamed, never stored)
     bigwigs: BigWigsSpec | None = None  # tracks that already exist, instead of `fragments`
     by: list[str] = Field(default_factory=list)  # categorical field ids to aggregate by (with `bigwigs`: its fields)
     genome: str = "hg38"  # assembly id (hg38, mm10, ...): names the RefSeq gene models and the default chromosome sizes
@@ -161,16 +170,16 @@ class TracksSpec(_Model):
         return None if self.genes is None or self.genes in ("refseq", "none") else Path(self.genes)
 
     @property
-    def fragment_files(self) -> list[tuple[str | None, Path]]:
-        """(run id, file) pairs; the run is None for a single file."""
+    def fragment_files(self) -> list[tuple[str | None, Path | str]]:
+        """(run id, file) pairs; the run is None for a single file. A remote file stays an `ssh://host/path` string."""
         if isinstance(self.fragments, dict):
-            return [(str(k), Path(v)) for k, v in self.fragments.items()]
-        return [(None, Path(self.fragments))] if self.fragments is not None else []
+            return [(str(k), _file_or_url(v)) for k, v in self.fragments.items()]
+        return [(None, _file_or_url(self.fragments))] if self.fragments is not None else []
 
     @property
-    def input_files(self) -> list[Path]:
-        """Every file the tracks are built from, for the build fingerprint: fragment files, bigWigs (a template is
-        globbed), chromosome sizes, gene models and links."""
+    def input_files(self) -> list[Path | str]:
+        """Every file the tracks are built from, for the build fingerprint: fragment files (remote ones as their
+        URL), bigWigs (a template is globbed), chromosome sizes, gene models and links."""
         files: list[Path | str | None] = [p for _, p in self.fragment_files] + [self.chrom_sizes, self.genes_file, self.links]
         if self.bigwigs is not None:
             files.append(self.bigwigs.all)
@@ -179,7 +188,7 @@ class TracksSpec(_Model):
                     files.extend(v.values())
                 else:
                     files.extend(sorted(_glob.glob(str(v).replace("{label}", "*"))))
-        return [Path(f) for f in files if f is not None]
+        return [f if is_remote(f) else Path(f) for f in files if f is not None]
 
 
 class SubsetSpec(_Model):
@@ -391,7 +400,12 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
             s.polygons.path = res(s.polygons.path)
         if s.tracks is not None:
             t = s.tracks
-            t.fragments = {k: res(v) for k, v in t.fragments.items()} if isinstance(t.fragments, dict) else res(t.fragments)
+            if isinstance(t.fragments, dict):
+                t.fragments = {k: os.path.expandvars(v) if is_remote(v) else res(Path(v)) for k, v in t.fragments.items()}
+            elif is_remote(t.fragments):
+                t.fragments = os.path.expandvars(t.fragments)  # ssh://${CLUSTER_USER}@host/... keeps logins out of the yaml
+            elif t.fragments is not None:
+                t.fragments = res(Path(t.fragments))
             if t.bigwigs is not None:
                 t.bigwigs.all = res(t.bigwigs.all)
                 t.bigwigs.by = {

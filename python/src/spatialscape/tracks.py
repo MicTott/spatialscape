@@ -25,14 +25,16 @@ from __future__ import annotations
 
 import gzip
 import re
+import shlex
 import shutil
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from .config import TracksSpec
+from .config import TracksSpec, is_remote
 from .genes import gene_models_for, write_gene_models
 from .manifest import TrackSet, TracksInfo
 
@@ -182,14 +184,50 @@ class _Insertions:
         self.cur, self.acc, self.acc_all = None, {}, np.zeros(0, dtype=np.int32)
 
 
-def _stream(path: Path, ins: _Insertions, bc: pd.Index, rows_of_run: np.ndarray, codes: dict[str, np.ndarray]) -> tuple[int, int]:
-    """Add one fragment file's insertions for the observations in `bc` (rows `rows_of_run`); (fragments used, chromosomes)."""
+def split_ssh_url(url: str) -> tuple[str, str]:
+    """`ssh://[user@]host/abs/path` -> (host, /abs/path)."""
+    rest = url[len("ssh://") :]
+    host, _, path = rest.partition("/")
+    if not host or not path:
+        raise ValueError(f"tracks: a remote fragment file is ssh://host/absolute/path, got {url!r}")
+    return host, "/" + path
+
+
+def _file_label(path: Path | str) -> str:
+    return path.rsplit("/", 1)[-1] if isinstance(path, str) else path.name
+
+
+def _stream(path: Path | str, ins: _Insertions, bc: pd.Index, rows_of_run: np.ndarray, codes: dict[str, np.ndarray]) -> tuple[int, int]:
+    """Add one fragment file's insertions for the observations in `bc` (rows `rows_of_run`); (fragments used,
+    chromosomes). An `ssh://host/path` file is read through `ssh host cat path`: one sequential pass, nothing
+    written on the remote side or stored locally."""
+    proc = None
+    if is_remote(path):
+        host, remote = split_ssh_url(str(path))
+        proc = subprocess.Popen(["ssh", "-o", "BatchMode=yes", host, f"cat {shlex.quote(remote)}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        source = proc.stdout
+    else:
+        source = path
     reader = pd.read_csv(
-        path, sep="\t", comment="#", header=None, usecols=[0, 1, 2, 3], names=["chrom", "start", "end", "barcode"],
+        source, sep="\t", comment="#", header=None, usecols=[0, 1, 2, 3], names=["chrom", "start", "end", "barcode"],
         dtype={"chrom": str, "start": np.int64, "end": np.int64, "barcode": str}, chunksize=4_000_000,
         compression="gzip" if str(path).endswith(".gz") else None,
     )
     seen: list[str] = []
+    n_used = 0
+    try:
+        n_used = _consume(reader, ins, bc, rows_of_run, codes, path, seen)
+    finally:
+        if proc is not None:
+            err = proc.stderr.read().decode(errors="replace").strip() if proc.stderr else ""
+            code = proc.wait()
+            if code != 0:
+                raise ValueError(f"tracks: reading {path} over ssh failed (exit {code}): {err[-500:]}")
+    ins.flush()
+    return n_used, len(seen)
+
+
+def _consume(reader, ins: _Insertions, bc: pd.Index, rows_of_run: np.ndarray, codes: dict[str, np.ndarray], path: Path | str, seen: list[str]) -> int:
     n_used = 0
     for chunk in reader:
         idx = bc.get_indexer(chunk["barcode"].to_numpy())
@@ -212,8 +250,7 @@ def _stream(path: Path, ins: _Insertions, bc: pd.Index, rows_of_run: np.ndarray,
             pos = np.clip(np.concatenate([grp["start"].to_numpy(), grp["end"].to_numpy() - 1]) // ins.bin, 0, nbins - 1)
             ins.add(pos, np.concatenate([r, r]), codes)
             n_used += len(grp)
-    ins.flush()
-    return n_used, len(seen)
+    return n_used
 
 
 def _tracks_from_fragments(
@@ -248,12 +285,13 @@ def _tracks_from_fragments(
         bc = pd.Index(names)
         if bc.has_duplicates:
             raise ValueError(f"tracks: fragment barcodes are not unique per observation{f' in run {run}' if run else ''}")
-        log(f"  tracks: streaming {path.name}{f' ({run})' if run else ''} ({', '.join(fields)}; {bin_} bp bins)")
+        where = f" over ssh from {split_ssh_url(str(path))[0]}" if is_remote(path) else ""
+        log(f"  tracks: streaming {_file_label(path)}{f' ({run})' if run else ''}{where} ({', '.join(fields)}; {bin_} bp bins)")
         n_used, n_chroms = _stream(path, ins, bc, rows_of_run, codes)
         log(f"  tracks: {n_used:,} fragments from {len(bc):,} barcodes over {n_chroms} chromosomes")
         if n_used == 0:
             raise ValueError(
-                f"tracks: no fragment barcodes matched the observation names{f' of run {run}' if run else ''}; "
+                f"tracks: no fragment barcodes matched the observation names{f' of run {run}' if run else ''} ({_file_label(path)}); "
                 "set `barcode_column:` to the obs column that holds them"
             )
     _write_bigwig(pybigwig, tdir / "all.bw", sizes, ins.all, bin_, 1e6 / max(ins.total_all, 1))

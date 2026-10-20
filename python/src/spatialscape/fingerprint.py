@@ -24,8 +24,32 @@ BUILD_RECIPE = 1  # bump when build_sample writes something different for the sa
 SIDECAR = "build.json"
 
 
-def _stat(path: Path) -> dict | None:
+def _remote_stat(url: str) -> dict:
+    """Size and mtime of an `ssh://host/path` file, asked over ssh (read-only); the URL alone when that fails."""
+    import subprocess
+
+    from .tracks import split_ssh_url
+
+    host, remote = split_ssh_url(url)
+    cmd = f"stat -c '%s %Y' {_q(remote)} 2>/dev/null || stat -f '%z %m' {_q(remote)}"
+    try:
+        out = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", host, cmd], capture_output=True, text=True, timeout=60)
+        size, mtime = out.stdout.split()[:2]
+        return {"size": int(size), "mtime_ns": int(mtime) * 1_000_000_000}
+    except Exception:
+        return {"remote": url}
+
+
+def _q(s: str) -> str:
+    import shlex
+
+    return shlex.quote(s)
+
+
+def _stat(path: Path | str) -> dict | None:
     """Size and mtime of a file, or a digest over the file list of a directory (Zarr stores, OME-Zarr images)."""
+    if isinstance(path, str) and path.startswith("ssh://"):
+        return _remote_stat(path)
     p = Path(path)
     if not p.exists():
         return None

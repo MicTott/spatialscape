@@ -2,17 +2,22 @@
 from __future__ import annotations
 
 import json
+import os
 
 import numpy as np
 import pytest
 import yaml
 
-from spatialscape.build import build_dataset
+from spatialscape.build import build_bundle, build_dataset
 from spatialscape.config import load_config
 from spatialscape.synthetic import make_synthetic
 from spatialscape.tracks import write_fragments
 
 pyBigWig = pytest.importorskip("pyBigWig")
+
+
+def quiet(*_):
+    pass
 
 
 def test_tracks_per_category_and_all(tmp_path):
@@ -202,3 +207,60 @@ def test_tracks_spec_rules(tmp_path):
     (tmp_path / "b-x.bw").write_bytes(b"")
     s = TracksSpec(bigwigs={"by": {"f": str(tmp_path / "{label}-x.bw")}, "all": tmp_path / "all.bw"}, genes="none")
     assert sorted(p.name for p in s.input_files) == ["a-x.bw", "all.bw", "b-x.bw"]
+
+
+def test_fragments_stream_over_ssh_with_nothing_stored(tmp_path, monkeypatch):
+    """`ssh://host/path` fragment files are read through `ssh host cat path`. A fake ssh on PATH drops the host and
+    runs the command locally, which also covers the remote stat the fingerprint asks for."""
+    cfg_path, obs = _sample_with_runs(tmp_path)
+    bc_a = list(obs["bc"][obs["run"] == "A"])
+    bc_b = list(obs["bc"][obs["run"] == "B"])
+    fa = write_fragments(tmp_path / "src" / "A.tsv.gz", [("chr1", 1000 + i % 50, 1060 + i % 50, b) for i, b in enumerate(bc_a)] * 3)
+    fb = write_fragments(tmp_path / "src" / "B.tsv.gz", [("chr1", 5000 + i % 50, 5060 + i % 50, b) for i, b in enumerate(bc_b)] * 3)
+    (tmp_path / "src" / "chrom.sizes").write_text("chr1\t100000\n")
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    (fake / "ssh").write_text(
+        "#!/bin/sh\n"
+        "while [ $# -gt 0 ]; do case \"$1\" in -o) shift 2;; -*) shift;; *) break;; esac; done\n"
+        "shift\n"  # the host
+        'exec sh -c "$*"\n'
+    )
+    (fake / "ssh").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{fake}:{os.environ['PATH']}")
+    doc = yaml.safe_load(cfg_path.read_text())
+    doc["samples"] = [doc["samples"][0]]
+    tracks = {
+        "fragments": {"A": f"ssh://nobody@fakehost{fa}", "B": f"ssh://fakehost{fb}"}, "sample_column": "run", "by": ["cluster"],
+        "genome": "custom", "chrom_sizes": "chrom.sizes", "bin": 10, "genes": "none",
+    }
+    doc["samples"][0]["tracks"] = tracks
+    cfg_path.write_text(yaml.safe_dump(doc))
+    logs = []
+    m = build_dataset(load_config(cfg_path), tmp_path / "bundle", log=logs.append)
+    t = m.samples[0].tracks
+    root = tmp_path / "bundle" / "samples" / "sampleA"
+    astro = pyBigWig.open(str(root / t.by[0].categories["Astro"]))
+    micro = pyBigWig.open(str(root / t.by[0].categories["Micro"]))
+    assert astro.stats("chr1", 1000, 1110, type="max")[0] > 0 and micro.stats("chr1", 5000, 5110, type="max")[0] > 0
+    assert any("over ssh from nobody@fakehost" in line for line in logs)
+    assert not list(tmp_path.glob("**/*.tsv.gz.part")) and not (root / "A.tsv.gz").exists()
+    # the fingerprint stats the remote files over ssh too: nothing changed, nothing rebuilt
+    r2 = build_bundle(load_config(cfg_path), tmp_path / "bundle", log=quiet)
+    assert all(not a.build for a in r2.plan.actions), [(a.spec.id, a.reason) for a in r2.plan.actions]
+    def remote_inputs(node):  # the sidecar records every input by path; remote ones under their URL with the size ssh reported
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if isinstance(k, str) and k.startswith("ssh://") and isinstance(v, dict) and "size" in v:
+                    yield k
+                yield from remote_inputs(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from remote_inputs(v)
+
+    assert len(list(remote_inputs(json.loads((root / "build.json").read_text())))) == 2
+    # a remote read that fails is reported, not silently empty
+    tracks["fragments"]["A"] = "ssh://fakehost/nonexistent/A.tsv.gz"
+    cfg_path.write_text(yaml.safe_dump(doc))
+    with pytest.raises(ValueError, match="over ssh failed"):
+        build_dataset(load_config(cfg_path), tmp_path / "bundle2", log=quiet)

@@ -172,6 +172,11 @@ Observations are matched within their run, by `barcode_column` or by their names
 removed (`Br2743#AAAC…-1` as ArchR names cells, `Br2743_AAAC…-1`, `AAAC…-1_Br2743`). A category's track sums
 its cells over every run and is then scaled to insertions per million, so donors weigh in by their cell numbers.
 
+A fragment file may live on another machine: `ssh://host/abs/path/atac_fragments.tsv.gz` is read through
+`ssh host cat …` in one pass while the tracks are counted, so nothing is copied to the building machine (a
+rebuild streams it again). The build asks the same host for the file's size and date to decide whether the
+sample is stale. Your ssh key must be loaded, and the host must allow non-interactive logins; `${VAR}` in the URL is expanded, so a login can stay out of the yaml (`ssh://${CLUSTER_USER}@host/...`).
+
 ### Tracks you already have
 
 If another tool exported per-group bigWigs (ArchR `getGroupBW`, Signac `ExportGroupBW`, `bamCoverage` per group),

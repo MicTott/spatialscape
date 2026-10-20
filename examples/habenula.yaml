@@ -47,9 +47,13 @@ samples:
       tss_enrichment: TSS.enrichment
       nucleosome_signal: nucleosome_signal
       rna_weight: RNA.weight
-    # tracks: pooled per cell type from the ten runs' fragment files (see the paths `spatialscape inspect` prints);
-    #   fragments: { 4S_Hb_KDM: <...>/4S_Hb_KDM/outs/atac_fragments.tsv.gz, ... }
-    #   sample_column: fragment_run
-    #   barcode_column: fragment_barcode
-    #   by: [celltype]
-    #   genome: hg38
+    tracks:                                   # accessibility per cell type, pooled over the runs listed here
+      fragments:                              # Cell Ranger ARC fragment files, streamed from the cluster (nothing stored locally); export JHPCE_USER=<login>
+                                              # eight more runs (4S, 5S, S3, S7, S8, S9, S10, S12) can be added the same way
+        6S_Hb_KDM: ssh://${JHPCE_USER}@jhpce-transfer01.jhsph.edu/dcs04/lieber/lcolladotor/Habenula_R01_LIBD4270/Hb_multiome/processed-data/cellrangerARC/6S_Hb_KDM/outs/atac_fragments.tsv.gz
+        S11_Hb_KDM: ssh://${JHPCE_USER}@jhpce-transfer01.jhsph.edu/dcs04/lieber/lcolladotor/Habenula_R01_LIBD4270/Hb_multiome/processed-data/cellrangerARC/S11_Hb_KDM/outs/atac_fragments.tsv.gz
+      sample_column: fragment_run             # both columns come from the Fragment records inside the Seurat object
+      barcode_column: fragment_barcode
+      by: [celltype]
+      genome: hg38
+      genes: ~/Library/Caches/org.R-project.R/R/BiocFileCache/e7c024baa500_gencode.v32.annotation.gtf.gz   # the Cell Ranger ARC 2020-A annotation

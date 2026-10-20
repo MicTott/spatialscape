@@ -1,0 +1,7 @@
+# A one-dataset site for the habenula snMultiome: `spatialscape site build examples/habenula-site.yaml -o examples/habenula-site --link`
+title: Human habenula atlas
+intro: Single-nucleus multiome (RNA + ATAC) of the human habenula from Montgomery et al. 2026, with chromatin accessibility tracks per cell type under the UMAP.
+datasets:
+  - config: habenula.yaml
+    paper: { title: Montgomery et al. 2026, bioRxiv, url: https://doi.org/10.64898/2026.09.30.755667 }
+    tags: [habenula, snMultiome, snATAC, human]
