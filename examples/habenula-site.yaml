@@ -2,6 +2,6 @@
 title: Human habenula atlas
 intro: Single-nucleus multiome (RNA + ATAC) of the human habenula from Montgomery et al. 2026, with chromatin accessibility tracks per cell type under the UMAP.
 datasets:
-  - config: habenula.yaml
-    paper: { title: Montgomery et al. 2026, bioRxiv, url: https://doi.org/10.64898/2026.09.30.755667 }
+  - bundle: habenula_multiome          # the bundle built from habenula.yaml (site build would otherwise rebuild it into bundles/)
+    paper: { title: "Montgomery et al. 2026 (bioRxiv)", url: https://doi.org/10.64898/2026.09.30.755667 }
     tags: [habenula, snMultiome, snATAC, human]
