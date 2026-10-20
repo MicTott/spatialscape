@@ -35,7 +35,7 @@ from .config import DatasetConfig, RObjectEntry, _merged_entry, config_from_raw
 from .rds import RExperiment, RImage, read_experiment
 
 Log = Callable[[str], None]
-CONVERT_VERSION = 2  # bump when the cache layout or its contents change for the same object
+CONVERT_VERSION = 3  # bump when the cache layout or its contents change for the same object (3: feature names from the assay dimnames)
 VISIUM_SPOT_UM = 55.0
 VISIUM_SPACING_UM = 100.0
 EMBEDDING_PREFERENCE = ("UMAP", "umap", "X_umap", "UMAP-HARMONY", "UMAP_HARMONY", "UMAP.HARMONY")
