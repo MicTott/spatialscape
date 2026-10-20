@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { FeatureList } from "../data/manifest";
 import { store, useViewer, type FilterSpec } from "../store/store";
 import { GeneSearch } from "./GeneSearch";
 import { BlendPanel } from "./BlendPanel";
@@ -64,6 +65,8 @@ function HeaderActions() {
   );
 }
 
+const GROUP_LIST_MAX = 200;
+
 function ColorPanel({ genes }: { genes: string[] }) {
   const manifest = useViewer((s) => s.manifest)!;
   const features = useViewer((s) => s.features);
@@ -76,15 +79,34 @@ function ColorPanel({ genes }: { genes: string[] }) {
   const recent = useViewer((s) => s.recentGenes);
   const set = store.getState().set;
   const groups = features?.groups ?? [];
-  const groupOf = (id: string) => groups.find((g) => g.features.some((f) => f.id === id));
+  // feature id -> its group, built once per feature list (a peak set can hold hundreds of thousands of entries)
+  const groupIndex = useMemo(() => {
+    const m = new Map<string, FeatureList["groups"][number]>();
+    for (const g of groups) for (const f of g.features) m.set(f.id, g);
+    return m;
+  }, [groups]);
   const isGene = color?.kind === "gene";
   const isBlend = color?.kind === "blend";
-  const activeGroup = isGene ? groupOf(color.gene) : undefined;
+  const activeGroup = isGene ? groupIndex.get(color.gene) : undefined;
   const fields = manifest.fields;
   const plainGene = isGene && !activeGroup ? color.gene : undefined;
   const [lastGene, setLastGene] = useState(manifest.defaultGene ?? genes[0] ?? "");
   const lastPlain = plainGene ?? lastGene;
   const [groupQuery, setGroupQuery] = useState("");
+  // the list shows at most GROUP_LIST_MAX rows (plus the current feature): a 350k-peak group would otherwise put
+  // 350k nodes in the page and slow every interaction
+  const current = isGene ? color.gene : null;
+  const shown = useMemo(() => {
+    if (!activeGroup) return { rows: [] as { id: string; label: string }[], total: 0 };
+    const q = groupQuery.trim().toLowerCase();
+    const all = q ? activeGroup.features.filter((f) => f.label.toLowerCase().includes(q)) : activeGroup.features;
+    const rows = all.slice(0, GROUP_LIST_MAX);
+    if (current && !rows.some((f) => f.id === current)) {
+      const cur = activeGroup.features.find((f) => f.id === current);
+      if (cur) rows.unshift(cur);
+    }
+    return { rows, total: all.length };
+  }, [activeGroup, groupQuery, current]);
   return (
     <section>
       <h2>Color by</h2>
@@ -110,14 +132,17 @@ function ColorPanel({ genes }: { genes: string[] }) {
         <div className="grouplist">
           <input placeholder={`search ${activeGroup.name.toLowerCase()}…`} value={groupQuery} onChange={(e) => setGroupQuery(e.target.value)} spellCheck={false} />
           <ul>
-            {activeGroup.features
-              .filter((f) => f.label.toLowerCase().includes(groupQuery.toLowerCase()))
-              .map((f) => (
-                <li key={f.id} className={f.id === color.gene ? "on" : ""} onClick={() => store.getState().setColor({ kind: "gene", gene: f.id })}>
-                  {f.label}
-                </li>
-              ))}
+            {shown.rows.map((f) => (
+              <li key={f.id} className={f.id === color.gene ? "on" : ""} onClick={() => store.getState().setColor({ kind: "gene", gene: f.id })}>
+                {f.label}
+              </li>
+            ))}
           </ul>
+          <div className="muted small genecount">
+            {shown.total > GROUP_LIST_MAX
+              ? `${GROUP_LIST_MAX} of ${shown.total.toLocaleString()} shown · type to narrow`
+              : `${shown.total.toLocaleString()} of ${activeGroup.features.length.toLocaleString()}`}
+          </div>
         </div>
       ) : isGene ? (
         <>
