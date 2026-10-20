@@ -189,6 +189,7 @@ class EntryMenu:
     samples: list[str] = field(default_factory=list)
     assay: str | None = None
     assays: list[str] = field(default_factory=list)
+    fragments: dict[str, str] = field(default_factory=dict)  # Seurat: run -> fragment file recorded in the object
     sample_col: str | None = None
     embedding_key: str | None = None
     embeddings: list[str] = field(default_factory=list)
@@ -215,7 +216,7 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
     log(f"reading {path} (the whole object is parsed; about as long as loading it in R)")
     x = read_experiment(path)
     cols = describe_columns(x.obs)
-    assay = "logcounts" if "logcounts" in x.assays else next(iter(x.assays))
+    assay = next((k for k in ("logcounts", "data") if k in x.assays), next(iter(x.assays)))
     if x.class_name == "SpatialExperiment" and x.spatial is not None:
         sample_col = "sample_id"
         if sample_col in x.obs.columns:
@@ -233,14 +234,18 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
             menu=suggest_fields(cols, skip={sample_col}), samples=[_safe(s) for s in samples],
             assay=assay, assays=list(x.assays), sample_col=sample_col,
         )
-    emb = next((k for k in EMBEDDING_PREFERENCE if k in x.reduced_dims), next(iter(x.reduced_dims), None))
+    from .convert import pick_embedding
+
+    emb = pick_embedding(x.reduced_dims)
     stem = _safe(path.stem)
     note = f"{x.class_name}, {x.n_obs:,} cells; embedding {emb or 'none found'} -> obsm/X_umap"
+    if x.feature_sets:
+        note += "; also " + ", ".join(f"{fs.name} as {fs.prefix.strip()} features" for fs in x.feature_sets)
     return EntryMenu(
         source=_rel(path, base), source_note=note, r_object=True, embedding=True, platform="snrnaseq",
         id_tpl=f"sn_{stem}", name_tpl=f"snRNA-seq ({stem})", group_tpl="snRNA-seq",
         menu=suggest_fields(cols), samples=[stem], assay=assay, assays=list(x.assays),
-        embedding_key=emb, embeddings=list(x.reduced_dims),
+        embedding_key=emb, embeddings=list(x.reduced_dims), fragments={f.run: f.path for f in x.fragments},
     )
 
 
@@ -334,6 +339,16 @@ def _entry_lines(e: EntryMenu) -> list[str]:
             L.append(_pad(f"    #   {field_id(c.name)}: {_ystr(c.name)}", c.note))
     if m.skipped:
         L.append(f"    # not listed: {', '.join(m.skipped)} (ids and layout columns)")
+    if e.fragments:
+        L.append(_pad("    # tracks:", "genome tracks from the fragment files the object was built from (paths as recorded in it)"))
+        L.append("    #   fragments:")
+        for run, path in e.fragments.items():
+            L.append(f"    #     {_ystr(run)}: {_ystr(path)}")
+        L.append(_pad("    #   sample_column: fragment_run", "written by the converter from the object's Fragment records"))
+        L.append("    #   barcode_column: fragment_barcode")
+        first_cat = next((fid for fid, kind in e.menu.kinds.items() if kind == "categorical"), "<a categorical field>")
+        L.append(_pad(f"    #   by: [{first_cat}]", "one track per category"))
+        L.append("    #   genome: hg38")
     return L
 
 

@@ -296,15 +296,17 @@ def is_r_object(path: Any) -> bool:
 
 
 class RObjectEntry(_Model):
-    """A `samples:` entry whose `path` is an R object (`.rds`, `.rda`, `.RData`) holding a SpatialExperiment or
-    SingleCellExperiment. `build` converts it once into a cache next to the bundle and expands it into one sample
-    per `sample_col` value (objects with spatialCoords) or one embedding sample (objects without). Every other
-    key of the entry (platform, templated id / name / group, fields, microns, ...) applies to those samples."""
+    """A `samples:` entry whose `path` is an R object (`.rds`, `.rda`, `.RData`) holding a SpatialExperiment,
+    SingleCellExperiment or Seurat object. `build` converts it once into a cache next to the bundle and expands it
+    into one sample per `sample_col` value (objects with spatialCoords) or one embedding sample (objects without).
+    Every other key of the entry (platform, templated id / name / group, fields, microns, ...) applies to those
+    samples. For a Seurat object `assay` names a layer of the gene assay (`data`, `counts`; `logcounts` means
+    `data`), and its other assays become prefixed features (`peak: `, `activity: `, `motif: `)."""
 
     path: Path
     sample_col: str = "sample_id"
     assay: str = "logcounts"
-    embedding: str | None = None  # reducedDims entry for objects without spatialCoords; default: UMAP if present
+    embedding: str | None = None  # reducedDims entry / Seurat reduction for objects without spatialCoords; default: a UMAP
     object: str | None = None  # which object to take from an .rda that holds several
     template: dict[str, Any] = Field(default_factory=dict)  # the rest of the entry, applied to the expanded samples
     index: int = 0  # position in the yaml's `samples:` list

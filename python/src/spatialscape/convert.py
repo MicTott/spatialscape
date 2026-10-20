@@ -39,6 +39,20 @@ CONVERT_VERSION = 2  # bump when the cache layout or its contents change for the
 VISIUM_SPOT_UM = 55.0
 VISIUM_SPACING_UM = 100.0
 EMBEDDING_PREFERENCE = ("UMAP", "umap", "X_umap", "UMAP-HARMONY", "UMAP_HARMONY", "UMAP.HARMONY")
+LAYER_ALIASES = {"logcounts": "data", "normcounts": "data"}  # Bioconductor assay names -> Seurat layer names
+
+
+def pick_embedding(keys) -> str | None:
+    """The reducedDim / reduction to draw when none is named: the usual UMAP names, else anything containing
+    "umap" (a joint `wnn.umap` before a per-modality one), else t-SNE, else the first."""
+    keys = list(keys)
+    for k in EMBEDDING_PREFERENCE:
+        if k in keys:
+            return k
+    umaps = [k for k in keys if "umap" in k.lower()]
+    if umaps:
+        return next((k for k in umaps if "wnn" in k.lower()), umaps[0])
+    return next((k for k in keys if "tsne" in k.lower()), keys[0] if keys else None)
 INDEX = "index.json"
 
 
@@ -84,14 +98,32 @@ def read_index(cache_dir: Path) -> dict | None:
 
 
 def _anndata(x: RExperiment, assay: str, rows: np.ndarray | None) -> ad.AnnData:
-    if assay not in x.assays:
-        raise KeyError(f"assay {assay!r} not found; available: {', '.join(x.assays)}")
-    m = x.assays[assay]
+    layer = assay
+    if layer not in x.assays:
+        alias = LAYER_ALIASES.get(assay)
+        if x.class_name == "Seurat" and alias in x.assays:
+            layer = alias
+        else:
+            raise KeyError(f"assay {assay!r} not found; available: {', '.join(x.assays)}")
+    mats = [x.assays[layer]]
+    var = x.var.copy()
+    for fs in x.feature_sets:  # a Seurat object's other assays, as prefixed features under the genes
+        fl = layer if layer in fs.assays else "data" if "data" in fs.assays else next(iter(fs.assays))
+        mats.append(fs.assays[fl])
+        v = fs.var.copy()
+        v.index = pd.Index([f"{fs.prefix}{i}" for i in v.index.astype(str)])
+        var = pd.concat([var, v])
+    if len(mats) > 1:
+        m = sp.vstack([a if sp.issparse(a) else sp.csc_matrix(np.asarray(a)) for a in mats]).tocsc()
+    else:
+        m = mats[0]
     if rows is not None:
         m = m[:, rows]
     X = m.T.tocsr() if sp.issparse(m) else np.ascontiguousarray(np.asarray(m).T)
     obs = x.obs if rows is None else x.obs.iloc[rows]
-    var = x.var.copy()
+    for c in var.columns:
+        if var[c].dtype == object:
+            var[c] = var[c].astype("category")
     if var.index.has_duplicates:  # duplicate symbols get -1, -2 suffixes (what var_names_make_unique would do)
         var.index = ad.utils.make_index_unique(pd.Index(var.index.astype(str)), join="-")
     return ad.AnnData(X=X, obs=obs.copy(), var=var)
@@ -152,7 +184,7 @@ def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, lo
 
 
 def _write_embedding(x: RExperiment, out: Path, *, assay: str, embedding: str | None, name: str, log: Log) -> tuple[str, str]:
-    key = embedding or next((k for k in EMBEDDING_PREFERENCE if k in x.reduced_dims), next(iter(x.reduced_dims), None))
+    key = embedding or pick_embedding(x.reduced_dims)
     if key is None or key not in x.reduced_dims:
         raise ValueError(f"no 2-D embedding found; reducedDims are: {', '.join(x.reduced_dims) or 'none'} (set `embedding:` on the entry)")
     a = _anndata(x, assay, None)
@@ -175,7 +207,12 @@ def write_cache(entry: RObjectEntry, cache_root: Path, *, log: Log = print) -> d
     log(f"reading {entry.path} (the whole object is parsed; about as long as loading it in R)")
     x = read_experiment(entry.path, object_name=entry.object)
     spatial = x.class_name == "SpatialExperiment" and x.spatial is not None
-    log(f"  {x.class_name}: {x.n_vars} genes x {x.n_obs} cells, assays {', '.join(x.assays)}" + (f", {len(x.images)} image(s)" if x.images else ""))
+    what = f"{x.class_name} ({x.assay_name})" if x.assay_name else x.class_name
+    log(f"  {what}: {x.n_vars} genes x {x.n_obs} cells, assays {', '.join(x.assays)}" + (f", {len(x.images)} image(s)" if x.images else ""))
+    for fs in x.feature_sets:
+        log(f"  + {fs.name}: {len(fs.var):,} features as {fs.prefix!r}")
+    for note in x.notes:
+        log(f"  note: {note}")
     used_embedding = None
     if spatial:
         samples = _write_spatial(x, tmp, assay=entry.assay, sample_col=entry.sample_col, log=log)
@@ -194,6 +231,8 @@ def write_cache(entry: RObjectEntry, cache_root: Path, *, log: Log = print) -> d
         "class": x.class_name,
         "spatial": spatial,
         "assays": list(x.assays),
+        "feature_sets": [{"name": fs.name, "prefix": fs.prefix, "features": len(fs.var)} for fs in x.feature_sets],
+        "fragments": [f.path for f in x.fragments],
         "samples": samples,
         "cells": x.n_obs,
         "converted": datetime.now(UTC).isoformat(timespec="seconds"),

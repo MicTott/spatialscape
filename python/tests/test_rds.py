@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import yaml
 from typer.testing import CliRunner
@@ -150,3 +151,70 @@ def test_raster_colours_are_stored_row_by_row():
     assert rgb[0, 2, :2].tolist() == [16, 48] and rgb[1, 0, :2].tolist() == [32, 16]
     # magick-made rasters carry an alpha byte (#RRGGBBAA); it is ignored
     assert _hex_to_rgb(["#102030ff"], 1, 1)[0, 0].tolist() == [16, 32, 48]
+
+
+def test_seurat_object_reader():
+    """tiny_seurat.rds (python/tests/fixtures/make_tiny_seurat.R): a v5 RNA assay split into two runs, a v3 'ATAC'
+    assay named by peak coordinates, meta.data of several types, an ident and two reductions."""
+    x = read_experiment(FIX / "tiny_seurat.rds")
+    assert x.class_name == "Seurat" and x.assay_name == "RNA" and set(x.assays) == {"counts", "data"}
+    assert x.assays["counts"].shape == (8, 24) and x.obs.index[0] == "run1#BC01-1" and x.var.index[0] == "G1"
+    g1 = x.assays["counts"][0].toarray().ravel()  # split layers are joined back in the object's cell order: G1 marks run1
+    assert g1[:12].min() >= 20 and g1[12:].max() < 20
+    assert list(x.obs["ident"][:3]) == ["Astro", "Micro", "Oligo"] and str(x.obs["cell_type"].dtype) == "category"
+    assert x.obs["flag"].dtype.kind == "b" and x.obs["score"].dtype.kind == "f" and list(x.obs["sample"][:1]) == ["run1"]
+    assert {k: v.shape for k, v in x.reduced_dims.items()} == {"umap": (24, 2), "pca": (24, 3)}
+    (fs,) = x.feature_sets
+    assert fs.name == "ATAC" and fs.prefix == "peak: " and list(fs.var.index) == ["chr1-100-200", "chr1-500-650", "chr2-10-90"]
+    assert fs.assays["data"].shape == (3, 24) and x.fragments == [] and x.notes == [] and x.spatial is None
+    assert list(x.obs["idx"][:3]) == [1, 2, 3]  # an ALTREP compact sequence; the closure in @commands was walked past
+
+
+def test_seurat_object_builds_with_its_peaks_as_features(tmp_path):
+    p = _yaml(tmp_path, [{"path": str(FIX / "tiny_seurat.rds"), "platform": "snrnaseq", "id": "sn", "fields": {"celltype": "cell_type", "run": "sample"}}])
+    r = build_bundle(load_config(p), log=quiet)
+    assert r.problems == [] and len(r.manifest.samples) == 1
+    s = r.manifest.samples[0]
+    assert s.kind == "embedding" and s.nObs == 24 and s.fields == ["celltype", "run"]
+    genes = json.loads((r.out / "genes.json").read_text())
+    assert "G1" in genes and "peak: chr1-100-200" in genes and len(genes) == 11
+    cache = tmp_path / "bundles" / ".cache" / "t"
+    idx = read_index(next(d for d in cache.iterdir() if d.is_dir()))
+    assert idx["assay"] == "logcounts" and idx["class"] == "Seurat" and idx["embedding"] == "umap"
+    assert idx["feature_sets"] == [{"name": "ATAC", "prefix": "peak: ", "features": 3}] and idx["fragments"] == []
+
+
+def test_inspect_and_init_describe_a_seurat_object(tmp_path):
+    out = runner.invoke(app, ["inspect", str(FIX / "tiny_seurat.rds")])
+    assert out.exit_code == 0, out.output
+    assert "Seurat assay drawn as expression: RNA" in out.output and "feature set ATAC: 3 features drawn as 'peak: '" in out.output
+    y = tmp_path / "sn.yaml"
+    r = runner.invoke(app, ["init", str(FIX / "tiny_seurat.rds"), "--id", "sn", "-o", str(y)])
+    assert r.exit_code == 0, r.output
+    doc = yaml.safe_load(y.read_text())
+    assert doc["samples"][0]["assay"] == "data" and doc["samples"][0]["kind"] == "embedding"
+    assert "ATAC as peak: features" in y.read_text()
+
+
+def test_fragment_records_become_run_and_barcode_columns():
+    from spatialscape.init import EntryMenu, Menu, _entry_lines
+    from spatialscape.rds import RFragments, fragment_columns
+
+    frs = [
+        RFragments("/proj/cellrangerARC/4S_Hb_KDM/outs/atac_fragments.tsv.gz", {"S04_AAAC-1": "AAAC-1", "S04_GGGG-1": "GGGG-1"}),
+        RFragments("/proj/run2/fragments.tsv.gz", {"S05_AAAC-1": "AAAC-1"}),
+    ]
+    assert [f.run for f in frs] == ["4S_Hb_KDM", "fragments"]
+    run, bc = fragment_columns(["S04_AAAC-1", "S05_AAAC-1", "S04_GGGG-1", "orphan"], frs)
+    assert list(run.astype(object)[:3]) == ["4S_Hb_KDM", "fragments", "4S_Hb_KDM"] and pd.isna(run.iloc[3])  # a cell no file covers
+    assert list(bc[:3]) == ["AAAC-1", "AAAC-1", "GGGG-1"] and bc.iloc[3] is None
+    assert fragment_columns(["a"], [RFragments("x.tsv.gz", None)]) is None
+    menu = Menu()
+    menu.mapped["celltype"] = "ident"
+    menu.kinds["celltype"] = "categorical"
+    e = EntryMenu(source="obj.rds", source_note="", r_object=True, embedding=True, platform="snrnaseq", id_tpl="sn", name_tpl="sn", group_tpl="sn",
+                  menu=menu, samples=["obj"], assay="data", assays=["counts", "data"], embedding_key="umap", embeddings=["umap"],
+                  fragments={f.run: f.path for f in frs})
+    text = "\n".join(_entry_lines(e))
+    assert "#   sample_column: fragment_run" in text and "#   barcode_column: fragment_barcode" in text and "by: [celltype]" in text
+    assert "4S_Hb_KDM:" in text and "/proj/cellrangerARC/4S_Hb_KDM/outs/atac_fragments.tsv.gz" in text  # the path may be quoted

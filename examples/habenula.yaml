@@ -1,0 +1,55 @@
+# Human habenula snMultiome (Montgomery et al. 2026, bioRxiv 10.64898/2026.09.30.755667). The public cell-level Seurat
+# object (spatialLIBD::fetch_data("habenula_atlas_snMultiome_seurat_cell"), 4.9 GB) is read straight from the .rds:
+# the RNA `data` layer as expression, the 354k ATAC peaks as `peak: ` features, meta.data as annotations.
+# Download it once into examples/habenula-src/ (gitignored); conversion takes ~3 minutes and ~40 GB of RAM.
+id: habenula_multiome
+name: Human habenula snMultiome
+description: 54,193 nuclei from 10 donors profiled for RNA and chromatin accessibility in the same nuclei (10x Multiome), on the WNN UMAP with the paper's cell types, clusters and QC; 34,695 genes and 354,425 peaks as features. Montgomery et al. 2026.
+default_gene: GPR151
+default_color: { field: celltype }
+layout: { mode: grid, columns: 2 }
+
+feature_groups:
+  - { id: peaks, name: Peaks (ATAC), pattern: "^peak: ", units: TF-IDF }
+
+fields:
+  - { id: celltype, name: Cell type, type: categorical }
+  - { id: cluster_mid, name: Cluster (mid), type: categorical }
+  - { id: cluster_fine, name: Cluster (fine), type: categorical }
+  - { id: donor, name: Donor (run), type: categorical }
+  - { id: doublet, name: scDblFinder class, type: categorical }
+  - { id: total_counts, name: RNA UMIs, type: continuous }
+  - { id: detected_genes, name: Detected genes, type: continuous }
+  - { id: mito_percent, name: Mito %, type: continuous }
+  - { id: atac_fragments, name: ATAC fragments, type: continuous }
+  - { id: tss_enrichment, name: TSS enrichment, type: continuous }
+  - { id: nucleosome_signal, name: Nucleosome signal, type: continuous }
+  - { id: rna_weight, name: RNA weight (WNN), type: continuous }
+
+samples:
+  - path: habenula-src/seur_cell_snMultiome_habenula_atlas.rds
+    platform: snrnaseq
+    assay: data                      # Seurat layer of the RNA assay; also: counts
+    embedding: wnn_umap              # also: rna_umap_harmony, atac_umap_harmony
+    id: wnn
+    name: WNN UMAP (RNA + ATAC)
+    group: snMultiome
+    fields:
+      celltype: ident
+      cluster_mid: mid_cluster
+      cluster_fine: fine_cluster
+      donor: orig.ident
+      doublet: scDblFinder.class
+      total_counts: nCount_RNA
+      detected_genes: nFeature_RNA
+      mito_percent: percent.mt
+      atac_fragments: atac_fragments
+      tss_enrichment: TSS.enrichment
+      nucleosome_signal: nucleosome_signal
+      rna_weight: RNA.weight
+    # tracks: pooled per cell type from the ten runs' fragment files (see the paths `spatialscape inspect` prints);
+    #   fragments: { 4S_Hb_KDM: <...>/4S_Hb_KDM/outs/atac_fragments.tsv.gz, ... }
+    #   sample_column: fragment_run
+    #   barcode_column: fragment_barcode
+    #   by: [celltype]
+    #   genome: hg38

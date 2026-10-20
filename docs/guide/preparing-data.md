@@ -53,6 +53,19 @@ Most objects carry only SpaceRanger's low-resolution H&E (`lowres`, 600-1200 px 
 A `SingleCellExperiment` without `spatialCoords` (an snRNA-seq reference) becomes one embedding sample drawn
 by its UMAP (`platform: snrnaseq`, `kind: embedding`, `coords: obsm/X_umap`, all set for you).
 
+A **Seurat object** (v3 to v5 assays, split v5 layers joined back together) works the same way. The gene assay
+(the default assay, unless that is a peak assay) is drawn as expression: `assay:` names one of its layers, `data`
+by default (`logcounts` means `data`), or `counts`. Every other assay becomes a set of features next to the genes,
+named with a prefix: a Signac `ChromatinAssay` or any assay whose features are coordinates as `peak: chr1-100-200`,
+assays with "activity" in their name as `activity: <gene>`, chromVAR as `motif: <name>`, anything else as
+`<assay>: <feature>`. `meta.data` becomes `obs` (plus the active ident as `ident`), and `embedding:` names a
+reduction (`wnn.umap`, `umap.rna`, ...; a UMAP is picked when none is given). `spatialscape inspect x.rds` lists
+all of this, including the fragment files a `ChromatinAssay` was built from. When those records map cells to
+barcodes (an object pooled from several runs), two columns are added to `obs`, `fragment_run` and
+`fragment_barcode`, so a `tracks:` block can say `sample_column: fragment_run`, `barcode_column: fragment_barcode`
+and list one fragment file per run; `init` writes that block, commented, with the paths as the object recorded
+them. Seurat spatial images (`VisiumV1` and friends) are not read yet; export those as a `SpatialExperiment`.
+
 Settings on the entry:
 
 - `assay: counts` works too; `build` log-normalizes counts.

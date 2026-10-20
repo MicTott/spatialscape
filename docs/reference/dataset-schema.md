@@ -40,7 +40,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 |---|---|---|---|
 | `glob` | pattern | | expands to one sample per match; `{name}`, `{stem}`, `{dir}`, `{i}` templates |
 | `path` ending in `.rds` / `.rda` | path | | an R object: converted by `build` into `bundles/.cache/<id>/` and expanded into one sample per `sample_col` value, or one embedding sample; `{name}` is the sample id. See [R objects as samples](../guide/dataset-yaml#r-objects-as-samples) |
-| `assay`, `sample_col`, `embedding`, `object` | string | `logcounts`, `sample_id`, UMAP, | R objects only: the assay drawn, the column that splits samples, the reducedDims entry for objects without spatialCoords, the object to take from an `.rda` |
+| `assay`, `sample_col`, `embedding`, `object` | string | `logcounts`, `sample_id`, UMAP, | R objects only: the assay drawn (for a Seurat object a layer of its gene assay, `data` or `counts`; its other assays become `peak: ` / `activity: ` / `motif: ` features), the column that splits samples, the reducedDims entry or Seurat reduction for objects without spatialCoords, the object to take from an `.rda` |
 | `id` | string | sanitized `{name}` | unique |
 | `name` | string | `id` | |
 | `platform` | `visium`, `visium_hd`, `xenium`, `merfish`, `snrnaseq`, `other` | required | |

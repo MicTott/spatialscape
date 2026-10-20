@@ -98,6 +98,16 @@ def inspect(
         typer.echo("reducedDims: " + ", ".join(f"{k}{v.shape}" for k, v in x.reduced_dims.items()))
         typer.echo("images: " + (", ".join(f"{i.sample_id}/{i.image_id} (scale {i.scale_factor:.4g}, {'loaded' if i.rgb is not None else 'stored'})" for i in x.images) or "none"))
         typer.echo("rowData columns: " + ", ".join(x.var.columns) + f"; rownames e.g. {', '.join(x.var.index[:3])}")
+        if x.assay_name:
+            typer.echo(f"Seurat assay drawn as expression: {x.assay_name} (`assay:` picks a layer: {', '.join(x.assays)})")
+        for fs in x.feature_sets:
+            typer.echo(f"feature set {fs.name}: {len(fs.var):,} features drawn as {fs.prefix!r}... (e.g. {fs.prefix}{fs.var.index[0]})")
+        if x.fragments:
+            typer.echo("fragment files recorded in the object (paths on the machine that built it):")
+            for f in x.fragments:
+                typer.echo(f"  {f.path}" + (f"  ({len(f.cells):,} cells)" if f.cells else ""))
+        for note in x.notes:
+            typer.echo(f"note: {note}")
         typer.echo(f"next: spatialscape init {path} --id <dataset id>")
         return
 
