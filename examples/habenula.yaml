@@ -3,18 +3,19 @@
 # the RNA `data` layer as expression, the 354k ATAC peaks as `peak: ` features, meta.data as annotations.
 # Download it once into examples/habenula-src/ (gitignored); conversion takes ~3 minutes and ~40 GB of RAM.
 id: habenula_multiome
-name: Human habenula snMultiome
-description: 54,193 nuclei from 10 donors profiled for RNA and chromatin accessibility in the same nuclei (10x Multiome), on the WNN UMAP with the paper's cell types, clusters and QC; 34,695 genes and 354,425 peaks as features. Montgomery et al. 2026.
+name: Human habenula atlas
+description: "Montgomery et al. 2026: snMultiome of 54,193 nuclei from 10 donors (RNA + ATAC in the same nuclei, on the WNN UMAP, with chromatin accessibility tracks per cell type), Visium HD at cell level (287,325 cells, 5 donors, 10 sections) and Visium (12 capture areas, 3 donors, 4 anterior-posterior levels)."
 default_gene: GPR151
-default_color: { field: celltype }
-layout: { mode: grid, columns: 2 }
+default_color: { field: cluster_mid }
+layout: { mode: grid }
+thumbnail_sample: hd_Br9090_1
 
 feature_groups:
   - { id: peaks, name: Peaks (ATAC), pattern: "^peak: ", units: TF-IDF }
 
 fields:
   - { id: celltype, name: Cell type, type: categorical }
-  - { id: cluster_mid, name: Cluster (mid), type: categorical }
+  - { id: cluster_mid, name: Cell type (mid), type: categorical }      # shared by the snMultiome mid clusters and the Visium HD cell types
   - { id: cluster_fine, name: Cluster (fine), type: categorical }
   - { id: donor, name: Donor (run), type: categorical }
   - { id: doublet, name: scDblFinder class, type: categorical }
@@ -25,6 +26,10 @@ fields:
   - { id: tss_enrichment, name: TSS enrichment, type: continuous }
   - { id: nucleosome_signal, name: Nucleosome signal, type: continuous }
   - { id: rna_weight, name: RNA weight (WNN), type: continuous }
+  - { id: domain, name: "Domain (Visium, SNN k=9)", type: categorical }
+  - { id: level, name: A-P level, type: categorical }
+  - { id: hd_ficture, name: FICTURE cluster (HD), type: categorical }
+  - { id: hd_banksy, name: BANKSY cluster (HD), type: categorical }
 
 samples:
   - path: habenula-src/seur_cell_snMultiome_habenula_atlas.rds
@@ -59,3 +64,36 @@ samples:
       normalize: tss                          # scale each group by its insertions at gene TSSs (ArchR's ReadsInTSS), not by all insertions
       genome: hg38
       genes: ~/Library/Caches/org.R-project.R/R/BiocFileCache/e7c024baa500_gencode.v32.annotation.gtf.gz   # the Cell Ranger ARC 2020-A annotation
+
+  # Visium HD, cell level (bin2cell segmentation), five donors with two sections each. spatialCoords are full-resolution
+  # pixels; SpaceRanger's microns_per_pixel is not in the object, 0.2525 is LIBD's usual value for these 40x scans
+  # (confirm against binned_outputs/square_002um/spatial/scalefactors_json.json). Only the lowres H&E travels in the object.
+  - path: habenula-src/spe_cell_habenula_atlas.rds
+    platform: visium_hd
+    assay: logcounts
+    sample_col: sample_id
+    microns: { microns_per_unit: 0.2525 }
+    id: "hd_{name}"
+    name: "{name} (Visium HD)"
+    group: "{name}"
+    fields:
+      cluster_mid: cell_type
+      hd_ficture: ficture_cluster
+      hd_banksy: banksy_cluster
+      donor: sample_id
+
+  # Visium (spot level): three donors across four anterior-posterior levels of the habenula.
+  - path: habenula-src/spe_visium_habenula_atlas.rds
+    platform: visium
+    assay: logcounts
+    sample_col: sample_id
+    id: "vis_{name}"
+    name: "{name} (Visium)"
+    group: "{name}"
+    fields:
+      domain: SNN_k10_k9
+      donor: brain_id
+      level: brain_area
+      total_counts: sum_umi
+      detected_genes: sum_gene
+      mito_percent: { column: expr_chrM_ratio, scale: 100 }
