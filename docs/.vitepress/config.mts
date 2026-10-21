@@ -1,5 +1,11 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
 import cliSidebar from "../reference/cli/sidebar.json" with { type: "json" };
+
+// the one version string lives in the Python package; the nav label follows it
+const init = readFileSync(fileURLToPath(new URL("../../python/src/spatialscape/__init__.py", import.meta.url)), "utf8");
+const version = /__version__ = "([^"]+)"/.exec(init)?.[1] ?? "dev";
 
 export default defineConfig({
   title: "spatialscape",
@@ -14,7 +20,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/cli/" },
       { text: "Demo", link: "https://mictott.github.io/spatialscape/?d=examples/synthetic" },
-      { text: "v0.2.0", items: [{ text: "Changelog", link: "/changelog" }, { text: "Contributing", link: "/contributing" }] },
+      { text: `v${version}`, items: [{ text: "Changelog", link: "/changelog" }, { text: "Contributing", link: "/contributing" }] },
     ],
     sidebar: {
       "/guide/": [
