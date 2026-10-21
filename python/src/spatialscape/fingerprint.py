@@ -122,7 +122,11 @@ def why_stale(old: dict | None, new: dict) -> str | None:
         return "format changed"
     if old.get("inputs") != new["inputs"]:
         return "source changed"
-    if old.get("spec") != new["spec"] or old.get("shard_genes") != new["shard_genes"] or old.get("sharded") != new["sharded"]:
+    if old.get("sharded") != new["sharded"]:
+        return "sharding changed"
+    if old.get("shard_genes") != new["shard_genes"]:
+        return "shard size changed"
+    if old.get("spec") != new["spec"]:
         return "settings changed"
     if old.get("fields") != new["fields"]:
         return "field declarations changed"

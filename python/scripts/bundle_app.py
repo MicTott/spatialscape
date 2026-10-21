@@ -23,6 +23,8 @@ def main() -> None:
         shutil.rmtree(DEST)
     (DEST / "assets").mkdir(parents=True)
     shutil.copy2(DIST / "index.html", DEST / "index.html")
+    if (DIST / "favicon.svg").exists():
+        shutil.copy2(DIST / "favicon.svg", DEST / "favicon.svg")
     n = 0
     for f in (DIST / "assets").iterdir():
         if f.suffix == ".map":

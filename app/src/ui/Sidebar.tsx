@@ -46,17 +46,32 @@ export function Sidebar() {
 }
 
 function HeaderActions() {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "copied" | "copied · local link" | "copy failed">("");
+  const localOnly = (() => {
+    const loop = (h: string) => h === "127.0.0.1" || h === "localhost" || h === "[::1]" || h === "::1";
+    if (loop(window.location.hostname)) return true;
+    const d = new URLSearchParams(window.location.search).get("d");
+    try {
+      return !!d && /^https?:/.test(d) && loop(new URL(d).hostname);
+    } catch {
+      return false;
+    }
+  })();
   const copy = () => {
-    void navigator.clipboard?.writeText(window.location.href).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    });
+    const done = (what: typeof copied) => {
+      setCopied(what);
+      window.setTimeout(() => setCopied(""), what === "copy failed" ? 2500 : 2000);
+    };
+    if (!navigator.clipboard?.writeText) return done("copy failed");
+    navigator.clipboard.writeText(window.location.href).then(() => done(localOnly ? "copied · local link" : "copied"), () => done("copy failed"));
   };
   return (
     <span className="legend-actions hdr-actions">
-      <button onClick={copy} title="copy a link that reproduces this view">
-        {copied ? "copied" : "copy link"}
+      <button
+        onClick={copy}
+        title={localOnly ? "copy a link that reproduces this view. It points at this computer (127.0.0.1): publish the dataset to share it" : "copy a link that reproduces this view"}
+      >
+        {copied || "copy link"}
       </button>
       <button onClick={() => void window.__sscape?.controller?.exportPNG()} title="download the current view as PNG with legend and scale bar">
         PNG
@@ -234,6 +249,7 @@ function FilterPanel({ genes }: { genes: string[] }) {
   const filter = useViewer((s) => s.filter);
   const hist = useViewer((s) => s.filterHistogram);
   const visible = useViewer((s) => s.visibleCount);
+  const colorGene = useViewer((s) => (s.color?.kind === "gene" ? s.color.gene : null));
   const total = manifest.samples.reduce((a, s) => a + s.nObs, 0);
   const contFields = manifest.fields.filter((f) => f.type === "continuous");
   const setF = (f: FilterSpec | null) => store.getState().setFilter(f);
@@ -247,7 +263,7 @@ function FilterPanel({ genes }: { genes: string[] }) {
         onChange={(e) => {
           const v = e.target.value;
           if (v === "none") setF(null);
-          else if (v === "gene") setF({ kind: "gene", gene: filter?.kind === "gene" ? filter.gene : manifest.defaultGene ?? genes[0] ?? "", range: [0.05, 1] });
+          else if (v === "gene") setF({ kind: "gene", gene: filter?.kind === "gene" ? filter.gene : colorGene ?? manifest.defaultGene ?? genes[0] ?? "", range: [0.05, 1] });
           else if (v.startsWith("cat:")) setF({ kind: "category", field: v.slice(4), codes: [] });
           else setF({ kind: "field", field: v.slice(6), range: [0, 1] });
         }}
@@ -279,7 +295,7 @@ function FilterPanel({ genes }: { genes: string[] }) {
               </li>
             ))}
           </ul>
-          <div className="muted small">{filter.codes.length ? `${filter.codes.length} selected` : "pick categories to keep"}</div>
+          <div className="muted small">{filter.codes.length ? `${filter.codes.length} selected` : "pick categories to keep (nothing hidden until you do)"}</div>
         </div>
       )}
       {filter && filter.kind !== "category" && (

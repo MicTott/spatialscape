@@ -251,8 +251,9 @@ export class DataCache {
     let m = sd.numU8.get(key);
     if (!m) {
       const set = new Set(codes);
+      const keepAll = codes.length === 0; // no category picked yet: nothing is hidden
       m = new Uint8Array(cat.length);
-      for (let i = 0; i < cat.length; i++) m[i] = set.has(cat[i]) ? 255 : 0;
+      for (let i = 0; i < cat.length; i++) m[i] = keepAll || set.has(cat[i]) ? 255 : 0;
       sd.numU8.set(key, m);
     }
     return { value: m, size: 1 };

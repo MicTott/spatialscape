@@ -200,3 +200,34 @@ def test_serve_skips_a_busy_default_port(bundle, fake_app, monkeypatch, capsys):
             srv.serve(bundle.parent, port=port, open_browser=False, port_chosen=True)
     finally:
         busy.shutdown()
+
+
+def test_site_build_keeps_the_yaml_sharding_and_strips_build_metadata(fake_app, tmp_path):
+    """`sharded: false` in the dataset yaml survives `site build` (it used to rebuild with the default), and the
+    copied bundle carries no per-sample fingerprints or config path from the building machine."""
+    import yaml
+
+    from spatialscape.build import build_bundle
+
+    proj = tmp_path / "proj"
+    cfg = make_synthetic(proj / "src", n_cells=40, n_genes=5)
+    doc = yaml.safe_load(cfg.read_text())
+    doc["sharded"] = False
+    cfg.write_text(yaml.safe_dump(doc))
+    r = build_bundle(load_config(cfg), log=lambda *_: None)
+    assert all(not s.expr.sharded for s in r.manifest.samples)
+    site_yaml = proj / "site.yaml"
+    site_yaml.write_text("title: T\ndatasets:\n  - config: src/dataset.yaml\n")
+    logs: list[str] = []
+    out = build_site_from_config(site_yaml, app_dir=fake_app, log=logs.append)
+    m = json.loads((out / "synthetic" / "manifest.json").read_text())
+    assert all(not s["expr"]["sharded"] for s in m["samples"])
+    assert not any("build" in line and "sharding changed" in line for line in logs)  # nothing was rebuilt
+    assert not list((out / "synthetic").rglob("build.json"))
+    info = json.loads((out / "synthetic" / "build-info.json").read_text())
+    assert "config" not in info and "spatialscape" in info
+    # flipping the yaml setting is reported as such
+    doc["sharded"] = True
+    cfg.write_text(yaml.safe_dump(doc))
+    r2 = build_bundle(load_config(cfg), dry_run=True, log=lambda *_: None)
+    assert {a.reason for a in r2.plan.actions if a.build} == {"sharding changed"}

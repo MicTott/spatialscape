@@ -342,7 +342,12 @@ class Session:
                 mask = np.zeros(self.adata.n_obs, dtype=bool)
                 mask[rows] = True
                 return mask
-            return self.adata.obs_names[rows]
+            names = self.adata.obs_names[rows]
+            if names.has_duplicates or (len(rows) and not self.adata.obs_names.is_unique):
+                import warnings
+
+                warnings.warn("obs names are not unique across the object (barcodes repeat between samples); index with selection(as_mask=True) instead", stacklevel=2)
+            return names
         names: list[str] = []
         for sid, idx in per_sample.items():
             if not idx:

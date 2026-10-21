@@ -108,7 +108,7 @@ def test_force_and_shard_settings(project):
     r = build_bundle(load_config(project), force=True, log=quiet)
     assert set(reasons(r).values()) == {"forced"}
     r = build_bundle(load_config(project), sharded=False, log=quiet)
-    assert set(reasons(r).values()) == {"settings changed"}
+    assert set(reasons(r).values()) == {"sharding changed"}
     assert all(not s.expr.sharded for s in r.manifest.samples)
 
 

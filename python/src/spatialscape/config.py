@@ -338,6 +338,7 @@ class DatasetConfig(_Model):
     palette: Path | None = None
     colormaps: list[str] | None = None
     shard_genes: int = 512
+    sharded: bool = True  # sharded Zarr (one range request per gene; needs HTTP Range) or one file per gene (GitHub Pages)
     thumbnail_sample: str | None = None  # sample shown on the dataset's gallery card (default: first in layout order)
     feature_groups: list[FeatureGroupSpec] = Field(default_factory=list)
     # Optional declarations (display names, explicit category order, aliases, palette keys). Fields that

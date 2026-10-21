@@ -160,7 +160,9 @@ def build(
     target = (out or cfg.default_bundle_dir).resolve()
     log = (lambda *_: None) if quiet and not dry_run else typer.echo
     log(f"{cfg.id} -> {target}")
-    res = build_bundle(cfg, target, sharded=not no_shard, force=force, dry_run=dry_run, log=log)
+    if no_shard and cfg.sharded:
+        log("--no-shard given: set `sharded: false` in the yaml to keep it that way for `site build` and later builds")
+    res = build_bundle(cfg, target, sharded=False if no_shard else None, force=force, dry_run=dry_run, log=log)
     if dry_run:
         typer.echo("dry run: nothing written")
         return
@@ -339,7 +341,8 @@ def synth(
     """
     from .synthetic import make_synthetic
 
-    typer.echo(f"wrote {make_synthetic(out, cells, genes)}")
+    cfg = make_synthetic(out, cells, genes)
+    typer.echo(f"wrote {cfg}\n  next: spatialscape build {cfg}")
 
 
 def _describe(e: BaseException) -> str:
@@ -366,8 +369,9 @@ def main(argv: list[str] | None = None) -> None:
     import os
     import sys
 
+    rv = None
     try:
-        app(args=argv, standalone_mode=False, prog_name="spatialscape")
+        rv = app(args=argv, standalone_mode=False, prog_name="spatialscape")
     except typer.Exit as e:
         sys.exit(e.exit_code)
     except typer.Abort:
@@ -383,6 +387,8 @@ def main(argv: list[str] | None = None) -> None:
         typer.secho(f"error: {_describe(e)}", fg="red", err=True)
         typer.secho("set SPATIALSCAPE_DEBUG=1 for the full traceback", dim=True, err=True)
         sys.exit(1)
+    if isinstance(rv, int) and rv:  # outside standalone mode Typer returns a command's exit status instead of raising it
+        sys.exit(rv)
 
 
 if __name__ == "__main__":

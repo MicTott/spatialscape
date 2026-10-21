@@ -38,6 +38,10 @@ export function GeneSearch({ genes, value, onPick, onPickMany, onSubmit, placeho
     setOpen(false);
     ref.current?.blur();
   };
+  const typed = q.trim();
+  const isGene = typed !== "" && genes.some((g) => g.toLowerCase() === typed.toLowerCase());
+  const noMatch = typed !== "" && matches.length === 0 && !/[\s,;]/.test(typed);
+  const reset = () => setQ(value ?? ""); // the box always ends up showing what is on screen
 
   return (
     <div className="genesearch">
@@ -51,7 +55,12 @@ export function GeneSearch({ genes, value, onPick, onPickMany, onSubmit, placeho
           setHi(0);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        onBlur={() =>
+          window.setTimeout(() => {
+            setOpen(false);
+            if (!isGene) reset();
+          }, 150)
+        }
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
             setHi((h) => Math.min(matches.length - 1, h + 1));
@@ -76,14 +85,17 @@ export function GeneSearch({ genes, value, onPick, onPickMany, onSubmit, placeho
             }
             const g = exact ?? matches[hi];
             if (g) pick(g);
+            else setOpen(true); // nothing to pick: keep the "no gene named" note in view
           } else if (e.key === "Escape") {
             setOpen(false);
+            reset();
             ref.current?.blur();
           }
         }}
         spellCheck={false}
         autoComplete="off"
       />
+      {open && noMatch && <div className="gs-empty">no gene named “{typed}” in this dataset</div>}
       {open && matches.length > 0 && (
         <ul className="gs-list">
           {matches.map((g, i) => (

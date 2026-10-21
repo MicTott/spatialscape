@@ -51,6 +51,7 @@ export function GeneByAnnotation() {
         <div className="dotplot">
           <div className="dp-head">
             <span />
+            <span />
             <span>mean</span>
             <span title="fraction of cells with any expression">% expr</span>
           </div>

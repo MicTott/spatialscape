@@ -96,6 +96,8 @@ def load_site_config(path: str | Path) -> SiteConfig:
 def copy_app(app_dir: Path, out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     shutil.copy2(app_dir / "index.html", out / "index.html")
+    if (app_dir / "favicon.svg").exists():
+        shutil.copy2(app_dir / "favicon.svg", out / "favicon.svg")
     assets_out = out / "assets"
     if assets_out.exists():
         shutil.rmtree(assets_out)
@@ -122,7 +124,16 @@ def _place(bundle: Path, dest: Path, link: bool, log: Log) -> None:
     if link:
         os.symlink(bundle.resolve(), dest, target_is_directory=True)
     else:
-        shutil.copytree(bundle, dest)
+        # the per-sample build.json fingerprints and the config path hold paths from the building machine
+        shutil.copytree(bundle, dest, ignore=shutil.ignore_patterns("build.json"))
+        info = dest / "build-info.json"
+        if info.exists():
+            try:
+                d = json.loads(info.read_text())
+                d.pop("config", None)
+                info.write_text(json.dumps(d, indent=1))
+            except ValueError:
+                pass
     log(f"{'linked' if link else 'copied'} {bundle} -> {dest}")
 
 

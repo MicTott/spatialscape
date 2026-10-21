@@ -82,6 +82,7 @@ class ExprSpec(_Model):
     kind: Literal["u8", "csc"] = "u8"
     sharded: bool = True
     shardGenes: int = 512
+    normalized: Literal["lognorm", "log1p_cp10k"] | None = None  # as stored by the source, or log1p(CP10k) applied by the build
 
 
 class PolygonInfo(_Model):

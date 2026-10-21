@@ -15,6 +15,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `layout` | `{mode, order, gutter_fraction, columns}` | `grid`, build order, `0.1`, fitted | `columns` fixes the grid width, e.g. `3` for a 3 × 3 of species by cell class |
 | `thumbnail_sample` | sample id | first spatial sample | |
 | `shard_genes` | int | `512` | genes per shard (capped to ~128 MB) |
+| `sharded` | bool | `true` | sharded Zarr (one range request per gene; needs HTTP Range support) or one file per gene (`false`, for GitHub Pages and other hosts without Range). `build --no-shard` sets it for one run; put it here so `site build` and later builds keep it |
 | `feature_groups` | list of `{id, name, pattern, strip, units}` | `[]` | regex over var names |
 | `fields` | list of field specs | `[]` | declarations; undeclared fields are inferred |
 | `defaults` | mapping | `{}` | merged into every sample |

@@ -219,7 +219,7 @@ export class Interaction {
     } else if ((e.key === "Backspace" || e.key === "Delete") && s.regions.active && s.tool === "lasso") {
       s.undoRegionPolygon(s.regions.active);
       e.preventDefault();
-    } else if (e.key === "l") {
+    } else if (e.key.toLowerCase() === "l" && !e.metaKey && !e.ctrlKey && !e.altKey) {
       s.set({ tool: s.tool === "lasso" ? "pan" : "lasso" });
     } else if (e.key === "Enter" && s.selected) {
       s.setFocus(s.selected);

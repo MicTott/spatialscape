@@ -162,12 +162,19 @@ def build_sample(
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
 
+    # --- coordinate scale first: a wrong `microns:` must not leave a half-written sample behind
+    upu = microns_per_unit(spec, sinput)  # microns per source unit
+    if spec.kind == "spatial":
+        log(f"[{spec.id}] coordinates: 1 unit = {upu:.4g} um")
+
     # --- expression -------------------------------------------------------
     M = get_matrix(adata, spec.expression.layer)
     mode = spec.expression.normalized
     if mode == "auto":
         mode = "lognorm" if detect_lognorm(M) else "counts"
-        log(f"[{spec.id}] detected expression as {mode}")
+        mx = float(M.data.max()) if getattr(M, "nnz", 1) else 0.0
+        why = "non-integer values" if mode == "lognorm" else f"all-integer values, max {mx:g}"
+        log(f"[{spec.id}] expression layer {spec.expression.layer!r} looks {'log-normalized' if mode == 'lognorm' else 'like counts'} ({why})" + ("" if mode == "lognorm" else ": applying log1p(CP10k)"))
     if mode == "counts":
         M = log1p_cp10k(M)
     rng = np.random.default_rng(spec.seed)
@@ -177,12 +184,14 @@ def build_sample(
         M, out_dir, shard_genes=cfg.shard_genes, sharded=sharded, keep_f16=spec.expression.keep_f16, order=perm, log=log
     )
     genes = [str(g) for g in sinput.gene_names[res.keep]]
+    n_dropped = int((~res.keep).sum())
+    if n_dropped:
+        log(f"[{spec.id}] {n_dropped} all-zero feature{'s' if n_dropped != 1 else ''} left out ({len(genes)} kept)")
     with open(out_dir / "genes.json", "w") as fh:
         json.dump(genes, fh, separators=(",", ":"))
     suggested = most_variable_gene(M, res.keep, genes, seed=spec.seed)
 
     # --- geometry ---------------------------------------------------------
-    upu = microns_per_unit(spec, sinput)  # microns per source unit
     coords = sinput.coords
     auto_px_images = [im for im in spec.images if im.pixel_size == "auto"]
     if auto_px_images:
@@ -327,7 +336,7 @@ def build_sample(
         nGenes=len(genes),
         bbox=bbox,
         pointRadius=radius,
-        expr=ExprSpec(kind="u8", sharded=res.sharded, shardGenes=res.shard_genes),
+        expr=ExprSpec(kind="u8", sharded=res.sharded, shardGenes=res.shard_genes, normalized="log1p_cp10k" if mode == "counts" else "lognorm"),
         hasF16=spec.expression.keep_f16,
         fields=list(spec.fields.keys()),
         images=images,
@@ -550,9 +559,12 @@ class BuildResult:
     problems: list[str] = field(default_factory=list)
 
 
-def build_bundle(cfg: DatasetConfig, out: Path | None = None, *, sharded: bool = True, force: bool = False, dry_run: bool = False, log: Log = print) -> BuildResult:
+def build_bundle(cfg: DatasetConfig, out: Path | None = None, *, sharded: bool | None = None, force: bool = False, dry_run: bool = False, log: Log = print) -> BuildResult:
     """Everything `spatialscape build` does: convert R objects into the cache, plan, build, render thumbnails,
-    validate. `site build` runs the same for every dataset yaml it lists."""
+    validate. `site build` runs the same for every dataset yaml it lists. `sharded` defaults to the yaml's
+    `sharded:` so a bundle built for a host without Range support stays that way in every later build."""
+    if sharded is None:
+        sharded = cfg.sharded
     from .thumbnail import write_thumbnails
     from .validate import validate_local
 

@@ -53,6 +53,7 @@ section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
 select, .genesearch input, .overlay input { width: 100%; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; outline: none; }
 select:focus, .genesearch input:focus { border-color: var(--accent); }
 .genesearch { position: relative; }
+.gs-empty { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin-top: 2px; padding: 5px 10px; font-size: 12px; color: var(--muted); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
 .gs-list { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0; list-style: none; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; max-height: 260px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
 .gs-list li { padding: 4px 10px; cursor: pointer; }
 .gs-list li.hi { background: color-mix(in srgb, var(--accent) 25%, transparent); }

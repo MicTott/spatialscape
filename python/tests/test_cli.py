@@ -147,3 +147,15 @@ def test_build_reports_what_changed_and_the_next_step(tmp_path):
     r = runner.invoke(app, ["build", str(cfg), "-q"])
     assert r.exit_code == 0, r.output
     assert "(0 built, 3 unchanged)" in r.output
+
+
+def test_commands_exit_nonzero_when_they_report_problems(tmp_path, capsys):
+    """Typer runs outside standalone mode and returns a command's exit status; main() must pass it on."""
+    with pytest.raises(SystemExit) as ex:
+        main(["validate", str(tmp_path / "not-a-bundle")])
+    assert ex.value.code == 1
+    assert "manifest.json" in capsys.readouterr().out
+    cfg = make_synthetic(tmp_path / "src", n_cells=30, n_genes=4)
+    main(["build", str(cfg), "-o", str(tmp_path / "b"), "-q"])  # a clean build and a clean validate return normally
+    main(["validate", str(tmp_path / "b")])
+    assert "ok" in capsys.readouterr().out

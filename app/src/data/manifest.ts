@@ -63,7 +63,7 @@ export interface Sample {
   bbox: [number, number, number, number];
   toDataset: number[];
   pointRadius: number;
-  expr: { kind: "u8" | "csc"; sharded: boolean; shardGenes: number };
+  expr: { kind: "u8" | "csc"; sharded: boolean; shardGenes: number; normalized?: "lognorm" | "log1p_cp10k" | null };
   hasF16: boolean;
   fields: string[];
   images: SampleImage[];
