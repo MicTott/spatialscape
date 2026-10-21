@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-10-21)
 
 - **ATAC and multiome.** A sample with a Cell Ranger fragment file can carry `tracks:`: `build` streams the fragments once and writes bigWigs of insertions per million, binned, for every cell and per category of the fields you name, plus the sample's peaks and gene models (from the reference's GTF, a UCSC genePred table, a BED, or UCSC RefSeq downloaded once with the default `genes: refseq`). Needs `pip install "spatialscape[tracks]"`.
 - **Genome panel.** An ATAC sample opens a genome panel under the maps, drawn by the viewer's own renderer: scroll to zoom, drag to pan, one accessibility track per visible category of the annotation last colored by on a shared scale, peaks, and gene models with exons and strand arrows. The locus follows the gene or peak you color by; one search box takes gene names or loci; clicking a gene or a peak colors the maps by it; the locus travels in the URL as `gl`, and the panel resizes from its top edge.
