@@ -1,6 +1,7 @@
 """Automatic discovery: which obs columns to expose, and which images sit next to a sample."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -45,6 +46,28 @@ def infer_field_spec(fid: str, adata: ad.AnnData, column: str) -> FieldSpec:
     return FieldSpec(id=fid, name=name, type="categorical" if categorical else "continuous")
 
 
+def shared_image(png: Path, limit: int = 64) -> bool:
+    """Whether sibling sample folders (`../<other>/spatial/<same name>`) hold the very same file: one slide image that
+    several sections were cut from (two Visium HD sections on one slide, say). Such an image is masked to each
+    section's own cells, or the neighbour's tissue shows up under this sample with no cells on it."""
+    try:
+        here = png.resolve()
+        root = here.parent.parent.parent
+        size = here.stat().st_size
+        mine = None
+        for other in sorted(root.iterdir())[:limit]:
+            cand = other / here.parent.name / here.name
+            if other == here.parent.parent or not cand.is_file() or cand.stat().st_size != size:
+                continue
+            if mine is None:
+                mine = hashlib.sha1(here.read_bytes()).hexdigest()
+            if hashlib.sha1(cand.read_bytes()).hexdigest() == mine:
+                return True
+    except OSError:
+        return False
+    return False
+
+
 def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None]:
     """Images next to the sample path. Returns (images, microns override or None)."""
     d = Path(sample.path)
@@ -65,7 +88,8 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
         for png in pngs:
             key = png.name.replace("tissue_", "tissue_", 1).replace("_image.png", "_scalef")
             if key in scale:
-                return [ImageSpec(id="he", name="H&E", path=png, pixel_size="auto", pixels_per_unit=float(scale[key]))], MicronsSpec(scalefactors_json=sf)
+                spec = ImageSpec(id="he", name="H&E", path=png, pixel_size="auto", pixels_per_unit=float(scale[key]), mask=shared_image(png))
+                return [spec], MicronsSpec(scalefactors_json=sf)
     if sf.exists():  # scale factors without an image (e.g. `convert` of an object whose image file was gone)
         return [], MicronsSpec(scalefactors_json=sf)
     # 3. Xenium morphology image

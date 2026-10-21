@@ -73,5 +73,6 @@ export function imageLayer(
     parameters: { depthWriteEnabled: false, depthCompare: "always" },
     ...extraProps,
   } as any;
-  return handle.data.length > 1 ? new MultiscaleImageLayer(common) : new ImageLayer(common);
+  // Viv's ImageLayer takes one pixel source, the multiscale layer the whole pyramid (a small image has one level)
+  return handle.data.length > 1 ? new MultiscaleImageLayer(common) : new ImageLayer({ ...common, loader: handle.data[0] });
 }

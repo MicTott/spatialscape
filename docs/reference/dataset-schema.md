@@ -76,3 +76,4 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `default_opacity` | 0..1 | `1` |
 | `max_size` | int | | downsample level 0 to this many pixels per side |
 | `crop` | bool | `true` | keep only the part of the image around the points (3% margin), so a slide scan does not size the grid cell; `false` keeps the whole image |
+| `mask`, `mask_margin` | bool, µm | `false`, `150` | blank the image beyond `mask_margin` of the sample's own points. Set on its own when sibling sample folders of a converted R object hold the very same image (several sections cut from one slide), so a neighbour's tissue does not appear under this sample |

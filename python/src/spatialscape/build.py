@@ -80,6 +80,22 @@ def crop_to_points(img: np.ndarray, pixel_size: float, translate: tuple[float, f
     return out, (translate[0] + px0 * pixel_size, translate[1] + py0 * pixel_size)
 
 
+def mask_to_points(img: np.ndarray, pixel_size: float, translate: tuple[float, float], xy: np.ndarray, margin_um: float, *, rgb: bool) -> np.ndarray:
+    """Blank every pixel farther than `margin_um` from any point (white for RGB, black for fluorescence), so a slide
+    image shared by several sections shows only this section's tissue."""
+    from scipy import ndimage
+
+    _c, h, w = img.shape
+    px = np.clip(((xy[:, 0] - translate[0]) / pixel_size).astype(np.int64), 0, w - 1)
+    py = np.clip(((xy[:, 1] - translate[1]) / pixel_size).astype(np.int64), 0, h - 1)
+    hit = np.zeros((h, w), dtype=bool)
+    hit[py, px] = True
+    far = ndimage.distance_transform_edt(~hit) * pixel_size > margin_um
+    out = np.array(img, copy=True)
+    out[:, far] = np.iinfo(out.dtype).max if (rgb and np.issubdtype(out.dtype, np.integer)) else (1.0 if rgb else 0)
+    return out
+
+
 def most_variable_gene(M, keep: np.ndarray, genes: list[str], *, seed: int = 0, max_rows: int = 4000) -> str | None:
     """Gene with the largest variance of normalized expression over a row subsample: a better opening gene than the
     alphabetically first one. `M` is (n_obs, n_vars) normalized; `keep` selects the retained genes."""
@@ -275,6 +291,9 @@ def build_sample(
         if im.crop:
             img, translate = crop_to_points(img, pixel_size, translate, bbox)
             log(f"[{spec.id}] image cropped to the points: {img.shape[2]} x {img.shape[1]} px")
+        if im.mask:
+            img = mask_to_points(img, pixel_size, translate, xy, im.mask_margin, rgb=rgb)
+            log(f"[{spec.id}] image blanked beyond {im.mask_margin:g} um of the sample's own points (a slide image shared with another section)")
         names = [ch.name for ch in im.channels] if im.channels else None
         colors = [ch.color for ch in im.channels] if im.channels else None
         wins = [ch.window for ch in im.channels] if im.channels and all(ch.window for ch in im.channels) else None

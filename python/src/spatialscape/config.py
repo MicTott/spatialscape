@@ -79,6 +79,8 @@ class ImageSpec(_Model):
     default_opacity: float = 1.0
     max_size: int | None = None  # optionally downsample level 0 to at most this many px per side
     crop: bool = True  # keep only the part of the image around the points (3% margin); slide scans reach far past the capture area
+    mask: bool = False  # blank the image beyond `mask_margin` of the sample's own points: for one slide image that several sections share
+    mask_margin: float = 150.0  # um
 
 
 class PolygonSpec(_Model):

@@ -180,3 +180,36 @@ def test_ensembl_indexed_objects_are_named_by_their_symbols():
     assert gene_names(a, "gene_name").tolist() == gene_names(a, None).tolist()
     b = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32), var=pd.DataFrame({"gene_name": ["x", "y"]}, index=["GAD1", "GAD2"]))
     assert symbol_column(b) is None and gene_names(b, None).tolist() == ["GAD1", "GAD2"]  # symbols already: var_names stay
+
+
+def test_shared_slide_images_are_masked_to_each_sections_cells(tmp_path):
+    """Two sections cut from one slide share one image: the build blanks each copy beyond its own cells, and the
+    discovery step detects the sharing from identical files in sibling sample folders."""
+    import imageio.v3 as iio
+    import yaml
+
+    from spatialscape.build import mask_to_points
+    from spatialscape.discover import shared_image
+    from spatialscape.synthetic import make_synthetic
+
+    img = np.full((3, 60, 80), 200, dtype=np.uint8)  # 8 um/px, one point cluster in the left third
+    xy = np.column_stack([np.linspace(40, 160, 30), np.linspace(100, 300, 30)])
+    out = mask_to_points(img, 8.0, (0.0, 0.0), xy, 100.0, rgb=True)
+    assert out[:, 20, 5].tolist() == [200, 200, 200]  # near the points: unchanged
+    assert out[:, 20, 70].tolist() == [255, 255, 255]  # far right: blanked white
+    assert out.shape == img.shape and img[:, 20, 70].tolist() == [200, 200, 200]  # the input is left alone
+    # shared detection: the same PNG under two sample folders of one conversion
+    base = tmp_path / "cache"
+    for name, pixels in (("A", 1), ("B", 1), ("C", 2)):
+        d = base / name / "spatial"
+        d.mkdir(parents=True)
+        iio.imwrite(d / "tissue_lowres_image.png", np.full((8, 8, 3), pixels, dtype=np.uint8))
+    assert shared_image(base / "A" / "spatial" / "tissue_lowres_image.png") is True
+    assert shared_image(base / "C" / "spatial" / "tissue_lowres_image.png") is False
+    # through the yaml: the synthetic image with `mask: true` loses its far corner
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=200, n_genes=5)
+    doc = yaml.safe_load(cfg_path.read_text())
+    doc["samples"][0]["images"][0]["mask"] = True
+    cfg_path.write_text(yaml.safe_dump(doc))
+    m = build_dataset(load_config(cfg_path), tmp_path / "b", log=lambda *_: None)
+    assert m.samples[0].images and m.samples[0].images[0].size[0] > 0
