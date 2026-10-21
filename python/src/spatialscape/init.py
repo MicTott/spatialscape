@@ -40,7 +40,9 @@ EMBEDDING_PREFERENCE = ("UMAP", "umap", "X_umap", "UMAP-HARMONY", "UMAP_HARMONY"
 ARRAY_COLUMNS = {"array_row", "array_col", "in_tissue"}  # SpaceRanger's spot / bin grid
 CELL_COLUMNS = {"transcript_counts", "cell_area", "nucleus_area", "nucleus_count", "segmentation_method"}  # Xenium's cells.csv
 SAMPLE_COLUMN_RE = re.compile(r"^(sample_id|sample|sample_name|section|section_id|capture_area|slide|library_id|batch)$", re.I)
+AREA_COLUMN_RE = re.compile(r"^(capture_area|capture_areas|slide|library_id|array)$", re.I)  # several Visium arrays stitched into one sample
 VISIUM_MAX_OBS = 20_000  # a Visium capture area holds 4,992 spots (6.5 mm) or 14,336 (11 mm); more is HD bins or cells
+VISIUM_ARRAY = (128, 224)  # array_row / array_col never exceed one 11 mm array; Visium HD bins run to hundreds or thousands
 COORDINATE_NOTE = {
     "visium": "full-resolution pixels; microns from the spot spacing (100 um) when `build` runs",
     "visium_hd": "full-resolution pixels; set `microns: { microns_per_unit: <SpaceRanger microns_per_pixel> }`",
@@ -195,24 +197,50 @@ def suggest_fields(columns: list[Column], *, skip: set[str] | None = None) -> Me
 
 
 # ---------------------------------------------------------------- what the data looks like
-def guess_platform(columns: list[str], n_obs: int, *, spatial: bool) -> tuple[str, str | None]:
+def guess_platform(
+    columns: list[str], n_obs: int, *, spatial: bool, array_extent: tuple[float, float] | None = None, n_areas: int = 1
+) -> tuple[str, str | None]:
     """The platform a file most likely came from, and the evidence (None when nothing said anything and the
-    answer is the default). SpaceRanger's grid columns mean Visium, or Visium HD when there are more
-    observations than a capture area has spots; Xenium's cell metrics mean cells; otherwise Visium."""
+    answer is the default). SpaceRanger's grid columns mean Visium when the array coordinates fit one Visium
+    array or the spots split into capture areas of Visium size (stitched donors), and Visium HD when the grid
+    is larger or there are more observations than a capture area holds; Xenium's cell metrics mean cells;
+    otherwise Visium. `array_extent` is (max array_row, max array_col); `n_areas` the number of capture areas."""
     if not spatial:
         return "snrnaseq", "no spatial coordinates"
     cols = {str(c).lower() for c in columns}
     grid = sorted(cols & ARRAY_COLUMNS)
     if grid:
+        g = ", ".join(grid)
+        if n_areas > 1 and n_obs / n_areas <= VISIUM_MAX_OBS:
+            return "visium", f"{g} columns; {n_areas} capture areas of {n_obs / n_areas:,.0f} spots"
+        if array_extent is not None:
+            r, c = array_extent
+            if r <= VISIUM_ARRAY[0] and c <= VISIUM_ARRAY[1]:
+                return "visium", f"{g} columns, array {r:.0f} x {c:.0f} fits one Visium array"
+            return "visium_hd", f"{g} columns, array {r:.0f} x {c:.0f} is larger than one Visium array (stitched Visium without a capture_area column: set visium)"
         if n_obs > VISIUM_MAX_OBS:
-            return "visium_hd", f"{', '.join(grid)} columns and {n_obs:,} observations, more than a Visium capture area holds"
-        return "visium", f"{', '.join(grid)} columns"
+            return "visium_hd", f"{g} columns and {n_obs:,} observations, more than a Visium capture area holds"
+        return "visium", f"{g} columns"
     cells = sorted(cols & CELL_COLUMNS)
     if len(cells) >= 2:
         return "xenium", f"{', '.join(cells)} columns"
     if n_obs > VISIUM_MAX_OBS:
         return "xenium", f"{n_obs:,} observations and no array_row / array_col: cells, not spots (Visium HD cells: set visium_hd)"
     return "visium", None
+
+
+def grid_evidence(obs: pd.DataFrame) -> dict:
+    """What `guess_platform` wants to know about SpaceRanger grids: the array extent and the number of capture areas."""
+    out: dict = {}
+    if "array_row" in obs.columns and "array_col" in obs.columns:
+        r = pd.to_numeric(obs["array_row"], errors="coerce").max()
+        c = pd.to_numeric(obs["array_col"], errors="coerce").max()
+        if np.isfinite(r) and np.isfinite(c):
+            out["array_extent"] = (float(r), float(c))
+    for col in obs.columns:
+        if AREA_COLUMN_RE.match(str(col)):
+            out["n_areas"] = max(out.get("n_areas", 1), int(obs[col].nunique(dropna=True)))
+    return out
 
 
 def sections_in(obs: pd.DataFrame) -> tuple[str, list[str]] | None:
@@ -313,8 +341,7 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
             samples = []
             note = f"{x.class_name}, {x.n_obs:,} cells; no sample_id column: set sample_col below"
             log(f"warning: {path.name} has no `sample_id` column; set `sample_col:` in the yaml to the column that separates samples")
-        per_sample = x.n_obs // max(len(samples), 1)
-        plat, plat_note = _platform_choice(platform, list(x.obs.columns), per_sample, spatial=True)
+        plat, plat_note = _platform_choice(platform, x.obs, spatial=True)
         prefix, label = PLATFORM_PREFIX.get(plat, plat[:3]), PLATFORM_LABEL.get(plat, plat)
         return EntryMenu(
             source=_rel(path, base), source_note=note, r_object=True, embedding=False, platform=plat,
@@ -338,10 +365,10 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
     )
 
 
-def _platform_choice(given: str | None, columns: list[str], n_obs: int, *, spatial: bool) -> tuple[str, str]:
+def _platform_choice(given: str | None, obs: pd.DataFrame, *, spatial: bool) -> tuple[str, str]:
     if given:
         return given, "given"
-    plat, why = guess_platform(columns, n_obs, spatial=spatial)
+    plat, why = guess_platform(list(obs.columns), len(obs), spatial=spatial, **grid_evidence(obs))
     return plat, f"guessed from {why}" if why else "the default; nothing in the columns said otherwise"
 
 
@@ -358,7 +385,7 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
         cols = describe_columns(pk.obs)
         layers = list(pk.layers)
         n_obs = len(pk.obs)
-        plat, plat_note = _platform_choice(platform, list(pk.obs.columns), n_obs, spatial="spatial" in pk.obsm)
+        plat, plat_note = _platform_choice(platform, pk.obs, spatial="spatial" in pk.obsm)
         if plat != "snrnaseq":
             sections = sections_in(pk.obs)
     else:

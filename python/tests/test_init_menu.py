@@ -119,6 +119,12 @@ def test_platform_is_guessed_from_the_columns():
 
     assert guess_platform(["array_row", "array_col", "cluster"], 4_000, spatial=True) == ("visium", "array_col, array_row columns")
     assert guess_platform(["array_row", "array_col"], 300_000, spatial=True)[0] == "visium_hd"
+    # the grid decides when it is known: one Visium array is at most 128 x 224 positions, HD bins run to thousands
+    assert guess_platform(["array_row", "array_col"], 300_000, spatial=True, array_extent=(77, 127))[0] == "visium"
+    assert guess_platform(["array_row", "array_col"], 4_000, spatial=True, array_extent=(830, 830))[0] == "visium_hd"
+    # stitched donors: 32k spots in 8 capture areas is Visium, whatever the stitched grid's extent
+    plat, why = guess_platform(["array_row", "array_col", "capture_area"], 32_000, spatial=True, array_extent=(243, 480), n_areas=8)
+    assert plat == "visium" and why == "array_col, array_row columns; 8 capture areas of 4,000 spots"
     assert guess_platform(["transcript_counts", "cell_area", "nucleus_area"], 120_000, spatial=True)[0] == "xenium"
     assert guess_platform(["cluster"], 120_000, spatial=True)[0] == "xenium"  # cells, not spots
     assert guess_platform(["cluster"], 3_000, spatial=True) == ("visium", None)  # the default, nothing said otherwise
@@ -131,6 +137,14 @@ def test_describe_columns_counts_missing_values():
     assert cols["label"].na == 1 and cols["label"].note == "2 levels: a, b; 1 NA"
     assert cols["score"].na == 2 and cols["score"].note.endswith("; 2 NA")
     assert cols["flag"].na == 0 and "NA" not in cols["flag"].note
+
+
+def test_grid_evidence_reads_extent_and_capture_areas():
+    from spatialscape.init import grid_evidence
+
+    obs = pd.DataFrame({"array_row": [0, 77, 3], "array_col": [0, 127, 5], "capture_area": ["A1", "B1", "A1"]})
+    assert grid_evidence(obs) == {"array_extent": (77.0, 127.0), "n_areas": 2}
+    assert grid_evidence(pd.DataFrame({"x": [1]})) == {}
 
 
 def test_init_says_what_it_assumed_and_marks_the_guess_in_the_yaml(tmp_path):
@@ -146,12 +160,12 @@ def test_init_says_what_it_assumed_and_marks_the_guess_in_the_yaml(tmp_path):
     out = tmp_path / "demo.yaml"
     r = runner.invoke(app, ["init", str(tmp_path / "src" / "*.h5ad"), "--id", "demo", "-o", str(out)])
     assert r.exit_code == 0, r.output
-    assert "assumed for" in r.output and "platform: visium (guessed from array_col, array_row columns)" in r.output
+    assert "assumed for" in r.output and "platform: visium (guessed from array_col, array_row columns, array 6 x 7 fits one Visium array)" in r.output
     assert "coordinates: full-resolution pixels; microns from the spot spacing" in r.output
     assert "expression: X; counts are log-normalized by build" in r.output
     assert "annotations: domain <- cluster (6 levels, 7 NA), total_counts <- total_counts" in r.output
     text = out.read_text()
-    assert "platform: visium" in text and "guessed from array_col, array_row columns; or visium_hd, xenium, merfish" in text
+    assert "platform: visium" in text and "guessed from array_col, array_row columns, array 6 x 7 fits one Visium array; or visium_hd, xenium, merfish" in text
     assert "6 levels: " in text and "; 7 NA" in text  # the NA count sits in the column's note
     assert yaml.safe_load(text)["samples"][0]["platform"] == "visium"
     # given on the command line: the yaml says so, and nothing is guessed

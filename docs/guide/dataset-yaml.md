@@ -58,8 +58,10 @@ assumed for analysis/spe_dlpfc.rds:
   annotations: domain <- BayesSpace_harmony_09 (9 levels), total_counts <- sum_umi, mito_percent <- expr_chrM_ratio
 ```
 
-The platform is guessed from the columns: SpaceRanger's `array_row` / `array_col` mean Visium, or Visium HD
-above 20,000 observations; Xenium's `transcript_counts` / `cell_area` mean Xenium; with no evidence it is
+The platform is guessed from the columns: SpaceRanger's `array_row` / `array_col` mean Visium when the grid
+fits one Visium array (128 x 224 positions at most) or the spots split into capture areas of Visium size
+(stitched donors with a `capture_area` column), and Visium HD when the grid is larger; Xenium's
+`transcript_counts` / `cell_area` mean Xenium; with no evidence it is
 `visium` and the yaml's `platform:` comment says "the default". `--platform` overrides the guess. A column's
 note carries its NA count (`9 levels: L1, L2, ...; 120 NA`), and a single file that holds several sections
 (a `sample_id` or `capture_area` column with several values) gets a warning and a commented `subset:` line,

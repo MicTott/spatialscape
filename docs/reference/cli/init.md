@@ -23,7 +23,7 @@ spatialscape init <PATHS>... [OPTIONS]
 | `-o`, `--out` | path | — | Where to write the yaml. Default: `<id>.yaml` in the current folder. |
 | `--id` | text | — | Dataset id: used in `?d=<id>` and as the bundle folder name. Default: the object's file name, or the folder a glob starts in. |
 | `--name` | text | — | Human-readable dataset name. Default: the id, prettified. |
-| `--platform` | text | — | Platform of the spatial samples: `visium`, `visium_hd`, `xenium`, `merfish` or `other`. Default: guessed from the columns (`array_row` / `array_col` mean Visium, or Visium HD above 20,000 observations; Xenium's cell metrics mean Xenium), else `visium`; the yaml says which. Objects and files without spatial coordinates become `snrnaseq` embeddings regardless. |
+| `--platform` | text | — | Platform of the spatial samples: `visium`, `visium_hd`, `xenium`, `merfish` or `other`. Default: guessed from the columns (`array_row` / `array_col` mean Visium when the grid fits one Visium array or the spots split into capture areas of Visium size, Visium HD when the grid is larger; Xenium's cell metrics mean Xenium), else `visium`; the yaml says which. Objects and files without spatial coordinates become `snrnaseq` embeddings regardless. |
 | `--table` | text | — | Table key inside a SpatialData store. |
 
 ## Examples
