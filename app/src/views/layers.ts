@@ -7,6 +7,7 @@ import { imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
 import { blendLUT, categoryPalette, colormapLUT, effectiveColormap, hexToRGB } from "../layers/lut";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
+import { pointScaleFor } from "./panes";
 import { drawCount, intersects } from "./lod";
 import { filterRange, overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -142,7 +143,7 @@ export class LayerBuilder {
             visible,
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
-            getRadius: smp.pointRadius * s.pointScale[kind],
+            getRadius: smp.pointRadius * pointScaleFor(s.pointScale, view, kind),
             radiusMinPixels: 1,
             radiusMaxPixels: 40,
             stroked: false,

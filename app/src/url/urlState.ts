@@ -69,7 +69,13 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
   if (q.get("sps") === "1") out.scalePerSample = true;
   if (q.get("debug") === "1") out.debug = true;
-  if (q.get("ps") || q.get("pse")) out.pointScale = { spatial: num(q.get("ps"), 1), embedding: num(q.get("pse"), 1) };
+  if (q.get("ps") || q.get("pse") || q.get("psg")) {
+    const ps: Record<string, number> = { spatial: num(q.get("ps"), 1), embedding: num(q.get("pse"), 1) };
+    (q.get("psg") ?? "").split(",").forEach((v, i) => {
+      if (v !== "" && Number.isFinite(+v)) ps[`g${i}`] = +v; // an empty slot keeps that pane on the base value
+    });
+    out.pointScale = ps;
+  }
   if (q.get("o")) {
     const [field, style, width] = q.get("o")!.split(":");
     if (field) out.outline = { field, style: (["field", "light", "dark"].includes(style) ? style : "light") as "field" | "light" | "dark", width: num(width, 1.5) };
@@ -132,6 +138,9 @@ export function serialize(s: ViewerState): string {
   if (s.debug) q.set("debug", "1");
   if (s.pointScale.spatial !== 1) q.set("ps", s.pointScale.spatial.toFixed(2));
   if (s.pointScale.embedding !== 1) q.set("pse", s.pointScale.embedding.toFixed(2));
+  const groupScales = ["g0", "g1", "g2"].map((id) => (s.pointScale[id] != null ? s.pointScale[id].toFixed(2) : ""));
+  while (groupScales.length && groupScales[groupScales.length - 1] === "") groupScales.pop();
+  if (groupScales.length) q.set("psg", groupScales.join(","));
   if (s.platforms) q.set("p", s.platforms.join(","));
   if (s.groupField) q.set("gf", s.groupField);
   if (!s.showPolygons) q.set("poly", "0");

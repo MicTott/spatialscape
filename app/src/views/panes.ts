@@ -123,6 +123,11 @@ export function paneRects(panes: Pane[], width: number, height: number, split: G
   return out;
 }
 
+/** The point radius multiplier a pane draws with: its own when set, else its kind's base value. */
+export function pointScaleFor(scales: Record<string, number>, view: string, kind: ViewKind): number {
+  return scales[view] ?? scales[kind] ?? 1;
+}
+
 export function paneInfo(panes: Pane[], m: Manifest, hidden: Set<string>): PaneInfo[] {
   return panes.map((p) => ({
     id: p.id,

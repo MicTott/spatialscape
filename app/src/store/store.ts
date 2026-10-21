@@ -147,7 +147,9 @@ export interface ViewerState {
   viewState: ViewState | null;
   imageOpacity: number;
   showImages: boolean;
-  pointScale: Record<ViewKind, number>; // point radius multiplier per pane kind (spatial sections vs embeddings)
+  // point radius multipliers: "spatial" and "embedding" are the bases per pane kind; a group pane ("g0".."g2") may
+  // override its own, so a dense section and a sparse one can be read side by side
+  pointScale: Record<string, number>;
   hover: HoverInfo | null;
   categoryCounts: Record<string, number[]>;
   filterHistogram: number[] | null;
@@ -194,7 +196,7 @@ export const DEFAULTS = {
   layoutMode: "grid" as LayoutMode,
   imageOpacity: 1,
   showImages: true,
-  pointScale: { spatial: 1, embedding: 1 } as Record<ViewKind, number>,
+  pointScale: { spatial: 1, embedding: 1 } as Record<string, number>,
   matchScale: true,
 };
 

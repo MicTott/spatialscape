@@ -2,6 +2,7 @@
 import { Matrix4 } from "@math.gl/core";
 import type { SampleData } from "../data/cache";
 import { drawCount } from "./lod";
+import { pointScaleFor } from "./panes";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import { fmtValue } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -96,7 +97,7 @@ export class Interaction {
     const p = c.layouts[hit.view]!.placements.get(id)!;
     const inv = new Matrix4(p.modelMatrix).invert();
     const [lx, ly] = inv.transformAsPoint([hit.world[0], hit.world[1], 0]);
-    const r = Math.max(smp.pointRadius * s.pointScale[c.kindOf(hit.view)], 6 / scale);
+    const r = Math.max(smp.pointRadius * pointScaleFor(s.pointScale, hit.view, c.kindOf(hit.view)), 6 / scale);
     const [vw, vh] = c.viewSize(hit.view);
     const drawn = drawCount(sd.nObs, p.worldBbox, c.viewStates[hit.view].zoom, [vw, vh]); // rows past this are not on screen
     const hits = sd.index.within(lx, ly, r).filter((h) => h < drawn);

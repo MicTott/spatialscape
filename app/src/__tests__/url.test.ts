@@ -75,6 +75,18 @@ describe("point size per view", () => {
     expect(readUrl().pointScale).toEqual({ spatial: 2, embedding: 1 });
     g.window = saved;
   });
+
+  it("carries per-pane overrides of the group panes as psg, with empty slots for panes on the base value", () => {
+    const s = { ...store.getState(), pointScale: { spatial: 1, embedding: 1, g1: 1.5 } } as ViewerState;
+    const q = new URLSearchParams(serialize(s));
+    expect(q.get("psg")).toBe(",1.50");
+    expect(q.has("ps")).toBe(false);
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: "?ps=0.5&psg=,1.5,2" } };
+    expect(readUrl().pointScale).toEqual({ spatial: 0.5, embedding: 1, g1: 1.5, g2: 2 });
+    g.window = saved;
+  });
 });
 
 describe("scale and debug flags", () => {

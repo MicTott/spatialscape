@@ -74,6 +74,8 @@ Gene colors share one scale across all samples on screen, so the same color mean
 
 ## Point size
 
+The slider at the bottom left of each pane multiplies the point radius, from a quarter to four times the platform's default (Visium spots at their true 55 µm, cells at 5 µm). The tissue canvas and the embedding each have their own value. When the canvas is split by a group, every pane has its own slider too: a dense section and a sparse one can be read side by side at different sizes, and a double-click on a group pane's slider makes it follow the shared value again. The values travel in the URL (`ps`, `pse`, `psg`).
+
 ## Regions: your own annotation
 
 The Regions panel turns the lasso into an annotation tool. Add a group, then lasso as many areas as you like, in

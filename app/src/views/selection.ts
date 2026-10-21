@@ -5,6 +5,7 @@ import { Matrix4 } from "@math.gl/core";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import { pointInPolygon } from "./geometry";
 import type { LayoutResult } from "./layout";
+import { pointScaleFor } from "./panes";
 import { intersects } from "./lod";
 import { overlayProps } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -223,7 +224,7 @@ export class Selection {
             data: { length: hl.length / 2, attributes: { getPosition: { value: hl, size: 2 } } } as any,
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
-            getRadius: smp.pointRadius * s.pointScale[this.c.kindOf(view)] * 1.35,
+            getRadius: smp.pointRadius * pointScaleFor(s.pointScale, view, this.c.kindOf(view)) * 1.35,
             radiusMinPixels: 2.5,
             radiusMaxPixels: 50,
             filled: false,
