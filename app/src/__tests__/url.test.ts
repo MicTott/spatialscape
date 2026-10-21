@@ -53,6 +53,10 @@ describe("url state", () => {
       { target: [30, 40, 0], zoom: 0.5 },
     ]);
     expect(back.matchScale).toBe(false);
+    const withCmp = new URLSearchParams(serialize({ ...s, comparison: "stress_vs_control" } as ViewerState));
+    expect(withCmp.get("cmp")).toBe("stress_vs_control");
+    g.window = { location: { search: "?cmp=stress_vs_control" } };
+    expect(readUrl().comparison).toBe("stress_vs_control");
     g.window = { location: { search: "?sb=condition" } };
     const plain = readUrl();
     expect(plain.splitBy).toEqual({ key: "condition", groups: null, fractions: null });

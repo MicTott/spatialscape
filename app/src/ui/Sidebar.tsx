@@ -8,6 +8,7 @@ import { SelectionPanel } from "./SelectionPanel";
 import { RegionsPanel } from "./RegionsPanel";
 import { Legend } from "./Legend";
 import { SampleStrip } from "./SampleStrip";
+import { CompareSelect } from "../compare/CompareSelect";
 
 export function Sidebar() {
   const manifest = useViewer((s) => s.manifest);
@@ -33,6 +34,7 @@ export function Sidebar() {
           <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
           <RegionsPanel />
           <ColorPanel genes={genes} />
+          <CompareSelect />
           <Legend />
           <GeneByAnnotation />
           <FilterPanel genes={genes} />

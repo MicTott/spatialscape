@@ -121,6 +121,9 @@ export interface ViewerState {
   splitBy: GroupSplit | null; // tissue sections split into one pane per group
   matchScale: boolean; // group panes share one µm/px: zoom one, the others follow in scale
   paneCameras: ViewState[] | null; // cameras of the group panes, pane order (pv in the URL)
+  comparison: string | null; // the comparison shown under the maps (cmp in the URL)
+  compareHeight: number; // px; dragged at the panel's top edge, remembered per browser
+  compareBox: boolean; // quartile boxes behind the replicate dots, remembered per browser
   selectionSummary: SelectionSummary | null;
   datasetUrl: string | null;
   datasetRef: string | null; // what the user typed / the registry id; kept in the URL
@@ -180,12 +183,29 @@ export interface ViewerState {
 }
 
 export const GENOME_HEIGHT_KEY = "sscape.genomeHeight";
+export const COMPARE_HEIGHT_KEY = "sscape.compareHeight";
+export const COMPARE_BOX_KEY = "sscape.compareBox";
 function storedGenomeHeight(): number {
   try {
     const v = Number(localStorage.getItem(GENOME_HEIGHT_KEY));
     return v >= 160 && v <= 2000 ? v : 300;
   } catch {
     return 300;
+  }
+}
+function storedCompareHeight(): number {
+  try {
+    const v = Number(localStorage.getItem(COMPARE_HEIGHT_KEY));
+    return v >= 180 && v <= 2000 ? v : 280;
+  } catch {
+    return 280;
+  }
+}
+function storedCompareBox(): boolean {
+  try {
+    return localStorage.getItem(COMPARE_BOX_KEY) === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -237,6 +257,9 @@ export const store = createStore<ViewerState>((set, get) => ({
   splitBy: null,
   matchScale: DEFAULTS.matchScale,
   paneCameras: null,
+  comparison: null,
+  compareHeight: storedCompareHeight(),
+  compareBox: storedCompareBox(),
   selectionSummary: null,
   focus: null,
   selected: null,

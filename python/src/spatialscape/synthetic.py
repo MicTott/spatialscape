@@ -101,9 +101,10 @@ def _write_de_tables(out: Path, groups: dict[str, tuple[str, str]], n_genes: int
     cond: dict[str, str] = {}
     for sid, (condition, mouse) in groups.items():
         a = ad.read_h5ad(out / f"{sid}.h5ad")
-        X = a.X
-        mean = np.asarray(X.mean(axis=0)).ravel()
-        pb[mouse] = np.log2(mean + 1)
+        X = a.X.toarray() if sp.issparse(a.X) else np.asarray(a.X)
+        if X.max() > 30 or np.all(np.rint(X) == X):  # a counts section: bring it onto the log scale the others use
+            X = np.log1p(X / np.maximum(X.sum(1, keepdims=True), 1) * 1e4)
+        pb[mouse] = np.log2(np.expm1(X).mean(0) + 1)  # mean expression per gene, as log2(mean + 1)
         cond[mouse] = condition
     mice = list(pb)
     mat = np.stack([pb[m] for m in mice], 1)

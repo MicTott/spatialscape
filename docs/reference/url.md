@@ -32,5 +32,6 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `sf` | width shares of the group panes after a handle was dragged | `sf=0.400,0.600` |
 | `ms` | `0`: panes do not share one scale (match scale off) | `ms=0` |
 | `pv` | cameras of the group panes, `x,y,zoom` each, `;`-separated in pane order | `pv=5379,2723,-4.7;5390,2090,-4.7` |
+| `cmp` | the comparison shown under the maps | `cmp=stress_vs_control` |
 
 Blend scheme codes: `yb` yellow/blue → green, `cm` cyan/magenta → white, `rg` red/green → yellow. Gene lists use commas; a `+` would decode as a space.

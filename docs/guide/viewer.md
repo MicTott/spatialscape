@@ -91,6 +91,28 @@ the drawing itself (groups and polygons) as JSON and *load* brings it back, incl
 polygons are stored in each section's own coordinates. In a notebook, `s.regions()` returns the same table as a
 pandas Series aligned with your object ([In a notebook](./notebooks)).
 
+## Compare panel: a test's results next to the tissue
+
+When the dataset carries [comparisons](./dataset-yaml#comparisons-results-of-a-test-next-to-the-sections), the
+side panel has a *Compare* section. Choosing one splits the canvas by its groups (unless you had split by
+another key), filters the map to the population the test was fit in when the comparison names one (a chip in
+the panel header says so and clears it), and opens a panel under the maps:
+
+- **The table**, left: one row per gene with its effect, adjusted p-value and mean, sorted by padj. Click a
+  column head to sort by it (again to flip), the direction buttons to keep only genes higher in the last or
+  the first group, the box to find a gene. Clicking a row colours every pane by that gene; `↑` and `↓` step
+  through the table as sorted. Genes no section measures stay listed, greyed, with a count in the header.
+- **The replicates**, right: one dot per mouse or donor for the gene on screen, in the comparison's group
+  order and colours, with a median line per group, quartile boxes on request (*box*), and a line joining a
+  subject that appears in several groups (a paired design). Hovering a dot names the replicate, its value
+  and its sections; clicking it focuses its first section in the right pane. Under the plot: the table's
+  numbers for that gene and the comparison's description, verbatim.
+
+Nothing in the panel is computed by the viewer: the effects, p-values and replicate values are the ones the
+tables held, and the dots are the values you fitted, not a re-aggregation of the 8-bit expression the maps are
+drawn from. The chosen comparison travels in the URL as `cmp`; closing the panel with × leaves the split and
+the filter as they are.
+
 ## Genome panel
 
 An ATAC sample built with `tracks:` ([dataset.yaml](./dataset-yaml#genome-tracks-for-atac-samples)) adds a genome

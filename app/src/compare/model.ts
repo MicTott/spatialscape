@@ -1,0 +1,179 @@
+/**
+ * Pure helpers for the Compare panel: the rows of a results table in the order and selection the header asks
+ * for, the replicate values of one gene arranged by group, box statistics, pairing and formatting. Nothing here
+ * computes a statistic the table did not already hold: values are drawn as imported.
+ */
+import type { ComparisonInfo, Manifest } from "../data/manifest";
+import { fieldById } from "../data/manifest";
+import { REGION_COLORS } from "../store/store";
+
+export interface ResultsDoc {
+  genes: string[];
+  effect: number[];
+  p: (number | null)[] | null;
+  padj: (number | null)[] | null;
+  mean: (number | null)[] | null;
+  unmeasured: number[];
+}
+export interface Replicate {
+  id: string;
+  group: string;
+  subject: string;
+  samples: string[];
+}
+export interface ComparisonDoc extends ComparisonInfo {
+  replicates: Replicate[];
+  columns: Record<string, string>;
+  sources?: Record<string, string>;
+}
+export interface ComparisonData {
+  info: ComparisonDoc;
+  results: ResultsDoc;
+  geneIndex: Map<string, number>; // gene -> row in the results
+  unmeasured: Set<number>;
+  pseudobulk: Float32Array | null; // row-major (nGenes, nReplicates), replicate order = info.replicates
+}
+
+export type SortKey = "padj" | "effect" | "mean" | "gene";
+export type Direction = "all" | "up" | "down";
+
+export interface Row {
+  i: number; // index in the results
+  gene: string;
+  effect: number;
+  p: number | null;
+  padj: number | null;
+  mean: number | null;
+  measured: boolean;
+}
+
+export function rows(data: ComparisonData): Row[] {
+  const r = data.results;
+  return r.genes.map((gene, i) => ({
+    i,
+    gene,
+    effect: r.effect[i],
+    p: r.p ? r.p[i] : null,
+    padj: r.padj ? r.padj[i] : null,
+    mean: r.mean ? r.mean[i] : null,
+    measured: !data.unmeasured.has(i),
+  }));
+}
+
+/** The table's rows after the search box, the direction filter and the sort. Missing values sort last. */
+export function arrange(all: Row[], sort: SortKey, descending: boolean, dir: Direction, query: string): Row[] {
+  const q = query.trim().toLowerCase();
+  let out = all;
+  if (q) out = out.filter((r) => r.gene.toLowerCase().includes(q));
+  if (dir === "up") out = out.filter((r) => r.effect > 0);
+  else if (dir === "down") out = out.filter((r) => r.effect < 0);
+  const key = (r: Row): number | string | null => (sort === "gene" ? r.gene : sort === "effect" ? Math.abs(r.effect) : sort === "mean" ? r.mean : (r.padj ?? r.p));
+  const sign = descending ? -1 : 1;
+  return [...out].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    if (ka == null && kb == null) return a.i - b.i;
+    if (ka == null) return 1;
+    if (kb == null) return -1;
+    if (ka < kb) return -sign; // ascending puts the smaller key first
+    if (ka > kb) return sign;
+    return a.i - b.i;
+  });
+}
+
+export function countSignificant(all: Row[], alpha = 0.05): number {
+  return all.reduce((n, r) => n + ((r.padj ?? r.p ?? 1) < alpha ? 1 : 0), 0);
+}
+
+export function fmtP(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v === 0) return "0";
+  if (v < 1e-3) return v.toExponential(1).replace("e-", "e-").replace(".0e", "e");
+  return v.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+export function fmtEffect(v: number): string {
+  const a = Math.abs(v);
+  const s = a >= 100 ? a.toFixed(0) : a >= 10 ? a.toFixed(1) : a.toFixed(2);
+  return (v < 0 ? "−" : v > 0 ? "+" : "") + s;
+}
+
+export function fmtMean(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return Math.abs(v) >= 1000 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2);
+}
+
+/** A deterministic horizontal jitter in [-1, 1] from a replicate id, so dots never move between genes. */
+export function jitter(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 2001) / 1000 - 1;
+}
+
+export interface GroupValues {
+  group: string;
+  values: { rep: Replicate; value: number }[];
+  median: number | null;
+  q1: number | null;
+  q3: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+function quantile(sorted: number[], q: number): number {
+  if (!sorted.length) return NaN;
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+/** The gene's replicate values per group, in the comparison's group order; replicates with no value are left out. */
+export function groupValues(data: ComparisonData, geneRow: number): GroupValues[] {
+  const { info, pseudobulk } = data;
+  const n = info.replicates.length;
+  return info.groups.map((group) => {
+    const values: { rep: Replicate; value: number }[] = [];
+    if (pseudobulk) {
+      info.replicates.forEach((rep, j) => {
+        const v = pseudobulk[geneRow * n + j];
+        if (rep.group === group && Number.isFinite(v)) values.push({ rep, value: v });
+      });
+    }
+    const sorted = values.map((x) => x.value).sort((a, b) => a - b);
+    const has = sorted.length > 0;
+    return { group, values, median: has ? quantile(sorted, 0.5) : null, q1: has ? quantile(sorted, 0.25) : null, q3: has ? quantile(sorted, 0.75) : null, min: has ? sorted[0] : null, max: has ? sorted[sorted.length - 1] : null };
+  });
+}
+
+/** Subjects that appear in more than one group: their dots are joined by a line (a paired design). */
+export function pairs(groups: GroupValues[]): { subject: string; points: { group: string; value: number }[] }[] {
+  const by = new Map<string, { group: string; value: number }[]>();
+  for (const g of groups) for (const { rep, value } of g.values) by.set(rep.subject, [...(by.get(rep.subject) ?? []), { group: g.group, value }]);
+  return [...by.entries()].filter(([, pts]) => pts.length > 1).map(([subject, points]) => ({ subject, points }));
+}
+
+/** Round axis ticks: at most `n` of them spanning [lo, hi]. */
+export function ticks(lo: number, hi: number, n = 4): number[] {
+  if (!(hi > lo)) return [lo];
+  const raw = (hi - lo) / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => (hi - lo) / s <= n) ?? raw;
+  const out: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+
+/** One colour per group: the split key's annotation colours when it is also a categorical field with these
+ *  categories, else a fixed palette in group order. */
+export function groupColors(m: Manifest, info: ComparisonInfo): string[] {
+  const f = info.split ? fieldById(m, info.split) : undefined;
+  if (f && f.type === "categorical") {
+    const v = m.vocabularies[f.vocabulary];
+    if (info.groups.every((g) => v.categories.includes(g))) return info.groups.map((g) => v.colors[v.categories.indexOf(g)]);
+  }
+  return info.groups.map((_, i) => REGION_COLORS[i % REGION_COLORS.length]);
+}
