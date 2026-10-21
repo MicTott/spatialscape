@@ -96,6 +96,7 @@ def load_site_config(path: str | Path) -> SiteConfig:
 def copy_app(app_dir: Path, out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     shutil.copy2(app_dir / "index.html", out / "index.html")
+    (out / ".nojekyll").write_text("")  # GitHub Pages: serve the folder as is, no Jekyll pass over a bundle's thousands of files
     if (app_dir / "favicon.svg").exists():
         shutil.copy2(app_dir / "favicon.svg", out / "favicon.svg")
     assets_out = out / "assets"

@@ -91,7 +91,7 @@ def test_bundle_and_placeholder_entries(bundle):
 def test_site_build_from_a_folder_copies_links_or_references(bundle, fake_app, tmp_path):
     site = tmp_path / "site"
     build_site(site, [bundle], app_dir=fake_app, log=lambda *_: None)
-    assert (site / "index.html").exists() and (site / "assets" / "a.js").exists()
+    assert (site / "index.html").exists() and (site / "assets" / "a.js").exists() and (site / ".nojekyll").exists()
     assert (site / "synthetic" / "manifest.json").exists()
     reg = json.loads((site / "datasets.json").read_text())
     assert reg["title"] == "spatialscape" and reg["datasets"][0]["url"] == "synthetic"

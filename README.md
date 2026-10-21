@@ -36,6 +36,8 @@ Browsing a spatial transcriptomics or snRNA-seq dataset should feel immediate: e
 
 ## Quick start
 
+Until the first PyPI release, install from the repository (needs Node once; see [Getting started](https://mictott.github.io/spatialscape/docs/guide/getting-started#install)).
+
 ```bash
 pip install spatialscape
 spatialscape synth demo-src                      # two fake sections, an embedding and a dataset.yaml
@@ -45,17 +47,18 @@ spatialscape serve demo-src/bundles --open       # viewer + data at http://127.0
 
 ## Your own data
 
-Inside your project folder, from a saved R object (`SpatialExperiment` / `SingleCellExperiment` as `.rds` or `.rda`, parsed in Python, no R needed) or from AnnData / SpatialData files:
+From a folder of your project, from a saved R object (`SpatialExperiment` / `SingleCellExperiment` / Seurat as `.rds` or `.rda`, parsed in Python, no R needed) or from AnnData / SpatialData files:
 
 ```bash
-spatialscape init analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"   # writes dlpfc.yaml, a menu of the data
+mkdir -p spatialscape && cd spatialscape
+spatialscape init ../analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"   # writes ./dlpfc.yaml, a menu of the data, and prints what it assumed
 # edit dlpfc.yaml: keep the annotations you want, name them, pick colors and the opening gene
-spatialscape build dlpfc.yaml                                              # -> bundles/dlpfc; rerun after any edit
+spatialscape build dlpfc.yaml                                                 # -> bundles/dlpfc; rerun after any edit
 spatialscape serve bundles --open
-spatialscape site build bundles -o site                                    # viewer + gallery + data, ready to upload
+spatialscape site build bundles -o site                                       # viewer + gallery + data, ready to upload
 ```
 
-`init` maps the columns that look like spatial domains, cell types and QC metrics and lists every other column as a comment, so most edits are deleting or uncommenting a line. `build` is incremental: a rename or a new palette takes seconds, a re-exported file rebuilds that one sample. For a gallery of several datasets with a title, paper links and "coming soon" cards, `spatialscape site init` writes a `site.yaml` and `spatialscape site build site.yaml` builds it.
+`init` maps the columns that look like spatial domains, cell types and QC metrics, lists every other column as a comment, and says which platform, coordinate units and layer it took for granted, so most edits are deleting or uncommenting a line. `build` is incremental: a rename or a new palette takes seconds, a re-exported file rebuilds that one sample. For a gallery of several datasets with a title, paper links and "coming soon" cards, `spatialscape site init` writes a `site.yaml` and `spatialscape site build site.yaml` builds it.
 
 ```
 myproject/

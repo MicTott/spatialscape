@@ -1,7 +1,8 @@
 # Publish your own site
 
-This is the whole path from a saved object to a public URL with a landing gallery, without Node, without a
-server, and without touching the viewer's source. Ten minutes the first time.
+This is the whole path from a saved object to a public URL with a landing gallery, without a server and
+without touching the viewer's source. Plan an afternoon the first time: the data is read once, the yaml is
+worth a careful pass, and a host has to be set up. Later updates are one `build` and one upload.
 
 ## 1. Install
 
@@ -11,17 +12,24 @@ pip install spatialscape
 spatialscape --version
 ```
 
-The package includes the viewer, so everything below runs offline.
+The package includes the viewer, so everything below runs offline. Until the first PyPI release, install
+from the repository instead ([Getting started](./getting-started#install) has the three commands; Node is
+needed once to build the viewer into the package).
 
 ## 2. Describe and build each dataset
 
 Work inside your project folder:
 
 ```bash
-spatialscape init analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"   # writes dlpfc.yaml, a menu of the data
+mkdir -p spatialscape && cd spatialscape
+spatialscape init ../analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"   # writes ./dlpfc.yaml, a menu of the data
 # edit dlpfc.yaml: keep the annotations you want, name them, pick colors and the opening gene
-spatialscape build dlpfc.yaml                                              # -> bundles/dlpfc; validates itself, renders thumbnails
+spatialscape build dlpfc.yaml                                                 # -> bundles/dlpfc; validates itself, renders thumbnails
 ```
+
+If the site is going to GitHub Pages, put `sharded: false` at the top of each dataset yaml before the first
+build (Pages does not guarantee the Range requests sharded bundles need); `build` and `site build` then keep
+every rebuild unsharded.
 
 `init` reads the object once and writes a yaml in which the likely annotations are already mapped and
 every other column is a comment, so most edits are deleting or uncommenting a line; see
@@ -35,7 +43,8 @@ spatialscape serve bundles --open
 ```
 
 One origin serves the viewer, a gallery of everything in `bundles/`, and the data. Double-click a section,
-switch genes, lasso a region. Share nothing yet: this is your machine.
+switch genes, lasso a region. Share nothing yet: this is your machine, and a link copied here points at
+`127.0.0.1`.
 
 ## 4. Describe the gallery
 
@@ -71,28 +80,50 @@ spatialscape serve site                     # same thing a visitor will see
 
 ## 5. Deploy
 
-Upload `site/` to any static host. Three that work without configuration for small and medium data:
+`site/` is a plain folder. Which host depends on the size of the bundles (`du -sh site`).
 
-- **GitHub Pages**: push `site/` to a repository with Pages enabled (build demo bundles with `--no-shard`,
-  since Pages does not guarantee Range requests; keep total size under 1 GB).
-- **Cloudflare Pages / Netlify**: drag the folder in, or connect the repository.
-- **Any web server**: copy the folder into the document root.
+### Under 1 GB: GitHub Pages, start to finish
 
-For large data, keep the site small and host the bundles on object storage:
+Works for a lab's smaller datasets and every demo. The bundles must be unsharded (`sharded: false` in each
+dataset yaml, see step 2). The site goes on its own branch of any repository, so your analysis repository can
+host it without mixing the two:
 
 ```bash
-rclone copy bundles r2:my-bucket                 # or aws s3 sync bundles s3://my-bucket
+cd site
+git init -b gh-pages && git add -A && git commit -m "spatialscape site"
+git remote add origin git@github.com:YOURORG/YOURREPO.git
+git push -u origin gh-pages
+```
+
+Then, once, on GitHub: *Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch:
+`gh-pages`, folder `/ (root)`*. A minute later the site is at `https://YOURORG.github.io/YOURREPO/`; open it
+and run `spatialscape validate https://YOURORG.github.io/YOURREPO/dlpfc`. `site build` writes a `.nojekyll`
+file, so Pages serves the folder as is. To update: rebuild, then in `site/` commit and push again.
+
+Cloudflare Pages and Netlify take the same folder by drag and drop (no size rule beyond their plans, and
+both serve Range requests, so sharded bundles work there); any web server takes it in its document root.
+
+### Larger data: the site on Pages, the bundles on object storage
+
+Keep the site small and put each bundle on a bucket, one bundle folder at a time (never `bundles/` itself:
+its `.cache/` sibling holds the converted R objects and is not meant to travel):
+
+```bash
+rclone copy bundles/dlpfc r2:my-bucket/dlpfc     # or aws s3 sync bundles/dlpfc s3://my-bucket/dlpfc
 spatialscape validate https://data.example.org/dlpfc
 ```
 
 Then add `data_url: https://data.example.org` to `site.yaml` and run `site build` again: the site carries
 only the viewer and the registry (about 5 MB) and the data streams from the bucket.
-[Hosting](./hosting) has the CORS policy each host needs and what `validate` checks.
+[Hosting](./hosting) has the CORS policy each host needs, a copy-and-paste S3 + CloudFront setup, and what
+`validate` checks.
 
 ## 6. Share views, not screenshots
 
 Every control writes to the URL. `copy link` in the viewer header gives a link that reopens the same gene,
-annotation, filters, camera and split. `PNG` exports the frame with its legend for slides.
+annotation, filters, camera and split. A link copied from `spatialscape serve` points at `127.0.0.1` and
+only opens on your computer (the button says so); links from the published site are the ones to send. `PNG`
+exports the frame with its legend for slides.
 
 ## Changing things afterwards
 

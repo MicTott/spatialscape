@@ -18,7 +18,7 @@ spatialscape validate https://host/path/my_atlas
 
 Free egress, so a popular dataset does not run up a bill; storage is about $0.015 per GB-month.
 
-1. Create a bucket and upload: `rclone copy bundles/my_atlas r2:bucket/my_atlas`.
+1. Create a bucket and upload one bundle folder at a time: `rclone copy bundles/my_atlas r2:bucket/my_atlas` (not `bundles/` itself, whose `.cache/` sibling is local only).
 2. Attach a custom domain (the `r2.dev` endpoint is rate-limited and not cached).
 3. Set the bucket CORS policy:
 
@@ -32,8 +32,8 @@ Free egress, so a popular dataset does not run up a bill; storage is about $0.01
 ## AWS S3 + CloudFront
 
 A private bucket read by a CloudFront distribution: free egress up to a terabyte a month, byte ranges served
-natively, and a CORS policy applied by CloudFront so cached responses always carry the headers. Six calls
-with the AWS CLI (`BUCKET`, `ACCOUNT` and the ids they print are yours):
+natively, and a CORS policy applied by CloudFront so cached responses always carry the headers. Five calls
+with the AWS CLI set up the bucket and the two policies (`BUCKET` is a name you choose; export it first):
 
 ```bash
 aws s3api create-bucket --bucket $BUCKET --region us-east-1
@@ -43,16 +43,26 @@ OAC=$(aws cloudfront create-origin-access-control --origin-access-control-config
 RHP=$(aws cloudfront create-response-headers-policy --response-headers-policy-config '{"Name":"spatialscape-cors-range","CorsConfig":{"AccessControlAllowOrigins":{"Quantity":1,"Items":["*"]},"AccessControlAllowHeaders":{"Quantity":3,"Items":["Range","Content-Type","Origin"]},"AccessControlAllowMethods":{"Quantity":3,"Items":["GET","HEAD","OPTIONS"]},"AccessControlAllowCredentials":false,"AccessControlExposeHeaders":{"Quantity":4,"Items":["Content-Range","Content-Length","Accept-Ranges","ETag"]},"AccessControlMaxAgeSec":86400,"OriginOverride":true}}' --query ResponseHeadersPolicy.Id --output text)
 ```
 
-Then a distribution whose origin is `$BUCKET.s3.us-east-1.amazonaws.com` with that origin access control, the
-managed `CachingOptimized` cache policy, the managed `CORS-S3Origin` origin request policy, the response
-headers policy above, `GET HEAD OPTIONS` allowed, and `index.html` as the root object; finally a bucket
-policy that lets `cloudfront.amazonaws.com` read objects when `AWS:SourceArn` is the distribution's ARN.
-Upload the bundles and the site (the registry built with `data_url` set to the distribution's domain):
+Then create the distribution in the console (the CLI needs a long JSON for this): origin
+`$BUCKET.s3.us-east-1.amazonaws.com` with the origin access control `$OAC`, the managed `CachingOptimized`
+cache policy, the managed `CORS-S3Origin` origin request policy, the response headers policy
+`spatialscape-cors-range`, `GET, HEAD, OPTIONS` allowed, and `index.html` as the default root object. Note
+its id and domain, then let it read the bucket:
+
+```bash
+export ID=<the distribution id, E1ABC...>
+export DISTRIBUTION=$(aws cloudfront get-distribution --id $ID --query Distribution.DomainName --output text)   # dxxxx.cloudfront.net
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+aws s3api put-bucket-policy --bucket $BUCKET --policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Action\":\"s3:GetObject\",\"Resource\":\"arn:aws:s3:::$BUCKET/*\",\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::$ACCOUNT:distribution/$ID\"}}}]}"
+```
+
+Upload each bundle folder (not `bundles/` itself: its `.cache/` sibling stays home) and the site, built with
+`data_url` set to the distribution's domain:
 
 ```bash
 aws s3 sync bundles/my_atlas s3://$BUCKET/my_atlas --exclude "*/build.json" --exclude "build-info.json"
-spatialscape site build site.yaml -o site && aws s3 sync site s3://$BUCKET/
-spatialscape validate https://$DISTRIBUTION.cloudfront.net/my_atlas
+spatialscape site build site.yaml -o site && aws s3 sync site s3://$BUCKET/      # site.yaml: data_url: https://dxxxx.cloudfront.net
+spatialscape validate https://$DISTRIBUTION/my_atlas
 ```
 
 CloudFront caches for a day; after re-uploading a changed bundle, invalidate its paths
@@ -63,7 +73,7 @@ and egress entirely.
 
 ## GitHub Pages
 
-Fine for the app and for small demo bundles; not for real data (1 GB site limit, no guaranteed Range support). Build demo bundles with `--no-shard` so each gene is its own file.
+Fine for the app and for bundles that fit the 1 GB site limit; it does not guarantee Range support, so the bundles must be unsharded (`sharded: false` in the dataset yaml, or `build --no-shard`), which makes each gene its own file. [Publish your own site](./publish#under-1-gb-github-pages-start-to-finish) has the branch-and-push route; `site build` writes the `.nojekyll` file Pages needs.
 
 ## Your own server
 

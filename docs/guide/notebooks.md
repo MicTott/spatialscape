@@ -12,7 +12,10 @@ The first call builds the object the same way `build` would, straight from memor
 `~/.cache/spatialscape/show/<hash>`, where the hash covers the data and the settings. Showing the same object
 again is instant, and an edited object is new data. One server thread per Python process serves everything shown
 so far, so the viewer's gallery lists your earlier objects too. Outside a notebook, `s.url` is the address and
-`show(..., open_browser=True)` opens it.
+`show(..., open_browser=True)` opens it. The server lives in your Python process: in an interactive session it
+stays up between prompts, but a plain `python script.py` exits as soon as the script ends and takes the viewer
+with it, so end such a script with something that waits (`input("press Enter to stop")`, or a loop that polls
+`s.selection()`).
 
 ## What you can pass
 
@@ -62,6 +65,7 @@ saveRDS(spe, f <- tempfile(fileext = ".rds"))
 s <- ss$show(f, open_browser = TRUE)        # or rstudioapi::viewer(s$url)
 cells <- s$selection()                       # colnames(spe) inside the lasso
 spe[, cells]
+keep <- s$selection(as_mask = TRUE)          # or a logical vector over the columns
 ```
 
 The first call reads the object once (about as long as `readRDS` takes); later calls on the same file are instant.

@@ -11,7 +11,7 @@ The browser could not fetch `manifest.json`, or fetched it without the headers t
 
 ## Points are off the tissue
 
-The coordinates and the image are in different frames. Check `pixels_per_unit` (image pixels per coordinate unit) and whether a `transform` was applied to one but not the other. The build log prints the micron scale it inferred; compare it with what you expect (Visium: 100 µm between spot centers).
+The coordinates and the image are in different frames. Check `pixels_per_unit` (image pixels per coordinate unit) and whether a `transform` was applied to one but not the other. The build log prints the micron scale it inferred (`[<sample>] coordinates: 1 unit = <x> um`); compare it with what you expect (Visium: 100 µm between spot centers, so 1 unit is a fraction of a micron for full-resolution pixels).
 
 ## "cannot infer microns per coordinate unit"
 

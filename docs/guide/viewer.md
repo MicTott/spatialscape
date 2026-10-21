@@ -40,19 +40,19 @@ The tooltip lists the current gene's value, the filter gene's value if different
 
 ## Outlines
 
-Display → Outlines draws the boundaries of any categorical annotation as light, dark or colored strokes over whatever you are coloring by. Outlines are traced at build time; see [Building](./building#what-happens-per-sample).
+The Outlines section of the side panel lists the categorical annotations whose boundaries were traced at build time (every categorical field, by default); pick one to draw its boundaries over whatever you are coloring by, or *none*. The section is absent when the bundle has no outlines. See [Building](./building#what-happens-per-sample).
 
 ## Lasso
 
-Press `L` or the ⌒ lasso button, drag around a region, release. Selected cells get a white ring and the Selection panel shows counts per sample, the composition of every annotation, and the current gene's mean and percent expressing in the selection versus the whole sample. "export CSV" downloads `sample,cell_id` rows. `Esc` clears.
+Press `L` or the ⌒ lasso button, drag around a region, release. Selected cells get a white ring and the Selection panel shows counts per sample, the composition of every annotation, and the current gene's mean and percent expressing in the selection next to the same numbers over all cells of the sections the selection touches (shown as "vs … overall"). "export CSV" downloads `sample,cell_id` rows. `Esc` clears.
 
 ## Gene color scale
 
-Gene colors share one scale across all samples on screen, so the same color means the same log-normalized value in every section; the legend shows the numeric range. Tick *scale each sample to its own max* to stretch every section to its own maximum instead, which brings out structure in low-count platforms at the cost of comparability. The two gene sets of the **Blend** mode are scored as the mean log-normalized expression of their genes, on the same shared scale.
+Gene colors share one scale across all samples on screen, so the same color means the same log-normalized value in every section; the legend shows the numeric range. Every number the viewer shows for a gene (legend range, hover value, selection mean, dot plot, filter histogram) is reconstructed from the bundle's 8-bit storage, where each gene is kept as 256 levels between its minimum and maximum in that sample, so they are display summaries good to about 0.4% of a gene's range, not the values in your object; compute statistics on the object, with `s.selection()` from a [notebook](./notebooks) if the selection came from the viewer. Tick *scale each sample to its own max* to stretch every section to its own maximum instead, which brings out structure in low-count platforms at the cost of comparability. The two gene sets of the **Blend** mode are scored as the mean log-normalized expression of their genes, on the same shared scale.
 
 ## Sharing and export
 
-*copy link* in the panel header copies a URL that reproduces the whole view: dataset, coloring, filters, hidden categories, camera, split and point sizes. *PNG* downloads the current frame at screen resolution (2× on high-density displays) with the legend and scale bar drawn in. Press `?` for the list of keyboard and mouse shortcuts.
+*copy link* in the panel header copies a URL that reproduces the whole view: dataset, coloring, filters, hidden categories, camera, split and point sizes. From `spatialscape serve` that URL points at `127.0.0.1` and opens only on your computer (the button says "copied · local link"); links to send around come from a published site. *PNG* downloads the current frame at screen resolution (2× on high-density displays) with the legend and scale bar drawn in. Press `?` for the list of keyboard and mouse shortcuts.
 
 ## Point size
 

@@ -1,6 +1,8 @@
 # Inputs: what the CLI reads
 
-Nothing needs preparing: point `init` at what you have. A **sample** is one tissue section or one embedding; files give one sample each, an R object gives one per `sample_id` (or one embedding).
+Usually nothing needs preparing: point `init` at what you have, then read the `assumed for` block it prints
+(platform, coordinate units, the layer drawn) and fix whatever it got wrong in the yaml. The cases that need a
+hand (scale, a file that pools several sections, Ensembl ids, images) are on this page. A **sample** is one tissue section or one embedding; files give one sample each, an R object gives one per `sample_id` (or one embedding).
 
 | Input | Entry in the dataset yaml | Notes |
 |---|---|---|
