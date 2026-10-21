@@ -119,7 +119,7 @@ Everything in the viewer is laid out in **microns**, so Visium spots are 55 µm 
 
 1. `microns:` in `dataset.yaml` wins (`already_microns`, `microns_per_unit`, `spot_diameter_fullres`, `spot_spacing`, `scalefactors_json`).
 2. Xenium and MERFISH samples are assumed to be in microns.
-3. Visium samples look for `uns["spot_nn_spacing_level0_px"]`, then SpaceRanger scalefactors under `uns["spatial"]`.
+3. Visium samples look for `uns["spot_nn_spacing_level0_px"]`, then SpaceRanger scalefactors under `uns["spatial"]`, then a `spatial/scalefactors_json.json` next to the file (also when `images:` is listed or `[]`).
 4. Embeddings (`kind: embedding`) are rescaled so their longest side equals `extent` (default 5000).
 
 If none applies, the build stops with a message naming the sample.

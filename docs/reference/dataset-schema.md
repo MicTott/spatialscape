@@ -40,6 +40,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `glob` | pattern | | expands to one sample per match; `{name}`, `{stem}`, `{dir}`, `{i}` templates |
+| `overrides` | `{<sample>: {keys}}` | | with `glob` or an R object: settings for single samples, keyed by `{name}` (`{stem}` in flat layouts, or the rendered id); dicts merge, lists and scalars replace; an unknown sample name is an error. `{ Br9902_1: { images: [] } }` |
 | `path` ending in `.rds` / `.rda` | path | | an R object: converted by `build` into `bundles/.cache/<id>/` and expanded into one sample per `sample_col` value, or one embedding sample; `{name}` is the sample id. See [R objects as samples](../guide/dataset-yaml#r-objects-as-samples) |
 | `assay`, `sample_col`, `embedding`, `object` | string | `logcounts`, `sample_id`, UMAP, | R objects only: the assay drawn (for a Seurat object a layer of its gene assay, `data` or `counts`; its other assays become `peak: ` / `activity: ` / `motif: ` features), the column that splits samples, the reducedDims entry or Seurat reduction for objects without spatialCoords, the object to take from an `.rda` |
 | `id` | string | sanitized `{name}` | unique |

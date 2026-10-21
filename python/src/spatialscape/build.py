@@ -18,9 +18,9 @@ import scipy.sparse as sp
 from . import __version__
 from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
 from .convert import SourceStatus, expand_r_objects
-from .discover import auto_fields, auto_images, infer_field_spec
+from .discover import auto_fields, infer_field_spec
 from .expression import column_moments, detect_lognorm, get_matrix, log1p_cp10k, write_expression
-from .fingerprint import read_sidecar, sample_fingerprint, why_stale, write_sidecar
+from .fingerprint import read_sidecar, resolve_auto_images, sample_fingerprint, why_stale, write_sidecar
 from .geometry import default_point_radius, microns_per_unit, transform_points
 from .images import prepare_image, read_image_shape, write_ome_zarr
 from .manifest import (
@@ -145,14 +145,11 @@ def build_sample(
     if spec.fields == "auto":
         spec = spec.model_copy(update={"fields": auto_fields(adata, spec)})
         log(f"[{spec.id}] auto fields: {list(spec.fields)}")
-    if spec.images == "auto":
-        imgs, microns = auto_images(spec)
-        upd: dict = {"images": imgs}
-        if microns is not None and spec.microns == type(spec.microns)():
-            upd["microns"] = microns
-        spec = spec.model_copy(update=upd)
-        if imgs:
-            log(f"[{spec.id}] auto image: {imgs[0].path}")
+    if spec.images == "auto" or spec.microns == type(spec.microns)():
+        was_auto = spec.images == "auto"
+        spec = resolve_auto_images(spec)
+        if was_auto and spec.images:
+            log(f"[{spec.id}] auto image: {spec.images[0].path}")
     for fid, col in spec.fields.items():
         if fid not in vocab.fields:
             if col not in adata.obs:

@@ -48,6 +48,23 @@ samples:
     # not listed: sample_id, in_tissue, array_row, array_col (ids and layout columns)
 ```
 
+`init` prints what it took for granted, one block per entry, so nothing is silently assumed:
+
+```
+assumed for analysis/spe_dlpfc.rds:
+  platform: visium (guessed from array_col, array_row columns)
+  coordinates: full-resolution pixels; microns from the spot spacing (100 um) when `build` runs
+  expression: assay logcounts (also: counts); counts are log-normalized by build, anything else is taken as already log-normalized
+  annotations: domain <- BayesSpace_harmony_09 (9 levels), total_counts <- sum_umi, mito_percent <- expr_chrM_ratio
+```
+
+The platform is guessed from the columns: SpaceRanger's `array_row` / `array_col` mean Visium, or Visium HD
+above 20,000 observations; Xenium's `transcript_counts` / `cell_area` mean Xenium; with no evidence it is
+`visium` and the yaml's `platform:` comment says "the default". `--platform` overrides the guess. A column's
+note carries its NA count (`9 levels: L1, L2, ...; 120 NA`), and a single file that holds several sections
+(a `sample_id` or `capture_area` column with several values) gets a warning and a commented `subset:` line,
+because one entry draws them as one sample.
+
 Three things to know about the menu:
 
 - **What gets mapped.** The first column that looks like a spatial domain or cluster becomes `domain`, the
@@ -119,6 +136,7 @@ id.
 | `embedding` | UMAP if present | reducedDims entry for objects without spatialCoords |
 | `object` | | which object to take from an `.rda` that holds several |
 | `microns` | spot spacing (Visium) | `{ microns_per_unit: 0.2525 }` for Visium HD; Xenium and MERFISH objects are taken as microns |
+| `overrides` | | settings for single samples, keyed by sample id: `{ Br9902_1: { images: [] }, Br2743: { name: Br2743 (replicate) } }` |
 
 The cache keeps every colData column, so editing `fields:` never reconverts. Re-saving the object or
 changing `assay`, `sample_col`, `embedding` or `object` converts again and removes the old copy. The cache
@@ -129,7 +147,9 @@ is a sibling of the bundle, so uploading `bundles/<id>` never includes it.
 A sample may keep only part of a file: `subset: { column: broad_celltype, values: [Excitatory] }`. Three
 entries with the same `path` and different subsets turn one snRNA-seq object into three panels, which is how
 per-class UMAPs (excitatory, inhibitory, non-neuronal) are shown side by side. `layout: { columns: 3 }` then
-fixes the grid so rows and columns mean something (species by cell class, donor by condition).
+fixes the grid so rows and columns mean something (species by cell class, donor by condition). The same
+split turns one h5ad that holds several sections into one sample per section; `init` warns when it sees
+such a file and writes the first `subset:` line as a comment.
 
 ## Genome tracks for ATAC samples
 
@@ -222,6 +242,20 @@ A `glob:` entry expands to one sample per matching path, sorted. Inside that ent
 | `{i}` | the match index, from 0 |
 
 If `id` is omitted it defaults to a sanitized `{name}`.
+
+One sample of a glob (or of an R object) can differ from the rest through `overrides:`, a map from the
+sample's `{name}` (its `{stem}` in flat layouts, or its rendered id) to the keys that change. Dictionaries
+such as `fields` merge into the entry's; lists and scalars replace them. A key that names no sample is an
+error, so a typo cannot silently do nothing.
+
+```yaml
+  - glob: "hd/*/adata.h5ad"
+    platform: visium_hd
+    id: "hd_{name}"
+    overrides:
+      Br9902_1: { images: [] }                       # this section's H&E does not match its cells
+      Br8667_2: { fields: { note: qc_flag } }        # one more annotation on one section
+```
 
 ## `platforms` and `defaults`
 

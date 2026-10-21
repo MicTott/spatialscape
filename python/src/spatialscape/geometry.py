@@ -73,7 +73,9 @@ def microns_per_unit(spec: SampleSpec, sinput: SampleInput) -> float:
                     return v
     raise ValueError(
         f"sample {spec.id}: cannot infer microns per coordinate unit; set `microns:` "
-        "(already_microns | microns_per_unit | spot_diameter_fullres | spot_spacing | scalefactors_json)"
+        "(already_microns | microns_per_unit | spot_diameter_fullres | spot_spacing | scalefactors_json). "
+        "Coordinates already in microns (Xenium, MERFISH, most segmentation outputs): `platform: xenium` / `merfish`, "
+        "or `microns: { already_microns: true }`; Visium HD: `microns: { microns_per_unit: <SpaceRanger microns_per_pixel> }`"
     )
 
 

@@ -112,3 +112,69 @@ def test_init_on_an_embedding_object(tmp_path):
     assert "# embedding: UMAP" in text and "also: PCA" in text
     res = build_bundle(load_config(out), log=quiet)
     assert res.problems == [] and res.manifest.samples[0].kind == "embedding"
+
+
+def test_platform_is_guessed_from_the_columns():
+    from spatialscape.init import guess_platform
+
+    assert guess_platform(["array_row", "array_col", "cluster"], 4_000, spatial=True) == ("visium", "array_col, array_row columns")
+    assert guess_platform(["array_row", "array_col"], 300_000, spatial=True)[0] == "visium_hd"
+    assert guess_platform(["transcript_counts", "cell_area", "nucleus_area"], 120_000, spatial=True)[0] == "xenium"
+    assert guess_platform(["cluster"], 120_000, spatial=True)[0] == "xenium"  # cells, not spots
+    assert guess_platform(["cluster"], 3_000, spatial=True) == ("visium", None)  # the default, nothing said otherwise
+    assert guess_platform(["array_row"], 3_000, spatial=False) == ("snrnaseq", "no spatial coordinates")
+
+
+def test_describe_columns_counts_missing_values():
+    obs = pd.DataFrame({"label": pd.Categorical(["a", "b", None, "a"]), "score": [1.0, np.nan, 2.0, np.nan], "flag": [True, False, True, True]})
+    cols = {c.name: c for c in describe_columns(obs)}
+    assert cols["label"].na == 1 and cols["label"].note == "2 levels: a, b; 1 NA"
+    assert cols["score"].na == 2 and cols["score"].note.endswith("; 2 NA")
+    assert cols["flag"].na == 0 and "NA" not in cols["flag"].note
+
+
+def test_init_says_what_it_assumed_and_marks_the_guess_in_the_yaml(tmp_path):
+    import anndata as ad
+
+    from spatialscape.synthetic import make_synthetic
+
+    make_synthetic(tmp_path / "src", n_cells=50, n_genes=5)
+    a = ad.read_h5ad(tmp_path / "src" / "sampleA.h5ad")
+    a.obs["array_row"] = np.arange(a.n_obs) % 7
+    a.obs["array_col"] = np.arange(a.n_obs) // 7
+    a.write_h5ad(tmp_path / "src" / "sampleA.h5ad")
+    out = tmp_path / "demo.yaml"
+    r = runner.invoke(app, ["init", str(tmp_path / "src" / "*.h5ad"), "--id", "demo", "-o", str(out)])
+    assert r.exit_code == 0, r.output
+    assert "assumed for" in r.output and "platform: visium (guessed from array_col, array_row columns)" in r.output
+    assert "coordinates: full-resolution pixels; microns from the spot spacing" in r.output
+    assert "expression: X; counts are log-normalized by build" in r.output
+    assert "annotations: domain <- cluster (6 levels, 7 NA), total_counts <- total_counts" in r.output
+    text = out.read_text()
+    assert "platform: visium" in text and "guessed from array_col, array_row columns; or visium_hd, xenium, merfish" in text
+    assert "6 levels: " in text and "; 7 NA" in text  # the NA count sits in the column's note
+    assert yaml.safe_load(text)["samples"][0]["platform"] == "visium"
+    # given on the command line: the yaml says so, and nothing is guessed
+    r = runner.invoke(app, ["init", str(tmp_path / "src" / "*.h5ad"), "--platform", "visium_hd", "--id", "demo", "-o", str(out)])
+    assert r.exit_code == 0 and "platform: visium_hd (given)" in r.output and "set `microns: { microns_per_unit:" in r.output
+    assert "platform: visium_hd" in out.read_text() and "given; or visium, xenium, merfish" in out.read_text()
+
+
+def test_init_warns_when_one_file_holds_several_sections(tmp_path):
+    import anndata as ad
+
+    from spatialscape.synthetic import make_synthetic
+
+    make_synthetic(tmp_path / "src", n_cells=60, n_genes=5)
+    a = ad.read_h5ad(tmp_path / "src" / "sampleA.h5ad")
+    a.obs["sample_id"] = pd.Categorical(["Br1", "Br2", "Br3"] * (a.n_obs // 3))
+    a.write_h5ad(tmp_path / "src" / "pooled.h5ad")
+    out = tmp_path / "demo.yaml"
+    r = runner.invoke(app, ["init", str(tmp_path / "src" / "pooled.h5ad"), "--id", "demo", "-o", str(out)])
+    assert r.exit_code == 0, r.output
+    assert "pooled.h5ad holds 3 sections (sample_id: Br1, Br2, Br3)" in r.output and "subset: { column: sample_id, values: [Br1] }" in r.output
+    assert "sections: 3 in one file (sample_id: Br1, Br2, Br3), drawn as one sample" in r.output
+    text = out.read_text()
+    assert "# subset: { column: sample_id, values: [Br1] }" in text and "this file holds 3 sections" in text
+    r = runner.invoke(app, ["init", str(tmp_path / "src" / "sampleB.h5ad"), "--id", "demo", "-o", str(out)])
+    assert r.exit_code == 0 and "holds" not in r.output and "subset:" not in out.read_text()  # one section: no hint

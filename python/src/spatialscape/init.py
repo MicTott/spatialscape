@@ -37,6 +37,18 @@ QC_RE = {
     "mito_percent": re.compile(r"^(expr_chrM_ratio|subsets_Mito_percent|pct_counts_mt|percent\.mt|pct_mt|mito_percent|percent_mito|mt_frac|pct_mito|mito_frac)$", re.I),
 }
 EMBEDDING_PREFERENCE = ("UMAP", "umap", "X_umap", "UMAP-HARMONY", "UMAP_HARMONY", "UMAP.HARMONY")
+ARRAY_COLUMNS = {"array_row", "array_col", "in_tissue"}  # SpaceRanger's spot / bin grid
+CELL_COLUMNS = {"transcript_counts", "cell_area", "nucleus_area", "nucleus_count", "segmentation_method"}  # Xenium's cells.csv
+SAMPLE_COLUMN_RE = re.compile(r"^(sample_id|sample|sample_name|section|section_id|capture_area|slide|library_id|batch)$", re.I)
+VISIUM_MAX_OBS = 20_000  # a Visium capture area holds 4,992 spots (6.5 mm) or 14,336 (11 mm); more is HD bins or cells
+COORDINATE_NOTE = {
+    "visium": "full-resolution pixels; microns from the spot spacing (100 um) when `build` runs",
+    "visium_hd": "full-resolution pixels; set `microns: { microns_per_unit: <SpaceRanger microns_per_pixel> }`",
+    "xenium": "taken as microns",
+    "merfish": "taken as microns",
+    "snrnaseq": "the 2-D embedding, rescaled to a fixed extent",
+    "other": "taken as microns; set `microns:` otherwise",
+}
 GUIDE = "https://mictott.github.io/spatialscape/docs/guide/changes"
 
 
@@ -50,9 +62,15 @@ class Column:
     lo: float | None = None
     hi: float | None = None
     named: bool = True  # categorical: labels are words (CeA, L1) rather than bare cluster numbers
+    na: int = 0  # missing values (shown as NA in the viewer)
 
     @property
     def note(self) -> str:
+        base = self._note
+        return f"{base}; {self.na:,} NA" if self.na and self.kind in ("categorical", "numeric") else base
+
+    @property
+    def _note(self) -> str:
         if self.kind == "categorical":
             if self.levels > MAX_MENU_LEVELS:
                 return f"{self.levels} levels (too many for a legend)"
@@ -79,8 +97,9 @@ def describe_columns(obs: pd.DataFrame) -> list[Column]:
     for col in obs.columns:
         s = obs[col]
         name = str(col)
+        na = int(s.isna().sum())
         if str(s.dtype) in ("bool", "boolean"):
-            out.append(Column(name, "boolean"))
+            out.append(Column(name, "boolean", na=na))
         elif isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object or str(s.dtype) == "string":
             vals = s.dropna().astype(str)
             k = int(vals.nunique())
@@ -91,10 +110,11 @@ def describe_columns(obs: pd.DataFrame) -> list[Column]:
             else:
                 ex = [v if len(v) <= 18 else v[:17] + "…" for v in vals.unique()[:4]]
                 numeric_labels = vals.str.fullmatch(r"-?\d+(\.\d+)?").mean()
-                out.append(Column(name, "categorical", levels=k, examples=ex, named=bool(numeric_labels < 0.5)))
+                out.append(Column(name, "categorical", levels=k, examples=ex, named=bool(numeric_labels < 0.5), na=na))
         elif pd.api.types.is_numeric_dtype(s):
             v = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float, na_value=np.nan)
             finite = v[np.isfinite(v)]
+            na = int(v.size - finite.size)
             if not finite.size:
                 out.append(Column(name, "empty"))
                 continue
@@ -102,9 +122,9 @@ def describe_columns(obs: pd.DataFrame) -> list[Column]:
             # integer cluster ids (BayesSpace, Leiden from R) are labels, not measurements
             if 2 <= k <= MAX_MENU_LEVELS and np.all(finite == np.rint(finite)) and (DOMAIN_RE.search(name) or CELLTYPE_RE.search(name)):
                 ex = [str(int(x)) for x in np.unique(finite)[:4]]
-                out.append(Column(name, "categorical", levels=k, examples=ex, named=False))
+                out.append(Column(name, "categorical", levels=k, examples=ex, named=False, na=na))
             else:
-                out.append(Column(name, "numeric", lo=float(finite.min()), hi=float(finite.max())))
+                out.append(Column(name, "numeric", lo=float(finite.min()), hi=float(finite.max()), na=na))
         else:
             out.append(Column(name, "empty"))
     return out
@@ -174,6 +194,37 @@ def suggest_fields(columns: list[Column], *, skip: set[str] | None = None) -> Me
     return menu
 
 
+# ---------------------------------------------------------------- what the data looks like
+def guess_platform(columns: list[str], n_obs: int, *, spatial: bool) -> tuple[str, str | None]:
+    """The platform a file most likely came from, and the evidence (None when nothing said anything and the
+    answer is the default). SpaceRanger's grid columns mean Visium, or Visium HD when there are more
+    observations than a capture area has spots; Xenium's cell metrics mean cells; otherwise Visium."""
+    if not spatial:
+        return "snrnaseq", "no spatial coordinates"
+    cols = {str(c).lower() for c in columns}
+    grid = sorted(cols & ARRAY_COLUMNS)
+    if grid:
+        if n_obs > VISIUM_MAX_OBS:
+            return "visium_hd", f"{', '.join(grid)} columns and {n_obs:,} observations, more than a Visium capture area holds"
+        return "visium", f"{', '.join(grid)} columns"
+    cells = sorted(cols & CELL_COLUMNS)
+    if len(cells) >= 2:
+        return "xenium", f"{', '.join(cells)} columns"
+    if n_obs > VISIUM_MAX_OBS:
+        return "xenium", f"{n_obs:,} observations and no array_row / array_col: cells, not spots (Visium HD cells: set visium_hd)"
+    return "visium", None
+
+
+def sections_in(obs: pd.DataFrame) -> tuple[str, list[str]] | None:
+    """A column that splits one file into several sections (sample_id, capture_area, ...), with its values."""
+    for col in obs.columns:
+        if SAMPLE_COLUMN_RE.match(str(col)):
+            vals = [str(v) for v in pd.unique(obs[col].dropna().astype(str))]
+            if 2 <= len(vals) <= MAX_MENU_LEVELS:
+                return str(col), vals
+    return None
+
+
 # ---------------------------------------------------------------- one entry per argument
 @dataclass
 class EntryMenu:
@@ -194,6 +245,42 @@ class EntryMenu:
     embedding_key: str | None = None
     embeddings: list[str] = field(default_factory=list)
     table: str | None = None
+    platform_note: str = ""  # how the platform was chosen: given, guessed from ..., or the default
+    layers: list[str] = field(default_factory=list)  # other layers in the file (files only)
+    sections: tuple[str, list[str]] | None = None  # one file that holds several sections: (column, values)
+    n_obs: int | None = None
+
+    @property
+    def assumed(self) -> list[str]:
+        """What `init` took for granted about this entry, one line each, for the terminal."""
+        plat = f"{self.platform} ({self.platform_note})" if self.platform_note else self.platform
+        if self.embedding:
+            coords = COORDINATE_NOTE["snrnaseq"]
+        else:
+            coords = COORDINATE_NOTE.get(self.platform, COORDINATE_NOTE["other"])
+        if self.r_object:
+            expr = f"assay {self.assay}" + (f" (also: {', '.join(a for a in self.assays if a != self.assay)})" if len(self.assays) > 1 else "")
+        else:
+            expr = "X" + (f" (layers not drawn: {', '.join(self.layers)})" if self.layers else "")
+        expr += "; counts are log-normalized by build, anything else is taken as already log-normalized"
+        out = [f"platform: {plat}", f"coordinates: {coords}", f"expression: {expr}"]
+        m = self.menu
+        if m.mapped:
+            parts = []
+            for fid, v in m.mapped.items():
+                col = v if isinstance(v, str) else v["column"]
+                note = m.notes.get(fid, "")
+                levels = re.match(r"(\d+ levels)", note)
+                na = re.search(r"([\d,]+ NA)$", note)
+                extra = ", ".join(x for x in ((levels.group(1) if levels else ""), (na.group(1) if na else "")) if x)
+                parts.append(f"{fid} <- {col}" + (f" ({extra})" if extra else ""))
+            out.append("annotations: " + ", ".join(parts))
+        else:
+            out.append("annotations: none mapped (every column is listed as a comment)")
+        if self.sections:
+            col, vals = self.sections
+            out.append(f"sections: {len(vals)} in one file ({col}: {_join(vals, 4)}), drawn as one sample; `subset:` splits them")
+        return out
 
 
 def _safe(name: str) -> str:
@@ -226,13 +313,14 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
             samples = []
             note = f"{x.class_name}, {x.n_obs:,} cells; no sample_id column: set sample_col below"
             log(f"warning: {path.name} has no `sample_id` column; set `sample_col:` in the yaml to the column that separates samples")
-        plat = platform or "visium"
+        per_sample = x.n_obs // max(len(samples), 1)
+        plat, plat_note = _platform_choice(platform, list(x.obs.columns), per_sample, spatial=True)
         prefix, label = PLATFORM_PREFIX.get(plat, plat[:3]), PLATFORM_LABEL.get(plat, plat)
         return EntryMenu(
             source=_rel(path, base), source_note=note, r_object=True, embedding=False, platform=plat,
             id_tpl=f"{prefix}_{{name}}", name_tpl=f"{{name}} ({label})", group_tpl="{name}",
             menu=suggest_fields(cols, skip={sample_col}), samples=[_safe(s) for s in samples],
-            assay=assay, assays=list(x.assays), sample_col=sample_col,
+            assay=assay, assays=list(x.assays), sample_col=sample_col, platform_note=plat_note, n_obs=x.n_obs,
         )
     from .convert import pick_embedding
 
@@ -246,7 +334,15 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
         id_tpl=f"sn_{stem}", name_tpl=f"snRNA-seq ({stem})", group_tpl="snRNA-seq",
         menu=suggest_fields(cols), samples=[stem], assay=assay, assays=list(x.assays),
         embedding_key=emb, embeddings=list(x.reduced_dims), fragments={f.run: f.path for f in x.fragments},
+        platform_note="no spatialCoords in the object", n_obs=x.n_obs,
     )
+
+
+def _platform_choice(given: str | None, columns: list[str], n_obs: int, *, spatial: bool) -> tuple[str, str]:
+    if given:
+        return given, "given"
+    plat, why = guess_platform(columns, n_obs, spatial=spatial)
+    return plat, f"guessed from {why}" if why else "the default; nothing in the columns said otherwise"
 
 
 def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Path, log: Log) -> EntryMenu:
@@ -254,15 +350,24 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
 
     matches = sorted(_glob.glob(os.path.expanduser(pattern), recursive=True))
     cols: list[Column] = []
-    spatial_like = True
+    layers: list[str] = []
+    sections = None
+    n_obs = None
     if matches:
         pk = peek(Path(matches[0]), table)
         cols = describe_columns(pk.obs)
-        spatial_like = "spatial" in pk.obsm
+        layers = list(pk.layers)
+        n_obs = len(pk.obs)
+        plat, plat_note = _platform_choice(platform, list(pk.obs.columns), n_obs, spatial="spatial" in pk.obsm)
+        if plat != "snrnaseq":
+            sections = sections_in(pk.obs)
     else:
         log(f"warning: {pattern!r} matches nothing right now; the fields menu is empty and ids come from the files present at build time")
-    plat = platform or ("visium" if spatial_like or not matches else "snrnaseq")
+        plat, plat_note = (platform, "given") if platform else ("visium", "the default; no file to look at yet")
     embedding = plat == "snrnaseq"
+    if sections:
+        col, vals = sections
+        log(f"warning: {Path(matches[0]).name} holds {len(vals)} sections ({col}: {_join(vals, 4)}); one entry draws them as one sample. To split them, list the file once per section with `subset: {{ column: {col}, values: [{vals[0]}] }}`")
     # `{name}` is the parent folder (right for `<sample>/adata.h5ad`); `{stem}` is the file or store name
     # (right for `samples/<sample>.h5ad`). Pick whichever carries the sample name.
     stems = {Path(m).name.split(".")[0].lower() for m in matches}
@@ -273,7 +378,7 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     return EntryMenu(
         source=_rel(pattern, base), source_note=note, r_object=False, embedding=embedding, platform=plat,
         id_tpl=f"{prefix}_{var}", name_tpl=f"{var} ({label})", group_tpl="snRNA-seq" if embedding else var,
-        menu=suggest_fields(cols), samples=names, table=table,
+        menu=suggest_fields(cols), samples=names, table=table, platform_note=plat_note, layers=layers, sections=sections, n_obs=n_obs,
     )
 
 
@@ -303,7 +408,8 @@ def _pad(text: str, comment: str, width: int = 44) -> str:
 def _entry_lines(e: EntryMenu) -> list[str]:
     L: list[str] = []
     L.append(_pad(f"  - {'path' if e.r_object else 'glob'}: {_ystr(e.source)}", e.source_note))
-    L.append(_pad(f"    platform: {e.platform}", "" if e.embedding else "or visium_hd, xenium, merfish"))
+    others = ", ".join(p for p in ("visium", "visium_hd", "xenium", "merfish") if p != e.platform)
+    L.append(_pad(f"    platform: {e.platform}", "" if e.embedding else f"{e.platform_note}; or {others}"))
     if e.embedding:
         L.append("    kind: embedding")
         if not e.r_object:
@@ -339,6 +445,9 @@ def _entry_lines(e: EntryMenu) -> list[str]:
             L.append(_pad(f"    #   {field_id(c.name)}: {_ystr(c.name)}", c.note))
     if m.skipped:
         L.append(f"    # not listed: {', '.join(m.skipped)} (ids and layout columns)")
+    if e.sections:
+        col, vals = e.sections
+        L.append(_pad(f"    # subset: {{ column: {_ystr(col)}, values: [{_ystr(vals[0])}] }}", f"this file holds {len(vals)} sections ({_join(vals, 4)}); one entry per section splits them"))
     if e.fragments:
         L.append(_pad("    # tracks:", "genome tracks from the fragment files the object was built from (paths as recorded in it)"))
         L.append("    #   fragments:")

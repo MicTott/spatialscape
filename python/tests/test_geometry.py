@@ -16,3 +16,18 @@ def test_points_and_image_transform_agree():
             oy, ox = np.argwhere(out[0] == 255)[0]
             assert int(np.floor(pt[0])) == ox and int(np.floor(pt[1])) == oy, (flip, rot)
             assert out.shape[1:] == ((w, h) if rot in (90, 270) else (h, w))
+
+
+def test_microns_error_names_the_platform_shortcuts():
+    import pytest
+
+    from spatialscape.config import MicronsSpec, SampleSpec
+    from spatialscape.geometry import microns_per_unit
+    from spatialscape.readers import SampleInput
+
+    spec = SampleSpec(id="s", platform="other", path="x.h5ad", microns=MicronsSpec())
+    import anndata as ad
+
+    sinput = SampleInput(adata=ad.AnnData(np.zeros((3, 1), dtype=np.float32)), coords=np.zeros((3, 2)), gene_names=np.array(["G"]))
+    with pytest.raises(ValueError, match=r"`platform: xenium` / `merfish`.*already_microns: true.*Visium HD"):
+        microns_per_unit(spec, sinput)

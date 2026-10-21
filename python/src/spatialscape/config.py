@@ -315,7 +315,8 @@ class RObjectEntry(_Model):
     into one sample per `sample_col` value (objects with spatialCoords) or one embedding sample (objects without).
     Every other key of the entry (platform, templated id / name / group, fields, microns, ...) applies to those
     samples. For a Seurat object `assay` names a layer of the gene assay (`data`, `counts`; `logcounts` means
-    `data`), and its other assays become prefixed features (`peak: `, `activity: `, `motif: `)."""
+    `data`), and its other assays become prefixed features (`peak: `, `activity: `, `motif: `). `overrides:`
+    (`{<sample>: {...}}`, kept in `template`) changes single samples: `{ Br9902_1: { images: [] } }`."""
 
     path: Path
     sample_col: str = "sample_id"
@@ -479,6 +480,9 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
         pattern = entry.pop("glob", None)
         if pattern is None and is_r_object(entry.get("path")):
             continue
+        overrides = _check_overrides(entry.pop("overrides", None))
+        if pattern is None and overrides:
+            raise ValueError("`overrides` goes with `glob` (or an R object): a single-file entry takes its settings directly")
         if pattern is None:
             matches = [None]
         else:
@@ -490,6 +494,7 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
                 raise ValueError(f"glob matched nothing: {pattern} (paths in dataset.yaml are relative to its folder, {base})")
         names = [_template_vars(Path(m), i)["name"] for i, m in enumerate(matches) if m is not None]
         flat = len(set(names)) < len(names)  # samples/A.h5ad, samples/B.h5ad: the folder name is shared, the stem is the sample
+        used: set[str] = set()
         for i, m in enumerate(matches):
             e = dict(entry)
             if m is not None:
@@ -497,11 +502,32 @@ def expand_samples(raw: dict, base: Path) -> list[dict]:
                 vars_ = _template_vars(Path(m), i)
                 e = _render(e, vars_)
                 e.setdefault("id", re.sub(r"[^A-Za-z0-9_.-]+", "_", vars_["stem" if flat else "name"]))
+                # an override is keyed by the sample's `{name}` ({stem} for flat layouts) or by its id
+                key = next((k for k in (vars_["stem" if flat else "name"], vars_["name"], vars_["stem"], e["id"]) if k in overrides), None)
+                if key is not None:
+                    used.add(key)
+                    e = _deep_merge(e, overrides[key])
             merged = _merged_entry(e, raw)
             if m is not None:
                 merged = _render(merged, _template_vars(Path(m), i))
             out.append(merged)
+        unused = [k for k in overrides if k not in used]
+        if unused:
+            have = sorted({_template_vars(Path(m), i)["stem" if flat else "name"] for i, m in enumerate(matches) if m is not None})
+            raise ValueError(f"overrides name no sample: {', '.join(unused)} (samples of {pattern}: {', '.join(have[:12])}{', ...' if len(have) > 12 else ''})")
     return out
+
+
+def _check_overrides(value: Any) -> dict[str, dict]:
+    """`overrides: {<sample>: {<sample keys>}}`; the keys are checked when the merged samples are validated."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict) or not all(isinstance(v, dict) for v in value.values()):
+        raise ValueError("`overrides` must map sample names to settings, e.g. { Br9902_1: { images: [] } }")
+    for k, v in value.items():
+        if "glob" in v or "path" in v or "overrides" in v:
+            raise ValueError(f"overrides.{k}: `path`, `glob` and `overrides` cannot be overridden")
+    return {str(k): v for k, v in value.items()}
 
 
 def r_object_entries(raw: dict, base: Path) -> list[RObjectEntry]:
@@ -517,6 +543,7 @@ def r_object_entries(raw: dict, base: Path) -> list[RObjectEntry]:
         # validate the template now (platform, fields, microns, ...) so typos surface before a long conversion
         probe = _merged_entry({**entry, "path": "probe/adata.h5ad", "id": "probe"}, raw)
         probe.setdefault("platform", "other")
+        _check_overrides(probe.pop("overrides", None))
         SampleSpec.model_validate(_render(probe, _template_vars(Path("probe/adata.h5ad"), 0)))
         out.append(RObjectEntry(path=path, template=entry, index=i, **r_keys))
     return out

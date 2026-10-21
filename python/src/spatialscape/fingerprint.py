@@ -72,14 +72,17 @@ def _stat(path: Path | str) -> dict | None:
 
 
 def resolve_auto_images(spec: SampleSpec) -> SampleSpec:
-    """`images: auto` and the micron rule it implies, resolved the way build_sample does it."""
-    if spec.images != "auto":
+    """`images: auto` and the micron rule the files next to the sample imply (SpaceRanger scale factors), resolved
+    the way build_sample does it. The scale is taken even when the images are listed or switched off (`images: []`),
+    so dropping a section's image does not lose its scale."""
+    auto = spec.images == "auto"
+    if not auto and spec.microns != MicronsSpec():
         return spec
-    imgs, microns = auto_images(spec)
-    upd: dict = {"images": imgs}
+    imgs, microns = auto_images(spec if auto else spec.model_copy(update={"images": "auto"}))
+    upd: dict = {"images": imgs} if auto else {}
     if microns is not None and spec.microns == MicronsSpec():
         upd["microns"] = microns
-    return spec.model_copy(update=upd)
+    return spec.model_copy(update=upd) if upd else spec
 
 
 def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -> dict:

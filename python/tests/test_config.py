@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 import yaml
 
 from spatialscape.config import load_config
@@ -72,3 +73,31 @@ def test_field_map_long_form_sets_scale(tmp_path):
     )
     assert s.fields == {"mito": "chrM_ratio", "dom": "domain"}
     assert s.field_scales == {"mito": 100.0}
+
+
+def test_overrides_change_single_samples_of_a_glob(tmp_path):
+    make_synthetic(tmp_path / "src", n_cells=60, n_genes=5)
+    for d, f in (("d1", "sampleA"), ("d2", "sampleB")):
+        (tmp_path / "src" / d).mkdir()
+        (tmp_path / "src" / f"{f}.h5ad").rename(tmp_path / "src" / d / "adata.h5ad")
+    entry = {"glob": "*/adata.h5ad", "platform": "visium", "id": "vis_{name}", "name": "{name} (Visium)", "fields": {"cluster": "cluster"}}
+    p = tmp_path / "src" / "dataset.yaml"
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": [{**entry, "overrides": {"d2": {"name": "Second section", "images": [], "fields": {"counts": "total_counts"}}}}]}))
+    cfg = load_config(p)
+    a, b = cfg.samples
+    assert a.name == "d1 (Visium)" and a.images == "auto" and a.fields == {"cluster": "cluster"}
+    assert b.name == "Second section" and b.images == [] and b.fields == {"cluster": "cluster", "counts": "total_counts"}  # fields merge, lists replace
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": [{**entry, "overrides": {"vis_d1": {"group": "first"}}}]}))
+    assert load_config(p).samples[0].group == "first"  # the rendered id works as a key too
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": [{**entry, "overrides": {"d3": {"group": "x"}}}]}))
+    with pytest.raises(ValueError, match=r"overrides name no sample: d3 \(samples of \*/adata.h5ad: d1, d2\)"):
+        load_config(p)
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": [{**entry, "overrides": {"d1": {"glob": "x"}}}]}))
+    with pytest.raises(ValueError, match="cannot be overridden"):
+        load_config(p)
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": [{**entry, "overrides": {"d1": {"nope": 1}}}]}))
+    with pytest.raises(Exception, match="nope"):
+        load_config(p)
+    p.write_text(yaml.safe_dump({"id": "t", "name": "t", "samples": [{"path": "d1/adata.h5ad", "platform": "visium", "overrides": {"d1": {"group": "x"}}}]}))
+    with pytest.raises(ValueError, match="`overrides` goes with `glob`"):
+        load_config(p)

@@ -218,3 +218,16 @@ def test_fragment_records_become_run_and_barcode_columns():
     text = "\n".join(_entry_lines(e))
     assert "#   sample_column: fragment_run" in text and "#   barcode_column: fragment_barcode" in text and "by: [celltype]" in text
     assert "4S_Hb_KDM:" in text and "/proj/cellrangerARC/4S_Hb_KDM/outs/atac_fragments.tsv.gz" in text  # the path may be quoted
+
+
+def test_overrides_apply_to_the_samples_of_an_r_object(tmp_path):
+    p = _yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "visium", "id": "vis_{name}", "fields": {"celltype": "label"}, "overrides": {"B": {"name": "Section B", "images": []}}}])
+    cfg = load_config(p)
+    assert cfg.r_objects[0].template["overrides"] == {"B": {"name": "Section B", "images": []}}
+    r = build_bundle(cfg, log=quiet)
+    assert r.problems == [] and [s.id for s in r.manifest.samples] == ["vis_A", "vis_B"]
+    a, b = r.manifest.samples
+    assert a.images and a.name == "vis_A" and b.name == "Section B" and b.images == []
+    p = _yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "visium", "overrides": {"C": {"images": []}}}])
+    with pytest.raises(ValueError, match="overrides name no sample: C"):
+        build_bundle(load_config(p), log=quiet)

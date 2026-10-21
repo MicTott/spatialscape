@@ -43,7 +43,7 @@ def init(
     out: Path | None = typer.Option(None, "-o", "--out", help="Where to write the yaml. Default: `<id>.yaml` in the current folder.", show_default=False),
     dataset_id: str | None = typer.Option(None, "--id", help="Dataset id: used in `?d=<id>` and as the bundle folder name. Default: the object's file name, or the folder a glob starts in.", show_default=False),
     name: str | None = typer.Option(None, "--name", help="Human-readable dataset name. Default: the id, prettified.", show_default=False),
-    platform: str | None = typer.Option(None, "--platform", help="Platform of the spatial samples: `visium`, `visium_hd`, `xenium`, `merfish` or `other`. Default: `visium`. Objects and files without spatial coordinates become `snrnaseq` embeddings regardless.", show_default=False),
+    platform: str | None = typer.Option(None, "--platform", help="Platform of the spatial samples: `visium`, `visium_hd`, `xenium`, `merfish` or `other`. Default: guessed from the columns (`array_row` / `array_col` mean Visium, or Visium HD above 20,000 observations; Xenium's cell metrics mean Xenium), else `visium`; the yaml says which. Objects and files without spatial coordinates become `snrnaseq` embeddings regardless.", show_default=False),
     table: str | None = typer.Option(None, "--table", help="Table key inside a SpatialData store.", show_default=False),
 ):
     """Write a dataset yaml that doubles as a menu of what the data contains.
@@ -61,6 +61,10 @@ def init(
     if r.samples:
         typer.echo(f"  {len(r.samples)} sample{'s' if len(r.samples) != 1 else ''}: {', '.join(r.samples[:8])}{', ...' if len(r.samples) > 8 else ''}")
     typer.echo(f"  annotations mapped: {', '.join(r.mapped) or 'none'}; {r.commented} more column{'s' if r.commented != 1 else ''} listed as comments")
+    for e in r.entries:
+        typer.echo(f"  assumed for {e.source}:")
+        for line in e.assumed:
+            typer.echo(f"    {line}")
     typer.echo(f"  next: edit {r.out.name} (names, colors, which annotations), then `spatialscape build {r.out}`")
 
 

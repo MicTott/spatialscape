@@ -15,7 +15,17 @@ The coordinates and the image are in different frames. Check `pixels_per_unit` (
 
 ## "cannot infer microns per coordinate unit"
 
-Add a `microns:` block to the sample or its platform block. See [Getting the scale right](./preparing-data#getting-the-scale-right).
+The sample is neither a Visium file with SpaceRanger scale factors nor a platform whose coordinates are known
+to be microns. Three usual answers:
+
+- coordinates already in microns (Xenium, MERFISH, most segmentation outputs): `platform: xenium` /
+  `merfish`, or `microns: { already_microns: true }` on another platform;
+- Visium HD: `microns: { microns_per_unit: <SpaceRanger microns_per_pixel> }`;
+- Visium without scale factors in the file: `microns: { spot_spacing: <pixels between spot centres> }` or
+  `{ scalefactors_json: spatial/scalefactors_json.json }`.
+
+`images: []` on a SpaceRanger-layout sample keeps the scale factors next to it. See
+[Getting the scale right](./preparing-data#getting-the-scale-right).
 
 ## Gene search does not find a gene
 

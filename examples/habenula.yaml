@@ -81,6 +81,9 @@ samples:
       hd_ficture: ficture_cluster
       hd_banksy: banksy_cluster
       donor: sample_id
+    overrides:                     # per-sample exceptions, keyed by sample_id
+      Br9902_1: { images: [] }     # the lowres H&E stored for Br9902 does not register with its cells (a third of them fall on
+      Br9902_2: { images: [] }     # background whichever way it is flipped), so these two sections are drawn without an image
 
   # Visium (spot level): three donors across four anterior-posterior levels of the habenula.
   - path: habenula-src/spe_visium_habenula_atlas.rds
