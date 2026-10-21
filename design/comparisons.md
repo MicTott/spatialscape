@@ -1,6 +1,6 @@
 # Comparisons: case/control results in the viewer
 
-Branch `comparisons`. Status: M1 (sample metadata, panes) and M2 (comparisons in the bundle) built; M3, the Compare panel, next. Last edited 2026-10-21.
+Branch `comparisons`. Status: M1 to M4 built (sample metadata and panes, comparisons in the bundle, the Compare panel, the notebook hook); the manual pass on real data and Safari remains. Last edited 2026-10-21.
 
 Deviations from the plan, decided while building M1: the *split by* control and *match scale* live in the
 top bar next to the lasso and the snRNA-seq control, not in a new Views section, so everything about what is

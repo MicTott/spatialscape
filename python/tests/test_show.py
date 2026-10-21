@@ -171,3 +171,36 @@ def test_regions_drawing_saves_loads_and_preloads(tmp_path, cache):
     with pytest.raises(ValueError, match="not a regions file"):
         (tmp_path / "bad.json").write_text("[]")
         s3.load_regions(tmp_path / "bad.json")
+
+
+def test_show_takes_sample_metadata_and_comparisons_from_the_session(tmp_path, cache):
+    import pandas as pd
+
+    make_synthetic(tmp_path / "src", n_cells=120, n_genes=6, comparisons=True)
+    parts = [ad.read_h5ad(tmp_path / "src" / f"sample{x}.h5ad") for x in "ABCD"]
+    for a, mouse in zip(parts, ["m1", "m2", "m3", "m4"], strict=True):
+        a.obs["mouse"] = mouse
+    adata = ad.concat(parts, label="section", keys=["A", "B", "C", "D"], index_unique="-")
+    adata.obs["condition"] = adata.obs["condition"].astype(str)
+    adata.uns["spot_nn_spacing_level0_px"] = parts[0].uns["spot_nn_spacing_level0_px"]  # concat drops uns; the scale rule needs it
+    logs: list[str] = []
+    s = spatialscape.show(adata, sample="section", meta={"condition": "condition", "mouse": "mouse"}, log=logs.append)
+    m = json.loads((s.bundle / "manifest.json").read_text())
+    assert [k["id"] for k in m["meta"]] == ["condition", "mouse"] and {x["id"]: x["meta"] for x in m["samples"]}["C"] == {"condition": "stress", "mouse": "m3"}
+    # a test run in the session, handed back as data frames
+    res = pd.read_csv(tmp_path / "src" / "de" / "stress_vs_control.csv")
+    pb = pd.read_csv(tmp_path / "src" / "de" / "pseudobulk.csv")
+    s.add_comparison("Stress vs control", res, pb, groups=["control", "stress"], units="log2 mean+1", description="t-test on per-mouse pseudobulk", log=logs.append)
+    m = json.loads((s.bundle / "manifest.json").read_text())
+    [c] = m["comparisons"]
+    assert c["id"] == "stress_vs_control" and c["split"] == "condition" and c["link"] == "mouse" and c["nReplicates"] == 4 and c["hasPseudobulk"]
+    doc = json.loads((s.bundle / "comparisons" / "stress_vs_control" / "comparison.json").read_text())
+    assert {r["id"]: r["samples"] for r in doc["replicates"]} == {"m1": ["A"], "m2": ["B"], "m3": ["C"], "m4": ["D"]}  # replicates found their sections through the meta
+    assert any("re-display the session" in line for line in logs)
+    # the same comparison again replaces itself; one given at show() time is added after the build
+    s.add_comparison("Stress vs control", res, pb, groups=["control", "stress"], log=logs.append)
+    assert len(json.loads((s.bundle / "manifest.json").read_text())["comparisons"]) == 1
+    s2 = spatialscape.show(adata, sample="section", meta={"condition": "condition", "mouse": "mouse"}, comparisons=[{"name": "Again", "results": res, "groups": ["control", "stress"]}], log=logs.append)
+    assert s2.key == s.key and {c["id"] for c in json.loads((s2.bundle / "manifest.json").read_text())["comparisons"]} == {"stress_vs_control", "again"}
+    _post(s.api, s.key, {"C": [0, 1]})
+    assert len(s.selection()) == 2  # selections still map after comparisons were added

@@ -26,6 +26,8 @@ with it, so end such a script with something that waits (`input("press Enter to 
 | `color` | an obs column or a gene to color by at first |
 | `sample` | an obs column that splits the object into one panel per value (donors, sections) |
 | `fields` | extra obs columns to expose, a `{field id: column}` map, or `"auto"` for every usable column; by default the same heuristics as `init` pick domains, cell types and QC |
+| `meta` | sample metadata, `{key: obs column}` with one value per sample (`{"condition": "condition", "mouse": "mouse"}`): the viewer splits the canvas by these keys, and comparisons link their replicates through them |
+| `comparisons` | results of tests you ran, each a dict with the arguments of `add_comparison()` below, added once the object is built |
 | `layer`, `normalized`, `platform`, `name`, `height` | as in [dataset.yaml](./dataset-yaml) |
 
 ## From a lasso to a variable
@@ -54,6 +56,26 @@ switching between cell type maps and genes while you draw. For data shown from a
 selection comes back as the cell ids. Under the hood the viewer posts the selection to the session's own server
 (`/_api/selection`); a viewer served from anywhere else never makes that request.
 
+## From a test to the tissue
+
+Run the test where you always do, then hand its tables back to the session:
+
+```python
+s = spatialscape.show(adata, sample="section", meta={"condition": "condition", "mouse": "mouse"})
+cells = s.selection()                          # lasso a region, then pseudobulk and test it in scanpy, pyDESeq2, decoupler, ...
+res, pb = my_test(adata[cells])                # a results table (one row per gene) and the per-mouse values it was fit on
+s.add_comparison("Stress vs control, lassoed region", res, pb, groups=["control", "stress"], units="log2 CPM",
+                 description="pyDESeq2 on per-mouse pseudobulk of the lassoed cells")
+s                                              # re-display: the Compare section lists it
+```
+
+`add_comparison` takes data frames or paths and the same keys as a [`comparisons:` entry](./dataset-yaml#comparisons-results-of-a-test-next-to-the-sections)
+(`replicates`, `population`, `split`, `link`, `columns`). It writes the comparison into the session's bundle
+and its manifest without rebuilding the object, so iterating on a test costs nothing; a comparison with the
+same name replaces the previous one. Replicates find their sections through the `meta` keys (a `mouse` id that
+matches a section's `meta.mouse`), the split key follows from the groups, and the panel does the rest:
+click a gene in the table, see its dots per mouse and the gene on every section side by side.
+
 ## From R
 
 `show()` reads R objects, so one `saveRDS` and reticulate are all an R session needs:
@@ -66,6 +88,7 @@ s <- ss$show(f, open_browser = TRUE)        # or rstudioapi::viewer(s$url)
 cells <- s$selection()                       # colnames(spe) inside the lasso
 spe[, cells]
 keep <- s$selection(as_mask = TRUE)          # or a logical vector over the columns
+s$add_comparison("Stress vs control", results_df, pseudobulk_df, groups = list("control", "stress"))   # data frames convert through reticulate
 ```
 
 The first call reads the object once (about as long as `readRDS` takes); later calls on the same file are instant.

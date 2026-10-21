@@ -100,8 +100,9 @@ def _coords_for(adata, coords: str | None) -> str:
     return f"obsm/{emb}"
 
 
-def _config_for_adata(adata, *, key: str, name: str, coords: str, platform: str | None, sample: str | None, fields, color: str | None, layer: str, normalized: str):
-    """A DatasetConfig for one in-memory object: `init`'s column heuristics, one sample per value of `sample`."""
+def _config_for_adata(adata, *, key: str, name: str, coords: str, platform: str | None, sample: str | None, fields, color: str | None, layer: str, normalized: str, meta: dict[str, str] | None = None):
+    """A DatasetConfig for one in-memory object: `init`'s column heuristics, one sample per value of `sample`, and
+    sample metadata (`meta`: key -> obs column constant within each sample) for splitting the view and comparisons."""
     from .config import DatasetConfig, ExpressionSpec, SampleSpec, SubsetSpec
     from .discover import field_id
     from .init import describe_columns, suggest_fields
@@ -136,7 +137,19 @@ def _config_for_adata(adata, *, key: str, name: str, coords: str, platform: str 
         first_cat = next((f for f, c in fmap.items() if isinstance(c, str) and not pd.api.types.is_numeric_dtype(obs[c])), None)
         if first_cat:
             default_color = {"field": first_cat}
-    base: dict[str, Any] = {"platform": platform, "kind": "spatial" if spatial else "embedding", "path": Path(f"memory:{key}"), "coords": coords, "expression": ExpressionSpec(layer=layer, normalized=normalized), "fields": fmap, "images": []}
+    for k, col in (meta or {}).items():
+        if col not in obs:
+            raise KeyError(f"meta: obs column {col!r} (key {k}) not found")
+    base: dict[str, Any] = {
+        "platform": platform,
+        "kind": "spatial" if spatial else "embedding",
+        "path": Path(f"memory:{key}"),
+        "coords": coords,
+        "expression": ExpressionSpec(layer=layer, normalized=normalized),
+        "fields": fmap,
+        "images": [],
+        "meta": {k: {"column": col} for k, col in (meta or {}).items()},
+    }
     specs: list[SampleSpec] = []
     rows: dict[str, np.ndarray] = {}
     if sample is None:
@@ -286,6 +299,70 @@ class Session:
         out.write_text(json.dumps({"spatialscape_regions": 1, "dataset": self.key, "groups": doc.get("groups") or []}))
         return out
 
+    def add_comparison(
+        self,
+        name: str,
+        results,
+        pseudobulk=None,
+        replicates=None,
+        *,
+        id: str | None = None,
+        groups: list[str] | None = None,
+        units: str | None = None,
+        description: str | None = None,
+        population: dict | None = None,
+        split: str | None = None,
+        link: str | None = None,
+        columns: dict | None = None,
+        log: Log = print,
+    ) -> Session:
+        """Put the results of a test you ran next to the sections: `results` (one row per gene), `pseudobulk`
+        (genes x replicates) and `replicates` (id, group, subject) as data frames or paths, with the same keys as a
+        `comparisons:` entry in a dataset yaml. Written into this session's bundle and its manifest; re-display the
+        session (or reload the viewer) to see the Compare section. Returns the session, so calls chain."""
+        from .build import gene_union, read_manifest
+        from .comparisons import write_comparison
+        from .config import ComparisonSpec
+
+        if self.bundle.is_symlink():
+            raise ValueError("this session shows a bundle built elsewhere; add the comparison to its dataset yaml under `comparisons:` and run `build`")
+        cid = id or re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("_").lower() or "comparison"
+        src = self.bundle / "comparisons-src" / cid
+        src.mkdir(parents=True, exist_ok=True)
+
+        def table(obj, stem: str) -> Path | None:
+            if obj is None:
+                return None
+            if isinstance(obj, (str, Path)):
+                return Path(obj).expanduser().resolve()
+            p = src / f"{stem}.csv"
+            df = obj if isinstance(obj, pd.DataFrame) else pd.DataFrame(obj)
+            df.to_csv(p, index=not isinstance(df.index, pd.RangeIndex))  # a gene index (limma, Seurat) is kept as the first column
+            return p
+
+        spec = ComparisonSpec(
+            id=cid,
+            name=name,
+            description=description,
+            results=table(results, "results"),
+            pseudobulk=table(pseudobulk, "pseudobulk"),
+            replicates=table(replicates, "replicates"),
+            groups=groups,
+            units=units,
+            population=population,
+            split=split,
+            link=link,
+            columns=columns or {},
+        )
+        manifest = read_manifest(self.bundle)
+        if manifest is None:
+            raise FileNotFoundError(f"{self.bundle} has no manifest.json")
+        info = write_comparison(self.bundle, spec, manifest.samples, manifest.meta, gene_union(self.bundle, manifest.samples), log=log)
+        manifest.comparisons = [c for c in manifest.comparisons if c.id != cid] + [info]
+        (self.bundle / "manifest.json").write_text(manifest.model_dump_json(indent=1, exclude_none=True))
+        log(f"comparison {cid}: {info.nGenes:,} genes, {info.nReplicates} replicates; re-display the session to see it")
+        return self
+
     def load_regions(self, path) -> int:
         """Hand a saved drawing to the session; the viewer picks it up when it (re)opens this dataset. Returns the
         number of areas. Cell membership follows once the viewer has recomputed it, so call regions() after that."""
@@ -374,6 +451,8 @@ def show(
     port: int | None = None,
     open_browser: bool = False,
     regions=None,
+    meta: dict[str, str] | None = None,
+    comparisons: list[dict] | None = None,
     verbose: bool = False,
     log: Log = print,
 ) -> Session:
@@ -383,6 +462,9 @@ def show(
     color: an obs column or a gene to color by at first. coords: obsm key (default: spatial, else the UMAP-like
     one). sample: obs column that splits the object into one panel per value. fields: obs columns to expose
     besides the ones picked automatically, a {field id: column} map, or "auto" for every usable column.
+    meta: sample metadata, {key: obs column} with one value per sample (condition, mouse, ...): the viewer splits
+    the canvas by these keys and comparisons link their replicates through them. comparisons: results of tests
+    you ran, each a dict with the arguments of Session.add_comparison(), added once the object is built.
     regions: a drawing saved by save_regions() or the viewer's *save* button, restored when the viewer opens.
     """
     from .build import build_dataset
@@ -399,11 +481,11 @@ def show(
 
         adata = data
         coords = _coords_for(adata, coords)
-        params = {"coords": coords, "sample": sample, "platform": platform, "fields": fields, "color": color, "layer": layer, "normalized": normalized, "recipe": 2}
+        params = {"coords": coords, "sample": sample, "platform": platform, "fields": fields, "color": color, "layer": layer, "normalized": normalized, "meta": meta, "recipe": 2}
         name = name or f"AnnData {adata.n_obs:,} cells x {adata.n_vars:,} features"
         # the menu decides which obs columns are shown; they must be part of the hash, or re-clustering shows stale labels
-        cfg, rows = _config_for_adata(adata, key="pending", name=name, coords=coords, platform=platform, sample=sample, fields=fields, color=color, layer=layer, normalized=normalized)
-        used_cols = sorted({c for c in [sample, color] if c} | {c for sp in cfg.samples for c in (list(map(str, adata.obs.columns)) if sp.fields == "auto" else sp.fields.values())})
+        cfg, rows = _config_for_adata(adata, key="pending", name=name, coords=coords, platform=platform, sample=sample, fields=fields, color=color, layer=layer, normalized=normalized, meta=meta)
+        used_cols = sorted({c for c in [sample, color] if c} | set((meta or {}).values()) | {c for sp in cfg.samples for c in (list(map(str, adata.obs.columns)) if sp.fields == "auto" else sp.fields.values())})
         key = _hash_adata(adata, params, obs_columns=used_cols, obsm_key=coords[5:] if coords.startswith("obsm/") else None, layer=layer)
         cfg.id = key
         for sp in cfg.samples:
@@ -432,6 +514,8 @@ def show(
     if regions is not None:
         n = session.load_regions(regions)
         log(f"regions: {n} area{'s' if n != 1 else ''} from {regions}, restored when the viewer opens")
+    for c in comparisons or []:
+        session.add_comparison(**c, log=blog)
     return session
 
 
