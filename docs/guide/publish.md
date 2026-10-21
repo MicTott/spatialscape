@@ -12,9 +12,7 @@ pip install spatialscape
 spatialscape --version
 ```
 
-The package includes the viewer, so everything below runs offline. Until the first PyPI release, install
-from the repository instead ([Getting started](./getting-started#install) has the three commands; Node is
-needed once to build the viewer into the package).
+The package includes the viewer, so everything below runs offline.
 
 ## 2. Describe and build each dataset
 

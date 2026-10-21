@@ -19,7 +19,7 @@ spatialscape --version
 
 Python 3.11 or newer. `sscape` is a short alias for every command.
 
-::: details Not on PyPI yet, or you want the development version
+::: details The development version
 The package carries the built viewer, so an install from the repository needs Node once:
 
 ```bash

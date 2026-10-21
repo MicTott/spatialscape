@@ -36,8 +36,6 @@ Browsing a spatial transcriptomics or snRNA-seq dataset should feel immediate: e
 
 ## Quick start
 
-Until the first PyPI release, install from the repository (needs Node once; see [Getting started](https://mictott.github.io/spatialscape/docs/guide/getting-started#install)).
-
 ```bash
 pip install spatialscape
 spatialscape synth demo-src                      # two fake sections, an embedding and a dataset.yaml
