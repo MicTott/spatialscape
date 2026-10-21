@@ -19,6 +19,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `feature_groups` | list of `{id, name, pattern, strip, units}` | `[]` | regex over var names |
 | `fields` | list of field specs | `[]` | declarations; undeclared fields are inferred |
 | `meta` | list of `{id, name, levels}` | `[]` | sample metadata keys: display name and level order; keys used only on samples need no entry. See [Sample metadata](../guide/dataset-yaml#sample-metadata) |
+| `comparisons` | list of `{id, name, description, results, pseudobulk, replicates, groups, units, population, split, link, columns}` | `[]` | differential expression results fit upstream: `results` (one row per gene), `pseudobulk` (genes × replicates), `replicates` (id, group, subject), `groups` in pane order, `population` `{field, value}`, `split` / `link` meta keys, `columns` `{results: {role: column}, replicates: {role: column}}`. See [Comparisons](../guide/dataset-yaml#comparisons-results-of-a-test-next-to-the-sections) |
 | `defaults` | mapping | `{}` | merged into every sample |
 | `platforms` | `{platform: mapping}` | `{}` | merged into samples of that platform |
 | `samples` | list of sample entries | required | may contain `glob:` entries |

@@ -57,6 +57,25 @@ export interface MetaKey {
   name: string;
   levels: string[]; // declared order first, then values in sample order
 }
+/** A differential expression result stored under comparisons/<id>/ (results.json, pseudobulk.zarr, comparison.json). */
+export interface ComparisonInfo {
+  id: string;
+  name: string;
+  description?: string | null;
+  path: string;
+  groups: string[]; // pane and plotting order; the contrast is the last against the first
+  units?: string | null;
+  population?: { field: string; value: string } | null;
+  split?: string | null; // sample meta key whose levels are the groups
+  link?: string | null;
+  nGenes: number;
+  nReplicates: number;
+  nUnmatched: number;
+  hasP: boolean;
+  hasPadj: boolean;
+  hasMean: boolean;
+  hasPseudobulk: boolean;
+}
 export interface Sample {
   id: string;
   name: string;
@@ -127,6 +146,7 @@ export interface Manifest {
   samples: Sample[];
   thumbnailSample?: string; // sample drawn on the dataset thumbnail
   meta?: MetaKey[]; // the sample metadata keys the viewer can split the canvas by
+  comparisons?: ComparisonInfo[];
 }
 
 export function assertManifest(m: unknown): asserts m is Manifest {

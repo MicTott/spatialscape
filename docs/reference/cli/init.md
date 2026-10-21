@@ -14,7 +14,7 @@ spatialscape init <PATHS>... [OPTIONS]
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `PATHS` | text | *required* | What to describe: R objects (`.rds` / `.rda` holding a SpatialExperiment or SingleCellExperiment) and/or globs of sample files such as `'data/*/adata.h5ad'` (quoted, so the shell does not expand them). One `samples:` entry per argument. |
+| `PATHS` | text | *required* | What to describe: R objects (`.rds` / `.rda` holding a SpatialExperiment, SingleCellExperiment or Seurat object), globs of sample files such as `'data/*/adata.h5ad'` (quoted, so the shell does not expand them), and results tables of differential expression tests (`.csv` / `.tsv` / `.parquet`, one row per gene). One `samples:` entry per object or glob, one `comparisons:` entry per table. |
 
 ## Options
 

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from .comparisons import RESULT_ROLES, gene_candidates, is_table, map_columns, read_table
 from .config import is_r_object
 from .discover import SKIP_COLUMNS, field_id, is_textual
 
@@ -338,6 +339,67 @@ class EntryMenu:
         return out
 
 
+@dataclass
+class ComparisonMenu:
+    """One `comparisons:` entry proposed from a results table."""
+
+    source: str  # path relative to the yaml
+    id: str
+    name: str
+    columns: dict[str, str]  # role -> column taken
+    n_rows: int
+    groups: list[str] | None  # from a `<case>_vs_<reference>` file name
+    other_columns: list[str]
+
+    @property
+    def assumed(self) -> list[str]:
+        taken = ", ".join(f"{role} <- {col}" for role, col in self.columns.items())
+        out = [f"comparison {self.id}: {taken}; {self.n_rows:,} rows"]
+        out.append(f"groups: {', '.join(self.groups)} (from the file name; the contrast is the last against the first)" if self.groups else "groups: not in the file name; set `groups:` or give a replicate sheet")
+        out.append("replicate values: none yet; add `pseudobulk:` (genes x replicates) for the dots per mouse or donor")
+        return out
+
+
+VS_RE = re.compile(r"(?i)(?:^|[^a-z0-9])([a-z0-9]+)[_.-]?vs[_.-]?([a-z0-9]+)(?:$|[^a-z0-9])")
+
+
+def _table_entry(path: Path, base: Path, log: Log) -> ComparisonMenu:
+    df = read_table(path)
+    cols = map_columns(df, RESULT_ROLES, {}, what=str(path.name))
+    cands = gene_candidates(df, cols)
+    if not cands or "effect" not in cols or ("p" not in cols and "padj" not in cols):
+        raise ValueError(f"{path.name} does not look like a results table: it needs a gene column, an effect column (log2FoldChange, logFC, avg_log2FC, ...) and a p-value column (pvalue, padj, FDR, ...); columns: {', '.join(map(str, df.columns))}")
+    cols["gene"] = cands[0]
+    taken = {role: cols[role] for role in ("gene", "effect", "p", "padj", "mean") if role in cols}
+    stem = path.name.rsplit(".", 1)[0]
+    cid = re.sub(r"[^A-Za-z0-9_.-]+", "_", stem).strip("_").lower() or "comparison"
+    m = VS_RE.search(stem)
+    groups = [m.group(2), m.group(1)] if m else None  # stress_vs_control -> [control, stress]
+    name = f"{m.group(1).capitalize()} vs {m.group(2)}" if m else stem.replace("_", " ")
+    log(f"{path.name}: {len(df):,} rows; " + ", ".join(f"{r} <- {c}" for r, c in taken.items()))
+    return ComparisonMenu(source=_rel(path, base), id=cid, name=name, columns=taken, n_rows=len(df), groups=groups, other_columns=[str(c) for c in df.columns if str(c) not in taken.values()])
+
+
+def _comparison_lines(c: ComparisonMenu) -> list[str]:
+    L: list[str] = []
+    L.append(f"  - id: {_ystr(c.id)}")
+    L.append(f"    name: {_ystr(c.name)}")
+    L.append(_pad(f"    results: {_ystr(c.source)}", f"{c.n_rows:,} rows; " + ", ".join(f"{r} <- {col}" for r, col in c.columns.items())))
+    if c.groups:
+        L.append(_pad(f"    groups: [{', '.join(_ystr(g) for g in c.groups)}]", "from the file name; the contrast is the last against the first"))
+    else:
+        L.append(_pad("    # groups: [control, case]", "plotting and pane order; the contrast is the last against the first"))
+    L.append(_pad("    # pseudobulk: de/pseudobulk.csv", "genes x replicates (first column the gene): the dots per mouse or donor"))
+    L.append(_pad("    # replicates: de/replicates.csv", "one row per replicate: id, group, subject; needed when the samples' meta cannot supply them"))
+    L.append(_pad('    # description: "limma-voom on per-mouse pseudobulk, ~ condition + sex; positive effect = higher in the last group"', "shown verbatim in the panel"))
+    L.append(_pad("    # units: log2 CPM", "axis label of the replicate values"))
+    L.append(_pad("    # population: { field: celltype, value: D1 MSN }", "the cells the test was fit in; selecting the comparison filters the map to them"))
+    L.append(_pad("    # split: condition", "the sample meta key whose levels are the groups (found by matching when left out)"))
+    if c.other_columns:
+        L.append(f"    # other columns in the table: {_join(c.other_columns, 6)}")
+    return L
+
+
 def _safe(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name))
 
@@ -532,7 +594,7 @@ def _pretty(fid: str) -> str:
     return s[:1].upper() + s[1:]
 
 
-def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu]) -> str:
+def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu], comparisons: list[ComparisonMenu] | None = None) -> str:
     fields: dict[str, str] = {}
     for e in entries:
         for fid, kind in e.menu.kinds.items():
@@ -579,6 +641,10 @@ def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu])
     L += ["", "samples:"]
     for e in entries:
         L += _entry_lines(e)
+    if comparisons:
+        L += ["", _pad("comparisons:", "differential expression fit upstream, linked to the sections; see the guide")]
+        for c in comparisons:
+            L += _comparison_lines(c)
     return "\n".join(L) + "\n"
 
 
@@ -588,6 +654,7 @@ class MenuResult:
     out: Path
     dataset_id: str
     entries: list[EntryMenu]
+    comparisons: list[ComparisonMenu] = field(default_factory=list)
 
     @property
     def samples(self) -> list[str]:
@@ -608,7 +675,7 @@ class MenuResult:
 
 def default_id(first: str) -> str:
     """A dataset id from the first argument: the R object's stem, or the folder a glob starts in."""
-    if is_r_object(first):
+    if is_r_object(first) or is_table(first):
         base = Path(first).stem
     else:
         parts = Path(os.path.expanduser(first)).parts
@@ -640,13 +707,21 @@ def write_menu(
     out.parent.mkdir(parents=True, exist_ok=True)
     base = out.parent.resolve()
     entries: list[EntryMenu] = []
+    comparisons: list[ComparisonMenu] = []
     for p in paths:
         if is_r_object(p):
             path = Path(p).expanduser()
             if not path.exists():
                 raise FileNotFoundError(str(path))
             entries.append(_r_entry(path, platform, base, log))
+        elif is_table(p):
+            path = Path(p).expanduser()
+            if not path.exists():
+                raise FileNotFoundError(str(path))
+            comparisons.append(_table_entry(path, base, log))
         else:
             entries.append(_glob_entry(p, platform, table, base, log))
-    out.write_text(render_dataset_yaml(dataset_id=dataset_id, name=name, entries=entries))
-    return MenuResult(out=out, dataset_id=dataset_id, entries=entries)
+    if not entries:
+        raise ValueError("init needs at least one sample source (an R object or a glob of files) besides results tables")
+    out.write_text(render_dataset_yaml(dataset_id=dataset_id, name=name, entries=entries, comparisons=comparisons))
+    return MenuResult(out=out, dataset_id=dataset_id, entries=entries, comparisons=comparisons)

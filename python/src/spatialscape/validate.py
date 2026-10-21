@@ -50,6 +50,37 @@ def validate_local(root: Path) -> list[str]:
     for sid in m.layout.order:
         if sid not in {s.id for s in m.samples}:
             _problem(p, f"layout.order references unknown sample {sid!r}")
+    sample_ids = {s.id for s in m.samples}
+    for c in m.comparisons:
+        d = root / c.path
+        try:
+            doc = json.loads((d / "comparison.json").read_text())
+            res = json.loads((d / "results.json").read_text())
+            n = len(res["genes"])
+            if n != c.nGenes:
+                _problem(p, f"comparison {c.id}: results.json has {n} genes, manifest says {c.nGenes}")
+            for key in ("effect", "p", "padj", "mean"):
+                if res.get(key) is not None and len(res[key]) != n:
+                    _problem(p, f"comparison {c.id}: results.json {key} length != genes")
+            if any(i < 0 or i >= n for i in res.get("unmeasured", [])):
+                _problem(p, f"comparison {c.id}: unmeasured indices out of range")
+            reps = doc.get("replicates", [])
+            if len(reps) != c.nReplicates:
+                _problem(p, f"comparison {c.id}: {len(reps)} replicates listed, manifest says {c.nReplicates}")
+            for r in reps:
+                if r.get("group") not in c.groups:
+                    _problem(p, f"comparison {c.id}: replicate {r.get('id')} has group {r.get('group')!r} not in {c.groups}")
+                for sid in r.get("samples", []):
+                    if sid not in sample_ids:
+                        _problem(p, f"comparison {c.id}: replicate {r.get('id')} links to unknown sample {sid!r}")
+            if c.hasPseudobulk:
+                pb = zarr.open_array(str(d / "pseudobulk.zarr"), mode="r")
+                if tuple(pb.shape) != (c.nGenes, c.nReplicates):
+                    _problem(p, f"comparison {c.id}: pseudobulk shape {pb.shape} != ({c.nGenes}, {c.nReplicates})")
+            if c.split and c.split not in {k.id for k in m.meta}:
+                _problem(p, f"comparison {c.id}: split key {c.split!r} is not in manifest.meta")
+        except Exception as e:
+            _problem(p, f"comparison {c.id}: unreadable: {e}")
     meta_levels = {k.id: set(k.levels) for k in m.meta}
     for s in m.samples:
         for k, v in s.meta.items():

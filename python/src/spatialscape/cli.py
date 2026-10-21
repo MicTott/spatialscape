@@ -39,7 +39,7 @@ OUT_OPT = typer.Option(None, "-o", "--out", help="Bundle directory. Default: `bu
 
 @app.command()
 def init(
-    paths: list[str] = typer.Argument(..., help="What to describe: R objects (`.rds` / `.rda` holding a SpatialExperiment or SingleCellExperiment) and/or globs of sample files such as `'data/*/adata.h5ad'` (quoted, so the shell does not expand them). One `samples:` entry per argument.", show_default=False),
+    paths: list[str] = typer.Argument(..., help="What to describe: R objects (`.rds` / `.rda` holding a SpatialExperiment, SingleCellExperiment or Seurat object), globs of sample files such as `'data/*/adata.h5ad'` (quoted, so the shell does not expand them), and results tables of differential expression tests (`.csv` / `.tsv` / `.parquet`, one row per gene). One `samples:` entry per object or glob, one `comparisons:` entry per table.", show_default=False),
     out: Path | None = typer.Option(None, "-o", "--out", help="Where to write the yaml. Default: `<id>.yaml` in the current folder.", show_default=False),
     dataset_id: str | None = typer.Option(None, "--id", help="Dataset id: used in `?d=<id>` and as the bundle folder name. Default: the object's file name, or the folder a glob starts in.", show_default=False),
     name: str | None = typer.Option(None, "--name", help="Human-readable dataset name. Default: the id, prettified.", show_default=False),
@@ -64,6 +64,10 @@ def init(
     for e in r.entries:
         typer.echo(f"  assumed for {e.source}:")
         for line in e.assumed:
+            typer.echo(f"    {line}")
+    for c in r.comparisons:
+        typer.echo(f"  assumed for {c.source}:")
+        for line in c.assumed:
             typer.echo(f"    {line}")
     typer.echo(f"  next: edit {r.out.name} (names, colors, which annotations), then `spatialscape build {r.out}`")
 
@@ -339,7 +343,7 @@ def synth(
     out: Path = typer.Argument(..., help="Directory for the generated inputs.", show_default=False),
     cells: int = typer.Option(2000, "--cells", help="Cells in the first synthetic section (the second has 40% more)."),
     genes: int = typer.Option(50, "--genes", help="Number of synthetic genes."),
-    comparisons: bool = typer.Option(False, "--comparisons", help="Two experimental groups: four sections with sample metadata (`condition` control / stress, one `mouse` each), to try splitting the view by group."),
+    comparisons: bool = typer.Option(False, "--comparisons", help="Two experimental groups: four sections with sample metadata (`condition` control / stress, one `mouse` each), a differential expression table with three planted genes, the per-mouse pseudobulk and a replicate sheet, and the `comparisons:` entry that ties them together."),
 ):
     """Write a tiny synthetic dataset for tests and demos.
 

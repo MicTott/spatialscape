@@ -1,6 +1,6 @@
 # Comparisons: case/control results in the viewer
 
-Branch `comparisons`. Status: M1 built (sample metadata, panes); M2 next. Last edited 2026-10-21.
+Branch `comparisons`. Status: M1 (sample metadata, panes) and M2 (comparisons in the bundle) built; M3, the Compare panel, next. Last edited 2026-10-21.
 
 Deviations from the plan, decided while building M1: the *split by* control and *match scale* live in the
 top bar next to the lasso and the snRNA-seq control, not in a new Views section, so everything about what is

@@ -237,6 +237,61 @@ class MetaKeySpec(_Model):
         return v
 
 
+class PopulationSpec(_Model):
+    """The cells a test was fit in: a categorical field and one of its values."""
+
+    field: str
+    value: str
+
+
+RESULT_ROLE_NAMES = ("gene", "effect", "p", "padj", "mean")
+REPLICATE_ROLE_NAMES = ("id", "group", "subject")
+
+
+class ComparisonColumns(_Model):
+    """Which column plays which role, when the recognised names (DESeq2, limma, edgeR, Seurat, pyDESeq2) miss."""
+
+    results: dict[str, str] = Field(default_factory=dict)
+    replicates: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _roles(self):
+        for role in self.results:
+            if role not in RESULT_ROLE_NAMES:
+                raise ValueError(f"columns.results: unknown role {role!r}; one of {', '.join(RESULT_ROLE_NAMES)}")
+        for role in self.replicates:
+            if role not in REPLICATE_ROLE_NAMES:
+                raise ValueError(f"columns.replicates: unknown role {role!r}; one of {', '.join(REPLICATE_ROLE_NAMES)}")
+        return self
+
+
+class ComparisonSpec(_Model):
+    """A differential expression result fit upstream, shown next to the sections: a results table (one row per
+    gene), the per-replicate values it was fit on (genes x replicates), and, when the samples' metadata cannot
+    supply them, a replicate sheet (id, group, subject). The viewer links each replicate to the sections whose
+    `meta.<link>` equals its id and splits the canvas by `split`, the key whose levels are the `groups`."""
+
+    id: str
+    name: str | None = None
+    description: str | None = None  # the model and the direction of the contrast, shown verbatim
+    results: Path
+    pseudobulk: Path | None = None
+    replicates: Path | None = None
+    groups: list[str] | None = None  # plotting and pane order; the contrast is the last against the first
+    units: str | None = None  # axis label of the replicate values
+    population: PopulationSpec | None = None
+    split: str | None = None  # sample meta key whose levels are the groups (default: found by matching)
+    link: str | None = None  # sample meta key holding replicate ids (default: the key that matches most, then sample ids)
+    columns: ComparisonColumns = Field(default_factory=ComparisonColumns)
+
+    @field_validator("id")
+    @classmethod
+    def _id(cls, v: str) -> str:
+        if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$", v):
+            raise ValueError(f"comparison id {v!r}: letters, digits, '_', '.' and '-' only")
+        return v
+
+
 class SampleSpec(_Model):
     """One sample. In dataset.yaml an entry may instead carry `glob:` and templated strings
     ("{name}", "{stem}", "{dir}", "{i}") that expand into one SampleSpec per match; `platforms.<platform>`
@@ -383,6 +438,7 @@ class DatasetConfig(_Model):
     thumbnail_sample: str | None = None  # sample shown on the dataset's gallery card (default: first in layout order)
     feature_groups: list[FeatureGroupSpec] = Field(default_factory=list)
     meta: list[MetaKeySpec] = Field(default_factory=list)  # names and level order of the sample `meta` keys
+    comparisons: list[ComparisonSpec] = Field(default_factory=list)  # differential expression results shown next to the sections
     # Optional declarations (display names, explicit category order, aliases, palette keys). Fields that
     # samples reference without a declaration are declared automatically at build time.
     fields: list[FieldSpec] = Field(default_factory=list)
@@ -425,6 +481,9 @@ class DatasetConfig(_Model):
         mids = [m.id for m in self.meta]
         if len(set(mids)) != len(mids):
             raise ValueError("meta key ids must be unique")
+        cids = [c.id for c in self.comparisons]
+        if len(set(cids)) != len(cids):
+            raise ValueError("comparison ids must be unique")
         return self
 
     def field_spec(self, fid: str) -> FieldSpec | None:
@@ -441,6 +500,10 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
         return p if p.is_absolute() else (base / p).resolve()
 
     cfg.palette = res(cfg.palette)
+    for c in cfg.comparisons:
+        c.results = res(c.results)
+        c.pseudobulk = res(c.pseudobulk)
+        c.replicates = res(c.replicates)
     for s in cfg.samples:
         s.path = res(s.path)
         s.microns.scalefactors_json = res(s.microns.scalefactors_json)

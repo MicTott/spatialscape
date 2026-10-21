@@ -149,6 +149,32 @@ class FeatureGroup(_Model):
     count: int = 0
 
 
+class PopulationInfo(_Model):
+    field: str
+    value: str
+
+
+class ComparisonInfo(_Model):
+    """A differential expression result stored under comparisons/<id>/ (see comparisons.py for the files)."""
+
+    id: str
+    name: str
+    description: str | None = None
+    path: str  # comparisons/<id>, relative to the bundle
+    groups: list[str]  # pane and plotting order; the contrast is the last against the first
+    units: str | None = None  # axis label of the replicate values
+    population: PopulationInfo | None = None
+    split: str | None = None  # sample meta key whose levels are the groups
+    link: str | None = None  # sample meta key that holds the replicate ids
+    nGenes: int
+    nReplicates: int
+    nUnmatched: int  # genes of the table that no sample measures
+    hasP: bool = True
+    hasPadj: bool = True
+    hasMean: bool = False
+    hasPseudobulk: bool = False
+
+
 class Manifest(_Model):
     formatVersion: Literal[1] = FORMAT_VERSION
     id: str
@@ -164,6 +190,7 @@ class Manifest(_Model):
     samples: list[Sample] = Field(default_factory=list)
     thumbnailSample: str | None = None  # sample drawn on the dataset thumbnail (default: first spatial sample in layout order)
     meta: list[MetaKey] = Field(default_factory=list)  # the sample metadata keys the viewer can split the canvas by
+    comparisons: list[ComparisonInfo] = Field(default_factory=list)
 
     def field_by_id(self, fid: str) -> CategoricalField | ContinuousField | None:
         for f in self.fields:

@@ -16,6 +16,7 @@ import pandas as pd
 import scipy.sparse as sp
 
 from . import __version__
+from .comparisons import ComparisonAction, plan_comparisons, read_info, samples_signature, write_comparison
 from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
 from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, infer_field_spec
@@ -27,6 +28,7 @@ from .manifest import (
     BUILTIN_COLORMAPS,
     CategoricalField,
     ColorSpec,
+    ComparisonInfo,
     ContinuousField,
     ExprSpec,
     FeatureGroup,
@@ -382,11 +384,16 @@ def _all_fields(cfg: DatasetConfig, vocab: VocabRegistry) -> list[FieldSpec]:
     return out
 
 
-def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], vocab: VocabRegistry) -> Manifest:
+def gene_union(out: Path, samples: list[Sample]) -> set[str]:
     union: set[str] = set()
     for s in samples:
         with open(out / "samples" / s.id / "genes.json") as fh:
             union.update(json.load(fh))
+    return union
+
+
+def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], vocab: VocabRegistry, comparisons: list[ComparisonInfo] | None = None) -> Manifest:
+    union = gene_union(out, samples)
     genes, groups = _split_features(cfg, sorted(union))
     with open(out / "genes.json", "w") as fh:
         json.dump(genes, fh, separators=(",", ":"))
@@ -422,6 +429,7 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         samples=samples,
         thumbnailSample=cfg.thumbnail_sample,
         meta=meta_keys(cfg, samples),
+        comparisons=comparisons or [],
     )
     with open(out / "manifest.json", "w") as fh:
         fh.write(manifest.model_dump_json(indent=1, exclude_none=True))
@@ -501,6 +509,8 @@ class BuildPlan:
     removed: list[str]  # sample folders in the bundle that the yaml no longer lists
     existing: Manifest | None
     sources: list[SourceStatus] = field(default_factory=list)
+    comparisons: list[ComparisonAction] = field(default_factory=list)
+    removed_comparisons: list[str] = field(default_factory=list)
 
     @property
     def to_build(self) -> list[SampleAction]:
@@ -528,7 +538,9 @@ def plan_build(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force: bo
         actions.append(SampleAction(spec, reason is not None, reason or "unchanged", fp))
     wanted = {s.id for s in cfg.samples}
     folders = sorted(p.name for p in (out / "samples").iterdir() if p.is_dir()) if (out / "samples").is_dir() else []
-    return BuildPlan(out, actions, [f for f in folders if f not in wanted], existing)
+    plan = BuildPlan(out, actions, [f for f in folders if f not in wanted], existing)
+    plan.comparisons, plan.removed_comparisons = plan_comparisons(cfg, out, samples_signature({a.spec.id: a.fingerprint for a in actions}), force=force)
+    return plan
 
 
 def describe_plan(plan: BuildPlan) -> list[str]:
@@ -543,6 +555,12 @@ def describe_plan(plan: BuildPlan) -> list[str]:
             lines.append(f"  {a.spec.id:<{w}}  {'build' if a.build else 'skip '}  {a.reason}")
     for sid in plan.removed:
         lines.append(f"  {sid}: removed (no longer in the yaml)")
+    if plan.comparisons:
+        w = max(len(a.spec.id) for a in plan.comparisons)
+        for a in plan.comparisons:
+            lines.append(f"  comparison {a.spec.id:<{w}}  {'build' if a.build else 'skip '}  {a.reason}")
+    for cid in plan.removed_comparisons:
+        lines.append(f"  comparison {cid}: removed (no longer in the yaml)")
     n_build, n_skip = len(plan.to_build), len(plan.reused)
     pending = sum(st.state == "pending" for st in plan.sources)
     if pending:
@@ -590,7 +608,22 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force:
     for sid in plan.removed:
         shutil.rmtree(out / "samples" / sid, ignore_errors=True)
         log(f"removed sample {sid}")
-    manifest = _write_dataset_files(out, cfg, samples, vocab)
+    comparisons: list[ComparisonInfo] = []
+    if plan.comparisons:
+        union = gene_union(out, samples)
+        mkeys = meta_keys(cfg, samples)
+        for a in plan.comparisons:
+            info = None if a.build else read_info(out, a.spec.id)
+            if info is None:  # to build, or a folder that lost its description
+                info = write_comparison(out, a.spec, samples, mkeys, union, log=log)
+                built.append((out / "comparisons" / a.spec.id, a.fingerprint))
+            else:
+                info = info.model_copy(update={"name": a.spec.name or a.spec.id.replace("_", " "), "description": a.spec.description, "units": a.spec.units})
+            comparisons.append(info)
+    for cid in plan.removed_comparisons:
+        shutil.rmtree(out / "comparisons" / cid, ignore_errors=True)
+        log(f"removed comparison {cid}")
+    manifest = _write_dataset_files(out, cfg, samples, vocab, comparisons=comparisons)
     # Sidecars last: a sample is "current" only together with the manifest whose vocabularies its codes were
     # assigned against. A run that dies before this point leaves the new folders without sidecars (rebuilt next
     # time) and the old manifest intact, instead of a sample that decodes against the wrong categories.

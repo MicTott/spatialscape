@@ -58,6 +58,8 @@ type Manifest = {
   fields: Array<{id, name, type: "categorical", vocabulary} | {id, name, type: "continuous", range?, colormap?}>;
   featureGroups: Array<{id, name, units?, count}>;
   meta: Array<{id, name, levels: string[]}>;      // sample metadata keys the viewer can split the canvas by
+  comparisons: Array<{id, name, description?, path, groups, units?, population?: {field, value}, split?, link?,
+                      nGenes, nReplicates, nUnmatched, hasP, hasPadj, hasMean, hasPseudobulk}>;
   samples: Array<{
     id, name, platform, kind: "spatial"|"embedding", group?, meta?: Record<string, string>, nObs, nGenes,
     bbox: [minx, miny, maxx, maxy], toDataset: number[9], pointRadius,
@@ -66,6 +68,22 @@ type Manifest = {
     outlines: string[], polygons?: {path, cells, vertices, scale}, idBlock
   }>;
 };
+```
+
+## comparisons/
+
+One folder per `comparisons:` entry, next to `samples/`:
+
+```
+comparisons/<id>/
+  comparison.json     the manifest entry plus replicates: [{id, group, subject, samples: [sample ids]}],
+                      the columns taken from each table, the source file names and the match counts
+  results.json        {genes, effect, p, padj, mean, unmeasured}: column arrays in one order, rows sorted by
+                      padj then p then |effect|; p / padj / mean are null when the table lacks them;
+                      unmeasured lists the row indices of genes no sample measures
+  pseudobulk.zarr     float32 (nGenes, nReplicates) in results order, zstd, chunked by 1024 genes;
+                      only when a pseudobulk table was given
+  build.json          fingerprint of the tables and settings (the incremental rule)
 ```
 
 ## Reading a bundle elsewhere

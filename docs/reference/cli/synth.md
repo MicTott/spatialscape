@@ -22,7 +22,7 @@ spatialscape synth <OUT> [OPTIONS]
 |---|---|---|---|
 | `--cells` | int | `2000` | Cells in the first synthetic section (the second has 40% more). |
 | `--genes` | int | `50` | Number of synthetic genes. |
-| `--comparisons` | flag | `off` | Two experimental groups: four sections with sample metadata (`condition` control / stress, one `mouse` each), to try splitting the view by group. |
+| `--comparisons` | flag | `off` | Two experimental groups: four sections with sample metadata (`condition` control / stress, one `mouse` each), a differential expression table with three planted genes, the per-mouse pseudobulk and a replicate sheet, and the `comparisons:` entry that ties them together. |
 
 ## Examples
 

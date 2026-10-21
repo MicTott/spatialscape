@@ -38,6 +38,8 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
         X[:, g] = np.exp(-d2 / (2 * (0.2 * w) ** 2)) * rng.uniform(1, 4)
     X += (cl[:, None] == (np.arange(n_genes)[None, :] % len(CLUSTERS))) * 1.5
     X *= rng.random(X.shape) > 0.35  # sparsity
+    if (extra_obs or {}).get("condition") == "stress":
+        X[:, :3] *= 3.0  # planted effect: the first three genes are higher in the stress group
     if counts:
         X = rng.poisson(X * 3).astype(np.float32)
     obs = pd.DataFrame(
@@ -87,6 +89,38 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
         pa.table({"cell_id": cid, "vertex_x": vx.ravel(), "vertex_y": vy.ravel()}),
         path.with_suffix(".polygons.parquet"),
     )
+
+
+def _write_de_tables(out: Path, groups: dict[str, tuple[str, str]], n_genes: int) -> None:
+    """A results table, the per-mouse pseudobulk and a replicate sheet, computed from the sections just written
+    (a t-test on two vs two: an example of the file shapes, not of statistics)."""
+    from scipy import stats
+
+    genes = [f"G{i:03d}" for i in range(n_genes)]
+    pb: dict[str, np.ndarray] = {}
+    cond: dict[str, str] = {}
+    for sid, (condition, mouse) in groups.items():
+        a = ad.read_h5ad(out / f"{sid}.h5ad")
+        X = a.X
+        mean = np.asarray(X.mean(axis=0)).ravel()
+        pb[mouse] = np.log2(mean + 1)
+        cond[mouse] = condition
+    mice = list(pb)
+    mat = np.stack([pb[m] for m in mice], 1)
+    ctl = mat[:, [i for i, m in enumerate(mice) if cond[m] == "control"]]
+    strs = mat[:, [i for i, m in enumerate(mice) if cond[m] == "stress"]]
+    effect = strs.mean(1) - ctl.mean(1)
+    p = stats.ttest_ind(strs, ctl, axis=1, equal_var=False).pvalue
+    p = np.where(np.isfinite(p), p, 1.0)
+    order = np.argsort(p)
+    ranked = p[order] * len(p) / (np.arange(len(p)) + 1)
+    padj = np.empty_like(p)
+    padj[order] = np.minimum.accumulate(ranked[::-1])[::-1].clip(max=1.0)  # Benjamini-Hochberg
+    de = out / "de"
+    de.mkdir(exist_ok=True)
+    pd.DataFrame({"gene": genes, "baseMean": mat.mean(1), "log2FoldChange": effect, "pvalue": p, "padj": padj}).to_csv(de / "stress_vs_control.csv", index=False)
+    pd.DataFrame(mat, index=pd.Index(genes, name="gene"), columns=mice).to_csv(de / "pseudobulk.csv")
+    pd.DataFrame({"mouse": mice, "condition": [cond[m] for m in mice]}).to_csv(de / "mice.csv", index=False)
 
 
 def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparisons: bool = False) -> Path:
@@ -148,7 +182,22 @@ def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparison
         ],
     }
     if comparisons:
-        cfg["description"] = "Four fake tissue sections in two experimental groups (control, stress), two mice each, plus an embedding."
+        _write_de_tables(out, groups, n_genes)
+        cfg["comparisons"] = [
+            {
+                "id": "stress_vs_control",
+                "name": "Stress vs control",
+                "description": "Welch t-test on per-mouse pseudobulk (log2 of the mean expression + 1), two mice per group; G000-G002 are planted higher in stress. Positive effect = higher in stress.",
+                "results": "de/stress_vs_control.csv",
+                "pseudobulk": "de/pseudobulk.csv",
+                "replicates": "de/mice.csv",
+                "groups": ["control", "stress"],
+                "units": "log2 mean+1",
+                "split": "condition",
+                "link": "mouse",
+            }
+        ]
+        cfg["description"] = "Four fake tissue sections in two experimental groups (control, stress), two mice each, plus an embedding and a differential expression result."
         cfg["meta"] = [{"id": "condition", "name": "Condition", "levels": ["control", "stress"]}, {"id": "mouse", "name": "Mouse"}]
         for s in cfg["samples"]:
             if s["id"] in groups:
