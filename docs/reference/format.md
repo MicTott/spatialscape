@@ -57,8 +57,9 @@ type Manifest = {
   vocabularies: Record<string, {categories: string[], colors: string[], aliases?: Record<string,string>}>;
   fields: Array<{id, name, type: "categorical", vocabulary} | {id, name, type: "continuous", range?, colormap?}>;
   featureGroups: Array<{id, name, units?, count}>;
+  meta: Array<{id, name, levels: string[]}>;      // sample metadata keys the viewer can split the canvas by
   samples: Array<{
-    id, name, platform, kind: "spatial"|"embedding", group?, nObs, nGenes,
+    id, name, platform, kind: "spatial"|"embedding", group?, meta?: Record<string, string>, nObs, nGenes,
     bbox: [minx, miny, maxx, maxy], toDataset: number[9], pointRadius,
     expr: {kind: "u8"|"csc", sharded, shardGenes}, hasF16, fields: string[],
     images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?, defaultOpacity}>,

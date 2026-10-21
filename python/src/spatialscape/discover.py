@@ -16,6 +16,11 @@ SKIP_COLUMNS = re.compile(r"^(sample_id|sample|key|barcode|cell_id|cell|index|in
 NUMERIC_KEEP = re.compile(r"count|sum|detected|percent|ratio|area|score|umi|genes|mito|nucleus|transcript|total|ncount|nfeature", re.I)
 
 
+def is_textual(s: pd.Series) -> bool:
+    """Categorical, object, string (pandas 2 `string`, pandas 3 `str`) or boolean: a column whose values are labels."""
+    return isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object or str(s.dtype) in ("string", "str", "bool", "boolean")
+
+
 def field_id(column: str) -> str:
     fid = re.sub(r"[^A-Za-z0-9]+", "_", column).strip("_").lower()
     return fid or "field"
@@ -29,7 +34,7 @@ def auto_fields(adata: ad.AnnData, sample: SampleSpec) -> dict[str, str]:
         if SKIP_COLUMNS.match(str(col)):
             continue
         s = adata.obs[col]
-        if isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object or str(s.dtype) in ("string", "bool", "boolean"):
+        if is_textual(s):
             k = s.nunique(dropna=True)
             if 2 <= k <= MAX_LEVELS and k < n:
                 out[field_id(str(col))] = str(col)
@@ -40,7 +45,7 @@ def auto_fields(adata: ad.AnnData, sample: SampleSpec) -> dict[str, str]:
 
 def infer_field_spec(fid: str, adata: ad.AnnData, column: str) -> FieldSpec:
     s = adata.obs[column]
-    categorical = isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object or str(s.dtype) in ("string", "bool", "boolean")
+    categorical = is_textual(s)
     name = re.sub(r"[_\.]+", " ", column).strip()
     name = name[:1].upper() + name[1:]
     return FieldSpec(id=fid, name=name, type="categorical" if categorical else "continuous")

@@ -1,11 +1,11 @@
-/** Composes the current GL frame with a legend and scale bar onto a 2D canvas and triggers a download. */
+/** Composes the current GL frame with pane captions, a legend and scale bars onto a 2D canvas and triggers a download. */
 import { fieldById } from "../data/manifest";
 import { colormapLUT, effectiveColormap } from "../layers/lut";
-import { store, type ViewId } from "../store/store";
+import { store, type ViewId, type ViewRect } from "../store/store";
 import { niceScale } from "../ui/ScaleBar";
-import type { ViewRect } from "./types";
+import { PANE_HEADER, metaName, type Pane } from "./panes";
 
-export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, rects: Partial<Record<ViewId, ViewRect>>) {
+export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, panes: Pane[], rects: Record<ViewId, ViewRect>) {
   const s = store.getState();
   const m = s.manifest;
   if (!m) return;
@@ -20,10 +20,37 @@ export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, rects:
   const px = (v: number) => v * dpr;
   const font = (size: number, weight = 400) => `${weight} ${px(size)}px Inter, system-ui, sans-serif`;
   const panel = "rgba(22,27,34,0.88)";
+  const shown = panes.filter((p) => rects[p.id]);
 
-  // ---- legend (top-right of the spatial view, else of the canvas)
-  const rect = rects.spatial ?? rects.embedding ?? { x: 0, w: container.clientWidth };
-  const right = px(rect.x + rect.w) - px(12);
+  // ---- pane captions, in the header strip above each pane when the canvas is split
+  if (s.splitBy && shown.some((p) => p.group)) {
+    for (const p of shown) {
+      const r = rects[p.id];
+      ctx.fillStyle = "#161b22";
+      ctx.fillRect(px(r.x), px(r.y - PANE_HEADER), px(r.w), px(PANE_HEADER));
+      ctx.fillStyle = "#30363d";
+      ctx.fillRect(px(r.x), px(r.y) - px(1), px(r.w), px(1));
+      ctx.textBaseline = "middle";
+      ctx.font = font(12, 600);
+      ctx.fillStyle = "#e6edf3";
+      const cap = p.group ? p.group.value : p.kind === "embedding" ? "snRNA-seq" : "sections";
+      ctx.fillText(cap, px(r.x + 10), px(r.y - PANE_HEADER / 2));
+      if (p.group) {
+        const n = p.samples.length;
+        ctx.font = font(11);
+        ctx.fillStyle = "#8b949e";
+        ctx.fillText(`${n} section${n === 1 ? "" : "s"}`, px(r.x + 14) + ctx.measureText(cap).width * 1.25, px(r.y - PANE_HEADER / 2));
+        const key = metaName(m, p.group.key);
+        const kw = ctx.measureText(key).width;
+        ctx.fillText(key, px(r.x + r.w - 10) - kw, px(r.y - PANE_HEADER / 2));
+      }
+    }
+  }
+
+  // ---- legend (top-right of the rightmost pane, else of the canvas)
+  const rightmost = shown.reduce<ViewRect | null>((best, p) => (!best || rects[p.id].x + rects[p.id].w > best.x + best.w ? rects[p.id] : best), null) ?? { x: 0, y: 0, w: container.clientWidth, h: container.clientHeight };
+  const right = px(rightmost.x + rightmost.w) - px(12);
+  const top = px(rightmost.y + 12);
   let title = "";
   let rows: { color: string; label: string; n?: number }[] = [];
   let ramp: { lut: Uint8Array; lo: string; hi: string } | null = null;
@@ -51,19 +78,19 @@ export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, rects:
     title = `Blend: A = ${s.color.a.join(", ") || "(empty)"} · B = ${s.color.b.join(", ") || "(empty)"}`;
   }
   const maxRows = 30;
-  const shown = rows.slice(0, maxRows);
+  const shownRows = rows.slice(0, maxRows);
   const lineH = px(16);
   const pad = px(10);
   ctx.font = font(12, 600);
   let boxW = ctx.measureText(title).width;
   ctx.font = font(11);
-  for (const r of shown) boxW = Math.max(boxW, px(18) + ctx.measureText(r.label).width + (r.n != null ? px(8) + ctx.measureText(r.n.toLocaleString()).width : 0));
+  for (const r of shownRows) boxW = Math.max(boxW, px(18) + ctx.measureText(r.label).width + (r.n != null ? px(8) + ctx.measureText(r.n.toLocaleString()).width : 0));
   if (ramp) boxW = Math.max(boxW, px(160));
   boxW += pad * 2;
-  const boxH = pad * 2 + px(18) + (ramp ? px(30) : shown.length * lineH + (rows.length > maxRows ? lineH : 0));
+  const boxH = pad * 2 + px(18) + (ramp ? px(30) : shownRows.length * lineH + (rows.length > maxRows ? lineH : 0));
   if (title) {
     const x0 = right - boxW;
-    const y0 = px(12);
+    const y0 = top;
     ctx.fillStyle = panel;
     roundRect(ctx, x0, y0, boxW, boxH, px(8));
     ctx.fill();
@@ -85,7 +112,7 @@ export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, rects:
       ctx.fillText(ramp.hi, x0 + boxW - pad - hw, y + px(13));
     } else {
       ctx.font = font(11);
-      for (const r of shown) {
+      for (const r of shownRows) {
         ctx.fillStyle = r.color;
         roundRect(ctx, x0 + pad, y + px(2), px(11), px(11), px(2));
         ctx.fill();
@@ -105,13 +132,16 @@ export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, rects:
     }
   }
 
-  // ---- scale bar (bottom-left of the spatial view)
-  const sp = s.viewPx.spatial;
-  if (sp && rects.spatial) {
+  // ---- scale bar, bottom-left of every tissue pane
+  for (const p of shown) {
+    if (p.kind !== "spatial") continue;
+    const sp = s.viewPx[p.id];
+    const r = rects[p.id];
+    if (!sp) continue;
     const { um, label } = niceScale(sp);
     const w = px(um * sp);
-    const x = px(rects.spatial.x + 16);
-    const y = px(container.clientHeight - 22);
+    const x = px(r.x + 16);
+    const y = px(r.y + r.h - 22);
     ctx.fillStyle = "#e6edf3";
     ctx.fillRect(x, y, w, px(3));
     ctx.fillRect(x, y - px(6), px(2), px(9));

@@ -1,7 +1,8 @@
 import type { BinaryAttr } from "../data/cache";
-import type { FilterSpec, ViewId } from "../store/store";
+import type { FilterSpec, ViewId, ViewKind, ViewRect } from "../store/store";
 
-export const VIEWS: ViewId[] = ["spatial", "embedding"];
+export type { ViewId, ViewKind, ViewRect };
+export const VIEW_KINDS: ViewKind[] = ["spatial", "embedding"];
 
 export interface SampleLayerInputs {
   pos: BinaryAttr<Float32Array>;
@@ -11,12 +12,7 @@ export interface SampleLayerInputs {
   data: { length: number; attributes: Record<string, BinaryAttr<ArrayBufferView>> };
 }
 
-export interface ViewRect {
-  x: number; // px from the left of the container
-  w: number;
-}
-
-/** Layer props shared by every overlay: never pick, never fight the depth buffer, route to one view. */
+/** Layer props shared by every overlay: never pick, never fight the depth buffer, route to one pane. */
 export function overlayProps(view: ViewId) {
   return { pickable: false, viewId: view, parameters: { depthWriteEnabled: false, depthCompare: "always" } } as const;
 }

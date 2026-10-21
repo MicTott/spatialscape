@@ -232,6 +232,35 @@ with blocks, or plain spans). Without `genes:`, `refseq` downloads UCSC's RefSeq
 know. Transcripts of a gene are collapsed into one model per locus (the union of their exons) and written per
 chromosome, so the viewer loads only the chromosome on screen.
 
+## Sample metadata
+
+Samples can carry metadata keys, one value per sample: the condition, the subject, sex, genotype, a batch.
+The viewer splits the canvas by any such key (one pane per level, see [the viewer guide](./viewer#panes-comparing-groups-side-by-side)),
+the hover shows the values, and comparisons will link replicates to their sections through them.
+
+```yaml
+meta:                                          # optional: display names and level order
+  - { id: condition, name: Condition, levels: [control, stress] }
+  - { id: mouse, name: Mouse }
+
+samples:
+  - glob: "sections/*/adata.h5ad"
+    platform: visium
+    meta: { mouse: "{name}", condition: { column: condition } }
+  - path: spe_mice.rds
+    platform: visium
+    meta: { mouse: "{name}", condition: { column: condition } }
+```
+
+A value is a string (templated per glob match or per R-object sample, like `id`), or `{ column: x }` to read
+it from an obs column that holds one value for the whole sample, which is how most objects carry a
+condition. A column with several values in one sample is an error that names them: split the file with
+`subset:` or expose the column as an annotation under `fields:` instead. The dataset-level `meta:` list is
+optional; keys used only on samples get their id as display name and their levels in order of first use,
+and levels a declaration does not list are appended rather than dropped. A value typed in the yaml applies
+on the next `build` without rebuilding the sample; a value read from a column is fixed when the sample is
+built. `init` lists the columns that are constant within each sample as a commented `# meta:` line.
+
 ## Globs and templates
 
 A `glob:` entry expands to one sample per matching path, sorted. Inside that entry these placeholders are filled per match:

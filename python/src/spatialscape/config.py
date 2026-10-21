@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from .manifest import LayoutMode, Platform, SampleKind
 
@@ -212,6 +212,31 @@ class FieldMap(_Model):
     scale: float = 1.0
 
 
+class MetaColumn(_Model):
+    """A sample metadata value read from an obs column that holds one value for the whole sample."""
+
+    column: str
+
+
+META_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+
+
+class MetaKeySpec(_Model):
+    """A sample metadata key declared at dataset level: its display name and the order of its levels. Keys used
+    only on samples need no declaration; they get their id as name and their levels in order of first use."""
+
+    id: str
+    name: str | None = None
+    levels: list[str] | None = None
+
+    @field_validator("id")
+    @classmethod
+    def _key(cls, v: str) -> str:
+        if not META_KEY_RE.match(v):
+            raise ValueError(f"meta key {v!r}: use letters, digits and underscores, starting with a letter")
+        return v
+
+
 class SampleSpec(_Model):
     """One sample. In dataset.yaml an entry may instead carry `glob:` and templated strings
     ("{name}", "{stem}", "{dir}", "{i}") that expand into one SampleSpec per match; `platforms.<platform>`
@@ -241,6 +266,21 @@ class SampleSpec(_Model):
     point_radius: float | None = None  # um; default depends on platform
     seed: int = 7
     gene_column: str | None = None  # var column holding symbols; default var_names
+    # sample-level metadata (condition, subject, sex, ...): a value, templated per glob match, or `{column: x}`
+    # for an obs column that is constant within the sample. The viewer splits the canvas by these keys.
+    meta: dict[str, str | MetaColumn] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_meta(cls, data):
+        if not isinstance(data, dict) or not isinstance(data.get("meta"), dict):
+            return data
+        meta = {}
+        for k, v in data["meta"].items():
+            if not META_KEY_RE.match(str(k)):
+                raise ValueError(f"meta key {k!r}: use letters, digits and underscores, starting with a letter")
+            meta[str(k)] = v if isinstance(v, dict) else str(v)
+        return {**data, "meta": meta}
 
     @model_validator(mode="before")
     @classmethod
@@ -342,6 +382,7 @@ class DatasetConfig(_Model):
     sharded: bool = True  # sharded Zarr (one range request per gene; needs HTTP Range) or one file per gene (GitHub Pages)
     thumbnail_sample: str | None = None  # sample shown on the dataset's gallery card (default: first in layout order)
     feature_groups: list[FeatureGroupSpec] = Field(default_factory=list)
+    meta: list[MetaKeySpec] = Field(default_factory=list)  # names and level order of the sample `meta` keys
     # Optional declarations (display names, explicit category order, aliases, palette keys). Fields that
     # samples reference without a declaration are declared automatically at build time.
     fields: list[FieldSpec] = Field(default_factory=list)
@@ -381,6 +422,9 @@ class DatasetConfig(_Model):
         fids = [f.id for f in self.fields]
         if len(set(fids)) != len(fids):
             raise ValueError("field ids must be unique")
+        mids = [m.id for m in self.meta]
+        if len(set(mids)) != len(mids):
+            raise ValueError("meta key ids must be unique")
         return self
 
     def field_spec(self, fid: str) -> FieldSpec | None:

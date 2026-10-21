@@ -9,17 +9,28 @@ export function niceScale(px: number): { um: number; label: string } {
   return { um, label: um >= 1000 ? `${um / 1000} mm` : `${um} µm` };
 }
 
-/** Scale bar for the spatial view, bottom-left of that view's rectangle. */
-export function ScaleBar() {
-  const px = useViewer((s) => s.viewPx.spatial);
-  const rect = useViewer((s) => s.viewRects.spatial);
+/** One scale bar per tissue pane, bottom-left of that pane's rectangle. */
+export function ScaleBars() {
+  const panes = useViewer((s) => s.panes);
+  const rects = useViewer((s) => s.viewRects);
+  const viewPx = useViewer((s) => s.viewPx);
   const manifest = useViewer((s) => s.manifest);
-  if (!px || !rect || !manifest) return null;
-  const { um, label } = niceScale(px);
-  const width = um * px;
+  if (!manifest) return null;
   return (
-    <div className="scalebar" style={{ left: rect.x + 12, width }}>
-      <span>{label}</span>
-    </div>
+    <>
+      {panes
+        .filter((p) => p.kind === "spatial")
+        .map((p) => {
+          const px = viewPx[p.id];
+          const rect = rects[p.id];
+          if (!px || !rect) return null;
+          const { um, label } = niceScale(px);
+          return (
+            <div key={p.id} className="scalebar" style={{ left: rect.x + 12, top: rect.y + rect.h - 56, bottom: "auto", width: um * px }}>
+              <span>{label}</span>
+            </div>
+          );
+        })}
+    </>
   );
 }

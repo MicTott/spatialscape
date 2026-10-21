@@ -3,7 +3,7 @@ import { Matrix4 } from "@math.gl/core";
 import type { SampleData } from "../data/cache";
 import { drawCount } from "./lod";
 import { store, type ViewId, type ViewerState } from "../store/store";
-import { fmtValue, VIEWS } from "./types";
+import { fmtValue } from "./types";
 import type { ViewerController } from "./ViewerController";
 
 export class Interaction {
@@ -25,11 +25,11 @@ export class Interaction {
     this.abort.abort();
   }
 
-  /** Which view a container-relative pixel falls in. */
-  viewAtPixel(x: number): ViewId | null {
-    for (const v of VIEWS) {
-      const r = this.c.rects[v];
-      if (r && x >= r.x && x < r.x + r.w) return v;
+  /** Which pane a container-relative pixel falls in (the header strips above the panes belong to none). */
+  viewAtPixel(x: number, y: number): ViewId | null {
+    for (const p of this.c.panes) {
+      const r = this.c.rects[p.id];
+      if (r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return p.id;
     }
     return null;
   }
@@ -39,7 +39,7 @@ export class Interaction {
     if (c.destroyed || !(c.deck as any).viewManager) return null;
     const rect = c.container.getBoundingClientRect();
     const px: [number, number] = [e.clientX - rect.left, e.clientY - rect.top];
-    const view = this.viewAtPixel(px[0]);
+    const view = this.viewAtPixel(px[0], px[1]);
     if (!view) return null;
     const vp = c.deck.getViewports().find((v) => v.id === view);
     if (!vp) return null;
@@ -96,7 +96,7 @@ export class Interaction {
     const p = c.layouts[hit.view]!.placements.get(id)!;
     const inv = new Matrix4(p.modelMatrix).invert();
     const [lx, ly] = inv.transformAsPoint([hit.world[0], hit.world[1], 0]);
-    const r = Math.max(smp.pointRadius * s.pointScale[hit.view], 6 / scale);
+    const r = Math.max(smp.pointRadius * s.pointScale[c.kindOf(hit.view)], 6 / scale);
     const [vw, vh] = c.viewSize(hit.view);
     const drawn = drawCount(sd.nObs, p.worldBbox, c.viewStates[hit.view].zoom, [vw, vh]); // rows past this are not on screen
     const hits = sd.index.within(lx, ly, r).filter((h) => h < drawn);
@@ -162,6 +162,10 @@ export class Interaction {
         rows.push({ label: f.name, value: vals ? fmtValue(vals[i]) : "…" });
       }
     }
+    for (const k of c.manifest.meta ?? []) {
+      const v = smp.meta?.[k.id];
+      if (v != null) rows.push({ label: k.name, value: v });
+    }
     return { rows };
   }
 
@@ -225,7 +229,7 @@ export class Interaction {
       s.setFocus(s.selected);
     } else if (e.key === "f") {
       if (s.focus) c.focusSample(s.focus, true);
-      else for (const v of VIEWS) if (c.rects[v]) c.fitAll(v, true);
+      else c.fitAllPanes(true);
     }
   };
 }

@@ -8,8 +8,9 @@ import { Tooltip } from "./ui/Tooltip";
 import { StatusBar } from "./ui/StatusBar";
 import { Landing, resolveDataset } from "./ui/Landing";
 import { PlatformBar } from "./ui/PlatformBar";
-import { SplitDivider } from "./ui/SplitDivider";
-import { ScaleBar } from "./ui/ScaleBar";
+import { PaneDividers } from "./ui/PaneDividers";
+import { PaneHeaders } from "./ui/PaneHeaders";
+import { ScaleBars } from "./ui/ScaleBar";
 import { PointSizeControls } from "./ui/PointSizeControl";
 import { HelpOverlay } from "./ui/HelpOverlay";
 import { TopNav } from "./ui/TopNav";
@@ -53,8 +54,9 @@ export function App() {
     <div className={`app${hasNav ? " with-nav" : ""}`} style={hasGenome ? ({ "--genome-h": `${genomeHeight}px` } as React.CSSProperties) : undefined}>
       <TopNav />
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}${hasGenome ? " with-genome" : ""}`} ref={mapRef}>
-        <SplitDivider mapRef={mapRef} />
-        <ScaleBar />
+        <PaneHeaders />
+        <PaneDividers mapRef={mapRef} />
+        <ScaleBars />
         <PointSizeControls />
       </div>
       <GenomePanel />

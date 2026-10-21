@@ -10,7 +10,7 @@ export interface RegionPolygon {
   id: string;
   seq: number; // draw order across groups: the last lasso wins where polygons overlap
   sample: string;
-  view: ViewId;
+  view: ViewKind; // the kind of pane it was drawn in (panes come and go; the sample is what anchors it)
   local: [number, number][];
 }
 export interface RegionGroup {
@@ -68,11 +68,36 @@ export interface HoverInfo {
   rows?: { label: string; value: string; swatch?: string }[];
 }
 
-export type ViewId = "spatial" | "embedding";
+/** What a pane shows: tissue sections or embeddings. Point sizes and persisted regions are per kind. */
+export type ViewKind = "spatial" | "embedding";
+/** A pane id: "spatial" (the single tissue canvas), "embedding", or "g0".."g2" (one pane per group when split by a meta key). */
+export type ViewId = string;
+export interface ViewRect {
+  x: number; // px from the left of the container
+  y: number; // px from the top (below the pane header when panes have one)
+  w: number;
+  h: number;
+}
 export interface SplitState {
   on: boolean;
   side: "left" | "right"; // where the embedding view sits
   fraction: number; // width fraction of the embedding view
+}
+/** The tissue canvas split into one pane per level of a sample meta key (condition, sex, ...). */
+export interface GroupSplit {
+  key: string;
+  groups: string[] | null; // the levels shown, in pane order; null = the first three levels
+  fractions: number[] | null; // width shares of the group panes once a divider was dragged; null = equal
+}
+/** What the UI needs to know about a pane; the controller publishes it with the rectangles. */
+export interface PaneInfo {
+  id: ViewId;
+  kind: ViewKind;
+  key: string | null; // meta key when the pane is one group
+  value: string | null; // the group's level
+  label: string; // caption: the level, or the kind
+  count: number; // sections laid out in the pane
+  hidden: number; // sections of the group hidden by the platform bar or the sample list
 }
 export interface OutlineState {
   field: string | null;
@@ -90,8 +115,12 @@ export interface ViewerState {
   genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
   locus: Locus | null; // what the genome panel shows (gl in the URL)
   regions: Regions; // annotation drawn in the viewer: groups of lassos, exposed as the "regions" field
-  viewPx: Partial<Record<ViewId, number>>; // px per µm per view (scale bar)
-  viewRects: Partial<Record<ViewId, { x: number; w: number }>>;
+  viewPx: Record<ViewId, number>; // px per µm per pane (scale bar)
+  viewRects: Record<ViewId, ViewRect>;
+  panes: PaneInfo[]; // the panes on screen, in order
+  splitBy: GroupSplit | null; // tissue sections split into one pane per group
+  matchScale: boolean; // group panes share one µm/px: zoom one, the others follow in scale
+  paneCameras: ViewState[] | null; // cameras of the group panes, pane order (pv in the URL)
   selectionSummary: SelectionSummary | null;
   datasetUrl: string | null;
   datasetRef: string | null; // what the user typed / the registry id; kept in the URL
@@ -118,7 +147,7 @@ export interface ViewerState {
   viewState: ViewState | null;
   imageOpacity: number;
   showImages: boolean;
-  pointScale: Record<ViewId, number>; // point radius multiplier per view (spatial sections vs embeddings)
+  pointScale: Record<ViewKind, number>; // point radius multiplier per pane kind (spatial sections vs embeddings)
   hover: HoverInfo | null;
   categoryCounts: Record<string, number[]>;
   filterHistogram: number[] | null;
@@ -165,7 +194,8 @@ export const DEFAULTS = {
   layoutMode: "grid" as LayoutMode,
   imageOpacity: 1,
   showImages: true,
-  pointScale: { spatial: 1, embedding: 1 } as Record<ViewId, number>,
+  pointScale: { spatial: 1, embedding: 1 } as Record<ViewKind, number>,
+  matchScale: true,
 };
 
 export const store = createStore<ViewerState>((set, get) => ({
@@ -201,6 +231,10 @@ export const store = createStore<ViewerState>((set, get) => ({
   regions: EMPTY_REGIONS,
   viewPx: {},
   viewRects: {},
+  panes: [],
+  splitBy: null,
+  matchScale: DEFAULTS.matchScale,
+  paneCameras: null,
   selectionSummary: null,
   focus: null,
   selected: null,

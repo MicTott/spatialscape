@@ -18,6 +18,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `sharded` | bool | `true` | sharded Zarr (one range request per gene; needs HTTP Range support) or one file per gene (`false`, for GitHub Pages and other hosts without Range). `build --no-shard` sets it for one run; put it here so `site build` and later builds keep it |
 | `feature_groups` | list of `{id, name, pattern, strip, units}` | `[]` | regex over var names |
 | `fields` | list of field specs | `[]` | declarations; undeclared fields are inferred |
+| `meta` | list of `{id, name, levels}` | `[]` | sample metadata keys: display name and level order; keys used only on samples need no entry. See [Sample metadata](../guide/dataset-yaml#sample-metadata) |
 | `defaults` | mapping | `{}` | merged into every sample |
 | `platforms` | `{platform: mapping}` | `{}` | merged into samples of that platform |
 | `samples` | list of sample entries | required | may contain `glob:` entries |
@@ -55,6 +56,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `microns` | one of `already_microns`, `microns_per_unit`, `spot_diameter_fullres`, `spot_spacing`, `scalefactors_json` | inferred | |
 | `transform` | `{flip: none \| x \| y, rotate: 0 \| 90 \| 180 \| 270}` | none | applied to points and images |
 | `fields` | `{field_id: obs_column}` or `{field_id: {column, scale}}` or `auto` | `{}` | `scale` multiplies a numeric column, e.g. `100` to show a ratio as a percent |
+| `meta` | `{key: value \| {column}}` | `{}` | sample-level metadata (condition, subject, ...): a templated string, or an obs column that holds one value in the sample; the viewer splits the canvas by these keys |
 | `images` | list of image specs or `auto` | `auto` | |
 | `polygons` | `{path \| obsm, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (long-format parquet) or `obsm` (n, v, 2); `affine` maps vertices into the coordinate frame |
 | `subset` | `{column, values}` | all rows | keep only observations whose obs column takes one of the values; one file can then appear as several samples (one panel per cell class, per condition, ...) |

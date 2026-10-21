@@ -1,6 +1,7 @@
 import { fieldById } from "../data/manifest";
 import { useEffect, useRef } from "react";
 import { BLEND_SCHEMES, BLEND_SIZE, blendLUT, colormapCSS, effectiveColormap } from "../layers/lut";
+import { unassignedSamples } from "../views/panes";
 import { store, useViewer } from "../store/store";
 
 function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[] }) {
@@ -57,9 +58,11 @@ export function Legend() {
   const platforms = useViewer((s) => s.platforms);
   const hiddenSamples = useViewer((s) => s.hiddenSamples);
   const scalePerSample = useViewer((s) => s.scalePerSample);
+  const splitBy = useViewer((s) => s.splitBy);
   if (!manifest || !color) return null;
   // samples currently on screen that do not carry the colored field: drawn grey as "not measured"
-  const onScreen = manifest.samples.filter((smp) => !hiddenSamples.includes(smp.id) && (smp.kind === "embedding" || !platforms || platforms.includes(smp.platform)));
+  const leftOut = new Set(unassignedSamples(manifest, splitBy).map((s) => s.id));
+  const onScreen = manifest.samples.filter((smp) => !hiddenSamples.includes(smp.id) && !leftOut.has(smp.id) && (smp.kind === "embedding" || !platforms || platforms.includes(smp.platform)));
   const notMeasured = color.kind === "field" ? onScreen.filter((smp) => !smp.fields.includes((color as any).field)).length : 0;
 
   if (color.kind === "field") {

@@ -1,16 +1,17 @@
-import { store, useViewer, type ViewId } from "../store/store";
+import { store, useViewer, type ViewKind } from "../store/store";
 
 const MIN = 0.25;
 const MAX = 4;
 
-/** Slider for the point radius multiplier of one view, bottom-left of that view's rectangle. */
-function PointSizeControl({ view }: { view: ViewId }) {
-  const rect = useViewer((s) => s.viewRects[view]);
+/** Slider for the point radius multiplier of one pane kind, bottom-left of the first pane of that kind. */
+function PointSizeControl({ view }: { view: ViewKind }) {
+  const paneId = useViewer((s) => s.panes.find((p) => p.kind === view)?.id);
+  const rect = useViewer((s) => (paneId ? s.viewRects[paneId] : undefined));
   const value = useViewer((s) => s.pointScale[view]);
   if (!rect) return null;
   const update = (v: number) => store.getState().set({ pointScale: { ...store.getState().pointScale, [view]: v } });
   return (
-    <div className={`pointsize ${view}`} style={{ left: rect.x + 12 }} title="Point size (double-click the slider to reset)">
+    <div className={`pointsize ${view}`} style={{ left: rect.x + 12, top: rect.y + rect.h - 42, bottom: "auto" }} title="Point size (double-click the slider to reset)">
       <span className="cap">Point size</span>
       <span className="dot" aria-hidden />
       <input

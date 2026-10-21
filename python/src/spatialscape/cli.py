@@ -81,6 +81,8 @@ def inspect(
     """
     import numpy as np
 
+    from .discover import is_textual
+
     if path.suffix.lower() in (".rds", ".rda", ".rdata"):
         from .rds import read_experiment
 
@@ -92,7 +94,7 @@ def inspect(
         typer.echo("colData columns:")
         for c in x.obs.columns:
             s = x.obs[c]
-            if isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object:
+            if is_textual(s):
                 n = s.nunique(dropna=True)
                 typer.echo(f"  {c:<40} categorical  {n:>5} levels  e.g. {list(map(str, s.dropna().unique()[:6]))}")
             else:
@@ -337,15 +339,17 @@ def synth(
     out: Path = typer.Argument(..., help="Directory for the generated inputs.", show_default=False),
     cells: int = typer.Option(2000, "--cells", help="Cells in the first synthetic section (the second has 40% more)."),
     genes: int = typer.Option(50, "--genes", help="Number of synthetic genes."),
+    comparisons: bool = typer.Option(False, "--comparisons", help="Two experimental groups: four sections with sample metadata (`condition` control / stress, one `mouse` each), to try splitting the view by group."),
 ):
     """Write a tiny synthetic dataset for tests and demos.
 
     Produces two fake tissue sections (one log-normalized, one as counts with a flip and rotation), PNG images,
-    cell polygons, an embedding sample, and a `dataset.yaml` that ties them together.
+    cell polygons, an embedding sample, and a `dataset.yaml` that ties them together. `--comparisons` adds two
+    more sections and sample metadata (a control and a stress group), the input for comparing groups side by side.
     """
     from .synthetic import make_synthetic
 
-    cfg = make_synthetic(out, cells, genes)
+    cfg = make_synthetic(out, cells, genes, comparisons=comparisons)
     typer.echo(f"wrote {cfg}\n  next: spatialscape build {cfg}")
 
 

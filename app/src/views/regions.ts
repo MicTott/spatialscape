@@ -60,7 +60,7 @@ export class RegionsManager {
     if (!best) return false;
     const inv = new Matrix4(L.placements.get(best)!.modelMatrix).invert();
     const local = world.map((pt) => inv.transformAsPoint([pt[0], pt[1], 0]).slice(0, 2) as [number, number]);
-    s.addRegionPolygon(s.regions.active, { sample: best, view, local });
+    s.addRegionPolygon(s.regions.active, { sample: best, view: this.c.kindOf(view), local });
     return true;
   }
 
@@ -188,7 +188,7 @@ export class RegionsManager {
       for (const g of groups) {
         const rgb = hexToRGB(g.color);
         for (const poly of g.polygons) {
-          if (poly.sample !== id || poly.view !== view) continue;
+          if (poly.sample !== id) continue;
           const cx = poly.local.reduce((a, q) => a + q[0], 0) / poly.local.length;
           const cy = poly.local.reduce((a, q) => a + q[1], 0) / poly.local.length;
           rows.push({ polygon: poly.local, color: [rgb[0], rgb[1], rgb[2]], active: g.id === active, name: g.name, centroid: [cx, cy] });

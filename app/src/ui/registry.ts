@@ -51,7 +51,7 @@ export async function resolveDataset(d: string): Promise<string> {
   if (/^(https?:)?\/\//.test(d) || d.includes("/")) return absolute(d);
   const reg = await loadRegistry();
   const hit = reg?.datasets.find((x) => x.id === d);
-  return hit?.url ? absolute(hit.url) : d;
+  return absolute(hit?.url ?? d); // a bare folder name next to the page (`serve bundles`) is a URL too
 }
 
 export function thumbnailUrl(d: RegistryEntry): string | null {

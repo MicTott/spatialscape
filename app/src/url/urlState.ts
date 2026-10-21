@@ -89,6 +89,19 @@ export function readUrl(): Partial<ViewerState> {
       if (m) out.split = { on: true, side: m[1] === "l" ? "left" : "right", fraction: Math.min(0.8, Math.max(0.2, num(m[2], 0.38))) };
     }
   }
+  if (q.get("sb")) {
+    const groups = q.get("sg") ? q.get("sg")!.split(",").filter(Boolean) : null;
+    const fr = q.get("sf") ? q.get("sf")!.split(",").map(Number) : null;
+    out.splitBy = { key: q.get("sb")!, groups: groups?.length ? groups : null, fractions: fr && fr.length && fr.every((x) => Number.isFinite(x) && x > 0) ? fr : null };
+    if (q.get("pv")) {
+      const cams = q.get("pv")!.split(";").map((part) => {
+        const [x, y, z] = part.split(",");
+        return { target: [num(x, 0), num(y, 0), 0] as [number, number, number], zoom: num(z, 0) };
+      });
+      if (cams.length) out.paneCameras = cams;
+    }
+  }
+  if (q.get("ms") === "0") out.matchScale = false;
   return out;
 }
 
@@ -128,6 +141,13 @@ export function serialize(s: ViewerState): string {
   if (s.outline.field) q.set("o", `${s.outline.field}:${s.outline.style}:${s.outline.width}`);
   if (!s.split.on) q.set("sv", "0");
   else if (s.split.side !== "left" || Math.abs(s.split.fraction - 0.38) > 0.005) q.set("sv", `${s.split.side[0]}:${s.split.fraction.toFixed(2)}`);
+  if (s.splitBy) {
+    q.set("sb", s.splitBy.key);
+    if (s.splitBy.groups?.length) q.set("sg", s.splitBy.groups.join(","));
+    if (s.splitBy.fractions?.length) q.set("sf", s.splitBy.fractions.map((f) => f.toFixed(3)).join(","));
+    if (s.paneCameras?.length) q.set("pv", s.paneCameras.map((c) => `${c.target[0].toFixed(0)},${c.target[1].toFixed(0)},${c.zoom.toFixed(2)}`).join(";"));
+  }
+  if (!s.matchScale) q.set("ms", "0");
   return q.toString();
 }
 

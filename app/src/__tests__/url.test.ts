@@ -21,6 +21,43 @@ describe("url state", () => {
     expect(q.get("s")).toBe("s1");
     expect(q.get("v")).toBe("100,201,-2.35");
     expect(q.has("cm")).toBe(false);
+    expect(q.has("sb")).toBe(false);
+    expect(q.has("ms")).toBe(false);
+  });
+
+  it("round-trips the group split, its cameras and the scale lock", () => {
+    const s = {
+      ...store.getState(),
+      datasetUrl: "http://x/y",
+      splitBy: { key: "condition", groups: ["stress", "control"], fractions: [0.4, 0.6] },
+      paneCameras: [
+        { target: [10.2, 20.7, 0] as [number, number, number], zoom: -1.234 },
+        { target: [30, 40, 0] as [number, number, number], zoom: 0.5 },
+      ],
+      matchScale: false,
+    } as ViewerState;
+    const qs = serialize(s);
+    const q = new URLSearchParams(qs);
+    expect(q.get("sb")).toBe("condition");
+    expect(q.get("sg")).toBe("stress,control");
+    expect(q.get("sf")).toBe("0.400,0.600");
+    expect(q.get("pv")).toBe("10,21,-1.23;30,40,0.50");
+    expect(q.get("ms")).toBe("0");
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: `?${qs}` } };
+    const back = readUrl();
+    expect(back.splitBy).toEqual({ key: "condition", groups: ["stress", "control"], fractions: [0.4, 0.6] });
+    expect(back.paneCameras).toEqual([
+      { target: [10, 21, 0], zoom: -1.23 },
+      { target: [30, 40, 0], zoom: 0.5 },
+    ]);
+    expect(back.matchScale).toBe(false);
+    g.window = { location: { search: "?sb=condition" } };
+    const plain = readUrl();
+    expect(plain.splitBy).toEqual({ key: "condition", groups: null, fractions: null });
+    expect(plain.matchScale).toBeUndefined(); // the default stays on
+    g.window = saved;
   });
 });
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Compare groups side by side.** Samples carry metadata (`meta: { condition: stress, mouse: m1 }`, a value per sample, typed or read from an obs column that is constant within the sample; optional dataset-level `meta:` for names and level order), and the viewer splits the tissue canvas by any key: one pane per level, two or three at a time, each with its own camera, caption, scale bar and focus, a select per pane when there are more groups than panes, draggable handles, vertical stacking on narrow windows, and *match scale* (on by default) keeping every pane at the same microns per pixel while each keeps its own centre. Colour, filters, legend, lasso and regions stay shared; sections without a value are left out and counted in the top bar; the hover shows the metadata; the split, groups, handles and cameras travel in the URL (`sb`, `sg`, `sf`, `ms`, `pv`); PNG export draws the captions. Internally the canvas is now a list of panes rather than a fixed tissue/embedding pair; the embedding pane behaves as before. `init` proposes `# meta:` lines for columns that are constant within each sample; `synth --comparisons` writes a two-group example. A bare dataset name in `?d=` resolves against the page like a path.
+
 ## 0.3.0 (2026-10-21)
 
 - **ATAC and multiome.** A sample with a Cell Ranger fragment file can carry `tracks:`: `build` streams the fragments once and writes bigWigs of insertions per million, binned, for every cell and per category of the fields you name, plus the sample's peaks and gene models (from the reference's GTF, a UCSC genePred table, a BED, or UCSC RefSeq downloaded once with the default `genes: refseq`). Needs `pip install "spatialscape[tracks]"`.

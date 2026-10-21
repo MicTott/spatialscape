@@ -6,23 +6,26 @@
  *   Selection    lasso, highlight, summary, CSV export      (selection.ts)
  *   Stats        counts, histograms, gene-by-annotation     (stats.ts)
  *   Blend        two-set gene scores                        (blend.ts)
- * Two orthographic views share one GL context: "spatial" (tissue mosaic) and "embedding" (UMAPs).
+ * The canvas is a list of panes (panes.ts) sharing one GL context: the tissue sections in one pane, or one
+ * pane per group when split by a sample meta key, plus the embeddings' pane. Each pane is an orthographic
+ * view with its own camera and layout; colour, filters and every other setting are shared.
  * React never touches the canvas; this class subscribes to the store directly.
  */
 import { Deck, OrthographicView, LinearInterpolator } from "@deck.gl/core";
 import { DataCache } from "../data/cache";
 import type { Manifest, Sample } from "../data/manifest";
-import { store, type ViewId, type ViewerState, type ViewState } from "../store/store";
+import { store, type ViewId, type ViewKind, type ViewRect, type ViewerState, type ViewState } from "../store/store";
 import { Blend } from "./blend";
 import { Interaction } from "./interaction";
 import { RegionsManager } from "./regions";
 import { LayerBuilder } from "./layers";
 import { computeLayout, fitBbox, type LayoutResult } from "./layout";
 import { Loader } from "./loader";
+import { computePanes, paneInfo, paneRects, STACK_BELOW, unassignedSamples, type Pane } from "./panes";
 import { Selection } from "./selection";
 import { Stats } from "./stats";
 import { composePNG } from "./exportPng";
-import { sameChannel, VIEWS, type ViewRect } from "./types";
+import { sameChannel } from "./types";
 
 export class ViewerController {
   deck: Deck<OrthographicView[]>;
@@ -30,9 +33,10 @@ export class ViewerController {
   manifest: Manifest | null = null;
   samplesById = new Map<string, Sample>();
   regions: RegionsManager;
-  layouts: Record<ViewId, LayoutResult | null> = { spatial: null, embedding: null };
-  viewStates: Record<ViewId, ViewState> = { spatial: { target: [0, 0, 0], zoom: 0 }, embedding: { target: [0, 0, 0], zoom: 0 } };
-  rects: Partial<Record<ViewId, ViewRect>> = {};
+  panes: Pane[] = [];
+  layouts: Record<ViewId, LayoutResult | null> = {};
+  viewStates: Record<ViewId, ViewState> = {};
+  rects: Record<ViewId, ViewRect> = {};
   geneGmax = new Map<string, number>(); // `${sampleId}:${gene}` -> per-gene max (dequantization)
   geneGmin = new Map<string, number>(); // `${sampleId}:${gene}` -> per-gene min: 0, or -max for signed features
   generation = 0; // bumped whenever color/filter/group change so stale loads are ignored
@@ -53,13 +57,15 @@ export class ViewerController {
   private wantCapture = false;
   private captureResolvers: (() => void)[] = [];
   private probeResolvers: ((p: { nonBackground: number; total: number }) => void)[] = [];
+  private userMoved = new Set<ViewId>(); // panes whose camera the user (or the URL) set: kept across resizes
 
   constructor(public container: HTMLDivElement) {
     this.deck = new Deck({
       parent: container,
       views: this.makeViews(),
       viewState: this.viewStates as any,
-      onViewStateChange: ({ viewState, viewId }) => this.onViewState(viewId as ViewId, viewState as ViewState),
+      // a programmatic transition reports its frames here too, flagged inTransition; user input is everything else
+      onViewStateChange: ({ viewState, viewId, interactionState }) => this.onViewState(viewId as ViewId, viewState as ViewState, !!interactionState?.inTransition),
       layerFilter: ({ layer, viewport }) => (layer.props as any).viewId === viewport.id,
       layers: [],
       useDevicePixels: true,
@@ -95,7 +101,8 @@ export class ViewerController {
     this.layersBuilder.reset();
     this.blend.invalidate();
     if (this.selection.current) this.selection.clear();
-    this.layouts = { spatial: null, embedding: null };
+    this.layouts = {};
+    this.userMoved.clear();
   }
 
   // ---------------------------------------------------------------- public API used by the UI and tests
@@ -134,72 +141,93 @@ export class ViewerController {
     return this.interaction.describe(sd, i, s);
   }
 
-  // ---------------------------------------------------------------- views
-  private hasEmbedding(): boolean {
-    return !!this.manifest?.samples.some((s) => s.kind === "embedding");
+  // ---------------------------------------------------------------- panes
+  paneOf(view: ViewId): Pane | undefined {
+    return this.panes.find((p) => p.id === view);
   }
-  private hasSpatial(): boolean {
-    return !!this.manifest?.samples.some((s) => s.kind !== "embedding");
+  kindOf(view: ViewId): ViewKind {
+    return this.paneOf(view)?.kind ?? (view === "embedding" ? "embedding" : "spatial");
+  }
+  /** The pane a sample is drawn in, or null when the current split leaves it out. */
+  viewOf(sampleId: string): ViewId | null {
+    for (const p of this.panes) if (p.samples.some((s) => s.id === sampleId)) return p.id;
+    return null;
+  }
+  groupPanes(): Pane[] {
+    return this.panes.filter((p) => p.group);
+  }
+  private stacked(): boolean {
+    return this.groupPanes().length >= 2 && this.container.clientWidth < STACK_BELOW;
   }
 
-  /** Pixel rectangles of the active views, computed from the split state. */
-  computeRects(): Partial<Record<ViewId, ViewRect>> {
-    const [w] = this.viewportSize();
+  /** Panes and their pixel rectangles from the manifest and the split state; published for the UI. */
+  computeRects(): Record<ViewId, ViewRect> {
+    const [w, h] = this.viewportSize();
     const s = store.getState();
-    const emb = this.hasEmbedding() && s.split.on;
-    const spa = this.hasSpatial();
-    if (emb && spa) {
-      const ew = Math.round(w * s.split.fraction);
-      return s.split.side === "left"
-        ? { embedding: { x: 0, w: ew }, spatial: { x: ew, w: w - ew } }
-        : { spatial: { x: 0, w: w - ew }, embedding: { x: w - ew, w: ew } };
+    if (!this.manifest) {
+      this.panes = [];
+      return {};
     }
-    if (emb) return { embedding: { x: 0, w } };
-    return { spatial: { x: 0, w } };
+    this.panes = computePanes(this.manifest, s.splitBy, s.split);
+    return paneRects(this.panes, w, h, s.splitBy, s.split, this.stacked());
   }
 
   private makeViews(): OrthographicView[] {
     this.rects = this.computeRects();
-    store.getState().set({ viewRects: this.rects });
-    return VIEWS.filter((v) => this.rects[v]).map(
-      (v) =>
-        new OrthographicView({
-          id: v,
-          flipY: true,
-          x: this.rects[v]!.x,
-          y: 0,
-          width: this.rects[v]!.w,
-          height: "100%",
-          controller: store.getState().tool === "lasso" ? false : { dragRotate: false, doubleClickZoom: false, inertia: 250, keyboard: false },
-        }),
-    );
+    for (const p of this.panes) this.viewStates[p.id] ??= { target: [0, 0, 0], zoom: 0 };
+    for (const id of Object.keys(this.layouts)) if (!this.rects[id]) delete this.layouts[id];
+    this.publishPanes();
+    return this.panes
+      .filter((p) => this.rects[p.id])
+      .map(
+        (p) =>
+          new OrthographicView({
+            id: p.id,
+            flipY: true,
+            x: this.rects[p.id].x,
+            y: this.rects[p.id].y,
+            width: this.rects[p.id].w,
+            height: this.rects[p.id].h,
+            controller: store.getState().tool === "lasso" ? false : { dragRotate: false, doubleClickZoom: false, inertia: 250, keyboard: false },
+          }),
+      );
   }
 
-  /** Recompute view rectangles and push them to deck. */
+  private publishPanes() {
+    const s = store.getState();
+    const info = this.manifest ? paneInfo(this.panes, this.manifest, this.hiddenBase(s)) : [];
+    const active = this.panes.some((p) => p.id === s.activeView) ? s.activeView : (this.panes.find((p) => p.kind === "spatial") ?? this.panes[0])?.id;
+    s.set({ viewRects: this.rects, panes: info, ...(active && active !== s.activeView ? { activeView: active } : {}) });
+  }
+
+  /** Recompute panes and rectangles and push them to deck. */
   applyViews() {
-    this.deck.setProps({ views: this.makeViews() });
+    this.deck.setProps({ views: this.makeViews(), viewState: this.viewStates as any });
   }
 
   viewSize(v: ViewId): [number, number] {
-    const [, h] = this.viewportSize();
-    return [Math.max(1, this.rects[v]?.w ?? 1), h];
+    const r = this.rects[v];
+    return [Math.max(1, r?.w ?? 1), Math.max(1, r?.h ?? 1)];
   }
 
   viewportSize(): [number, number] {
     return [Math.max(1, this.container.clientWidth), Math.max(1, this.container.clientHeight)];
   }
 
-  viewOf(sampleId: string): ViewId {
-    return this.samplesById.get(sampleId)?.kind === "embedding" ? "embedding" : "spatial";
-  }
-
   /** Samples hidden by the sample list or the platform bar. */
-  hiddenSampleSet(s: ViewerState): Set<string> {
+  hiddenBase(s: ViewerState): Set<string> {
     const hidden = new Set(s.hiddenSamples);
     if (s.platforms && this.manifest) {
       const allowed = new Set(s.platforms);
       for (const smp of this.manifest.samples) if (smp.kind !== "embedding" && !allowed.has(smp.platform)) hidden.add(smp.id);
     }
+    return hidden;
+  }
+
+  /** Samples not drawn: hidden by the user, or left out by the current split (no value of the key). */
+  hiddenSampleSet(s: ViewerState): Set<string> {
+    const hidden = this.hiddenBase(s);
+    if (this.manifest && s.splitBy) for (const smp of unassignedSamples(this.manifest, s.splitBy)) hidden.add(smp.id);
     return hidden;
   }
 
@@ -211,11 +239,19 @@ export class ViewerController {
       void this.loader.loadChannels();
       if (s.filter !== prev.filter && s.filter && prev.filter && sameChannel(s.filter, prev.filter)) this.stats.updateFilterHistogram();
     }
-    if (s.split !== prev.split) {
+    if (s.splitBy !== prev.splitBy || s.split !== prev.split) {
+      const regrouped = s.splitBy?.key !== prev.splitBy?.key || s.splitBy?.groups !== prev.splitBy?.groups;
+      if (regrouped) this.userMoved.clear(); // new panes start fitted; a dragged divider keeps the cameras
       this.applyViews();
-      for (const v of VIEWS) if (this.rects[v]) this.relayout(v, true);
+      this.relayoutAll(true);
+      if (s.splitBy !== prev.splitBy) {
+        if (s.color?.kind === "field") this.stats.updateCategoryCounts(s.color.field);
+        this.stats.updateGroupStats();
+        this.stats.updateFilterHistogram();
+      }
       this.requestLayers();
     }
+    if (s.matchScale !== prev.matchScale && s.matchScale) this.applyMatchScale(this.paneOf(s.activeView)?.group ? s.activeView : undefined);
     if (s.tool !== prev.tool) {
       this.applyViews();
       if (s.tool === "pan") this.selection.cancelDrawing();
@@ -230,7 +266,8 @@ export class ViewerController {
       for (const [id, st] of Object.entries(s.sampleStatus)) if (st === "ready" && prev.sampleStatus[id] !== "ready") this.regions.recompute(id);
     }
     if (s.layoutMode !== prev.layoutMode || s.hiddenSamples !== prev.hiddenSamples || s.platforms !== prev.platforms) {
-      for (const v of VIEWS) if (this.rects[v]) this.relayout(v, true);
+      this.publishPanes();
+      this.relayoutAll(true);
       if (s.color?.kind === "field") this.stats.updateCategoryCounts(s.color.field);
       this.stats.updateGroupStats();
       this.stats.updateFilterHistogram();
@@ -238,7 +275,7 @@ export class ViewerController {
     }
     if (s.focus !== prev.focus) {
       if (s.focus) this.focusSample(s.focus, true);
-      else this.fitAll(prev.focus ? this.viewOf(prev.focus) : "spatial", true);
+      else this.fitAll((prev.focus && this.viewOf(prev.focus)) || s.activeView, true);
     }
     if (
       s.colormap !== prev.colormap ||
@@ -259,65 +296,160 @@ export class ViewerController {
   }
 
   // ---------------------------------------------------------------- layout / camera
-  relayout(view: ViewId, animate: boolean) {
-    if (!this.manifest || !this.rects[view]) return;
+  relayoutAll(animate: boolean) {
+    for (const p of this.panes) if (this.rects[p.id]) this.relayout(p.id, animate);
+    // group panes share one grid shape, so the same section index sits in the same place in every pane
+    const gp = this.groupPanes().filter((p) => this.layouts[p.id]);
+    if (gp.length >= 2 && !this.manifest?.layout.columns && store.getState().layoutMode === "grid") {
+      const largest = gp.reduce((a, b) => (this.layouts[b.id]!.placements.size > this.layouts[a.id]!.placements.size ? b : a));
+      const cols = this.layouts[largest.id]!.ncols;
+      for (const p of gp) if (p.id !== largest.id && this.layouts[p.id]!.ncols !== cols) this.relayout(p.id, animate, cols);
+    }
+    const s = store.getState();
+    if (s.focus && !this.viewOf(s.focus)) s.set({ focus: null }); // the split left the focused section out
+    if (s.matchScale) this.applyMatchScale();
+  }
+
+  relayout(view: ViewId, animate: boolean, columns?: number) {
+    const pane = this.paneOf(view);
+    if (!this.manifest || !pane || !this.rects[view]) return;
     const s = store.getState();
     const [w, h] = this.viewSize(view);
-    const samples = this.manifest.samples.filter((x) => (x.kind === "embedding") === (view === "embedding"));
-    this.layouts[view] = computeLayout(samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenSampleSet(s), this.manifest.layout.columns);
+    this.layouts[view] = computeLayout(pane.samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenBase(s), columns ?? this.manifest.layout.columns);
     this.selection.onRelayout(view);
     const focusHere = s.focus && this.viewOf(s.focus) === view;
     if (focusHere && this.layouts[view]!.placements.has(s.focus!)) this.focusSample(s.focus!, animate);
     else if (focusHere) s.set({ focus: null });
-    else this.fitAll(view, animate);
+    else if (!this.userMoved.has(view)) this.fitAll(view, animate, false);
     this.requestLayers();
   }
 
-  fitAll(view: ViewId, animate: boolean) {
+  /** Fit a pane to its sections. `propagate` carries the new zoom to the other group panes (match scale); callers
+   *  that fit every pane in turn pass false and apply the shared scale once afterwards. */
+  fitAll(view: ViewId, animate: boolean, propagate = true) {
     const L = this.layouts[view];
     if (!L || !this.rects[view]) return;
     const [w, h] = this.viewSize(view);
-    this.setViewState(view, { ...fitBbox(L.worldBbox, w, h, 0.04), ...(animate ? transition() : {}) });
+    this.setViewState(view, { ...fitBbox(L.worldBbox, w, h, 0.04), ...(animate ? transition() : {}) }, propagate);
+  }
+
+  fitAllPanes(animate: boolean) {
+    this.userMoved.clear();
+    for (const p of this.panes) this.fitAll(p.id, animate, false);
+    if (store.getState().matchScale) this.applyMatchScale();
   }
 
   focusSample(id: string, animate: boolean) {
     const view = this.viewOf(id);
+    if (!view) return;
     const p = this.layouts[view]?.placements.get(id);
     if (!p || !this.rects[view]) return;
-    const [w, h] = this.viewSize(view);
-    this.setViewState(view, { ...fitBbox(p.worldBbox, w, h, 0.06), ...(animate ? transition() : {}) });
+    this.userMoved.add(view);
+    this.setViewState(view, { ...fitBbox(p.worldBbox, w(this, view), h(this, view), 0.06), ...(animate ? transition() : {}) }, true);
+    if (store.getState().activeView !== view) store.getState().set({ activeView: view });
   }
 
+  /** Step through the sections of the active pane (the one the pointer last touched, or the focused one's). */
   stepFocus(delta: number) {
     const s = store.getState();
-    const view = s.focus ? this.viewOf(s.focus) : s.activeView;
+    const view = (s.focus && this.viewOf(s.focus)) || (this.paneOf(s.activeView) ? s.activeView : this.panes.find((p) => p.kind === "spatial")?.id);
+    if (!view) return;
     const ids = [...(this.layouts[view]?.placements.keys() ?? [])];
     if (!ids.length) return;
     const i = s.focus ? ids.indexOf(s.focus) : -1;
     s.setFocus(ids[(i + delta + ids.length) % ids.length]);
   }
 
-  setViewState(view: ViewId, vs: ViewState) {
+  setViewState(view: ViewId, vs: ViewState, propagate = false) {
     this.viewStates = { ...this.viewStates, [view]: vs };
+    if (propagate && this.paneOf(view)?.group && store.getState().matchScale) {
+      this.applyMatchScale(view); // pushes the state to deck as well
+      return;
+    }
     this.deck.setProps({ viewState: this.viewStates as any });
     this.publishScale(view, vs.zoom);
     this.requestLayers();
+    this.publishCameras();
+  }
+
+  /** Group panes share one scale. With a `lead` pane (the one the user zoomed) the others take its zoom; without
+   *  one (panes just fitted) the most zoomed-out pane leads, so no group is cut off. */
+  applyMatchScale(lead?: ViewId) {
+    const gp = this.groupPanes().filter((p) => this.layouts[p.id] && this.viewStates[p.id]);
+    if (gp.length < 2) return;
+    const leadState = lead ? this.viewStates[lead] : gp.map((p) => this.viewStates[p.id]).reduce((a, b) => (b.zoom < a.zoom ? b : a));
+    const zoom = leadState.zoom;
+    // the followers animate with the lead when it animates (a focus), else jump with it (a wheel zoom)
+    const anim = leadState.transitionDuration ? { transitionDuration: leadState.transitionDuration, transitionInterpolator: leadState.transitionInterpolator } : {};
+    for (const p of gp) {
+      const o = this.viewStates[p.id];
+      if (p.id !== lead && o && Math.abs(o.zoom - zoom) > 1e-6) this.viewStates = { ...this.viewStates, [p.id]: { target: o.target, zoom, ...anim } };
+      this.publishScale(p.id, zoom);
+    }
+    this.deck.setProps({ viewState: this.viewStates as any });
+    this.requestLayers();
+    this.publishCameras();
   }
 
   private vsTimer: number | null = null;
-  private onViewState(view: ViewId, vs: ViewState) {
+  /** Deck reports both user interaction and the end of a programmatic transition here; only the former is a
+   *  "move" that pins the camera and, with match scale on, carries its zoom to the other group panes. */
+  private onViewState(view: ViewId, vs: ViewState, inTransition = false) {
     this.viewStates = { ...this.viewStates, [view]: vs };
+    const pane = this.paneOf(view);
+    if (!inTransition) this.userMoved.add(view);
+    if (!inTransition && pane?.group && store.getState().matchScale) {
+      for (const p of this.groupPanes()) {
+        if (p.id === view || !this.layouts[p.id]) continue;
+        const o = this.viewStates[p.id];
+        if (o && Math.abs(o.zoom - vs.zoom) > 1e-6) {
+          this.viewStates = { ...this.viewStates, [p.id]: { target: o.target, zoom: vs.zoom } }; // same scale, its own centre
+          this.publishScale(p.id, vs.zoom);
+        }
+      }
+    }
     this.deck.setProps({ viewState: this.viewStates as any });
     this.publishScale(view, vs.zoom);
     this.requestLayers();
-    if (view !== "spatial") return;
+    this.publishCameras();
+  }
+
+  /** The cameras the URL carries: the single tissue pane's as `v`, the group panes' as `pv`; written after a pause. */
+  private publishCameras() {
     if (this.vsTimer) window.clearTimeout(this.vsTimer);
     this.vsTimer = window.setTimeout(() => {
-      store.getState().set({ viewState: { target: vs.target, zoom: vs.zoom } });
+      this.vsTimer = null;
+      const s = store.getState();
+      const patch: Partial<ViewerState> = {};
+      const single = this.viewStates.spatial;
+      if (this.paneOf("spatial") && single) patch.viewState = { target: single.target, zoom: single.zoom };
+      const gp = this.groupPanes();
+      if (gp.length) patch.paneCameras = gp.map((p) => ({ target: this.viewStates[p.id].target, zoom: this.viewStates[p.id].zoom }));
+      else if (s.paneCameras) patch.paneCameras = null;
+      s.set(patch);
     }, 150);
   }
 
-  /** px per world unit (µm) per view, for the scale bar; only published when it changes noticeably. */
+  /** Cameras from the URL, applied once the panes exist: `v` to the tissue pane, `pv` to the group panes in order. */
+  applyStoredCameras(s: ViewerState) {
+    if (s.viewState && this.paneOf("spatial")) {
+      this.userMoved.add("spatial");
+      this.setViewState("spatial", s.viewState);
+    }
+    // the URL's pane cameras stand as they are, even with match scale on: that is what the link showed
+    const gp = this.groupPanes();
+    if (s.paneCameras && gp.length) {
+      gp.forEach((p, i) => {
+        const cam = s.paneCameras![i];
+        if (cam) {
+          this.userMoved.add(p.id);
+          this.setViewState(p.id, { target: cam.target, zoom: cam.zoom });
+        }
+      });
+    }
+  }
+
+  /** px per world unit (µm) per pane, for the scale bar; only published when it changes noticeably. */
   private publishScale(view: ViewId, zoom: number) {
     const px = Math.pow(2, zoom);
     const cur = store.getState().viewPx[view];
@@ -326,23 +458,30 @@ export class ViewerController {
 
   private onResize() {
     if (!this.manifest) return;
+    const wasStacked = this.groupPanes().length >= 2 && Object.values(this.rects).every((r) => r.x === 0);
     this.applyViews();
     const s = store.getState();
-    for (const v of VIEWS) {
-      if (!this.rects[v]) continue;
-      if (s.focus && this.viewOf(s.focus) === v) this.focusSample(s.focus, false);
-      else if (v === "embedding" || !s.viewState) this.fitAll(v, false);
+    const stackedChanged = wasStacked !== this.stacked();
+    if (stackedChanged || this.panes.some((p) => this.rects[p.id] && !this.layouts[p.id])) {
+      this.relayoutAll(false);
+    } else {
+      for (const p of this.panes) {
+        if (!this.rects[p.id]) continue;
+        if (s.focus && this.viewOf(s.focus) === p.id) this.focusSample(s.focus, false);
+        else if (!this.userMoved.has(p.id)) this.fitAll(p.id, false, false);
+      }
+      if (s.matchScale && !this.groupPanes().some((p) => this.userMoved.has(p.id))) this.applyMatchScale();
     }
     this.requestLayers();
   }
 
-  /** World-space rectangle currently visible in a view. */
+  /** World-space rectangle currently visible in a pane. */
   viewBbox(view: ViewId): [number, number, number, number] {
-    const [w, h] = this.viewSize(view);
-    const vs = this.viewStates[view];
+    const [vw, vh] = this.viewSize(view);
+    const vs = this.viewStates[view] ?? { target: [0, 0, 0], zoom: 0 };
     const scale = Math.pow(2, vs.zoom);
     const [cx, cy] = vs.target;
-    return [cx - w / 2 / scale, cy - h / 2 / scale, cx + w / 2 / scale, cy + h / 2 / scale];
+    return [cx - vw / 2 / scale, cy - vh / 2 / scale, cx + vw / 2 / scale, cy + vh / 2 / scale];
   }
 
   // ---------------------------------------------------------------- layers
@@ -383,7 +522,7 @@ export class ViewerController {
       const rs = this.captureResolvers;
       this.captureResolvers = [];
       try {
-        composePNG(this.deck.getCanvas() as HTMLCanvasElement, this.container, this.rects);
+        composePNG(this.deck.getCanvas() as HTMLCanvasElement, this.container, this.panes, this.rects);
       } catch (e) {
         console.error("PNG export failed", e);
       }
@@ -454,6 +593,9 @@ export class ViewerController {
     });
   }
 }
+
+const w = (c: ViewerController, v: ViewId) => c.viewSize(v)[0];
+const h = (c: ViewerController, v: ViewId) => c.viewSize(v)[1];
 
 function transition() {
   return { transitionDuration: 400, transitionInterpolator: new LinearInterpolator({ transitionProps: ["target", "zoom"] }) };

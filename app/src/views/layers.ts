@@ -8,7 +8,7 @@ import { blendLUT, categoryPalette, colormapLUT, effectiveColormap, hexToRGB } f
 import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
 import { drawCount, intersects } from "./lod";
-import { filterRange, overlayProps, VIEWS, type SampleLayerInputs } from "./types";
+import { filterRange, overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
 
 interface Centroid {
@@ -110,7 +110,9 @@ export class LayerBuilder {
     const lut = this.lut(s.color?.kind === "blend" ? `blend:${s.color.scheme}` : effectiveColormap(s.colormap, signed));
     const catColors = baseMode === 1 && colorField ? this.palette(colorField.id, s.hiddenCategories[colorField.id] ?? []) : this.palette("__none", []);
 
-    for (const view of VIEWS) {
+    for (const pane of c.panes) {
+      const view = pane.id;
+      const kind = pane.kind;
       const L = c.layouts[view];
       if (!L || !c.rects[view]) continue;
       const vb = c.viewBbox(view);
@@ -140,7 +142,7 @@ export class LayerBuilder {
             visible,
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
-            getRadius: smp.pointRadius * s.pointScale[view],
+            getRadius: smp.pointRadius * s.pointScale[kind],
             radiusMinPixels: 1,
             radiusMaxPixels: 40,
             stroked: false,
@@ -168,9 +170,9 @@ export class LayerBuilder {
           } as any),
         );
       }
-      if (view === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
-      if (view === "spatial" && s.showPolygons) layers.push(...this.polygonLayers(view, L));
-      if (view === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
+      if (kind === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
+      if (kind === "spatial" && s.showPolygons) layers.push(...this.polygonLayers(view, L));
+      if (kind === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
       layers.push(...c.regions.layers(s, view, L));
       layers.push(...c.selection.layers(s, view, L));
       layers.push(...this.frameLayers(s, view, L));

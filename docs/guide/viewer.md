@@ -16,6 +16,24 @@ The **spatial view** holds every section as a grid or a strip, at true physical 
 | Show one platform | the top bar: All / Visium / Xenium …; shift-click toggles |
 | Grid vs strip | Display → Grid / Strip |
 | Cluster names on the embedding | Display → label clusters in the embedding |
+| Compare groups side by side | the top bar: *split by* → a sample metadata key |
+
+### Panes: comparing groups side by side
+
+When the dataset's samples carry metadata (`meta:` in the yaml: condition, sex, genotype, ...), the top bar
+offers *split by*. Choosing a key divides the tissue canvas into one pane per level, control on one side and
+stress on the other, a third pane for a third level; with more levels than panes, each pane's header has a
+select to choose which group it shows. Every pane has its own camera, scale bar and caption ("control · 2
+sections"), and the one the pointer last touched is underlined: `←` `→`, `Esc` and double-click work inside
+it. Colour, filters, the legend, point size, outlines, images, the lasso and regions stay shared, exactly as
+they are between the tissue and the embedding today; hover rows show the section's metadata.
+
+*match scale*, on by default, keeps every pane at the same microns per pixel: zoom in one and the others
+follow in scale while each keeps its own centre, so two sections can be read side by side at equal size. One
+click releases it; `f` fits every pane again. Drag the handles between panes to resize them (double-click a
+handle to equalise); under about 900 px of width the panes stack vertically. Sections that have no value for
+the key are not drawn while the canvas is split, and the top bar says how many. The split, the groups shown,
+the handle positions and each pane's camera travel in the URL, so a copied link reopens the same comparison.
 
 ## Color by
 

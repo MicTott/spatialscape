@@ -20,7 +20,7 @@ import pandas as pd
 import yaml
 
 from .config import is_r_object
-from .discover import SKIP_COLUMNS, field_id
+from .discover import SKIP_COLUMNS, field_id, is_textual
 
 Log = Callable[[str], None]
 
@@ -102,7 +102,7 @@ def describe_columns(obs: pd.DataFrame) -> list[Column]:
         na = int(s.isna().sum())
         if str(s.dtype) in ("bool", "boolean"):
             out.append(Column(name, "boolean", na=na))
-        elif isinstance(s.dtype, pd.CategoricalDtype) or s.dtype == object or str(s.dtype) == "string":
+        elif is_textual(s):
             vals = s.dropna().astype(str)
             k = int(vals.nunique())
             if k == 0:
@@ -243,6 +243,30 @@ def grid_evidence(obs: pd.DataFrame) -> dict:
     return out
 
 
+def constant_columns(obs: pd.DataFrame, sample_col: str | None, *, skip: set[str] | None = None) -> list[tuple[str, str]]:
+    """Columns that hold one value per sample and several across samples (condition, sex, age group): sample-level
+    properties, offered as `meta:` rather than as annotations. With no sample column the frame is one sample, and
+    a column with a single value is the candidate."""
+    skip = set(skip or ())
+    out: list[tuple[str, str]] = []
+    groups = obs.groupby(sample_col, observed=True) if sample_col and sample_col in obs.columns else None
+    for col in obs.columns:
+        name = str(col)
+        if name == sample_col or name in skip or SKIP_COLUMNS.match(name):
+            continue
+        s = obs[col]
+        if not (is_textual(s) or pd.api.types.is_numeric_dtype(s)):
+            continue
+        vals = [str(v) for v in pd.unique(s.dropna().astype(str))]
+        if groups is not None:
+            if not len(vals) or len(vals) > MAX_MENU_LEVELS or len(vals) < 2 or int(groups[col].nunique(dropna=True).max()) > 1:
+                continue
+            out.append((name, f"constant within each sample: {_join(vals, 4)}"))
+        elif len(vals) == 1 and len(s) > 1:
+            out.append((name, f"one value in this file: {vals[0]}"))
+    return out
+
+
 def sections_in(obs: pd.DataFrame) -> tuple[str, list[str]] | None:
     """A column that splits one file into several sections (sample_id, capture_area, ...), with its values."""
     for col in obs.columns:
@@ -277,6 +301,7 @@ class EntryMenu:
     layers: list[str] = field(default_factory=list)  # other layers in the file (files only)
     sections: tuple[str, list[str]] | None = None  # one file that holds several sections: (column, values)
     n_obs: int | None = None
+    meta_candidates: list[tuple[str, str]] = field(default_factory=list)  # obs columns constant within a sample: (column, note)
 
     @property
     def assumed(self) -> list[str]:
@@ -308,6 +333,8 @@ class EntryMenu:
         if self.sections:
             col, vals = self.sections
             out.append(f"sections: {len(vals)} in one file ({col}: {_join(vals, 4)}), drawn as one sample; `subset:` splits them")
+        if self.meta_candidates:
+            out.append("sample metadata: " + ", ".join(c for c, _ in self.meta_candidates[:6]) + (", ..." if len(self.meta_candidates) > 6 else "") + " look constant within each sample; listed as a `# meta:` line to split the view by")
         return out
 
 
@@ -343,11 +370,12 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
             log(f"warning: {path.name} has no `sample_id` column; set `sample_col:` in the yaml to the column that separates samples")
         plat, plat_note = _platform_choice(platform, x.obs, spatial=True)
         prefix, label = PLATFORM_PREFIX.get(plat, plat[:3]), PLATFORM_LABEL.get(plat, plat)
+        meta_c = constant_columns(x.obs, sample_col) if len(samples) > 1 else []
         return EntryMenu(
             source=_rel(path, base), source_note=note, r_object=True, embedding=False, platform=plat,
             id_tpl=f"{prefix}_{{name}}", name_tpl=f"{{name}} ({label})", group_tpl="{name}",
-            menu=suggest_fields(cols, skip={sample_col}), samples=[_safe(s) for s in samples],
-            assay=assay, assays=list(x.assays), sample_col=sample_col, platform_note=plat_note, n_obs=x.n_obs,
+            menu=suggest_fields(cols, skip={sample_col, *(c for c, _ in meta_c)}), samples=[_safe(s) for s in samples],
+            assay=assay, assays=list(x.assays), sample_col=sample_col, platform_note=plat_note, n_obs=x.n_obs, meta_candidates=meta_c,
         )
     from .convert import pick_embedding
 
@@ -380,6 +408,7 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     layers: list[str] = []
     sections = None
     n_obs = None
+    meta_c: list[tuple[str, str]] = []
     if matches:
         pk = peek(Path(matches[0]), table)
         cols = describe_columns(pk.obs)
@@ -388,6 +417,8 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
         plat, plat_note = _platform_choice(platform, pk.obs, spatial="spatial" in pk.obsm)
         if plat != "snrnaseq":
             sections = sections_in(pk.obs)
+        if sections is None and len(matches) > 1:
+            meta_c = constant_columns(pk.obs, None)  # one sample per file: a single-valued column is a sample property
     else:
         log(f"warning: {pattern!r} matches nothing right now; the fields menu is empty and ids come from the files present at build time")
         plat, plat_note = (platform, "given") if platform else ("visium", "the default; no file to look at yet")
@@ -405,7 +436,8 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     return EntryMenu(
         source=_rel(pattern, base), source_note=note, r_object=False, embedding=embedding, platform=plat,
         id_tpl=f"{prefix}_{var}", name_tpl=f"{var} ({label})", group_tpl="snRNA-seq" if embedding else var,
-        menu=suggest_fields(cols), samples=names, table=table, platform_note=plat_note, layers=layers, sections=sections, n_obs=n_obs,
+        menu=suggest_fields(cols, skip={c for c, _ in meta_c}), samples=names, table=table, platform_note=plat_note, layers=layers, sections=sections, n_obs=n_obs,
+        meta_candidates=meta_c,
     )
 
 
@@ -470,6 +502,11 @@ def _entry_lines(e: EntryMenu) -> list[str]:
         L.append(_pad("    # fields:", "uncomment this line and the columns to show as annotations"))
         for c in m.unmapped:
             L.append(_pad(f"    #   {field_id(c.name)}: {_ystr(c.name)}", c.note))
+    if e.meta_candidates:
+        inner = ", ".join(f"{field_id(c)}: {{ column: {_ystr(c)} }}" for c, _ in e.meta_candidates[:4])
+        L.append(_pad(f"    # meta: {{ {inner} }}", "sample-level properties (one value per sample); the viewer splits the canvas by them"))
+        for c, note in e.meta_candidates:
+            L.append(f"    #   {field_id(c)}: {note}")
     if m.skipped:
         L.append(f"    # not listed: {', '.join(m.skipped)} (ids and layout columns)")
     if e.sections:
@@ -528,6 +565,16 @@ def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu])
             "# Annotation names, once some columns are mapped under samples below:",
             "# fields:",
             "#   - { id: domain, name: Spatial domain, type: categorical, palette_key: domain }",
+        ]
+    cands: dict[str, None] = {}
+    for e in entries:
+        for c, _ in e.meta_candidates:
+            cands.setdefault(field_id(c), None)
+    if cands:
+        L += [
+            "# Sample metadata keys (names and level order), once `meta:` is set under samples below:",
+            "# meta:",
+            *[f"#   - {{ id: {k}, name: {_ystr(_pretty(k))} }}" for k in cands],
         ]
     L += ["", "samples:"]
     for e in entries:

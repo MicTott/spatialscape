@@ -223,7 +223,7 @@ export class Selection {
             data: { length: hl.length / 2, attributes: { getPosition: { value: hl, size: 2 } } } as any,
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
-            getRadius: smp.pointRadius * s.pointScale[view] * 1.35,
+            getRadius: smp.pointRadius * s.pointScale[this.c.kindOf(view)] * 1.35,
             radiusMinPixels: 2.5,
             radiusMaxPixels: 50,
             filled: false,

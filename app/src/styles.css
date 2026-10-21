@@ -281,3 +281,18 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .region-row kbd { font: 10px/1 ui-monospace, monospace; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 1px 4px; margin-right: 2px; }
 .region-row .legend-actions { visibility: hidden; }
 .region-row:hover .legend-actions, .region-row.active .legend-actions { visibility: visible; }
+
+/* panes: one per group when the canvas is split by a sample meta key */
+.pane-head { position: absolute; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 12px; background: color-mix(in srgb, var(--panel) 92%, transparent); border-bottom: 1px solid var(--border); z-index: 3; user-select: none; overflow: hidden; white-space: nowrap; }
+.pane-head .cap { font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; }
+.pane-head .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pane-head .key { margin-left: auto; font-size: 11px; }
+.pane-head select { width: auto; padding: 2px 6px; font-size: 12px; font-weight: 600; }
+.pane-head.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); }
+.divider.h { top: auto; bottom: auto; left: 0; right: 0; width: auto; height: 8px; cursor: row-resize; }
+.divider.h::before { top: 3px; bottom: auto; left: 0; right: 0; width: auto; height: 2px; }
+.platformbar select { width: auto; padding: 2px 6px; font-size: 12px; background: var(--panel2); }
+.samples li.group { display: block; padding: 0; }
+.samples li.group > .subhead { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin: 6px 0 2px 4px; }
+.platformbar.below-heads { top: 40px; }
+.app.with-nav .platformbar.below-heads { top: 80px; }

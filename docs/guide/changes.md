@@ -12,6 +12,7 @@ carry it, a re-exported file rebuilds that sample.
 | Choose the gene shown on open | `default_gene: SNAP25` | `build` (seconds) |
 | Open on an annotation instead | `default_color: { field: domain }` | `build` (seconds) |
 | Name an annotation properly ("Spatial domain", not "BS k16 …") | `name:` on its entry under `fields:` | `build` (seconds) |
+| Compare conditions side by side in the viewer | `meta: { condition: stress }` on each sample (or `{ column: condition }`), optionally `meta:` at the top for names and order | `build` (seconds for typed values; the sample once for a column) |
 | Show fewer / other annotations | the `fields:` mapping on the sample entry: delete or uncomment lines | `build` (rebuilds those samples) |
 | Use my paper's colors | `palette: colors.json` plus `palette_key:` on the field | `build` (seconds) |
 | Fix the order of categories | `categories: [L1, L2, …]` on the field | `build` (rebuilds the samples that carry it) |

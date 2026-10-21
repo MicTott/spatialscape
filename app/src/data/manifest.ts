@@ -52,12 +52,18 @@ export interface SampleImage {
   channels?: ImageChannel[] | null;
   defaultOpacity: number;
 }
+export interface MetaKey {
+  id: string;
+  name: string;
+  levels: string[]; // declared order first, then values in sample order
+}
 export interface Sample {
   id: string;
   name: string;
   platform: Platform;
   kind: SampleKind;
   group?: string;
+  meta?: Record<string, string>; // sample-level metadata (condition, subject, ...); keys declared in Manifest.meta
   nObs: number;
   nGenes: number;
   bbox: [number, number, number, number];
@@ -120,6 +126,7 @@ export interface Manifest {
   featureGroups?: FeatureGroup[];
   samples: Sample[];
   thumbnailSample?: string; // sample drawn on the dataset thumbnail
+  meta?: MetaKey[]; // the sample metadata keys the viewer can split the canvas by
 }
 
 export function assertManifest(m: unknown): asserts m is Manifest {

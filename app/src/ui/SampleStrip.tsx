@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Sample } from "../data/manifest";
 import { store, useViewer } from "../store/store";
+import { computePanes, unassignedSamples } from "../views/panes";
 
 /** Jump list of samples, collapsed by default: click selects, double-click (or the arrow) focuses. */
 export function SampleStrip() {
@@ -8,6 +9,8 @@ export function SampleStrip() {
   const focus = useViewer((s) => s.focus);
   const selected = useViewer((s) => s.selected);
   const status = useViewer((s) => s.sampleStatus);
+  const splitBy = useViewer((s) => s.splitBy);
+  const split = useViewer((s) => s.split);
   const [open, setOpen] = useState(false);
   const order = [...manifest.layout.order];
   for (const s of manifest.samples) if (!order.includes(s.id)) order.push(s.id);
@@ -26,9 +29,29 @@ export function SampleStrip() {
         </span>
       </h2>
       {!open && <div className="muted small">{focusName ? `focused on ${focusName}` : "double-click a section on the map to focus it · ←/→ to step"}</div>}
-      {open && (
+      {open && !splitBy && (
         <ul className="samples">
           {spatial.map(row)}
+          {embedding.length > 0 && <li className="subhead">snRNA-seq / embeddings</li>}
+          {embedding.map(row)}
+        </ul>
+      )}
+      {open && splitBy && (
+        <ul className="samples">
+          {computePanes(manifest, splitBy, split)
+            .filter((p) => p.group)
+            .map((p) => (
+              <li key={p.id} className="group">
+                <div className="subhead">{p.group!.value}</div>
+                <ul className="samples">{order.filter((id) => p.samples.some((s) => s.id === id)).map(row)}</ul>
+              </li>
+            ))}
+          {unassignedSamples(manifest, splitBy).length > 0 && (
+            <li className="group">
+              <div className="subhead">no {splitBy.key} · not drawn</div>
+              <ul className="samples">{order.filter((id) => unassignedSamples(manifest, splitBy).some((s) => s.id === id)).map(row)}</ul>
+            </li>
+          )}
           {embedding.length > 0 && <li className="subhead">snRNA-seq / embeddings</li>}
           {embedding.map(row)}
         </ul>

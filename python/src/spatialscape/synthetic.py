@@ -25,7 +25,7 @@ def _tissue(n: int, rng: np.random.Generator, w: float, h: float) -> np.ndarray:
     return np.array(pts)
 
 
-def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: int = 384, counts: bool = False):
+def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: int = 384, counts: bool = False, extra_obs: dict[str, str] | None = None):
     rng = np.random.default_rng(seed)
     xy = _tissue(n, rng, w, h)
     ang = np.arctan2(xy[:, 1] - h / 2, xy[:, 0] - w / 2)
@@ -49,6 +49,8 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
         index=[f"cell_{i}" for i in range(n)],
     )
     obs.loc[obs.index[:7], "cluster"] = np.nan  # a few missing labels
+    for k, v in (extra_obs or {}).items():
+        obs[k] = pd.Categorical([v] * n)  # a sample-level property stored per cell, the way most objects carry condition or sex
     a = ad.AnnData(X=sp.csr_matrix(X), obs=obs, var=pd.DataFrame(index=genes))
     a.obsm["spatial"] = xy
     a.obsm["X_umap"] = np.stack([np.cos(ang) * 3 + rng.normal(0, 0.3, n), np.sin(ang) * 3 + rng.normal(0, 0.3, n)], 1)
@@ -87,11 +89,19 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
     )
 
 
-def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50) -> Path:
+def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparisons: bool = False) -> Path:
+    """Two fake sections and an embedding. With `comparisons`, two more sections and sample metadata: a control
+    and a stress group of two mice each, the condition stored per cell (as objects usually carry it) and the
+    mouse given in the yaml, so both ways of declaring `meta` are exercised."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    make_sample(out / "sampleA.h5ad", n_cells, n_genes, seed=1)
-    make_sample(out / "sampleB.h5ad", int(n_cells * 1.4), n_genes, seed=2, counts=True)
+    groups = {"sampleA": ("control", "m1"), "sampleB": ("control", "m2"), "sampleC": ("stress", "m3"), "sampleD": ("stress", "m4")} if comparisons else {}
+    extra = lambda sid: ({"condition": groups[sid][0]} if sid in groups else None)  # noqa: E731
+    make_sample(out / "sampleA.h5ad", n_cells, n_genes, seed=1, extra_obs=extra("sampleA"))
+    make_sample(out / "sampleB.h5ad", int(n_cells * 1.4), n_genes, seed=2, counts=True, extra_obs=extra("sampleB"))
+    if comparisons:
+        make_sample(out / "sampleC.h5ad", int(n_cells * 1.1), n_genes, seed=3, extra_obs=extra("sampleC"))
+        make_sample(out / "sampleD.h5ad", int(n_cells * 0.9), n_genes, seed=4, counts=True, extra_obs=extra("sampleD"))
     cfg = {
         "id": "synthetic",
         "name": "Synthetic demo",
@@ -137,6 +147,36 @@ def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50) -> Path:
             },
         ],
     }
+    if comparisons:
+        cfg["description"] = "Four fake tissue sections in two experimental groups (control, stress), two mice each, plus an embedding."
+        cfg["meta"] = [{"id": "condition", "name": "Condition", "levels": ["control", "stress"]}, {"id": "mouse", "name": "Mouse"}]
+        for s in cfg["samples"]:
+            if s["id"] in groups:
+                s["meta"] = {"condition": {"column": "condition"}, "mouse": groups[s["id"]][1]}
+        cfg["samples"][2:2] = [
+            {
+                "id": "sampleC",
+                "name": "Sample C (stress)",
+                "platform": "visium",
+                "group": "donor3",
+                "path": "sampleC.h5ad",
+                "fields": {"cluster": "cluster", "total_counts": "total_counts"},
+                "images": [{"id": "he", "name": "H&E", "path": "sampleC.png"}],
+                "polygons": {"path": "sampleC.polygons.parquet"},
+                "meta": {"condition": {"column": "condition"}, "mouse": "m3"},
+            },
+            {
+                "id": "sampleD",
+                "name": "Sample D (stress, counts)",
+                "platform": "visium",
+                "group": "donor4",
+                "path": "sampleD.h5ad",
+                "fields": {"cluster": "cluster", "total_counts": "total_counts"},
+                "images": [{"id": "he", "name": "H&E", "path": "sampleD.png"}],
+                "polygons": {"path": "sampleD.polygons.parquet"},
+                "meta": {"condition": {"column": "condition"}, "mouse": "m4"},
+            },
+        ]
     with open(out / "dataset.yaml", "w") as fh:
         yaml.safe_dump(cfg, fh, sort_keys=False)
     return out / "dataset.yaml"

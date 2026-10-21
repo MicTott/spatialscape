@@ -50,6 +50,13 @@ def validate_local(root: Path) -> list[str]:
     for sid in m.layout.order:
         if sid not in {s.id for s in m.samples}:
             _problem(p, f"layout.order references unknown sample {sid!r}")
+    meta_levels = {k.id: set(k.levels) for k in m.meta}
+    for s in m.samples:
+        for k, v in s.meta.items():
+            if k not in meta_levels:
+                _problem(p, f"{s.id}: meta key {k!r} is not declared in manifest.meta")
+            elif v not in meta_levels[k]:
+                _problem(p, f"{s.id}: meta {k}={v!r} is not among the key's levels")
     for s in m.samples:
         d = root / "samples" / s.id
         if not d.is_dir():

@@ -1,4 +1,5 @@
 import { store, useViewer } from "../store/store";
+import { splitKeys, unassignedSamples } from "../views/panes";
 
 const ORDER = ["visium", "visium_hd", "xenium", "merfish", "other"];
 const LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", other: "Other" };
@@ -11,7 +12,11 @@ export function PlatformBar() {
   const genome = useViewer((s) => s.genome);
   const hasTracks = useViewer((s) => !!s.manifest?.samples.some((x) => x.tracks));
   const tool = useViewer((s) => s.tool);
+  const splitBy = useViewer((s) => s.splitBy);
+  const matchScale = useViewer((s) => s.matchScale);
   if (!manifest) return null;
+  const keys = splitKeys(manifest);
+  const left = splitBy ? unassignedSamples(manifest, splitBy).length : 0;
   const present = ORDER.filter((p) => manifest.samples.some((s) => s.kind !== "embedding" && s.platform === p));
   const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
   // always shown: it also hosts the lasso tool
@@ -19,7 +24,7 @@ export function PlatformBar() {
   const counts = Object.fromEntries(present.map((p) => [p, manifest.samples.filter((s) => s.kind !== "embedding" && s.platform === p).length]));
   const set = store.getState().set;
   return (
-    <div className="platformbar">
+    <div className={`platformbar${splitBy && keys.length ? " below-heads" : ""}`}>
       <button className={tool === "lasso" ? "on tool" : "tool"} onClick={() => set({ tool: tool === "lasso" ? "pan" : "lasso" })} title="lasso select cells (L)">
         ⌒ lasso
       </button>
@@ -39,6 +44,33 @@ export function PlatformBar() {
             </button>
           ))}
         </>
+      )}
+      {keys.length > 0 && (
+        <span className="split-ctl">
+          <span className="muted">split by</span>
+          <select
+            value={splitBy?.key ?? ""}
+            onChange={(e) => set({ splitBy: e.target.value ? { key: e.target.value, groups: null, fractions: null } : null })}
+            title="one pane per group, side by side, each with its own camera"
+          >
+            <option value="">none</option>
+            {keys.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.name}
+              </option>
+            ))}
+          </select>
+          {splitBy && (
+            <button className={matchScale ? "on" : ""} onClick={() => set({ matchScale: !matchScale })} title="keep every pane at the same microns per pixel: zoom one, the others follow in scale">
+              match scale
+            </button>
+          )}
+          {left > 0 && (
+            <span className="muted" title={`${left} section${left === 1 ? " has" : "s have"} no ${splitBy!.key} value, or one that is not in a pane; not drawn while the canvas is split`}>
+              {left} not shown
+            </span>
+          )}
+        </span>
       )}
       {hasEmbedding && (
         <span className="split-ctl">

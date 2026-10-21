@@ -1,6 +1,12 @@
 # Comparisons: case/control results in the viewer
 
-Branch `comparisons`. Status: plan, nothing built. Last edited 2026-10-21.
+Branch `comparisons`. Status: M1 built (sample metadata, panes); M2 next. Last edited 2026-10-21.
+
+Deviations from the plan, decided while building M1: the *split by* control and *match scale* live in the
+top bar next to the lasso and the snRNA-seq control, not in a new Views section, so everything about what is
+on the canvas sits in one place; group panes share one grid shape (the largest group's column count) so the
+same section index sits in the same place in every pane; on a fresh split the most zoomed-out pane sets the
+shared scale so no group is cut off, while a user zoom or a focus leads from the pane it happened in.
 
 ## What this adds, in one paragraph
 

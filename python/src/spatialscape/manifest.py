@@ -111,12 +111,21 @@ class TracksInfo(_Model):
     chromSizes: str = "tracks/chrom.sizes"
 
 
+class MetaKey(_Model):
+    """A sample metadata key (condition, subject, ...): display name and the order of its levels."""
+
+    id: str
+    name: str
+    levels: list[str] = Field(default_factory=list)
+
+
 class Sample(_Model):
     id: str
     name: str
     platform: Platform
     kind: SampleKind = "spatial"
     group: str | None = None
+    meta: dict[str, str] = Field(default_factory=dict)  # sample-level metadata; keys are declared in Manifest.meta
     nObs: int
     nGenes: int
     bbox: tuple[float, float, float, float]
@@ -154,6 +163,7 @@ class Manifest(_Model):
     featureGroups: list[FeatureGroup] = Field(default_factory=list)
     samples: list[Sample] = Field(default_factory=list)
     thumbnailSample: str | None = None  # sample drawn on the dataset thumbnail (default: first spatial sample in layout order)
+    meta: list[MetaKey] = Field(default_factory=list)  # the sample metadata keys the viewer can split the canvas by
 
     def field_by_id(self, fid: str) -> CategoricalField | ContinuousField | None:
         for f in self.fields:

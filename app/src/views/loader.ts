@@ -2,7 +2,6 @@
 import { assertManifest, fieldById, type Manifest } from "../data/manifest";
 import { store, type ColorSpec, type FilterSpec, type ViewerState } from "../store/store";
 import type { ViewerController } from "./ViewerController";
-import { VIEWS } from "./types";
 
 export class Loader {
   private geneSwitchStart = 0;
@@ -54,9 +53,12 @@ export class Loader {
     for (const smp of manifest.samples) sampleStatus[smp.id] = "pending";
     cur.set({ manifest, color, sampleStatus });
     c.applyViews();
-    for (const v of VIEWS) if (c.rects[v]) c.relayout(v, false);
-    if (cur.viewState) c.setViewState("spatial", cur.viewState);
-    if (cur.focus && c.layouts[c.viewOf(cur.focus)]?.placements.has(cur.focus)) c.focusSample(cur.focus, false);
+    c.relayoutAll(false);
+    c.applyStoredCameras(cur);
+    const focusView = cur.focus ? c.viewOf(cur.focus) : null;
+    if (cur.focus && focusView && c.layouts[focusView]?.placements.has(cur.focus)) c.focusSample(cur.focus, false);
+    else if (cur.focus) store.getState().set({ focus: null });
+
 
     const order = [...manifest.layout.order];
     for (const smp of manifest.samples) if (!order.includes(smp.id)) order.push(smp.id);

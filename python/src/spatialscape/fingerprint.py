@@ -88,6 +88,8 @@ def resolve_auto_images(spec: SampleSpec) -> SampleSpec:
 def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -> dict:
     resolved = resolve_auto_images(spec)
     spec_json = resolved.model_dump(mode="json", exclude={"name", "group"})
+    # a meta value typed in the yaml is applied to the manifest without a rebuild; one read from a column is fixed at build time
+    spec_json["meta"] = {k: v for k, v in (spec_json.get("meta") or {}).items() if isinstance(v, dict)}
     paths: list[Path | None] = [resolved.path, resolved.microns.scalefactors_json]
     paths += [im.path for im in resolved.images]
     if resolved.polygons is not None and resolved.polygons.path is not None:

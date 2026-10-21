@@ -33,6 +33,7 @@ from .manifest import (
     ImageChannel,
     Layout,
     Manifest,
+    MetaKey,
     PolygonInfo,
     Sample,
     SampleImage,
@@ -140,6 +141,7 @@ def build_sample(
     sinput = load_sample(spec)
     adata = sinput.adata
     n_obs = adata.n_obs
+    meta = resolve_meta(spec, adata)
     if sinput.name_column and not spec.gene_column:
         log(f"[{spec.id}] gene names from var column {sinput.name_column!r} (var_names are Ensembl ids)")
     if spec.fields == "auto":
@@ -329,6 +331,7 @@ def build_sample(
         platform=spec.platform,
         kind=spec.kind,
         group=spec.group,
+        meta=meta,
         nObs=n_obs,
         nGenes=len(genes),
         bbox=bbox,
@@ -418,12 +421,57 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         ],
         samples=samples,
         thumbnailSample=cfg.thumbnail_sample,
+        meta=meta_keys(cfg, samples),
     )
     with open(out / "manifest.json", "w") as fh:
         fh.write(manifest.model_dump_json(indent=1, exclude_none=True))
     with open(out / "build-info.json", "w") as fh:
         json.dump({"spatialscape": __version__, "config": str(cfg.path) if cfg.path else None, "built": datetime.now(UTC).isoformat(timespec="seconds")}, fh, indent=1)
     return manifest
+
+
+def resolve_meta(spec: SampleSpec, adata) -> dict[str, str]:
+    """The sample's metadata values: yaml strings as given, `{column: x}` read from obs, where it must hold one value."""
+    out: dict[str, str] = {}
+    for key, v in spec.meta.items():
+        if isinstance(v, str):
+            out[key] = v
+            continue
+        if v.column not in adata.obs:
+            raise KeyError(f"sample {spec.id}: meta column {v.column!r} (key {key}) not found; obs columns: {', '.join(map(str, adata.obs.columns))}")
+        vals = [str(x) for x in pd.unique(adata.obs[v.column].dropna().astype(str))]
+        if not vals:
+            raise ValueError(f"sample {spec.id}: meta column {v.column!r} (key {key}) has no values")
+        if len(vals) > 1:
+            raise ValueError(
+                f"sample {spec.id}: meta column {v.column!r} (key {key}) holds {len(vals)} values ({', '.join(vals[:6])}{', ...' if len(vals) > 6 else ''}); "
+                f"a meta key is one value per sample. Split the file into one sample per value with `subset: {{ column: {v.column}, values: [{vals[0]}] }}`, "
+                "or expose the column as an annotation under `fields:`"
+            )
+        out[key] = vals[0]
+    return out
+
+
+def meta_keys(cfg: DatasetConfig, samples: list[Sample]) -> list[MetaKey]:
+    """The manifest's metadata keys: declared ones first with their names and level order, then every key a sample
+    uses; values a declaration does not list are appended in sample order, so nothing a sample says disappears."""
+    declared = {m.id: m for m in cfg.meta}
+    order = [m.id for m in cfg.meta]
+    for s in samples:
+        for k in s.meta:
+            if k not in order:
+                order.append(k)
+    out: list[MetaKey] = []
+    for k in order:
+        d = declared.get(k)
+        levels = list(d.levels or []) if d else []
+        for s in samples:
+            v = s.meta.get(k)
+            if v is not None and v not in levels:
+                levels.append(v)
+        name = d.name if d and d.name else (k[:1].upper() + k[1:]).replace("_", " ")
+        out.append(MetaKey(id=k, name=name, levels=levels))
+    return out
 
 
 def read_manifest(out: Path) -> Manifest | None:
@@ -534,7 +582,10 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force:
             gc.collect()  # an AnnData is a reference cycle: free this sample's object before the next one is read
             built.append((out / "samples" / a.spec.id, a.fingerprint))
         else:
-            s = by_id[a.spec.id].model_copy(update={"name": a.spec.name or a.spec.id, "group": a.spec.group})
+            prev = by_id[a.spec.id]
+            # values given in the yaml apply without a rebuild; values read from a column were fixed when the sample was built
+            meta = {k: (v if isinstance(v, str) else prev.meta.get(k)) for k, v in a.spec.meta.items()}
+            s = prev.model_copy(update={"name": a.spec.name or a.spec.id, "group": a.spec.group, "meta": {k: v for k, v in meta.items() if v is not None}})
         samples.append(s)
     for sid in plan.removed:
         shutil.rmtree(out / "samples" / sid, ignore_errors=True)

@@ -25,6 +25,11 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `sps` | `1`: scale gene colors per sample instead of one shared scale | `sps=1` |
 | `debug` | `1`: show timing and frame-rate readouts in the status bar | `debug=1` |
 | `sv` | embedding split: `0` off, or `l:<fraction>` / `r:<fraction>` | `sv=r:0.4` |
-| `v` | camera: `x,y,zoom` in dataset microns and log2 scale (spatial view) | `v=24609,23505,-6.4` |
+| `v` | camera: `x,y,zoom` in dataset microns and log2 scale (the single tissue pane) | `v=24609,23505,-6.4` |
+| `sb` | split the tissue canvas by a sample metadata key, one pane per level | `sb=condition` |
+| `sg` | the levels shown as panes, in order, when not the first three | `sg=stress,control` |
+| `sf` | width shares of the group panes after a handle was dragged | `sf=0.400,0.600` |
+| `ms` | `0`: panes do not share one scale (match scale off) | `ms=0` |
+| `pv` | cameras of the group panes, `x,y,zoom` each, `;`-separated in pane order | `pv=5379,2723,-4.7;5390,2090,-4.7` |
 
 Blend scheme codes: `yb` yellow/blue → green, `cm` cyan/magenta → white, `rg` red/green → yellow. Gene lists use commas; a `+` would decode as a space.
