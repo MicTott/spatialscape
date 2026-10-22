@@ -14,7 +14,8 @@ from .config import FieldSpec, ImageSpec, MicronsSpec, SampleSpec
 
 MAX_LEVELS = 200
 XENIUM_PIXEL_UM = 0.2125  # morphology pixel size when experiment.xenium does not say
-AUTO_MORPHOLOGY_MAX_PX = 8192  # discovered Xenium morphology is read at a pyramid level of about this size, never whole
+AUTO_MORPHOLOGY_UM_PER_PX = 0.85  # discovered Xenium morphology is read at about this pixel size (4x the source), never whole
+AUTO_MORPHOLOGY_FALLBACK_PX = 8192  # when the file's size cannot be read from its header
 SKIP_COLUMNS = re.compile(r"^(sample_id|sample|key|barcode|cell_id|cell|index|in_tissue|array_row|array_col|exclude_.*|discard.*|qc_filter|.*_1|.*_2)$", re.I)
 NUMERIC_KEEP = re.compile(r"count|sum|detected|percent|ratio|area|score|umi|genes|mito|nucleus|transcript|total|ncount|nfeature", re.I)
 
@@ -105,10 +106,13 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
     if tif is not None:
         from .images import read_image_shape
 
+        px = xenium_pixel_size(d)
         try:
-            nch = read_image_shape(tif, rgb=False)[0]
+            nch, h, w = read_image_shape(tif, rgb=False)
+            # a pixel-size target, not a pixel count, so every section is equally sharp: 0.85 um/px is source level 2
+            max_size = max(1, math.ceil(max(h, w) * px / AUTO_MORPHOLOGY_UM_PER_PX))
         except Exception:
-            nch = 1
+            nch, max_size = 1, AUTO_MORPHOLOGY_FALLBACK_PX
         return [
             ImageSpec(
                 id="morphology",
@@ -116,8 +120,8 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
                 path=tif,
                 kind="multichannel",
                 pixel_size="auto",
-                pixels_per_unit=1 / xenium_pixel_size(d),
-                max_size=AUTO_MORPHOLOGY_MAX_PX,  # full resolution waits for the streaming converter (design/images-molecules-shapes.md)
+                pixels_per_unit=1 / px,
+                max_size=max_size,  # full resolution waits for the streaming converter (design/images-molecules-shapes.md)
             )
         ], None
     return [], None

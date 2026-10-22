@@ -17,6 +17,8 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `poly` | `0` disables cell polygons | `poly=0` |
 | `cl` | `0` hides the cluster names on the embedding | `cl=0` |
 | `img` | image opacity, `0` hides images | `img=0.6` |
+| `imgs` | `0` switches images off | `imgs=0` |
+| `hc` | image channels switched off, by name, separated by `\|` | `hc=DAPI\|18S` |
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |
 | `hs` | hidden samples | `hs=vis_Br2743` |

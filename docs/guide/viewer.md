@@ -140,7 +140,7 @@ Each view has its own point-size slider at its bottom-left corner: one for the t
 
 ## Images and polygons
 
-H&E or fluorescence pyramids render under the points with an opacity slider. Cell boundary polygons, when the bundle has them, appear once you zoom in far enough that a cell spans several pixels.
+H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone, and double-click it again to show them all. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. Cell boundary polygons, when the bundle has them, appear once you zoom in far enough that a cell spans several pixels.
 
 ## Sharing a view
 

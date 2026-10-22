@@ -116,3 +116,19 @@ describe("scale and debug flags", () => {
     expect(q.get("fl")).toBe("g:peak: chr1:100-200:0.100,1.000");
   });
 });
+
+describe("image channels", () => {
+  it("round-trips hidden channel names, commas and slashes included", () => {
+    const names = ["DAPI", "ATP1A1/CD45/E-Cadherin", "CD3, CD8"];
+    const qs = serialize({ ...store.getState(), hiddenChannels: names } as ViewerState);
+    expect(new URLSearchParams(qs).get("hc")).toBe(names.join("|"));
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: `?${qs}` } };
+    expect(readUrl().hiddenChannels).toEqual(names);
+    g.window = { location: { search: "?d=x" } };
+    expect(readUrl().hiddenChannels).toBeUndefined();
+    g.window = saved;
+    expect(new URLSearchParams(serialize(store.getState())).has("hc")).toBe(false);
+  });
+});

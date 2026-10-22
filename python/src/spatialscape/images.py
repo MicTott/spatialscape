@@ -21,8 +21,13 @@ BAND_BYTES = 256 * 2**20  # source pixels decoded at once when a large image is 
 
 
 class ImageReadRefused(ValueError):
-    """An image the build will not read as asked: a missing codec, or more memory than the machine can spare.
-    The build skips an automatically discovered image with a note, and stops on one the yaml lists."""
+    """An image the build will not read as asked: a missing codec ("codec"), more memory than the machine can spare
+    ("memory"), or a file stored as one block per plane that is too large ("layout"). The build reads a discovered
+    image smaller after a memory refusal, skips it with a note otherwise, and stops on one the yaml lists."""
+
+    def __init__(self, message: str, *, kind: str = "memory"):
+        super().__init__(message)
+        self.kind = kind
 
 
 def _memory_bytes() -> int:
@@ -59,6 +64,19 @@ def _yx(axes: str | list[str], shape: tuple[int, ...]) -> tuple[int, int]:
     return shape[yi], shape[xi]
 
 
+def _decode_workers() -> int:
+    """Threads for decoding TIFF tiles: every core this process may use (a cluster job's allocation, not the node's),
+    where tifffile's default takes half. TIFFFILE_NUM_THREADS still wins when set."""
+    env = os.environ.get("TIFFFILE_NUM_THREADS", "")
+    if env.isdigit() and int(env) > 0:
+        return int(env)
+    try:
+        n = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]  (Linux; follows cpusets and SLURM)
+    except AttributeError:
+        n = os.cpu_count() or 1
+    return max(1, min(32, n))
+
+
 def _check_read_size(path: Path, shape: tuple[int, ...], axes: str | list[str], itemsize: int, *, max_size: int | None) -> None:
     """`shape` is the result's shape. Any lower max_size shrinks it, since a level can always be reduced further."""
     need = int(np.prod(shape)) * itemsize
@@ -70,7 +88,7 @@ def _check_read_size(path: Path, shape: tuple[int, ...], axes: str | list[str], 
         hint = f"set `max_size:` on this image (for example {min(8192, max(h, w) // 2):d}) so a smaller copy is read"
     else:
         hint = "lower `max_size:` on this image"
-    raise ImageReadRefused(f"{path}: this image at {w:,} x {h:,} px needs {need / 2**30:.1f} GB of memory, more than this build allows ({limit / 2**30:.1f} GB); {hint}")
+    raise ImageReadRefused(f"{path}: this image at {w:,} x {h:,} px needs {need / 2**30:.1f} GB of memory, more than this build allows ({limit / 2**30:.1f} GB); {hint}", kind="memory")
 
 
 def _require_codec(path: Path, compression: int) -> None:
@@ -83,7 +101,8 @@ def _require_codec(path: Path, compression: int) -> None:
     except ImportError as e:
         raise ImageReadRefused(
             f"{path}: this image is {name} compressed (Xenium morphology images are), which needs the imagecodecs package: "
-            'pip install "spatialscape[images]". To build without it, set `images: []` on the sample.'
+            'pip install "spatialscape[images]". To build without it, set `images: []` on the sample.',
+            kind="codec",
         ) from e
 
 
@@ -128,6 +147,8 @@ def auto_windows(img: np.ndarray) -> list[tuple[float, float]]:
             out.append((0.0, 1.0))
             continue
         lo, hi = (float(x) for x in np.percentile(v, [0.5, 99.9]))
+        if integer:  # whole numbers for whole-number data
+            lo, hi = float(np.floor(lo)), float(np.ceil(hi))
         if hi <= lo:  # a constant channel: show it rather than draw it black
             lo, hi = 0.0, lo if lo > 0 else 1.0
         elif integer and hi < lo + 1:
@@ -199,7 +220,7 @@ def _read_reduced(src, axes: str, f: int, path: Path) -> np.ndarray:
     if chunk_rows >= shape[yi]:  # one strip per plane: every band would decode the whole plane again
         plane = h * w * itemsize
         if plane > read_limit_bytes():
-            raise ImageReadRefused(f"{path}: this file stores each {w:,} x {h:,} px plane as one block ({plane / 2**30:.1f} GB), more than this build can read at once; convert it to a tiled or pyramidal OME-TIFF")
+            raise ImageReadRefused(f"{path}: this file stores each {w:,} x {h:,} px plane as one block ({plane / 2**30:.1f} GB), more than this build can read at once; convert it to a tiled or pyramidal OME-TIFF", kind="layout")
         for c in range(nch):
             sel = [0] * len(shape)
             sel[yi], sel[xi] = slice(0, h), slice(0, w)
@@ -237,10 +258,10 @@ def read_image(path: Path, *, rgb: bool = True, max_size: int | None = None) -> 
             lv = series.levels[level]
             out_shape = tuple(n // f if a in "YX" else n for n, a in zip(lv.shape, series.axes, strict=True))
             _check_read_size(path, out_shape, series.axes, series.dtype.itemsize, max_size=max_size)
-            if f == 1:
-                arr = _to_cyx_axes(np.asarray(lv.asarray()), series.axes)
-            else:
-                arr = _read_reduced(zarr.open(lv.aszarr(), mode="r"), series.axes, f, path)
+            if f == 1:  # tifffile decodes with half the cores unless told otherwise; JPEG 2000 is CPU bound
+                arr = _to_cyx_axes(np.asarray(lv.asarray(maxworkers=_decode_workers())), series.axes)
+            else:  # series.aszarr(level=): level 0 of a pyramid would otherwise open as the whole multiscale group
+                arr = _read_reduced(zarr.open(series.aszarr(level=level), mode="r"), series.axes, f, path)
         return _drop_alpha(arr, rgb)
     import imageio.v3 as iio
 
@@ -344,6 +365,9 @@ def write_ome_zarr(
             dtype=lv.dtype,
             compressors=comp,
             fill_value=0,
+            # every chunk exists: a static host answers a missing one with 403 (S3 without list access), which the
+            # viewer's zarr reader treats as an error, and Viv then drops the whole tile, every channel of it
+            config={"write_empty_chunks": True},
         )
         arr[:] = lv
         datasets.append({"path": str(i), "coordinateTransformations": [{"type": "scale", "scale": [1, 2**i, 2**i]}]})

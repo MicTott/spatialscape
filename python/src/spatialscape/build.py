@@ -298,17 +298,26 @@ def build_sample(
     for im in spec.images:
         log(f"[{spec.id}] image {im.path}")
         rgb = im.kind == "rgb"
-        try:
-            img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, im.max_size, rgb=rgb)
-        except ImageReadRefused as e:
-            if not discovered:
-                raise
-            log(f"[{spec.id}] note: skipping the image found next to the data: {e}")
+        img = None
+        max_size = im.max_size
+        while img is None:
+            try:
+                img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, max_size, rgb=rgb)
+            except ImageReadRefused as e:
+                if not discovered:
+                    raise
+                if e.kind == "memory" and max_size and max_size >= 2048:  # a smaller copy on a smaller machine
+                    max_size //= 2
+                    log(f"[{spec.id}] note: the image found next to the data does not fit in memory at that size; reading it at most {max_size:,} px per side")
+                    continue
+                log(f"[{spec.id}] note: skipping the image found next to the data: {e}")
+                break
+        if img is None:
             continue
         if im.pixel_size == "auto":
             # pixels_per_unit image px per coord unit; after max_size downsampling the ratio changes
             _c, h0, w0 = read_image_shape(im.path, rgb=rgb)
-            ds = max(h0, w0) / max(img.shape[1], img.shape[2]) if im.max_size else 1.0
+            ds = max(h0, w0) / max(img.shape[1], img.shape[2]) if max_size else 1.0
             pixel_size = upu / im.pixels_per_unit * ds
         else:
             pixel_size = float(im.pixel_size)

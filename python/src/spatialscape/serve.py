@@ -27,6 +27,9 @@ RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)")
 
 
 class RangeCORSHandler(SimpleHTTPRequestHandler):
+    # keep-alive: a zoom asks for dozens of image chunks, and a new connection for each costs more than the chunk.
+    # Every response therefore carries Content-Length (or closes the connection, as send_error does).
+    protocol_version = "HTTP/1.1"
     app_dir: Path | None = None
     data_dir: Path
     session: bool = False  # `spatialscape.show()`: answers /_api/ping and stores the viewer's lasso selections and regions
@@ -185,6 +188,7 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         if start >= size or end < start:
             self.send_response(416)
             self.send_header("Content-Range", f"bytes */{size}")
+            self.send_header("Content-Length", "0")
             self.end_headers()
             return None
         f = open(path, "rb")  # noqa: SIM115 - streamed and closed by the handler

@@ -150,6 +150,7 @@ export interface ViewerState {
   viewState: ViewState | null;
   imageOpacity: number;
   showImages: boolean;
+  hiddenChannels: string[]; // fluorescence channels switched off, by name, so one switch covers every sample
   // point radius multipliers: "spatial" and "embedding" are the bases per pane kind; a group pane ("g0".."g2") may
   // override its own, so a dense section and a sparse one can be read side by side
   pointScale: Record<string, number>;
@@ -266,6 +267,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   viewState: null,
   imageOpacity: DEFAULTS.imageOpacity,
   showImages: DEFAULTS.showImages,
+  hiddenChannels: [],
   pointScale: DEFAULTS.pointScale,
   hover: null,
   categoryCounts: {},

@@ -231,3 +231,30 @@ def test_site_build_keeps_the_yaml_sharding_and_strips_build_metadata(fake_app, 
     cfg.write_text(yaml.safe_dump(doc))
     r2 = build_bundle(load_config(cfg), dry_run=True, log=lambda *_: None)
     assert {a.reason for a in r2.plan.actions if a.build} == {"sharding changed"}
+
+
+def test_server_keeps_connections_open_for_chunk_bursts(bundle):
+    import http.client
+
+    httpd, _ = _serve(bundle.parent, None)
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", httpd.server_address[1], timeout=5)
+        chunk = "/demo/samples/sampleA/expr.zarr/u8/c/0/0"
+        conn.request("GET", "/demo/manifest.json")
+        r = conn.getresponse()
+        assert r.status == 200 and r.version == 11 and json.loads(r.read())["id"] == "synthetic"
+        conn.request("GET", chunk, headers={"Range": "bytes=0-15"})
+        r = conn.getresponse()
+        assert r.status == 206 and len(r.read()) == 16
+        conn.request("GET", chunk, headers={"Range": "bytes=999999999-"})
+        r = conn.getresponse()
+        assert r.status == 416 and r.read() == b""
+        conn.request("HEAD", "/demo/manifest.json")
+        r = conn.getresponse()
+        assert r.status == 200 and r.read() == b""
+        conn.request("GET", chunk)  # still the same connection after a range error and a HEAD
+        r = conn.getresponse()
+        assert r.status == 200 and len(r.read()) > 16
+        conn.close()
+    finally:
+        httpd.shutdown()

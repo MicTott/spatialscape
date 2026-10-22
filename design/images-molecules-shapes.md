@@ -234,11 +234,25 @@ across) until full resolution is needed:
 
 | Amygdala, 4 sections x 4 channels | Disk | Build (8 threads) |
 |---|---|---|
-| 0.425 µm/px, WebP | 0.9-1.4 GB | about 10 min |
-| Full 0.2125 µm/px, WebP | 2.8-4.2 GB | about 35 min |
-| Full, DAPI only, WebP | 0.7-1.05 GB | about 9 min |
-| Full, lossless uint16 | about 94 GB | not practical here |
+| 0.425 µm/px, WebP | 1.4-2.3 GB | about 9 min |
+| Full 0.2125 µm/px, WebP | 3.7-6.1 GB | about 30 min |
+| Full, DAPI only, WebP | 0.7-1.2 GB | about 8 min |
+| Full, lossless uint16 | 89-125 GB | not practical here |
 | GitHub Pages cap, 1 µm/px | 0.2-0.4 GB | minutes |
+
+Measured on 2026-10-22 against the public Prime mouse brain (every full-resolution tile encoded, then scaled to the
+amygdala's area), which corrected the first estimates above. Per 512 px tile and channel: lossless uint16 210-221 KB
+at every level; uint8 windowed zstd 72-82 KB; WebP q90 7.7 KB at full resolution, but 11.5-23 KB at coarser levels,
+so a WebP pyramid adds 50-60% to its base level, not 33%. WebP is half of JPEG at equal nominal quality but only 17%
+smaller at equal PSNR, and JPEG encodes 9x faster. `imagecodecs.webp_encode` writes lossless WebP unless
+`lossless=False` is passed (6x larger, 5x slower). Decode plus WebP encode runs at 60 Mpx/s on 8 workers. The
+mouse section alone: 0.85 µm/px is 221 MB lossless or 20 MB as WebP; 0.425 µm/px is 864 MB or 55 MB; full
+resolution is 3.46 GB or 146 MB.
+
+Interim default, shipped before the converter: discovered Xenium morphology is read at 0.85 µm/px through the
+existing whole-image path, lossless uint16 (one level finer than the first fix's 8,192 px cap; 11 s and 3.1 GB peak
+for the mouse build). The viewer's tile refetch on every camera frame, the main cause of slow refinement, is fixed,
+as are channel switches (fetched together, drawn by visibility, which is instant for up to six channels).
 
 ## Combined budget
 

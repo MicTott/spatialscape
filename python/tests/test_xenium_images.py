@@ -12,7 +12,7 @@ import zarr
 from spatialscape import images
 from spatialscape.build import build_bundle
 from spatialscape.config import SampleSpec, load_config
-from spatialscape.discover import AUTO_MORPHOLOGY_MAX_PX, auto_images, xenium_morphology, xenium_pixel_size
+from spatialscape.discover import auto_images, xenium_morphology, xenium_pixel_size
 from spatialscape.synthetic import make_synthetic
 
 
@@ -60,8 +60,12 @@ def test_discovered_morphology_is_read_at_a_coarse_level(tmp_path):
     write_pyramid(d / "morphology_focus.ome.tif")
     spec = SampleSpec(id="x", platform="xenium", path=d / "adata.h5ad")
     [im], microns = auto_images(spec)
-    assert microns is None and im.kind == "multichannel" and im.max_size == AUTO_MORPHOLOGY_MAX_PX
+    assert microns is None and im.kind == "multichannel"
+    assert im.max_size == 384  # 1536 px at 0.2125 um/px, read at 0.85 um/px: the level 4x coarser
+    assert images.read_image(im.path, rgb=False, max_size=im.max_size).shape == (2, 256, 384)
     assert im.name == "Morphology" and im.pixels_per_unit == pytest.approx(1 / 0.2125)
+    (d / "experiment.xenium").write_text(json.dumps({"pixel_size": 0.25}))
+    assert auto_images(spec)[0][0].max_size == 452  # the target is a pixel size, so it follows the scan's
     small = images.read_image(d / "morphology_focus.ome.tif", rgb=False, max_size=300)
     assert small.shape == (2, 128, 192)  # at most 300 px: the 192 px level, read as is
     assert images.ome_channel_names(d / "morphology_focus.ome.tif") == ["DAPI", "ATP1A1/CD45/E-Cadherin"]
@@ -220,7 +224,7 @@ def test_an_unreadable_discovered_image_is_skipped_but_a_listed_one_stops_the_bu
     p.write_text(yaml.safe_dump(doc))
 
     def refuse(*a, **k):
-        raise images.ImageReadRefused("needs imagecodecs")
+        raise images.ImageReadRefused("needs imagecodecs", kind="codec")
 
     monkeypatch.setattr("spatialscape.build.prepare_image", refuse)
     lines: list[str] = []
@@ -260,4 +264,65 @@ def test_fingerprint_watches_the_stain_folder_and_the_image_recipe(tmp_path):
     cfg = load_config(make_synthetic(tmp_path / "src", n_cells=50, n_genes=4))
     fp = sample_fingerprint(spec, cfg, sharded=True)
     assert fp["spec"]["image_recipe"] == IMAGE_RECIPE
+    rgb = SampleSpec(id="h", platform="visium", path=tmp_path / "outs" / "adata.h5ad", images=[ImageSpec(id="he", path=first, kind="rgb")])
+    assert sample_fingerprint(rgb, cfg, sharded=True)["spec"]["image_recipe"] == IMAGE_RECIPE  # how every image is written
     assert str(d) in fp["inputs"]
+    assert "image_recipe" not in sample_fingerprint(SampleSpec(id="n", platform="xenium", path=tmp_path / "outs" / "adata.h5ad", images=[]), cfg, sharded=True)["spec"]
+
+
+def test_decode_threads_follow_the_allocation(monkeypatch):
+    monkeypatch.delenv("TIFFFILE_NUM_THREADS", raising=False)
+    monkeypatch.setattr(images.os, "sched_getaffinity", lambda _pid: {0, 1, 2}, raising=False)
+    assert images._decode_workers() == 3
+    monkeypatch.setenv("TIFFFILE_NUM_THREADS", "2")
+    assert images._decode_workers() == 2
+
+
+def test_a_discovered_image_too_large_for_memory_is_read_smaller(tmp_path, monkeypatch):
+    import yaml
+
+    import spatialscape.discover as D
+
+    p = make_synthetic(tmp_path / "src", n_cells=120, n_genes=6)
+    write_pyramid(tmp_path / "src" / "morphology_focus.ome.tif")
+    doc = yaml.safe_load(p.read_text())
+    doc["samples"] = [s for s in doc["samples"] if s["id"] == "sampleA"]
+    doc["samples"][0].pop("images")
+    doc["samples"][0]["platform"] = "xenium"
+    p.write_text(yaml.safe_dump(doc))
+    monkeypatch.setattr(D, "AUTO_MORPHOLOGY_UM_PER_PX", 0.05)  # asks for 6,528 px per side
+    real = images.prepare_image
+    asked: list[int] = []
+
+    def small_machine(path, flip, rotate, max_size, *, rgb):
+        asked.append(max_size)
+        if max_size > 2000:
+            raise images.ImageReadRefused("too big", kind="memory")
+        return real(path, flip, rotate, max_size, rgb=rgb)
+
+    monkeypatch.setattr("spatialscape.build.prepare_image", small_machine)
+    lines: list[str] = []
+    r = build_bundle(load_config(p), log=lines.append)
+    assert asked == [6528, 3264, 1632]
+    assert any("reading it at most 1,632 px per side" in line for line in lines)
+    [img] = r.manifest.samples[0].images
+    assert img.pixelSize == pytest.approx(0.2125)  # 1,632 px fits the 1,536 px scan, so it is read whole
+
+
+def test_a_pyramid_with_4x_steps_is_reduced_from_level_0(tmp_path):
+    p = tmp_path / "svs_like.ome.tif"
+    base = np.random.default_rng(3).integers(0, 4000, (2, 1024, 1024), dtype=np.uint16)
+    with tifffile.TiffWriter(p, bigtiff=True, ome=True) as tw:
+        tw.write(base, subifds=1, tile=(256, 256), metadata={"axes": "CYX"})
+        tw.write(base[:, ::4, ::4], subfiletype=1, tile=(256, 256))
+    out = images.read_image(p, rgb=False, max_size=600)  # level 0 halved (512) beats level 1 as is (256)
+    expect = base.reshape(2, 512, 2, 512, 2).astype(np.int64).sum(axis=(2, 4))
+    assert np.array_equal(out, ((expect + 2) // 4).astype(np.uint16))
+
+
+def test_every_image_chunk_is_written_even_when_empty(tmp_path):
+    img = np.zeros((2, 600, 700), dtype=np.uint16)
+    img[0, :100, :100] = 500
+    images.write_ome_zarr(img, tmp_path / "i.ome.zarr", rgb=False)
+    level0 = tmp_path / "i.ome.zarr" / "0"
+    assert sorted(f.name for f in level0.iterdir() if not f.name.startswith(".")) == [f"{c}.{y}.{x}" for c in range(2) for y in range(2) for x in range(2)]

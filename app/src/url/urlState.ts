@@ -64,6 +64,7 @@ export function readUrl(): Partial<ViewerState> {
     if (v <= 0) out.showImages = false; // links written before `imgs` existed
   }
   if (q.get("imgs") === "0") out.showImages = false;
+  if (q.get("hc")) out.hiddenChannels = q.get("hc")!.split("|").filter(Boolean); // channel names may contain commas
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
   if (q.get("s")) out.focus = q.get("s");
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
@@ -133,6 +134,7 @@ export function serialize(s: ViewerState): string {
   if (h) q.set("h", h);
   if (!s.showImages) q.set("imgs", "0");
   if (s.imageOpacity !== 1) q.set("img", s.imageOpacity.toFixed(2));
+  if (s.hiddenChannels.length) q.set("hc", s.hiddenChannels.join("|"));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);
   if (s.hiddenSamples.length) q.set("hs", s.hiddenSamples.join(","));
   if (s.scalePerSample) q.set("sps", "1");

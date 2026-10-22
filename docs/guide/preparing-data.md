@@ -145,8 +145,9 @@ thousands would be drawn against 0 to 65,535 and look black. The viewer draws th
 **Xenium morphology** is found on its own next to a Xenium sample (`images: auto`): the 2D focus image
 (`morphology_focus/` in XOA 2 and later, with one file per stain, or `morphology_focus.ome.tif` in XOA 1, then
 `morphology_mip.ome.tif`), never the 3D `morphology.ome.tif` stack, with the pixel size from `experiment.xenium`.
-It is read at a pyramid level of at most 8,192 px per side (about 1.7 µm per pixel for a mouse brain section), not
-at full resolution; full-resolution images wait for a streaming converter. These files are JPEG 2000 compressed and
+It is read at about 0.85 µm per pixel, the stored level four times coarser than the scan, where a nucleus is 7 to
+12 px across. A machine without the memory for that reads the next coarser level instead and says so. Full
+resolution waits for a streaming converter; `max_size:` on an explicit image entry picks another level. These files are JPEG 2000 compressed and
 need the optional `imagecodecs` package: `pip install "spatialscape[images]"`. Without it the image is skipped
 with a note and the sample builds without it.
 

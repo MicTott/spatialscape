@@ -79,6 +79,6 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `translate` | `[x, y]` µm | `[0, 0]` |
 | `channels` | list of `{name, color, window}` | |
 | `default_opacity` | 0..1 | `1` |
-| `max_size` | int | | at most this many pixels per side: the pyramid level giving the largest copy within it, reduced while it is read when needed, so memory stays bounded even for a file without pyramid levels. Auto-discovered Xenium morphology uses 8192. A read larger than a sixth of the machine's memory is refused until `max_size` is set or lowered |
+| `max_size` | int | | at most this many pixels per side: the pyramid level giving the largest copy within it, reduced while it is read when needed, so memory stays bounded even for a file without pyramid levels. Auto-discovered Xenium morphology uses the size that gives about 0.85 µm per pixel, halved on a machine without the memory for it. A read larger than a sixth of the machine's memory is refused until `max_size` is set or lowered |
 | `crop` | bool | `true` | keep only the part of the image around the points (3% margin), so a slide scan does not size the grid cell; `false` keeps the whole image |
 | `mask`, `mask_margin` | bool, µm | `false`, `150` | blank the image beyond `mask_margin` of the sample's own points. Set on its own when sibling sample folders of a converted R object hold the very same image (several sections cut from one slide), so a neighbour's tissue does not appear under this sample |

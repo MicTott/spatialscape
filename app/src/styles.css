@@ -70,6 +70,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cats li { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 4px; cursor: pointer; user-select: none; }
 .cats li:hover { background: var(--panel2); }
 .cats li.off { opacity: 0.35; }
+.cats.channels { margin-top: 6px; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; box-shadow: 0 0 0 1px rgba(255,255,255,.15) inset; }
 .cat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat-n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11px; }

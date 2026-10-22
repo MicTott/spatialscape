@@ -3,7 +3,7 @@ import { PathLayer, TextLayer } from "@deck.gl/layers";
 import type { SampleData } from "../data/cache";
 import { fieldById, type CategoricalField } from "../data/manifest";
 import { ExpressionScatterLayer } from "../layers/ExpressionScatterLayer";
-import { imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
+import { channelNames, imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
 import { blendLUT, categoryPalette, colormapLUT, effectiveColormap, hexToRGB } from "../layers/lut";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
@@ -105,6 +105,7 @@ export class LayerBuilder {
     const s = store.getState();
     if (!c.manifest) return [];
     const layers: any[] = [];
+    this.nextLiveImages = new Set();
     const colorField = s.color?.kind === "field" ? fieldById(c.manifest, s.color.field) : undefined;
     const baseMode: 0 | 1 | 3 = s.color?.kind === "blend" ? 3 : colorField?.type === "categorical" ? 1 : 0;
     const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
@@ -123,7 +124,7 @@ export class LayerBuilder {
         const smp = c.samplesById.get(id)!;
         const sd = c.cache.samples.get(id);
         const visible = intersects(p.worldBbox, vb);
-        if (s.showImages && smp.images.length && visible) layers.push(...this.imageLayers(s, view, id, p.modelMatrix));
+        if (smp.images.length && visible) layers.push(...this.imageLayers(s, view, id, p.modelMatrix));
         if (!sd) continue;
         const inp = this.inputsFor(sd, s);
         const hasData = baseMode === 1 ? !!inp.cat : baseMode === 3 ? !!(inp.value || inp.value2) : !!inp.value;
@@ -178,7 +179,18 @@ export class LayerBuilder {
       layers.push(...c.selection.layers(s, view, L));
       layers.push(...this.frameLayers(s, view, L));
     }
+    this.liveImages = this.nextLiveImages;
     return layers;
+  }
+
+  // image layers in the previous build (dataset | layer id | view). Only those are kept, invisible, while images are
+  // off: an existing layer keeps its tiles and loads nothing, but a new one would start loading while hidden
+  private liveImages = new Set<string>();
+  private nextLiveImages = new Set<string>();
+  private hiddenChannels: { from: string[]; set: ReadonlySet<string> } = { from: [], set: new Set() };
+  private hiddenChannelSet(s: ViewerState): ReadonlySet<string> {
+    if (this.hiddenChannels.from !== s.hiddenChannels) this.hiddenChannels = { from: s.hiddenChannels, set: new Set(s.hiddenChannels) };
+    return this.hiddenChannels.set;
   }
 
   private imageLayers(s: ViewerState, view: ViewId, id: string, modelMatrix: any) {
@@ -187,6 +199,13 @@ export class LayerBuilder {
     const out: any[] = [];
     for (const img of smp.images) {
       const key = `${s.datasetUrl}/samples/${id}/${img.path}`;
+      const layerId = `img-${id}-${img.id}`;
+      // an image switched off (or with every channel hidden) stays as an invisible layer: deck neither draws it nor
+      // follows the camera with it, and its tile cache is there when it comes back, with no fetch
+      const liveKey = `${s.datasetUrl}|${layerId}|${view}`;
+      const hidden = this.hiddenChannelSet(s);
+      const drawn = s.showImages && (img.kind !== "multichannel" || !img.channels?.length || channelNames(img, img.channels.length).some((n) => !hidden.has(n)));
+      if (!drawn && !this.liveImages.has(liveKey)) continue;
       const h = this.imageHandles.get(key);
       if (!h) {
         this.imageHandles.set(key, "loading");
@@ -200,7 +219,9 @@ export class LayerBuilder {
             this.imageHandles.set(key, "error");
           });
       } else if (h !== "loading" && h !== "error") {
-        out.push(imageLayer(`img-${id}-${img.id}`, img, h, modelMatrix, s.imageOpacity * img.defaultOpacity, true, { viewId: view }));
+        const layer = imageLayer(layerId, img, h, modelMatrix, s.imageOpacity * img.defaultOpacity, s.showImages, this.hiddenChannelSet(s), { viewId: view });
+        this.nextLiveImages.add(liveKey);
+        out.push(layer);
       }
     }
     return out;
