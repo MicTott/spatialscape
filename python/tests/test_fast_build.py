@@ -51,12 +51,14 @@ def test_downsample2_is_a_rounded_mean_in_strips():
     assert I.downsample2(f).shape == (1, 5, 5)
 
 
-def test_pick_level_takes_the_smallest_level_that_is_still_large_enough():
+def test_choose_level_gives_the_largest_result_within_max_size_from_the_cheapest_level():
     shapes = [(3, 40000, 30000), (3, 20000, 15000), (3, 10000, 7500), (3, 5000, 3750), (3, 2500, 1875)]
-    assert I._pick_level(shapes, "cyx", 8192) == 2
-    assert I._pick_level(shapes, "cyx", 100_000) == 0
-    assert I._pick_level(shapes, "cyx", 1000) == 4
-    assert I._pick_level([(40000, 30000, 3)], "YXS", 8192) == 0
+    assert I._choose_level(shapes, "cyx", 8192) == (3, 1)  # 5000 px read as is, not 10000 read and halved
+    assert I._choose_level(shapes, "cyx", 100_000) == (0, 1)
+    assert I._choose_level(shapes, "cyx", 1000) == (4, 4)  # 625 px either way; the smallest source wins
+    assert I._choose_level(shapes, "cyx", None) == (0, 1)
+    assert I._choose_level([(40000, 30000, 3)], "YXS", 8192) == (0, 8)  # no pyramid: reduced while it is read
+    assert I._choose_level([(1, 16000, 16000), (1, 4000, 4000)], "cyx", 8192) == (0, 2)  # 8000 beats 4000
 
 
 def test_partial_loader_skips_layers_and_graphs(tmp_path):

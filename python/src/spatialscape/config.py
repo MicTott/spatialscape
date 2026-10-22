@@ -61,8 +61,8 @@ class ExpressionSpec(_Model):
 
 class ImageChannelSpec(_Model):
     name: str
-    color: str = "#ffffff"
-    window: tuple[float, float] | None = None
+    color: str | None = None  # default: white for a single channel, else a distinct colour per channel
+    window: tuple[float, float] | None = None  # default: fitted to the signal
 
 
 class ImageSpec(_Model):

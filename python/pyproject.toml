@@ -50,6 +50,7 @@ Changelog = "https://github.com/mictott/spatialscape/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 spatialdata = ["spatialdata>=0.4"]
 tracks = ["pyBigWig>=0.3.18"]
+images = ["imagecodecs>=2024.1.1"]  # JPEG 2000 images: Xenium morphology, Aperio J2K slides
 dev = ["pytest>=8", "ruff>=0.5", "h5py>=3.10", "build>=1.2"]
 
 [project.scripts]

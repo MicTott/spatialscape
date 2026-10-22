@@ -20,6 +20,8 @@ from .config import DatasetConfig, MicronsSpec, SampleSpec
 from .discover import auto_images
 from .manifest import FORMAT_VERSION
 
+IMAGE_RECIPE = 1  # bump when multichannel images are written differently; rebuilds only samples that have one
+
 BUILD_RECIPE = 1  # bump when build_sample writes something different for the same inputs and settings
 SIDECAR = "build.json"
 
@@ -92,6 +94,10 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
     spec_json["meta"] = {k: v for k, v in (spec_json.get("meta") or {}).items() if isinstance(v, dict)}
     paths: list[Path | None] = [resolved.path, resolved.microns.scalefactors_json]
     paths += [im.path for im in resolved.images]
+    # a Xenium morphology_focus/ series reads every stain file through its first one: watch the folder
+    paths += [im.path.parent for im in resolved.images if im.path is not None and im.path.parent.name == "morphology_focus"]
+    if any(im.kind == "multichannel" for im in resolved.images):
+        spec_json["image_recipe"] = IMAGE_RECIPE  # fluorescence images gained names, colours and fitted windows
     if resolved.polygons is not None and resolved.polygons.path is not None:
         paths.append(resolved.polygons.path)
     if resolved.tracks is not None:

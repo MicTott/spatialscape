@@ -23,7 +23,15 @@ from .discover import auto_fields, infer_field_spec
 from .expression import column_moments, detect_lognorm, get_matrix, log1p_cp10k, write_expression
 from .fingerprint import read_sidecar, resolve_auto_images, sample_fingerprint, why_stale, write_sidecar
 from .geometry import default_point_radius, microns_per_unit, transform_points
-from .images import prepare_image, read_image_shape, write_ome_zarr
+from .images import (
+    DEFAULT_CHANNEL_COLORS,
+    ImageReadRefused,
+    auto_windows,
+    ome_channel_names,
+    prepare_image,
+    read_image_shape,
+    write_ome_zarr,
+)
 from .manifest import (
     BUILTIN_COLORMAPS,
     CategoricalField,
@@ -149,6 +157,7 @@ def build_sample(
     if spec.fields == "auto":
         spec = spec.model_copy(update={"fields": auto_fields(adata, spec)})
         log(f"[{spec.id}] auto fields: {list(spec.fields)}")
+    discovered = spec.images == "auto"  # images found next to the data are skipped with a note when they cannot be read
     if spec.images == "auto" or spec.microns == type(spec.microns)():
         was_auto = spec.images == "auto"
         spec = resolve_auto_images(spec)
@@ -289,7 +298,13 @@ def build_sample(
     for im in spec.images:
         log(f"[{spec.id}] image {im.path}")
         rgb = im.kind == "rgb"
-        img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, im.max_size, rgb=rgb)
+        try:
+            img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, im.max_size, rgb=rgb)
+        except ImageReadRefused as e:
+            if not discovered:
+                raise
+            log(f"[{spec.id}] note: skipping the image found next to the data: {e}")
+            continue
         if im.pixel_size == "auto":
             # pixels_per_unit image px per coord unit; after max_size downsampling the ratio changes
             _c, h0, w0 = read_image_shape(im.path, rgb=rgb)
@@ -307,12 +322,33 @@ def build_sample(
         names = [ch.name for ch in im.channels] if im.channels else None
         colors = [ch.color for ch in im.channels] if im.channels else None
         wins = [ch.window for ch in im.channels] if im.channels and all(ch.window for ch in im.channels) else None
+        chans = None
+        if not rgb:
+            # fluorescence: names from the file's OME metadata, a distinct colour each, and a window fitted to the
+            # signal wherever the yaml gives none (a 16-bit channel drawn against 0..65535 looks black)
+            nch = img.shape[0]
+            if im.channels and len(im.channels) != nch:
+                log(f"[{spec.id}] warning: `channels:` lists {len(im.channels)} entries but {im.path.name} has {nch} channels; using the file's names, default colours and fitted windows")
+            listed = im.channels if im.channels and len(im.channels) == nch else None
+            if nch > 6:
+                log(f"[{spec.id}] note: {im.path.name} has {nch} channels; the viewer draws the first 6 until per-channel controls arrive")
+            if listed is None:
+                ome = ome_channel_names(im.path)
+                names = ome if ome and len(ome) == nch else ([im.name] if nch == 1 else [f"{im.name} {k + 1}" for k in range(nch)])
+            default_colors = ["#ffffff"] if nch == 1 else [DEFAULT_CHANNEL_COLORS[k % len(DEFAULT_CHANNEL_COLORS)] for k in range(nch)]
+            colors = [(listed[k].color if listed and listed[k].color else default_colors[k]) for k in range(nch)]
+            given = [ch.window for ch in listed] if listed else [None] * nch
+            fitted = auto_windows(img) if any(w is None for w in given) else []
+            wins = [tuple(w) if w is not None else fitted[k] for k, w in enumerate(given)]
+            chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]
+            if fitted:
+                log(f"[{spec.id}] image channel windows fitted to the signal: " + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None))
+        elif im.channels:
+            maxv = 255 if img.dtype == np.uint8 else int(np.iinfo(img.dtype).max)
+            chans = [ImageChannel(name=ch.name, color=ch.color or "#ffffff", window=ch.window or (0, maxv)) for ch in im.channels]
+            colors = [ch.color or "#ffffff" for ch in im.channels]
         out_path = out_dir / f"{im.id}.ome.zarr"
         write_ome_zarr(img, out_path, rgb=rgb, channel_names=names, channel_colors=colors, windows=wins)
-        chans = None
-        if im.channels:
-            maxv = 255 if img.dtype == np.uint8 else int(np.iinfo(img.dtype).max)
-            chans = [ImageChannel(name=ch.name, color=ch.color, window=ch.window or (0, maxv)) for ch in im.channels]
         images.append(
             SampleImage(
                 id=im.id,

@@ -347,7 +347,7 @@ error, so a typo cannot silently do nothing.
 ## Automatic discovery
 
 - `fields: auto` exposes every categorical column with 2 to 200 levels and every numeric column whose name looks like a QC metric (count, sum, detected, percent, ratio, area, score, umi, genes, mito, nucleus, transcript, total). Columns such as `sample_id`, barcodes and indices are skipped. The menu that `init` writes is the explicit version of this; `auto` remains valid for yamls written by hand.
-- `images: auto` (the default for spatial samples) looks next to the data for `image.ome.zarr` or any `*.ome.zarr`, then a SpaceRanger `spatial/` folder (`tissue_hires_image.png` + `scalefactors_json.json`, which also supplies the micron scale), then a Xenium `morphology_focus*.ome.tif`.
+- `images: auto` (the default for spatial samples) looks next to the data for `image.ome.zarr` or any `*.ome.zarr`, then a SpaceRanger `spatial/` folder (`tissue_hires_image.png` + `scalefactors_json.json`, which also supplies the micron scale), then a Xenium morphology focus image (the `morphology_focus/` folder, `morphology_focus.ome.tif`, then `morphology_mip.ome.tif`; read at most 8,192 px per side).
 - Fields that samples map without a declaration are declared automatically; the type is inferred from the data and the display name from the column.
 
 Declare a field explicitly when you want a display name, a palette key, aliases (merge labels), an explicit category order, or a fixed range for a continuous field.

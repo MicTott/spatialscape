@@ -12,6 +12,7 @@ export interface ImageHandle {
 }
 
 const loaders = new Map<string, Promise<ImageHandle>>();
+const MAX_DRAWN = 6;
 
 export function loadImage(url: string): Promise<ImageHandle> {
   let p = loaders.get(url);
@@ -42,7 +43,8 @@ export function imageLayer(
     .scale([img.pixelSize, img.pixelSize, 1]);
   const n = handle.channels;
   const isRGB = img.kind === "rgb" && n >= 3;
-  const chans = isRGB ? [0, 1, 2] : Array.from({ length: n }, (_, i) => i);
+  // the first MAX_DRAWN channels: Viv refuses more than 10, and additive colours stop being readable past about 6
+  const chans = isRGB ? [0, 1, 2] : Array.from({ length: Math.min(n, MAX_DRAWN) }, (_, i) => i);
   const maxv = handle.dtype === "Uint8" || handle.dtype === "uint8" ? 255 : 65535;
   // only keys that exist in the source's dimension labels are valid selection keys
   const selections = chans.map((c) => {

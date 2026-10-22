@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 
@@ -12,6 +13,8 @@ import pandas as pd
 from .config import FieldSpec, ImageSpec, MicronsSpec, SampleSpec
 
 MAX_LEVELS = 200
+XENIUM_PIXEL_UM = 0.2125  # morphology pixel size when experiment.xenium does not say
+AUTO_MORPHOLOGY_MAX_PX = 8192  # discovered Xenium morphology is read at a pyramid level of about this size, never whole
 SKIP_COLUMNS = re.compile(r"^(sample_id|sample|key|barcode|cell_id|cell|index|in_tissue|array_row|array_col|exclude_.*|discard.*|qc_filter|.*_1|.*_2)$", re.I)
 NUMERIC_KEEP = re.compile(r"count|sum|detected|percent|ratio|area|score|umi|genes|mito|nucleus|transcript|total|ncount|nfeature", re.I)
 
@@ -80,7 +83,7 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
     if sample.kind != "spatial":
         return [], None
     # 1. OME-Zarr exported in the coordinate frame of the sample (level-0 pixels), e.g. image.ome.zarr
-    for cand in [d / "image.ome.zarr", *sorted(d.glob("*.ome.zarr"))]:
+    for cand in [d / "image.ome.zarr", *visible(d.glob("*.ome.zarr"))]:
         if cand.is_dir() and ((cand / ".zattrs").exists() or (cand / "zarr.json").exists()):
             return [ImageSpec(id="he", name="H&E", path=cand, pixel_size="auto")], None
     # 2. SpaceRanger layout: spatial/tissue_hires_image.png + scalefactors (coords are full-res pixels)
@@ -89,7 +92,7 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
     if sf.exists():
         scale = json.loads(sf.read_text())
         # tissue_<id>_image.png with a tissue_<id>_scalef: hires first, then any other id, lowres last
-        pngs = sorted(sp.glob("tissue_*_image.png"), key=lambda q: (0 if "hires" in q.name else 2 if "lowres" in q.name else 1, q.name))
+        pngs = sorted(visible(sp.glob("tissue_*_image.png")), key=lambda q: (0 if "hires" in q.name else 2 if "lowres" in q.name else 1, q.name))
         for png in pngs:
             key = png.name.replace("tissue_", "tissue_", 1).replace("_image.png", "_scalef")
             if key in scale:
@@ -97,7 +100,62 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
                 return [spec], MicronsSpec(scalefactors_json=sf)
     if sf.exists():  # scale factors without an image (e.g. `convert` of an object whose image file was gone)
         return [], MicronsSpec(scalefactors_json=sf)
-    # 3. Xenium morphology image
-    for tif in sorted(d.glob("morphology_focus*.ome.tif")) + sorted(d.glob("morphology*.ome.tif")):
-        return [ImageSpec(id="dapi", name="DAPI", path=tif, kind="multichannel", pixel_size="auto", pixels_per_unit=1 / 0.2125)], None
+    # 3. Xenium morphology image: the 2D focus image (or the max projection), never the 3D morphology.ome.tif stack
+    tif = xenium_morphology(d)
+    if tif is not None:
+        from .images import read_image_shape
+
+        try:
+            nch = read_image_shape(tif, rgb=False)[0]
+        except Exception:
+            nch = 1
+        return [
+            ImageSpec(
+                id="morphology",
+                name="DAPI" if nch == 1 else "Morphology",
+                path=tif,
+                kind="multichannel",
+                pixel_size="auto",
+                pixels_per_unit=1 / xenium_pixel_size(d),
+                max_size=AUTO_MORPHOLOGY_MAX_PX,  # full resolution waits for the streaming converter (design/images-molecules-shapes.md)
+            )
+        ], None
     return [], None
+
+
+def xenium_morphology(d: Path) -> Path | None:
+    """The morphology image of a Xenium outs folder. XOA 2 and later write morphology_focus/ with one OME-TIFF per
+    stain (morphology_focus_0000.ome.tif, or ch0000_dapi.ome.tif in XOA 4); the first file holds the multi-file
+    series of all of them. XOA 1 writes morphology_focus.ome.tif, morphology_mip.ome.tif and the 3D z-stack
+    morphology.ome.tif, which is not used."""
+    folder = d / "morphology_focus"
+    if folder.is_dir():
+        files = visible(folder.glob("*.ome.tif"))
+        if files:
+            return files[0]
+    for name in ("morphology_focus.ome.tif", "morphology_mip.ome.tif"):
+        if (d / name).is_file():
+            return d / name
+    return None
+
+
+def xenium_pixel_size(d: Path) -> float:
+    """Microns per morphology pixel, from experiment.xenium when present."""
+    meta = d / "experiment.xenium"
+    try:
+        raw = json.loads(meta.read_text()).get("pixel_size", XENIUM_PIXEL_UM)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return XENIUM_PIXEL_UM
+    if isinstance(raw, bool):
+        return XENIUM_PIXEL_UM
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return XENIUM_PIXEL_UM
+    return v if math.isfinite(v) and 0 < v < 10 else XENIUM_PIXEL_UM
+
+
+def visible(paths) -> list[Path]:
+    """Sorted, without hidden files: macOS writes `._<name>` sidecars next to every file it copies to exFAT, FAT or
+    SMB drives, and they sort before the real file."""
+    return sorted(p for p in paths if not p.name.startswith("."))

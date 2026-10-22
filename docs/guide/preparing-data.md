@@ -137,6 +137,25 @@ Two placements:
 
 Flips and rotations in `transform:` apply to the points and the image together, so registration survives.
 
+Multichannel images get their channel names from the file's OME metadata, a distinct colour each (blue first,
+for the nuclear stain), and a display window fitted to the signal (the 0.5th to 99.9th percentile of non-zero
+pixels) unless `channels:` gives one. Without that, a 16-bit fluorescence channel whose signal sits in the low
+thousands would be drawn against 0 to 65,535 and look black. The viewer draws the first six channels.
+
+**Xenium morphology** is found on its own next to a Xenium sample (`images: auto`): the 2D focus image
+(`morphology_focus/` in XOA 2 and later, with one file per stain, or `morphology_focus.ome.tif` in XOA 1, then
+`morphology_mip.ome.tif`), never the 3D `morphology.ome.tif` stack, with the pixel size from `experiment.xenium`.
+It is read at a pyramid level of at most 8,192 px per side (about 1.7 µm per pixel for a mouse brain section), not
+at full resolution; full-resolution images wait for a streaming converter. These files are JPEG 2000 compressed and
+need the optional `imagecodecs` package: `pip install "spatialscape[images]"`. Without it the image is skipped
+with a note and the sample builds without it.
+
+`max_size:` bounds what an image costs to read. A pyramidal file is read at the level that gives the largest copy
+within it; a larger level, or a file without pyramid levels (10x's CytAssist and Visium HD TIFFs), is reduced
+band by band while it is read, so the whole slide is never in memory. A read that would need more than a sixth of
+the machine's memory (or of a cgroup or SLURM limit) is refused with the size it would need and the way out: set or
+lower `max_size:` on the image.
+
 ## Cell boundary polygons
 
 Polygons can come from two places:
