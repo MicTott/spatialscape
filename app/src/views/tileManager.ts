@@ -26,7 +26,7 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
   private pending = new Set<string>();
   private bytes = 0;
   private rects = new Map<string, string>();
-  private lastMove = 0;
+  private lastMove = new Map<string, number>(); // per view: a pan in one pane must not hold the others back
   private timer: number | null = null;
   private wanted = new Set<string>();
   private hint: string | null = null;
@@ -57,6 +57,7 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
     this.pending.clear();
     this.bytes = 0;
     this.rects.clear();
+    this.lastMove.clear();
     if (this.inflight) store.getState().set({ pending: Math.max(0, store.getState().pending - this.inflight) });
     this.inflight = 0;
     if (this.timer != null) window.clearTimeout(this.timer);
@@ -141,9 +142,9 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
     const rectKey = vb.map((v) => v.toFixed(1)).join(",");
     if (this.rects.get(view) !== rectKey) {
       this.rects.set(view, rectKey);
-      this.lastMove = performance.now();
+      this.lastMove.set(view, performance.now());
     }
-    return performance.now() - this.lastMove >= SETTLE_MS;
+    return performance.now() - (this.lastMove.get(view) ?? 0) >= SETTLE_MS;
   }
 
   /**

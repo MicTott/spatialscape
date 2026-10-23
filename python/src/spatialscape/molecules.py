@@ -259,7 +259,7 @@ def write_molecules(
         raise MemoryError(f"{path}: {total:,} molecules need about {need / 2**30:.1f} GB to tile, more than this build allows ({limit / 2**30:.1f} GB); raise min_qv or build on a larger machine")
     nx = math.floor((hi[0] - origin[0]) / tile) + 1 if total else 0
     ny = math.floor((hi[1] - origin[1]) / tile) + 1 if total else 0
-    log(f"molecules: {total:,} pass the quality filter, {tile} um tiles over a {nx} x {ny} grid")
+    log(f"molecules: {total:,} rows at or above Q{min_qv:g} (controls still among them); {tile} um tiles over a {nx} x {ny} grid")
 
     # pass 2: collect per tile
     buckets: dict[int, list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]] = {}

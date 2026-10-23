@@ -97,7 +97,8 @@ export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colo
 }
 
 export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
-  private colorCache: { genes: string[]; key: string; value: ReturnType<typeof geneColors> } | null = null;
+  private colorCache = new WeakMap<string[], { key: string; value: ReturnType<typeof geneColors> }>(); // per sample's gene list
+  private heldThisBuild = 0; // molecules held for drawing across every pane of one build
 
   constructor(c: ViewerController) {
     super(c, "molecules", 256 * 2 ** 20, "moleculeHint", MOLECULE_TILE_CAP);
@@ -109,8 +110,16 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
 
   private colorsFor(genes: string[], s: ViewerState) {
     const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0, s.moleculeGenes, s.moleculeColors]);
-    if (!this.colorCache || this.colorCache.genes !== genes || this.colorCache.key !== key) this.colorCache = { genes, key, value: geneColors(genes, s) };
-    return this.colorCache.value;
+    const hit = this.colorCache.get(genes);
+    if (hit && hit.key === key) return hit.value; // the same array identity keeps every tile layer's texture
+    const value = geneColors(genes, s);
+    this.colorCache.set(genes, { key, value });
+    return value;
+  }
+
+  beginBuild() {
+    super.beginBuild();
+    this.heldThisBuild = 0;
   }
 
   /** One pane: the molecule layers to draw and the samples whose dots should fade under them. */
@@ -142,11 +151,12 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
     }
     if (!wants.length) return out;
     const ntiles = wants.reduce((n, w) => n + w.tiles.length, 0);
-    if (visible > MOLECULE_DENSITY * vw * vh || held > MOLECULE_CAP || this.tilesThisBuild + ntiles > this.tileCap) {
+    if (visible > MOLECULE_DENSITY * vw * vh || this.heldThisBuild + held > MOLECULE_CAP || this.tilesThisBuild + ntiles > this.tileCap) {
       this.nextHint = "zoom in for molecules";
       return out;
     }
     this.tilesThisBuild += ntiles;
+    this.heldThisBuild += held;
     for (const w of wants) {
       const { ready } = this.resolve(w.id, w.tiles, settled);
       if (ready.length) out.drawn.add(w.id);

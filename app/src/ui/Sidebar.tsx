@@ -550,7 +550,20 @@ function MoleculeGenes({ genes }: { genes: string[] }) {
           </li>
         ))}
       </ul>
-      <GeneSearch key={pins.length} genes={genes} value={null} onPick={pin} placeholder={pins.length ? "pin another gene…" : "pin a gene…"} />
+      <GeneSearch
+        key={pins.length}
+        genes={genes}
+        value={null}
+        onPick={pin}
+        onSubmit={(text) => {
+          // a molecule feature the expression matrix lacks (dropped as all-zero, or never measured) is pinned by name
+          const name = text.trim();
+          if (!name || /[\s,;]/.test(name)) return false;
+          pin(name);
+          return true;
+        }}
+        placeholder={pins.length ? "pin another gene…" : "pin a gene… (Enter pins any name)"}
+      />
       {mode === "all" ? <div className="muted small">every other gene in its own colour</div> : !color || color.kind === "field" ? <div className="muted small">other molecules draw in grey</div> : null}
       <label title="double-click to reset">
         size <small>×{size.toFixed(2)}</small>

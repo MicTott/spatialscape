@@ -69,8 +69,9 @@ def _check_molecules(p, s, d: Path) -> None:
         tiles = index["tiles"]
         grid = float(index["grid"])
         genes = index["genes"]
-        assert all(isinstance(t, list) and len(t) == 5 for t in tiles)
-    except (OSError, ValueError, KeyError, TypeError, AssertionError) as e:
+        if not isinstance(genes, list) or not all(isinstance(t, list) and len(t) == 5 and all(isinstance(v, int) for v in t) for t in tiles):
+            raise ValueError("grid, a gene list and 5-field tile entries expected")
+    except (OSError, ValueError, KeyError, TypeError) as e:
         _problem(p, f"{s.id}: molecules.json is not a molecule tile index ({e})")
         return
     packed = index.get("layout") == "packed"

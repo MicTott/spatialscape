@@ -325,7 +325,8 @@ def build_sample(
             f"[{spec.id}] molecules: {mst.count:,} of {mst.read:,} rows kept ({mst.low_quality:,} below Q{ms.min_qv:g}, {mst.controls:,} controls), "
             f"{mst.genes} genes, {mst.tiles} tiles of {mst.tile} um, {mst.bytes / 2**20:.0f} MB ({mst.bytes / max(mst.count, 1):.1f} B each) in {mst.seconds:.0f} s"
         )
-        unknown = [g for g in json.loads((out_dir / "molecules.json").read_text())["genes"] if g not in set(genes)]
+        known = set(genes)
+        unknown = [g for g in json.loads((out_dir / "molecules.json").read_text())["genes"] if g not in known]
         if unknown:
             log(f"[{spec.id}] note: {len(unknown)} molecule feature{'s' if len(unknown) != 1 else ''} not in the expression matrix (for example {', '.join(unknown[:3])}); they draw in grey only")
 
