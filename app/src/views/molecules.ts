@@ -24,10 +24,22 @@ export const MOLECULE_DENSITY = 1.0; // visible molecules per CSS pixel of the p
 export const MOLECULE_CAP = 1_500_000; // molecules held for drawing across every pane
 export const MOLECULE_TILE_CAP = 512; // 128 um tiles of a dense section hold about 3-5k molecules each
 const GREY: [number, number, number] = [205, 208, 214];
-/** Colours of pinned genes, in pin order: apart from each other, from grey and from the colormaps' top colours. */
+/** Colours of pinned genes, in pin order: six apart from each other, from grey and from the colormaps' top colours,
+ *  then hues spaced by the golden angle, which stay as different from each other as a long list allows. */
 export const PIN_COLORS = ["#ff4fd8", "#3fe0e0", "#ff6b4f", "#3fd14a", "#4c8dff", "#f0f0f0"];
-export const MAX_PINS = PIN_COLORS.length;
-export const pinColor = (i: number) => PIN_COLORS[i % PIN_COLORS.length];
+export const pinColor = (i: number) => (i < PIN_COLORS.length ? PIN_COLORS[i] : hslHex((i * 137.508 + 40) % 360, 0.8, 0.62));
+/** One colour per gene for the all-genes view: a rainbow by gene index. */
+export const geneHue = (i: number): [number, number, number] => hslRGB((i * 137.508) % 360, 0.72, 0.6);
+
+function hslRGB(h: number, s: number, l: number): [number, number, number] {
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+function hslHex(h: number, s: number, l: number): string {
+  return "#" + hslRGB(h, s, l).map((v) => v.toString(16).padStart(2, "0")).join("");
+}
 
 /** The colour the gene on screen gets: the top of the colormap in use. */
 export function onScreenColor(s: Pick<ViewerState, "colormap" | "geneMin">): [number, number, number] {
@@ -42,7 +54,7 @@ interface MoleculeCached extends Cached<MoleculeTile> {
 /** Which genes draw, and in what colour, for the colour state on screen: the gene on screen in the colormap's top
  *  colour (a blend's sets in its colours), every pinned gene in its pin colour, and under an annotation every other
  *  gene in grey. `shares` gives the fraction of a sample's molecules that would draw, for the density gate. */
-export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes">): { colors: Uint8Array; shares: (counts: number[]) => number } {
+export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "follow" | "all" }): { colors: Uint8Array; shares: (counts: number[]) => number } {
   const n = genes.length;
   const out = new Uint8Array(Math.max(1, n) * 4);
   const picked = new Set<number>();
@@ -55,6 +67,10 @@ export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colo
   };
   const color = s.color;
   let all = false;
+  if (s.moleculeColors === "all") {
+    all = true;
+    for (let i = 0; i < n; i++) paint(i, geneHue(i));
+  }
   if (color?.kind === "gene") {
     const i = genes.indexOf(color.gene);
     if (i >= 0) paint(i, onScreenColor(s));
@@ -67,7 +83,7 @@ export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colo
       const inB = b.has(g);
       if (inA || inB) paint(i, hexToRGB(inA && inB ? scheme.both : inA ? scheme.a : scheme.b));
     });
-  } else {
+  } else if (!all) {
     all = true;
     for (let i = 0; i < n; i++) paint(i, GREY);
   }
@@ -92,7 +108,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
   }
 
   private colorsFor(genes: string[], s: ViewerState) {
-    const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0, s.moleculeGenes]);
+    const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0, s.moleculeGenes, s.moleculeColors]);
     if (!this.colorCache || this.colorCache.genes !== genes || this.colorCache.key !== key) this.colorCache = { genes, key, value: geneColors(genes, s) };
     return this.colorCache.value;
   }

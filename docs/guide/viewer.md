@@ -163,8 +163,10 @@ in the colormap's top colour, a blend's two gene sets in the blend's colours, an
 draws in grey, which is the view for judging a segmentation.
 
 Zoomed out, a cell can show one gene; zoomed in, the molecules can show several. The Molecules row lists the gene on
-screen and lets you **pin** up to six more, each in a fixed colour, with a search box; a pin stays while you step
-through other genes, so a few anchors remain visible, and click × to unpin. Molecules not assigned to a cell draw
+screen and lets you **pin** more, each in a fixed colour, with a search box; a pin stays while you step through other
+genes, so a few anchors remain visible, and click × to unpin. **All genes** colours every gene by its own hue at once,
+the view for seeing where transcripts of different kinds gather; pins and the gene on screen keep their colours on
+top of it (`mc=all` in the URL). Molecules not assigned to a cell draw
 dimmer, and the cell dots fade under them. Only the tiles in view are fetched, once the camera stops; pinning and
 unpinning download nothing. The switch and the pins travel in the URL as `mol=1` and `mg`.
 

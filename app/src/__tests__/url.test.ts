@@ -140,9 +140,11 @@ describe("molecules", () => {
     expect(new URLSearchParams(serialize(store.getState())).has("mol")).toBe(false);
     const g = globalThis as any;
     const saved = g.window;
-    g.window = { location: { search: "?mol=1&mg=GAD1|PENK" } };
+    g.window = { location: { search: "?mol=1&mg=GAD1|PENK&mc=all" } };
     expect(readUrl().molecules).toBe(true);
     expect(readUrl().moleculeGenes).toEqual(["GAD1", "PENK"]);
+    expect(readUrl().moleculeColors).toBe("all");
+    expect(new URLSearchParams(serialize({ ...store.getState(), moleculeColors: "all" } as ViewerState)).get("mc")).toBe("all");
     g.window = saved;
   });
 });

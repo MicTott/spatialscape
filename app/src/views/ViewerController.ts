@@ -293,6 +293,7 @@ export class ViewerController {
       s.cellShapes !== prev.cellShapes ||
       s.molecules !== prev.molecules ||
       s.moleculeGenes !== prev.moleculeGenes ||
+      s.moleculeColors !== prev.moleculeColors ||
       s.moleculeSize !== prev.moleculeSize
     ) {
       this.requestLayers();

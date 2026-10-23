@@ -55,5 +55,13 @@ describe("molecule tiles written by the Python build", () => {
     const pf = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0, moleculeGenes: ["C"] });
     expect([...pf.colors.subarray(8, 11)]).toEqual(hexToRGB(pinColor(0)));
     expect([...pf.colors.subarray(0, 3)]).toEqual([205, 208, 214]);
+    // all genes: every gene its own colour, pins and the gene on screen still on top; the seventh pin gets a colour too
+    const al = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0, moleculeGenes: [], moleculeColors: "all" });
+    expect(al.colors[3]).toBe(255);
+    expect([...al.colors.subarray(0, 3)]).not.toEqual([...al.colors.subarray(8, 11)]);
+    expect([...al.colors.subarray(4, 7)]).toEqual([250, 231, 33]);
+    expect(al.shares(counts)).toBe(1);
+    expect(pinColor(7)).toMatch(/^#[0-9a-f]{6}$/);
+    expect(pinColor(7)).not.toBe(pinColor(8));
   });
 });

@@ -86,7 +86,8 @@ export function readUrl(): Partial<ViewerState> {
   const cs = q.get("cs");
   if (cs === "dots" || cs === "filled" || cs === "edges") out.cellShapes = cs;
   if (q.get("mol") === "1") out.molecules = true;
-  if (q.get("mg")) out.moleculeGenes = q.get("mg")!.split("|").filter(Boolean).slice(0, 6);
+  if (q.get("mg")) out.moleculeGenes = q.get("mg")!.split("|").filter(Boolean);
+  if (q.get("mc") === "all") out.moleculeColors = "all";
   if (q.get("msz")) out.moleculeSize = Math.min(4, Math.max(0.25, num(q.get("msz"), 1)));
   if (q.get("cl") === "0") out.clusterLabels = false;
   if (q.get("gb") === "0") out.genome = false;
@@ -154,6 +155,7 @@ export function serialize(s: ViewerState): string {
   if (s.cellShapes !== "auto") q.set("cs", s.cellShapes);
   if (s.molecules) q.set("mol", "1");
   if (s.moleculeGenes.length) q.set("mg", s.moleculeGenes.join("|"));
+  if (s.moleculeColors === "all") q.set("mc", "all");
   if (s.moleculeSize !== 1) q.set("msz", s.moleculeSize.toFixed(2));
   if (!s.clusterLabels) q.set("cl", "0");
   if (!s.genome) q.set("gb", "0");

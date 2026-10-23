@@ -12,7 +12,7 @@ import { SampleStrip } from "./SampleStrip";
 import { CompareSelect } from "../compare/CompareSelect";
 import { channelNames } from "../layers/imageLayers";
 import { shapeMode } from "../views/shapes";
-import { MAX_PINS, onScreenColor, pinColor } from "../views/molecules";
+import { onScreenColor, pinColor } from "../views/molecules";
 
 export function Sidebar() {
   const manifest = useViewer((s) => s.manifest);
@@ -442,14 +442,22 @@ function MoleculeGenes({ genes }: { genes: string[] }) {
   const geneMin = useViewer((s) => s.geneMin);
   const pins = useViewer((s) => s.moleculeGenes);
   const size = useViewer((s) => s.moleculeSize);
+  const mode = useViewer((s) => s.moleculeColors);
   const set = store.getState().set;
   const top = onScreenColor({ colormap, geneMin });
   const pin = (g: string) => {
-    if (pins.includes(g) || pins.length >= MAX_PINS) return;
-    set({ moleculeGenes: [...pins, g] });
+    if (!pins.includes(g)) set({ moleculeGenes: [...pins, g] });
   };
   return (
     <div className="molecule-genes">
+      <div className="tabs" title="follow: the gene or blend on screen, other molecules grey under an annotation. all genes: every gene in its own colour">
+        <button className={mode === "follow" ? "on" : ""} onClick={() => set({ moleculeColors: "follow" })}>
+          follow colour
+        </button>
+        <button className={mode === "all" ? "on" : ""} onClick={() => set({ moleculeColors: "all" })}>
+          all genes
+        </button>
+      </div>
       <ul className="cats">
         {color?.kind === "gene" && !pins.includes(color.gene) && (
           <li title="the gene coloured on screen; change it above">
@@ -475,12 +483,8 @@ function MoleculeGenes({ genes }: { genes: string[] }) {
           </li>
         ))}
       </ul>
-      {pins.length < MAX_PINS ? (
-        <GeneSearch key={pins.length} genes={genes} value={null} onPick={pin} placeholder={pins.length ? "pin another gene…" : "pin a gene…"} />
-      ) : (
-        <div className="muted small">{MAX_PINS} genes pinned, the most that stay readable</div>
-      )}
-      {!color || color.kind === "field" ? <div className="muted small">other molecules draw in grey</div> : null}
+      <GeneSearch key={pins.length} genes={genes} value={null} onPick={pin} placeholder={pins.length ? "pin another gene…" : "pin a gene…"} />
+      {mode === "all" ? <div className="muted small">every other gene in its own colour</div> : !color || color.kind === "field" ? <div className="muted small">other molecules draw in grey</div> : null}
       <label title="double-click to reset">
         size <small>×{size.toFixed(2)}</small>
         <input type="range" min={0.25} max={4} step={0.05} value={size} onChange={(e) => set({ moleculeSize: +e.target.value })} onDoubleClick={() => set({ moleculeSize: 1 })} />
