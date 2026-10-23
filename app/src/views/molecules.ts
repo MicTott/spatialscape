@@ -14,12 +14,15 @@ import { BLEND_SCHEMES, COLORMAPS, effectiveColormap, hexToRGB } from "../layers
 import type { ViewerState, ViewId } from "../store/store";
 import type { LayoutResult } from "./layout";
 import { intersects } from "./lod";
-import { TILE_CAP, TileManager, type Cached } from "./tileManager";
+import { TileManager, type Cached } from "./tileManager";
 import { overlayProps } from "./types";
 import type { ViewerController } from "./ViewerController";
 
-export const MOLECULE_DENSITY = 0.1; // visible molecules per CSS pixel of the pane
-export const MOLECULE_CAP = 2_000_000; // molecules held for drawing across every pane
+// Measured on an M1 Max: a frame costs about 9 us per 1,000 molecules (0.78 M in 8.6 ms, 1.7 M in 16 ms, 3.5 M in
+// 30 ms), and a base M1 is about three times slower, so a million keeps every laptop near 60 fps.
+export const MOLECULE_DENSITY = 1.0; // visible molecules per CSS pixel of the pane (a 1440 x 900 window: about 1 M)
+export const MOLECULE_CAP = 1_500_000; // molecules held for drawing across every pane
+export const MOLECULE_TILE_CAP = 512; // 128 um tiles of a dense section hold about 3-5k molecules each
 const GREY: [number, number, number] = [205, 208, 214];
 /** Colours of pinned genes, in pin order: apart from each other, from grey and from the colormaps' top colours. */
 export const PIN_COLORS = ["#ff4fd8", "#3fe0e0", "#ff6b4f", "#3fd14a", "#4c8dff", "#f0f0f0"];
@@ -81,7 +84,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
   private colorCache: { genes: string[]; key: string; value: ReturnType<typeof geneColors> } | null = null;
 
   constructor(c: ViewerController) {
-    super(c, "molecules", 256 * 2 ** 20, "moleculeHint");
+    super(c, "molecules", 256 * 2 ** 20, "moleculeHint", MOLECULE_TILE_CAP);
   }
 
   protected load(id: string, keys: string[]) {
@@ -123,7 +126,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
     }
     if (!wants.length) return out;
     const ntiles = wants.reduce((n, w) => n + w.tiles.length, 0);
-    if (visible > MOLECULE_DENSITY * vw * vh || held > MOLECULE_CAP || this.tilesThisBuild + ntiles > TILE_CAP) {
+    if (visible > MOLECULE_DENSITY * vw * vh || held > MOLECULE_CAP || this.tilesThisBuild + ntiles > this.tileCap) {
       this.nextHint = "zoom in for molecules";
       return out;
     }
@@ -141,8 +144,8 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
             modelMatrix: w.matrix,
             geneColors: w.colors.colors,
             radiusUnits: "pixels",
-            getRadius: 1.6,
-            radiusMinPixels: 1,
+            getRadius: 1.6 * s.moleculeSize,
+            radiusMinPixels: 0.75,
             stroked: false,
             filled: true,
             antialiasing: true,

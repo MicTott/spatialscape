@@ -114,6 +114,7 @@ export interface ViewerState {
   shapeHint: string | null; // "zoom in for cell shapes" when too many cells are in view to draw their shapes
   molecules: boolean; // individual molecules (transcripts) once zoomed in, when the bundle has them
   moleculeGenes: string[]; // pinned genes whose molecules draw in fixed colours next to the gene on screen (at most 6)
+  moleculeSize: number; // point radius multiplier for molecules (1 = 1.6 px)
   moleculeHint: string | null; // "zoom in for molecules" when the view holds too many to draw
   clusterLabels: boolean; // category names at the centre of their cells, in the embedding view
   genome: boolean; // the genome panel under the maps, when a sample carries tracks
@@ -255,6 +256,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   shapeHint: null,
   molecules: false,
   moleculeGenes: [],
+  moleculeSize: 1,
   moleculeHint: null,
   clusterLabels: true,
   genome: true,

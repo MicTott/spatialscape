@@ -13,7 +13,7 @@ import type { CellColorProps } from "../layers/colorModule";
 import type { CellShapes, ViewerState, ViewId } from "../store/store";
 import type { LayoutResult } from "./layout";
 import { intersects } from "./lod";
-import { TILE_CAP, TileManager, type Cached } from "./tileManager";
+import { TileManager, type Cached } from "./tileManager";
 import { overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
 
@@ -110,7 +110,7 @@ export class ShapeManager extends TileManager<ShapeIndex, ShapeTile> {
       wants.push({ id, mode, matrix: p.modelMatrix, tiles });
     }
     const ntiles = wants.reduce((n, w) => n + w.tiles.length, 0);
-    if (cells > SHAPE_CELL_BUDGET || this.tilesThisBuild + ntiles > TILE_CAP) {
+    if (cells > SHAPE_CELL_BUDGET || this.tilesThisBuild + ntiles > this.tileCap) {
       this.nextHint = "zoom in for cell shapes";
       return out;
     }

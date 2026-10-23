@@ -9,7 +9,7 @@ import { store, type ViewId } from "../store/store";
 import type { ViewerController } from "./ViewerController";
 
 export const SETTLE_MS = 150; // the camera must be still this long before tiles are requested
-export const TILE_CAP = 64; // tiles of one kind drawn at once across every pane
+export const TILE_CAP = 64; // tiles of one kind drawn at once across every pane, unless a manager says otherwise
 
 export interface Cached<T> {
   key: string;
@@ -40,6 +40,7 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
     private kind: "shapes" | "molecules",
     private cacheBytes: number,
     private hintKey: "shapeHint" | "moleculeHint",
+    protected tileCap = TILE_CAP,
   ) {}
 
   /** Loads one sample's tiles by key from the worker. */

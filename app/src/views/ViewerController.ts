@@ -292,7 +292,8 @@ export class ViewerController {
       s.outline !== prev.outline ||
       s.cellShapes !== prev.cellShapes ||
       s.molecules !== prev.molecules ||
-      s.moleculeGenes !== prev.moleculeGenes
+      s.moleculeGenes !== prev.moleculeGenes ||
+      s.moleculeSize !== prev.moleculeSize
     ) {
       this.requestLayers();
     }

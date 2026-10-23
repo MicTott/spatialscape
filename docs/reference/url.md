@@ -16,6 +16,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `o` | outlines: `<field>:<style>:<width>` | `o=domain:light:1.5` |
 | `mol` | `1` draws molecules once zoomed in | `mol=1` |
 | `mg` | pinned molecule genes, in pin order, separated by `\|` | `mg=PENK\|SST` |
+| `msz` | molecule point size multiplier | `msz=2.00` |
 | `cs` | cells once zoomed in: `filled`, `edges` or `dots` (default: filled, or edges over an image). Older links' `poly=0` means `dots` | `cs=edges` |
 | `cl` | `0` hides the cluster names on the embedding | `cl=0` |
 | `img` | image opacity, `0` hides images | `img=0.6` |

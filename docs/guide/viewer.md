@@ -155,8 +155,10 @@ it. The grid or strip layout of the sections sits in the Samples section.
 ## Molecules
 
 When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), the Molecules layer draws them
-once a view holds few enough to tell apart: about one per ten screen pixels, counted from the tiles in view. Until
-then the status line says *zoom in for molecules*. They follow the colour on screen: the gene you are looking at draws
+once a view holds at most about one per screen pixel, counted from the tiles in view (about a million in a large
+window, which keeps a laptop near 60 frames per second; every molecule of a view is drawn, none are sampled). Until
+then the status line says *zoom in for molecules*. A size slider in the row scales the points (double-click to
+reset; `msz` in the URL). They follow the colour on screen: the gene you are looking at draws
 in the colormap's top colour, a blend's two gene sets in the blend's colours, and under an annotation every molecule
 draws in grey, which is the view for judging a segmentation.
 

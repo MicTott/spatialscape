@@ -441,6 +441,7 @@ function MoleculeGenes({ genes }: { genes: string[] }) {
   const colormap = useViewer((s) => s.colormap);
   const geneMin = useViewer((s) => s.geneMin);
   const pins = useViewer((s) => s.moleculeGenes);
+  const size = useViewer((s) => s.moleculeSize);
   const set = store.getState().set;
   const top = onScreenColor({ colormap, geneMin });
   const pin = (g: string) => {
@@ -480,6 +481,10 @@ function MoleculeGenes({ genes }: { genes: string[] }) {
         <div className="muted small">{MAX_PINS} genes pinned, the most that stay readable</div>
       )}
       {!color || color.kind === "field" ? <div className="muted small">other molecules draw in grey</div> : null}
+      <label title="double-click to reset">
+        size <small>×{size.toFixed(2)}</small>
+        <input type="range" min={0.25} max={4} step={0.05} value={size} onChange={(e) => set({ moleculeSize: +e.target.value })} onDoubleClick={() => set({ moleculeSize: 1 })} />
+      </label>
     </div>
   );
 }
