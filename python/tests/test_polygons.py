@@ -144,3 +144,26 @@ def test_one_file_per_tile_for_hosts_without_ranges_and_validate(tmp_path):
     blob = tmp_path / "packed/samples/sampleA/shapes.bin"
     blob.write_bytes(blob.read_bytes()[:-3])
     assert any("shape" in p for p in validate_local(tmp_path / "packed"))
+
+
+def test_every_spatial_sample_carries_the_shapes_recipe(tmp_path):
+    from spatialscape.fingerprint import sample_fingerprint
+    from spatialscape.shapes import SHAPES_RECIPE
+
+    cfg = load_config(make_synthetic(tmp_path / "src", n_cells=50, n_genes=4))
+    by_id = {s.id: s for s in cfg.samples}
+    no_poly = by_id["sampleA"].model_copy(update={"polygons": None})  # obsm polygons are only found at build time
+    assert sample_fingerprint(no_poly, cfg, sharded=True)["spec"]["shapes_recipe"] == SHAPES_RECIPE
+    emb = next(s for s in cfg.samples if s.kind == "embedding")
+    assert "shapes_recipe" not in sample_fingerprint(emb, cfg, sharded=True)["spec"]
+
+
+def test_validate_reports_a_malformed_shape_index(tmp_path):
+    cfg = make_synthetic(tmp_path / "src", n_cells=100, n_genes=5)
+    _build(cfg, tmp_path / "b", lambda s: None)
+    idx = tmp_path / "b/samples/sampleA/shapes.json"
+    doc = json.loads(idx.read_text())
+    doc["tiles"][0] = doc["tiles"][0][:5]
+    idx.write_text(json.dumps(doc))
+    problems = validate_local(tmp_path / "b")
+    assert any("not a shape tile index" in p for p in problems)

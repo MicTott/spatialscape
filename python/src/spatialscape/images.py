@@ -233,7 +233,8 @@ def _read_reduced(src, axes: str, f: int, path: Path) -> np.ndarray:
     rows = max(step, BAND_BYTES // max(1, w * nch * itemsize) // step * step)
     for y0 in range(0, h, rows):
         y1 = min(h, y0 + rows)
-        sel = [slice(None) if i == cax else 0 for i in range(len(shape))]
+        # slice(0, 1), not 0, so singleton t/z axes stay in the block and _to_cyx_axes can drop them by name
+        sel = [slice(None) if i == cax else slice(0, 1) for i in range(len(shape))]
         sel[yi], sel[xi] = slice(y0, y1), slice(0, w)
         out[:, y0 // f : y1 // f] = _reduce(_to_cyx_axes(np.asarray(src[tuple(sel)]), axes), f)
     return out

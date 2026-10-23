@@ -83,15 +83,20 @@ export class ShapeManager {
   private wanted = new Set<string>();
   private hint: string | null = null;
   private nextHint: string | null = null;
+  private gen = 0; // bumped by reset(): a fetch started for the previous dataset must not land in this one
+  private inflight = 0; // fetches counted in store.pending, to give back on reset (a disposed worker never settles)
 
   constructor(private c: ViewerController) {}
 
   reset() {
+    this.gen++;
     this.indexes.clear();
     this.cache.clear();
     this.pending.clear();
     this.bytes = 0;
     this.rects.clear();
+    if (this.inflight) store.getState().set({ pending: Math.max(0, store.getState().pending - this.inflight) });
+    this.inflight = 0;
     if (this.timer != null) window.clearTimeout(this.timer);
     this.timer = null;
   }
@@ -138,11 +143,14 @@ export class ShapeManager {
   }
 
   private fetch(id: string, keys: string[]) {
+    const gen = this.gen;
     for (const k of keys) this.pending.add(`${id}|${k}`);
+    this.inflight++;
     store.getState().set({ pending: store.getState().pending + 1 });
     this.c.cache.worker
       .shapeTiles(id, keys)
       .then((tiles) => {
+        if (gen !== this.gen) return; // another dataset by now
         const now = performance.now();
         for (const t of tiles) {
           const bytes = t.bytes * 2; // the gathered colour bytes and GPU copies roughly double it
@@ -150,9 +158,16 @@ export class ShapeManager {
           this.bytes += bytes;
         }
       })
-      .catch((e) => console.warn(`cell shape tiles of ${id} failed:`, e))
+      .catch((e) => {
+        if (gen !== this.gen) return;
+        // the sample falls back to dots for good: retrying would loop on a host that cannot serve the tiles
+        console.warn(`cell shapes of ${id} unavailable:`, e);
+        this.indexes.set(id, "error");
+      })
       .finally(() => {
+        if (gen !== this.gen) return; // reset() already gave the pending count back
         for (const k of keys) this.pending.delete(`${id}|${k}`);
+        this.inflight--;
         store.getState().set({ pending: Math.max(0, store.getState().pending - 1) });
         this.c.requestLayers();
       });

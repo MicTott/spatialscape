@@ -326,3 +326,15 @@ def test_every_image_chunk_is_written_even_when_empty(tmp_path):
     images.write_ome_zarr(img, tmp_path / "i.ome.zarr", rgb=False)
     level0 = tmp_path / "i.ome.zarr" / "0"
     assert sorted(f.name for f in level0.iterdir() if not f.name.startswith(".")) == [f"{c}.{y}.{x}" for c in range(2) for y in range(2) for x in range(2)]
+
+
+def test_a_five_dimensional_ome_zarr_is_reduced_band_by_band(tmp_path):
+    g = zarr.open_group(str(tmp_path / "img.ome.zarr"), mode="w", zarr_format=2)
+    data = np.random.default_rng(0).integers(0, 1000, (1, 2, 1, 1024, 1024), dtype=np.uint16)
+    a = g.create_array("0", shape=data.shape, chunks=(1, 1, 1, 256, 256), dtype="uint16")
+    a[:] = data
+    g.attrs["multiscales"] = [{"version": "0.4", "axes": [{"name": n} for n in "tczyx"], "datasets": [{"path": "0"}]}]
+    assert images.read_image(tmp_path / "img.ome.zarr", rgb=False).shape == (2, 1024, 1024)
+    small = images.read_image(tmp_path / "img.ome.zarr", rgb=False, max_size=300)  # bioformats2raw's layout, reduced 4x
+    expect = data[0, :, 0].reshape(2, 256, 4, 256, 4).astype(np.int64).sum(axis=(2, 4))
+    assert np.array_equal(small, ((expect + 8) // 16).astype(np.uint16))

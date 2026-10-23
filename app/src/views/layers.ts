@@ -175,7 +175,8 @@ export class LayerBuilder {
             id: `pts-${id}`,
             viewId: view,
             data: inp.data as any,
-            visible: visible && !shapePlan?.complete.has(id), // cell shapes stand in for these dots
+            // cell shapes stand in for these dots, unless some cells have no shape (those would vanish)
+            visible: visible && !(shapePlan?.complete.has(id) && smp.shapes!.cells >= smp.nObs),
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
             getRadius: smp.pointRadius * pointScaleFor(s.pointScale, view, kind),

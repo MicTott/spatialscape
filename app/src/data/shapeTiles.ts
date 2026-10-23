@@ -111,7 +111,8 @@ export function decodeShapeTile(buf: Uint8Array, origin: [number, number], grid:
   const positions = new Float32Array(closed * 2);
   const vertexRow = new Uint32Array(closed);
   const startIndices = new Uint32Array(rings + 1);
-  const tris: number[] = [];
+  const tris = new Uint32Array(Math.max(0, nv - 2 * rings) * 3); // a simple c-gon is c - 2 triangles
+  let nt = 0;
   const ring = new Float64Array(2 * 256);
   let w = 0;
   let s = 0;
@@ -141,10 +142,10 @@ export function decodeShapeTile(buf: Uint8Array, origin: [number, number], grid:
     vertexRow[w] = rows[r];
     w++;
     const t = earcut(ring.subarray(0, c * 2), undefined, 2);
-    for (let k = 0; k < t.length; k++) tris.push(base + t[k]);
+    for (let k = 0; k < t.length && nt < tris.length; k++) tris[nt++] = base + t[k];
   }
   startIndices[rings] = w;
-  const indices = Uint32Array.from(tris);
+  const indices = nt === tris.length ? tris : tris.slice(0, nt);
   const bytes = positions.byteLength + vertexRow.byteLength + startIndices.byteLength + indices.byteLength + rows.byteLength;
   return { rows, startIndices, positions, vertexRow, indices, bytes };
 }

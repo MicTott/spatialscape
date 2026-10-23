@@ -20,6 +20,10 @@ def _check_shapes(p, s, d: Path) -> None:
         _problem(p, f"{s.id}: shapes.json unreadable: {e}")
         return
     tiles = index.get("tiles") or []
+    grid = index.get("grid")
+    if not isinstance(grid, int | float) or not all(isinstance(t, list) and len(t) == 6 and all(isinstance(v, int) for v in t) for t in tiles):
+        _problem(p, f"{s.id}: shapes.json is not a shape tile index (grid and 6-field tile entries expected)")
+        return
     packed = index.get("layout") == "packed"
     blob = (d / "shapes.bin").read_bytes() if packed and (d / "shapes.bin").exists() else None
     if packed and blob is None:
@@ -41,7 +45,7 @@ def _check_shapes(p, s, d: Path) -> None:
                 return
             frame = f.read_bytes()
         try:
-            rows, counts, _xy = decode_tile(frame, (0.0, 0.0), index["grid"])
+            rows, counts, _xy = decode_tile(frame, (0.0, 0.0), grid)
         except Exception as e:
             _problem(p, f"{s.id}: shape tile {ix},{iy} does not decode: {e}")
             return

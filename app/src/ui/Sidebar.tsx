@@ -10,6 +10,7 @@ import { Legend } from "./Legend";
 import { SampleStrip } from "./SampleStrip";
 import { CompareSelect } from "../compare/CompareSelect";
 import { channelNames } from "../layers/imageLayers";
+import { shapeMode } from "../views/shapes";
 
 export function Sidebar() {
   const manifest = useViewer((s) => s.manifest);
@@ -371,14 +372,16 @@ function DisplayPanel() {
         </button>
       </div>
       {manifest.samples.some((s) => s.shapes || s.polygons) && (
-        <div className="cell-shapes" title="how cells are drawn once zoomed in far enough to see their shapes">
+        <div className="cell-shapes" title="how cells are drawn once zoomed in far enough to see their shapes; the chosen mode again returns to automatic (filled, or edges over an image)">
           <span>cells when zoomed in</span>
           <div className="tabs">
             {(["dots", "filled", "edges"] as const).map((m) => {
-              // "auto" shows as filled, or as edges while an image is drawn under the cells
-              const shown = cellShapes === "auto" ? (showImages && hasImages ? "edges" : "filled") : cellShapes;
+              // "auto" is per sample: filled, or edges where an image is drawn under the cells. The highlight shows
+              // it only when every sample with shapes resolves the same way
+              const modes = new Set(manifest.samples.filter((s) => s.shapes || s.polygons).map((s) => shapeMode(cellShapes, showImages && s.images.length > 0)));
+              const shown = modes.size === 1 ? [...modes][0] : null;
               return (
-                <button key={m} className={shown === m ? "on" : ""} onClick={() => set({ cellShapes: m })}>
+                <button key={m} className={shown === m ? "on" : ""} onClick={() => set({ cellShapes: cellShapes === m ? "auto" : m })}>
                   {m}
                 </button>
               );

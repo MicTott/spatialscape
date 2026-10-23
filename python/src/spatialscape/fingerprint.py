@@ -98,12 +98,12 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
     paths += [im.path.parent for im in resolved.images if im.path is not None and im.path.parent.name == "morphology_focus"]
     if resolved.images:
         spec_json["image_recipe"] = IMAGE_RECIPE
-    if resolved.polygons is not None:
+    if resolved.kind == "spatial":  # polygons may be found in obsm at build time, so every spatial sample carries it
         from .shapes import SHAPES_RECIPE
 
         spec_json["shapes_recipe"] = SHAPES_RECIPE  # cell shapes are tiled since recipe 1
-        if resolved.polygons.path is not None:
-            paths.append(resolved.polygons.path)
+    if resolved.polygons is not None and resolved.polygons.path is not None:
+        paths.append(resolved.polygons.path)
     if resolved.tracks is not None:
         from .tracks import TRACKS_RECIPE
 
