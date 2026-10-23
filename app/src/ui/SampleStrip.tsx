@@ -19,11 +19,19 @@ export function SampleStrip() {
   const embedding = order.filter((id) => byId.get(id)?.kind === "embedding");
   const row = (id: string) => <SampleRow key={id} id={id} s={byId.get(id)!} focus={focus} selected={selected} status={status[id]} />;
   const focusName = focus ? byId.get(focus)?.name : null;
+  const layoutMode = useViewer((s) => s.layoutMode);
+  const set = store.getState().set;
   return (
     <section>
       <h2>
         Samples <span className="muted">{manifest.samples.length}</span>
         <span className="legend-actions">
+          <button className={layoutMode === "grid" ? "on" : ""} onClick={() => set({ layoutMode: "grid" })} title="sections in a grid">
+            grid
+          </button>
+          <button className={layoutMode === "strip" ? "on" : ""} onClick={() => set({ layoutMode: "strip" })} title="sections in one row">
+            strip
+          </button>
           {focus && <button onClick={() => store.getState().setFocus(null)}>show all</button>}
           <button onClick={() => setOpen((o) => !o)}>{open ? "hide list" : "list"}</button>
         </span>

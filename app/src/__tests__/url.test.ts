@@ -136,11 +136,13 @@ describe("image channels", () => {
 describe("molecules", () => {
   it("round-trips the switch", () => {
     expect(new URLSearchParams(serialize({ ...store.getState(), molecules: true } as ViewerState)).get("mol")).toBe("1");
+    expect(new URLSearchParams(serialize({ ...store.getState(), moleculeGenes: ["GAD1", "PENK"] } as ViewerState)).get("mg")).toBe("GAD1|PENK");
     expect(new URLSearchParams(serialize(store.getState())).has("mol")).toBe(false);
     const g = globalThis as any;
     const saved = g.window;
-    g.window = { location: { search: "?mol=1" } };
+    g.window = { location: { search: "?mol=1&mg=GAD1|PENK" } };
     expect(readUrl().molecules).toBe(true);
+    expect(readUrl().moleculeGenes).toEqual(["GAD1", "PENK"]);
     g.window = saved;
   });
 });

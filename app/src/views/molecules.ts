@@ -21,44 +21,60 @@ import type { ViewerController } from "./ViewerController";
 export const MOLECULE_DENSITY = 0.1; // visible molecules per CSS pixel of the pane
 export const MOLECULE_CAP = 2_000_000; // molecules held for drawing across every pane
 const GREY: [number, number, number] = [205, 208, 214];
+/** Colours of pinned genes, in pin order: apart from each other, from grey and from the colormaps' top colours. */
+export const PIN_COLORS = ["#ff4fd8", "#3fe0e0", "#ff6b4f", "#3fd14a", "#4c8dff", "#f0f0f0"];
+export const MAX_PINS = PIN_COLORS.length;
+export const pinColor = (i: number) => PIN_COLORS[i % PIN_COLORS.length];
+
+/** The colour the gene on screen gets: the top of the colormap in use. */
+export function onScreenColor(s: Pick<ViewerState, "colormap" | "geneMin">): [number, number, number] {
+  const cm = COLORMAPS[effectiveColormap(s.colormap, s.geneMin < 0)] ?? COLORMAPS.viridis;
+  return cm(1).map((v) => Math.max(0, Math.min(255, Math.round(v * 255)))) as [number, number, number]; // colormaps return 0..1
+}
 
 interface MoleculeCached extends Cached<MoleculeTile> {
   data?: any;
 }
 
-/** Which genes draw, and in what colour, for the colour state on screen. */
-export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin">): { colors: Uint8Array; shares: (counts: number[]) => number } {
+/** Which genes draw, and in what colour, for the colour state on screen: the gene on screen in the colormap's top
+ *  colour (a blend's sets in its colours), every pinned gene in its pin colour, and under an annotation every other
+ *  gene in grey. `shares` gives the fraction of a sample's molecules that would draw, for the density gate. */
+export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes">): { colors: Uint8Array; shares: (counts: number[]) => number } {
   const n = genes.length;
   const out = new Uint8Array(Math.max(1, n) * 4);
+  const picked = new Set<number>();
   const paint = (i: number, rgb: [number, number, number]) => {
     out[i * 4] = rgb[0];
     out[i * 4 + 1] = rgb[1];
     out[i * 4 + 2] = rgb[2];
     out[i * 4 + 3] = 255;
+    picked.add(i);
   };
   const color = s.color;
+  let all = false;
   if (color?.kind === "gene") {
     const i = genes.indexOf(color.gene);
-    const cm = COLORMAPS[effectiveColormap(s.colormap, s.geneMin < 0)] ?? COLORMAPS.viridis;
-    if (i >= 0) paint(i, cm(1).map((v) => Math.max(0, Math.min(255, Math.round(v * 255)))) as [number, number, number]); // colormaps return 0..1
-    return { colors: out, shares: (counts) => (i >= 0 ? counts[i] : 0) / Math.max(1, counts.reduce((a, b) => a + b, 0)) };
-  }
-  if (color?.kind === "blend") {
+    if (i >= 0) paint(i, onScreenColor(s));
+  } else if (color?.kind === "blend") {
     const scheme = BLEND_SCHEMES[color.scheme] ?? BLEND_SCHEMES.yb;
     const a = new Set(color.a);
     const b = new Set(color.b);
-    const picked: number[] = [];
     genes.forEach((g, i) => {
       const inA = a.has(g);
       const inB = b.has(g);
-      if (!inA && !inB) return;
-      paint(i, hexToRGB(inA && inB ? scheme.both : inA ? scheme.a : scheme.b));
-      picked.push(i);
+      if (inA || inB) paint(i, hexToRGB(inA && inB ? scheme.both : inA ? scheme.a : scheme.b));
     });
-    return { colors: out, shares: (counts) => picked.reduce((acc, i) => acc + counts[i], 0) / Math.max(1, counts.reduce((x, y) => x + y, 0)) };
+  } else {
+    all = true;
+    for (let i = 0; i < n; i++) paint(i, GREY);
   }
-  for (let i = 0; i < n; i++) paint(i, GREY);
-  return { colors: out, shares: () => 1 };
+  (s.moleculeGenes ?? []).forEach((g, k) => {
+    const i = genes.indexOf(g);
+    if (i >= 0) paint(i, hexToRGB(pinColor(k)));
+  });
+  if (all) return { colors: out, shares: () => 1 };
+  const idx = [...picked];
+  return { colors: out, shares: (counts) => idx.reduce((acc, i) => acc + counts[i], 0) / Math.max(1, counts.reduce((x, y) => x + y, 0)) };
 }
 
 export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
@@ -73,7 +89,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
   }
 
   private colorsFor(genes: string[], s: ViewerState) {
-    const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0]);
+    const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0, s.moleculeGenes]);
     if (!this.colorCache || this.colorCache.genes !== genes || this.colorCache.key !== key) this.colorCache = { genes, key, value: geneColors(genes, s) };
     return this.colorCache.value;
   }

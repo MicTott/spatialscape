@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import type { FeatureList } from "../data/manifest";
+import type React from "react";
+import type { FeatureList, Manifest } from "../data/manifest";
 import { store, useViewer, type FilterSpec } from "../store/store";
 import { GeneSearch } from "./GeneSearch";
 import { BlendPanel } from "./BlendPanel";
@@ -11,6 +12,7 @@ import { SampleStrip } from "./SampleStrip";
 import { CompareSelect } from "../compare/CompareSelect";
 import { channelNames } from "../layers/imageLayers";
 import { shapeMode } from "../views/shapes";
+import { MAX_PINS, onScreenColor, pinColor } from "../views/molecules";
 
 export function Sidebar() {
   const manifest = useViewer((s) => s.manifest);
@@ -40,8 +42,7 @@ export function Sidebar() {
           <Legend />
           <GeneByAnnotation />
           <FilterPanel genes={genes} />
-          <OutlinePanel />
-          <DisplayPanel />
+          <LayersPanel genes={genes} />
           <SampleStrip />
         </div>
       )}
@@ -330,89 +331,156 @@ function Histogram({ bins, range }: { bins: number[]; range: [number, number] })
   );
 }
 
-function OutlinePanel() {
-  const manifest = useViewer((s) => s.manifest)!;
-  const outline = useViewer((s) => s.outline);
-  const set = store.getState().set;
-  const fields = manifest.fields.filter((f) => f.type === "categorical" && manifest.samples.some((s) => s.outlines?.includes(f.id)));
-  if (!fields.length) return null;
-  return (
-    <section>
-      <h2 title="Annotation boundaries drawn over any coloring">Outlines</h2>
-      <select value={outline.field ?? ""} onChange={(e) => set({ outline: { ...outline, field: e.target.value || null } })}>
-        <option value="">none</option>
-        {fields.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.name}
-          </option>
-        ))}
-      </select>
-    </section>
-  );
-}
-
-function DisplayPanel() {
+/** What is drawn, one row per layer: a switch, the name, a one-line summary, and the layer's few settings when
+ * it is on. Colour stays in its own section above, so a gene can be changed while the molecule row follows it. */
+function LayersPanel({ genes }: { genes: string[] }) {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
   const cellShapes = useViewer((s) => s.cellShapes);
   const molecules = useViewer((s) => s.molecules);
   const clusterLabels = useViewer((s) => s.clusterLabels);
   const imageOpacity = useViewer((s) => s.imageOpacity);
-  const layoutMode = useViewer((s) => s.layoutMode);
+  const hiddenChannels = useViewer((s) => s.hiddenChannels);
+  const outline = useViewer((s) => s.outline);
   const set = store.getState().set;
   const hasImages = manifest.samples.some((s) => s.images.length);
+  const hasShapes = manifest.samples.some((s) => s.shapes || s.polygons);
+  const hasMolecules = manifest.samples.some((s) => s.molecules);
+  const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
+  const outlineFields = manifest.fields.filter((f) => f.type === "categorical" && manifest.samples.some((s) => s.outlines?.includes(f.id)));
+  const [lastOutline, setLastOutline] = useState<string | null>(null);
+  if (!hasImages && !hasShapes && !hasMolecules && !hasEmbedding && !outlineFields.length) return null;
+  const channelRows = channelSummary(manifest);
+  const shapeModes = new Set(manifest.samples.filter((s) => s.shapes || s.polygons).map((s) => shapeMode(cellShapes, showImages && s.images.length > 0)));
+  const shownMode = shapeModes.size === 1 ? [...shapeModes][0] : null;
   return (
     <section>
-      <h2>Display</h2>
-      <div className="tabs">
-        <button className={layoutMode === "grid" ? "on" : ""} onClick={() => set({ layoutMode: "grid" })}>
-          Grid
-        </button>
-        <button className={layoutMode === "strip" ? "on" : ""} onClick={() => set({ layoutMode: "strip" })}>
-          Strip
-        </button>
-      </div>
-      {manifest.samples.some((s) => s.shapes || s.polygons) && (
-        <div className="cell-shapes" title="how cells are drawn once zoomed in far enough to see their shapes; the chosen mode again returns to automatic (filled, or edges over an image)">
-          <span>cells when zoomed in</span>
-          <div className="tabs">
-            {(["dots", "filled", "edges"] as const).map((m) => {
-              // "auto" is per sample: filled, or edges where an image is drawn under the cells. The highlight shows
-              // it only when every sample with shapes resolves the same way
-              const modes = new Set(manifest.samples.filter((s) => s.shapes || s.polygons).map((s) => shapeMode(cellShapes, showImages && s.images.length > 0)));
-              const shown = modes.size === 1 ? [...modes][0] : null;
-              return (
-                <button key={m} className={shown === m ? "on" : ""} onClick={() => set({ cellShapes: cellShapes === m ? "auto" : m })}>
-                  {m}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {manifest.samples.some((s) => s.molecules) && (
-        <label className="check" title="individual transcripts once zoomed in far enough to tell them apart; they follow the gene or blend on screen, and draw in grey under an annotation">
-          <input type="checkbox" checked={molecules} onChange={(e) => set({ molecules: e.target.checked })} /> molecules when zoomed in
-        </label>
-      )}
-      {manifest.samples.some((s) => s.kind === "embedding") && (
-        <label className="check">
-          <input type="checkbox" checked={clusterLabels} onChange={(e) => set({ clusterLabels: e.target.checked })} /> label clusters in the embedding
-        </label>
-      )}
+      <h2 title="what is drawn on the map; colour is chosen above">Layers</h2>
       {hasImages && (
-        <>
-          <label className="check">
-            <input type="checkbox" checked={showImages} onChange={(e) => set({ showImages: e.target.checked })} /> show images
-          </label>
+        <LayerRow
+          name="Image"
+          on={showImages}
+          onToggle={(v) => set({ showImages: v })}
+          summary={channelRows ? `${channelRows - hiddenChannels.length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`}
+        >
           <label>
-            image opacity <small>{(imageOpacity * 100).toFixed(0)}%</small>
-            <input type="range" min={0} max={1} step={0.02} value={imageOpacity} disabled={!showImages} onChange={(e) => set({ imageOpacity: +e.target.value })} />
+            opacity <small>{(imageOpacity * 100).toFixed(0)}%</small>
+            <input type="range" min={0} max={1} step={0.02} value={imageOpacity} onChange={(e) => set({ imageOpacity: +e.target.value })} />
           </label>
-          {showImages && <ImageChannels />}
-        </>
+          <ImageChannels />
+        </LayerRow>
       )}
+      {hasShapes && (
+        <LayerRow name="Cells" summary={shownMode ? `${shownMode} when zoomed in` : "by sample"} title="how cells are drawn once zoomed in far enough to see their shapes; the chosen mode again returns to automatic (filled, or edges over an image)">
+          <div className="tabs">
+            {(["dots", "filled", "edges"] as const).map((m) => (
+              <button key={m} className={shownMode === m ? "on" : ""} onClick={() => set({ cellShapes: cellShapes === m ? "auto" : m })}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </LayerRow>
+      )}
+      {hasMolecules && (
+        <LayerRow name="Molecules" on={molecules} onToggle={(v) => set({ molecules: v })} summary="when zoomed in" title="individual transcripts once a view holds few enough to tell apart">
+          <MoleculeGenes genes={genes} />
+        </LayerRow>
+      )}
+      {outlineFields.length > 0 && (
+        <LayerRow
+          name="Outlines"
+          on={outline.field != null}
+          onToggle={(v) => set({ outline: { ...outline, field: v ? (lastOutline ?? outlineFields[0].id) : null } })}
+          summary={outline.field ? (manifest.fields.find((f) => f.id === outline.field)?.name ?? outline.field) : "annotation boundaries"}
+        >
+          <select
+            value={outline.field ?? ""}
+            onChange={(e) => {
+              setLastOutline(e.target.value || null);
+              set({ outline: { ...outline, field: e.target.value || null } });
+            }}
+          >
+            {outlineFields.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </LayerRow>
+      )}
+      {hasEmbedding && <LayerRow name="Labels" on={clusterLabels} onToggle={(v) => set({ clusterLabels: v })} summary="cluster names in the embedding" />}
     </section>
+  );
+}
+
+function LayerRow({ name, on, onToggle, summary, title, children }: { name: string; on?: boolean; onToggle?: (v: boolean) => void; summary?: string; title?: string; children?: React.ReactNode }) {
+  const open = onToggle ? on : true;
+  return (
+    <div className={`layer${open ? " on" : ""}`} title={title}>
+      <label className="layer-head">
+        {onToggle ? <input type="checkbox" checked={!!on} onChange={(e) => onToggle(e.target.checked)} /> : <span className="layer-dot" />}
+        <span className="layer-name">{name}</span>
+        {summary && <span className="muted small">{summary}</span>}
+      </label>
+      {open && children && <div className="layer-body">{children}</div>}
+    </div>
+  );
+}
+
+function channelSummary(manifest: Manifest): number {
+  const names = new Set<string>();
+  for (const smp of manifest.samples)
+    for (const img of smp.images) if (img.kind === "multichannel" && img.channels?.length) for (const n of channelNames(img, img.channels.length)) names.add(n);
+  return names.size >= 2 ? names.size : 0;
+}
+
+/** The molecule row's body: the gene on screen (or the blend's sets) in its colour, the pinned genes in theirs with
+ * a way to unpin, and a search box to pin one more. Under an annotation every other molecule draws in grey. */
+function MoleculeGenes({ genes }: { genes: string[] }) {
+  const color = useViewer((s) => s.color);
+  const colormap = useViewer((s) => s.colormap);
+  const geneMin = useViewer((s) => s.geneMin);
+  const pins = useViewer((s) => s.moleculeGenes);
+  const set = store.getState().set;
+  const top = onScreenColor({ colormap, geneMin });
+  const pin = (g: string) => {
+    if (pins.includes(g) || pins.length >= MAX_PINS) return;
+    set({ moleculeGenes: [...pins, g] });
+  };
+  return (
+    <div className="molecule-genes">
+      <ul className="cats">
+        {color?.kind === "gene" && !pins.includes(color.gene) && (
+          <li title="the gene coloured on screen; change it above">
+            <span className="swatch" style={{ background: `rgb(${top.join(",")})` }} />
+            <span className="cat-name">{color.gene}</span>
+            <span className="cat-n">on screen</span>
+          </li>
+        )}
+        {color?.kind === "blend" && (
+          <li title="the blend's two gene sets, in the blend's colours">
+            <span className="swatch blend-swatch" />
+            <span className="cat-name">blend sets</span>
+            <span className="cat-n">on screen</span>
+          </li>
+        )}
+        {pins.map((g, i) => (
+          <li key={g} title="pinned: click to unpin">
+            <span className="swatch" style={{ background: pinColor(i) }} />
+            <span className="cat-name">{g}</span>
+            <button className="unpin" onClick={() => set({ moleculeGenes: pins.filter((x) => x !== g) })} aria-label={`unpin ${g}`}>
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+      {pins.length < MAX_PINS ? (
+        <GeneSearch key={pins.length} genes={genes} value={null} onPick={pin} placeholder={pins.length ? "pin another gene…" : "pin a gene…"} />
+      ) : (
+        <div className="muted small">{MAX_PINS} genes pinned, the most that stay readable</div>
+      )}
+      {!color || color.kind === "field" ? <div className="muted small">other molecules draw in grey</div> : null}
+    </div>
   );
 }
 

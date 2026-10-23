@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { decodeMoleculeTile } from "../data/moleculeTiles";
-import { geneColors } from "../views/molecules";
+import { geneColors, pinColor } from "../views/molecules";
+import { hexToRGB } from "../layers/lut";
 
 const dir = fileURLToPath(new URL("./fixtures/molecules/", import.meta.url));
 const frame = new Uint8Array(readFileSync(dir + "tile.bin"));
@@ -33,18 +34,26 @@ describe("molecule tiles written by the Python build", () => {
   it("colours molecules like the view: the gene on screen, a blend's sets, or grey", () => {
     const genes = ["A", "B", "C"];
     const counts = [10, 30, 60];
-    const g = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0 });
+    const g = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0, moleculeGenes: [] });
     expect([...g.colors.subarray(0, 4)]).toEqual([0, 0, 0, 0]); // A hidden
     expect(g.colors[7]).toBe(255); // B drawn
     expect([...g.colors.subarray(4, 7)]).toEqual([250, 231, 33]); // the top of the viridis fit, as bytes
     expect(g.shares(counts)).toBeCloseTo(0.3);
-    const b = geneColors(genes, { color: { kind: "blend", scheme: "yb", a: ["A"], b: ["B", "A"] }, colormap: "viridis", geneMin: 0 });
+    const b = geneColors(genes, { color: { kind: "blend", scheme: "yb", a: ["A"], b: ["B", "A"] }, colormap: "viridis", geneMin: 0, moleculeGenes: [] });
     expect(b.colors[3]).toBe(255);
     expect(b.colors[7]).toBe(255);
     expect(b.colors[11]).toBe(0);
     expect(b.shares(counts)).toBeCloseTo(0.4);
-    const f = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0 });
+    const f = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0, moleculeGenes: [] });
     expect([...f.colors].filter((_, i) => i % 4 === 3)).toEqual([255, 255, 255]);
     expect(f.shares(counts)).toBe(1);
+    // pinned genes draw in their pin colours next to the gene on screen, and count towards the gate
+    const p = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0, moleculeGenes: ["C", "A"] });
+    expect([...p.colors.subarray(8, 11)]).toEqual(hexToRGB(pinColor(0)));
+    expect([...p.colors.subarray(0, 3)]).toEqual(hexToRGB(pinColor(1)));
+    expect(p.shares(counts)).toBeCloseTo(1);
+    const pf = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0, moleculeGenes: ["C"] });
+    expect([...pf.colors.subarray(8, 11)]).toEqual(hexToRGB(pinColor(0)));
+    expect([...pf.colors.subarray(0, 3)]).toEqual([205, 208, 214]);
   });
 });

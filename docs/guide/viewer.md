@@ -138,21 +138,33 @@ When an embedding is colored by an annotation, each category's name floats at th
 
 Each view has its own point-size slider at its bottom-left corner: one for the tissue sections, one for the embedding, so dense UMAPs and sparse Visium spots can be tuned independently. Double-click a slider to reset it. The values travel in the URL as `ps` (spatial) and `pse` (embedding).
 
-## Images and cell shapes
+## Images and cell shapes (details)
 
 H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone, and double-click it again to show them all. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. 
 
 When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Cells when zoomed in* in the Display panel chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **edges**, outlines in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
 
+## Layers
+
+The Layers section lists what is drawn, one row each with a switch, a one-line summary, and the row's few settings
+when it is on: **Image** (opacity and, for fluorescence, the channel list), **Cells** (dots, filled or edges once
+zoomed in), **Molecules**, **Outlines** (the annotation whose boundaries are traced) and **Labels** (cluster names
+in the embedding). Colour stays in its own section above, so you can change a gene and watch the molecule row follow
+it. The grid or strip layout of the sections sits in the Samples section.
+
 ## Molecules
 
-When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), *molecules when zoomed in* in
-the Display panel draws them once a view holds few enough to tell apart: about one per ten screen pixels, counted
-from the tiles in view. Until then the status line says *zoom in for molecules*. They follow the colour on screen: the
-gene you are looking at draws in the colormap's top colour, a blend's two gene sets in the blend's colours, and under
-an annotation every molecule draws in grey, which is the view for judging a segmentation. Molecules not assigned to a
-cell draw dimmer, and the cell dots fade under them. Only the tiles in view are fetched, once the camera stops. The
-switch travels in the URL as `mol=1`.
+When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), the Molecules layer draws them
+once a view holds few enough to tell apart: about one per ten screen pixels, counted from the tiles in view. Until
+then the status line says *zoom in for molecules*. They follow the colour on screen: the gene you are looking at draws
+in the colormap's top colour, a blend's two gene sets in the blend's colours, and under an annotation every molecule
+draws in grey, which is the view for judging a segmentation.
+
+Zoomed out, a cell can show one gene; zoomed in, the molecules can show several. The Molecules row lists the gene on
+screen and lets you **pin** up to six more, each in a fixed colour, with a search box; a pin stays while you step
+through other genes, so a few anchors remain visible, and click × to unpin. Molecules not assigned to a cell draw
+dimmer, and the cell dots fade under them. Only the tiles in view are fetched, once the camera stops; pinning and
+unpinning download nothing. The switch and the pins travel in the URL as `mol=1` and `mg`.
 
 ## Sharing a view
 

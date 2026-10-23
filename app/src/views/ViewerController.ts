@@ -291,7 +291,8 @@ export class ViewerController {
       s.sampleStatus !== prev.sampleStatus ||
       s.outline !== prev.outline ||
       s.cellShapes !== prev.cellShapes ||
-      s.molecules !== prev.molecules
+      s.molecules !== prev.molecules ||
+      s.moleculeGenes !== prev.moleculeGenes
     ) {
       this.requestLayers();
     }
