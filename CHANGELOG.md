@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-10-23)
 
 - **The side panel is five groups.** Image, Cells, Transcripts, Selections and Samples, each a bar that opens its controls; closed bars carry a one-line summary (the gene on screen, "GAD1 · 2 pinned", "2 sections · grid"), several can be open at once, what is open is remembered per browser, and Image and Transcripts carry their switch in the bar. Cells holds colour, legend, filter and a *Drawing* block (shapes once zoomed in, annotation outlines, cluster labels); the grid/strip layout moved into Samples. **Pinned molecule genes:** the Molecules row lists the gene on screen and any number of pinned genes, each in a fixed colour, so zoomed in several genes' molecules show at once while the cells still show the one gene (URL `mg`); *all genes* colours every gene by its own hue (`mc=all`). The molecule budget is set from measurements (a frame costs about 9 µs per thousand molecules on an M1 Max): a view draws every molecule it holds up to about one per screen pixel, a million in a large window, and a size slider scales the points (`msz`).
 - **Images in a transposed export.** `transpose` and `flip` on an image entry put the image into the coordinates' frame before the sample's `transform`, for objects whose coordinates were transposed after the image was written (the amygdala's Br9206 and Br9192 Xenium sections now carry their DAPI).

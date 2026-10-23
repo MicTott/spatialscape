@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 (2026-10-23)
+
+**Xenium at every scale.** Cell boundaries are cut into spatial tiles, coloured like the cells (gene, annotation, blend, filter) and drawn filled or as edges once zoomed in, at about 1 ms per frame where whole-section outlines took 30. Transcripts (`molecules:` from `transcripts.parquet`) are tiled at 3.5 bytes each and drawn once a view holds about one per screen pixel, following the gene on screen, with pinned genes in fixed colours or every gene in its own hue, and a size slider. Fluorescence images get channel names, colours and fitted windows from the file, a channel list to switch and solo, and a bounded read (`max_size` holds for files without pyramids; Xenium morphology at 0.85 µm per pixel), and the viewer fetches each image tile once. **The side panel is five groups**: Image, Cells, Transcripts, Selections, Samples. **Comparisons**: differential expression results in the bundle, a Compare panel, and the canvas split into one pane per group with per-pane point size.
+
+## 0.3.0 (2026-10-21)
+
+**ATAC, multiome and notebooks.** Genome tracks from fragment files or existing bigWigs with a genome panel under the maps; `spatialscape.show(adata)` views an object from the session it is in, with lasso selections and regions flowing back; regions drawn in the viewer as groups of lassos; Seurat objects read directly; a faster, lighter expression writer; review fixes across the build, the viewer and the docs.
+
 ## 0.2.0 (2026-10-14)
 
 **One yaml per dataset, one command.** `init` reads an R object (`.rds` / `.rda`) or AnnData files and writes a dataset yaml that is a menu of the data; `build` converts R objects once, rebuilds only what changed and applies every edit; `site.yaml` describes the gallery (`site init`, `site build`). Removed `convert`, `plan`, `refresh` and `add-sample`. Per-sample `subset`, fixed grid `columns`, cluster names on embeddings, a shared gene color scale, per-view point sizes, the viewer shipped inside the package (`serve`, `site build`), and the S3 + CloudFront hosting recipe.
