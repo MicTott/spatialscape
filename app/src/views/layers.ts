@@ -10,6 +10,7 @@ import type { LayoutResult } from "./layout";
 import { pointScaleFor } from "./panes";
 import { drawCount, intersects } from "./lod";
 import { MoleculeManager } from "./molecules";
+import { OverlayManager } from "./overlay";
 import { ShapeManager, shapeMode, type CellColor } from "./shapes";
 import { filterRange, overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -30,10 +31,20 @@ export class LayerBuilder {
   private outlinePending = new Set<string>(); // outline fetches already counted in store.pending
   readonly shapes: ShapeManager;
   readonly molecules: MoleculeManager;
+  private overlays = new Map<string, OverlayManager>(); // by segmentation id, made when first chosen
 
   constructor(private c: ViewerController) {
     this.shapes = new ShapeManager(c);
     this.molecules = new MoleculeManager(c);
+  }
+
+  private overlay(id: string): OverlayManager {
+    let m = this.overlays.get(id);
+    if (!m) {
+      m = new OverlayManager(this.c, id);
+      this.overlays.set(id, m);
+    }
+    return m;
   }
 
   private lut(name: string): Uint8Array {
@@ -55,6 +66,8 @@ export class LayerBuilder {
     this.outlinePending.clear();
     this.shapes.reset();
     this.molecules.reset();
+    for (const m of this.overlays.values()) m.reset();
+    this.overlays.clear();
   }
 
   /** Forget what was cached for a field whose colours or codes changed under the same name (the drawn regions). */
@@ -117,6 +130,8 @@ export class LayerBuilder {
     this.nextLiveImages = new Set();
     this.shapes.beginBuild();
     this.molecules.beginBuild();
+    const overlay = s.overlay ? this.overlay(s.overlay) : null;
+    overlay?.beginBuild();
     const colorField = s.color?.kind === "field" ? fieldById(c.manifest, s.color.field) : undefined;
     const baseMode: 0 | 1 | 3 = s.color?.kind === "blend" ? 3 : colorField?.type === "categorical" ? 1 : 0;
     const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
@@ -207,6 +222,7 @@ export class LayerBuilder {
       if (kind === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
       if (shapePlan) layers.push(...shapePlan.layers);
       if (moleculePlan) layers.push(...moleculePlan.layers);
+      if (overlay && kind === "spatial") layers.push(...overlay.pane(view, L));
       if (kind === "spatial" && s.cellShapes !== "dots") layers.push(...this.polygonLayers(view, L));
       if (kind === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
       layers.push(...c.regions.layers(s, view, L));
@@ -216,6 +232,7 @@ export class LayerBuilder {
     this.liveImages = this.nextLiveImages;
     this.shapes.endBuild();
     this.molecules.endBuild();
+    overlay?.endBuild();
     return layers;
   }
 

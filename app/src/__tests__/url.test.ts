@@ -145,6 +145,9 @@ describe("molecules", () => {
     expect(readUrl().moleculeGenes).toEqual(["GAD1", "PENK"]);
     expect(readUrl().moleculeColors).toBe("all");
     expect(new URLSearchParams(serialize({ ...store.getState(), moleculeColors: "all" } as ViewerState)).get("mc")).toBe("all");
+    expect(new URLSearchParams(serialize({ ...store.getState(), overlay: "nucleus" } as ViewerState)).get("ov")).toBe("nucleus");
+    g.window = { location: { search: "?ov=nucleus" } };
+    expect(readUrl().overlay).toBe("nucleus");
     g.window = saved;
   });
 });

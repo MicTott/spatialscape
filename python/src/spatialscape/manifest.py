@@ -103,6 +103,14 @@ class ShapesInfo(_Model):
     tile: int = 0  # tile size, um
     tiles: int = 0  # non-empty tiles
     bytes: int = 0  # compressed size of all tiles
+    medianArea: float | None = None  # um2
+
+
+class SegmentationInfo(ShapesInfo):
+    """Another boundary set of the section, at segmentations/<id>/shapes.*; its rings are numbered, not tied to cells."""
+
+    id: str = ""
+    name: str = ""
 
 
 class MoleculesInfo(_Model):
@@ -164,6 +172,7 @@ class Sample(_Model):
     polygons: PolygonInfo | None = None  # legacy, see PolygonInfo
     shapes: ShapesInfo | None = None
     molecules: MoleculesInfo | None = None
+    segmentations: list[SegmentationInfo] = Field(default_factory=list)
     idBlock: int = 65536
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
     tracks: TracksInfo | None = None  # genome tracks (ATAC samples)

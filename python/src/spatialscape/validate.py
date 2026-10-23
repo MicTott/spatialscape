@@ -10,54 +10,59 @@ import numpy as np
 from .manifest import Manifest
 
 
-def _check_shapes(p, s, d: Path) -> None:
-    """The tile index agrees with the files, and every tile decodes to the rings it claims, of known cells."""
+def _check_shapes(p, s, d: Path, info=None, rows_max: int | None = None) -> None:
+    """The tile index agrees with the files, and every tile decodes to the rings it claims, of known cells (or, for
+    another segmentation, of numbered rings)."""
     from .shapes import decode_tile
+
+    info = info or s.shapes
+    rows_max = s.nObs if rows_max is None else rows_max
+    what = "shapes" if info is s.shapes else f"segmentation {d.name}"
 
     try:
         index = json.loads((d / "shapes.json").read_text())
     except (OSError, ValueError) as e:
-        _problem(p, f"{s.id}: shapes.json unreadable: {e}")
+        _problem(p, f"{s.id}: {what}: shapes.json unreadable: {e}")
         return
     tiles = index.get("tiles") or []
     grid = index.get("grid")
     if not isinstance(grid, int | float) or not all(isinstance(t, list) and len(t) == 6 and all(isinstance(v, int) for v in t) for t in tiles):
-        _problem(p, f"{s.id}: shapes.json is not a shape tile index (grid and 6-field tile entries expected)")
+        _problem(p, f"{s.id}: {what}: shapes.json is not a shape tile index (grid and 6-field tile entries expected)")
         return
     packed = index.get("layout") == "packed"
     blob = (d / "shapes.bin").read_bytes() if packed and (d / "shapes.bin").exists() else None
     if packed and blob is None:
-        _problem(p, f"{s.id}: shapes.bin missing")
+        _problem(p, f"{s.id}: {what}: shapes.bin missing")
         return
     end = 0
     rings = vertices = 0
     for ix, iy, off, nbytes, nr, nv in tiles:
         if packed:
             if off != end:
-                _problem(p, f"{s.id}: shape tile {ix},{iy} does not start where the previous one ends")
+                _problem(p, f"{s.id}: {what}: shape tile {ix},{iy} does not start where the previous one ends")
                 return
             end = off + nbytes
             frame = blob[off:end]
         else:
             f = d / "shapes" / f"{ix}_{iy}.bin"
             if not f.exists():
-                _problem(p, f"{s.id}: shapes/{ix}_{iy}.bin missing")
+                _problem(p, f"{s.id}: {what}: shapes/{ix}_{iy}.bin missing")
                 return
             frame = f.read_bytes()
         try:
             rows, counts, _xy = decode_tile(frame, (0.0, 0.0), grid)
         except Exception as e:
-            _problem(p, f"{s.id}: shape tile {ix},{iy} does not decode: {e}")
+            _problem(p, f"{s.id}: {what}: shape tile {ix},{iy} does not decode: {e}")
             return
-        if len(rows) != nr or int(counts.sum()) != nv or (len(rows) and (rows[-1] >= s.nObs or (np.diff(rows) <= 0).any())):
-            _problem(p, f"{s.id}: shape tile {ix},{iy} disagrees with the index or names rows outside the sample")
+        if len(rows) != nr or int(counts.sum()) != nv or (len(rows) and (rows[-1] >= rows_max or (np.diff(rows) <= 0).any())):
+            _problem(p, f"{s.id}: {what}: shape tile {ix},{iy} disagrees with the index or names rows outside the sample")
             return
         rings += nr
         vertices += nv
     if packed and blob is not None and end != len(blob):
-        _problem(p, f"{s.id}: shapes.bin is {len(blob)} bytes, the index covers {end}")
-    if rings != s.shapes.cells or vertices != s.shapes.vertices:
-        _problem(p, f"{s.id}: shapes hold {rings} cells and {vertices} vertices, the manifest says {s.shapes.cells} and {s.shapes.vertices}")
+        _problem(p, f"{s.id}: {what}: shapes.bin is {len(blob)} bytes, the index covers {end}")
+    if rings != info.cells or vertices != info.vertices:
+        _problem(p, f"{s.id}: {what}: hold {rings} rings and {vertices} vertices, the manifest says {info.cells} and {info.vertices}")
 
 
 def _check_molecules(p, s, d: Path) -> None:
@@ -263,6 +268,8 @@ def validate_local(root: Path) -> list[str]:
                 _problem(p, f"{s.id}: outlines/{fid}.json listed but missing")
         if s.shapes:
             _check_shapes(p, s, d)
+        for sg in s.segmentations or []:
+            _check_shapes(p, s, d / "segmentations" / sg.id, info=sg, rows_max=sg.cells)
         if s.molecules:
             _check_molecules(p, s, d)
         if s.polygons:

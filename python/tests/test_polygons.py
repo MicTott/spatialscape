@@ -167,3 +167,35 @@ def test_validate_reports_a_malformed_shape_index(tmp_path):
     idx.write_text(json.dumps(doc))
     problems = validate_local(tmp_path / "b")
     assert any("not a shape tile index" in p for p in problems)
+
+
+def test_another_segmentation_is_tiled_beside_the_cells_and_compared(tmp_path):
+    cfg = make_synthetic(tmp_path / "src", n_cells=200, n_genes=5)
+    logs: list[str] = []
+    m = build_dataset(load_config(cfg), tmp_path / "b", log=logs.append)
+    a = next(s for s in m.samples if s.id == "sampleA")
+    [seg] = a.segmentations
+    assert seg.id == "nucleus" and seg.name == "Nuclei" and seg.cells == 200 and seg.path == "segmentations/nucleus/shapes"
+    assert a.shapes.medianArea and seg.medianArea and seg.medianArea < 0.4 * a.shapes.medianArea  # 55% radius -> 30% area
+    rings = S.read_shapes(tmp_path / "b" / "samples" / "sampleA" / "segmentations" / "nucleus")
+    assert sorted(rings) == list(range(200))  # numbered rings, not cell rows
+    assert next(s for s in m.samples if s.id == "sampleB").segmentations == []
+    assert validate_local(tmp_path / "b") == []
+    idx = tmp_path / "b/samples/sampleA/segmentations/nucleus/shapes.bin"
+    idx.write_bytes(idx.read_bytes()[:-2])
+    assert any("nucleus" in p for p in validate_local(tmp_path / "b"))
+
+
+def test_xenium_nucleus_boundaries_are_found_next_to_the_cell_boundaries(tmp_path):
+    from spatialscape.config import PolygonSpec, SampleSpec
+    from spatialscape.discover import auto_segmentations
+
+    outs = tmp_path / "outs"
+    outs.mkdir()
+    (outs / "cell_boundaries.parquet").write_bytes(b"x")
+    spec = SampleSpec(id="x", platform="xenium", path=outs / "adata.h5ad", polygons=PolygonSpec(path=outs / "cell_boundaries.parquet"))
+    assert auto_segmentations(spec) == []
+    (outs / "nucleus_boundaries.parquet").write_bytes(b"x")
+    [sg] = auto_segmentations(spec)
+    assert sg.id == "nucleus" and sg.path == outs / "nucleus_boundaries.parquet"
+    assert auto_segmentations(spec.model_copy(update={"segmentations": []})) == []

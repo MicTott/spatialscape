@@ -10,7 +10,7 @@ from pathlib import Path
 import anndata as ad
 import pandas as pd
 
-from .config import FieldSpec, ImageSpec, MicronsSpec, SampleSpec
+from .config import FieldSpec, ImageSpec, MicronsSpec, SampleSpec, SegmentationSpec
 
 MAX_LEVELS = 200
 XENIUM_PIXEL_UM = 0.2125  # morphology pixel size when experiment.xenium does not say
@@ -125,6 +125,17 @@ def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None
             )
         ], None
     return [], None
+
+
+def auto_segmentations(sample: SampleSpec) -> list[SegmentationSpec]:
+    """The segmentations a sample compares against: the yaml's list, or, for `auto`, Xenium's nucleus boundaries
+    found next to the polygons' cell_boundaries.parquet (the same run, the same frame)."""
+    if isinstance(sample.segmentations, list):
+        return sample.segmentations
+    p = sample.polygons.path if sample.polygons is not None else None
+    if p is not None and p.name == "cell_boundaries.parquet" and (p.with_name("nucleus_boundaries.parquet")).is_file():
+        return [SegmentationSpec(id="nucleus", name="Nuclei", path=p.with_name("nucleus_boundaries.parquet"))]
+    return []
 
 
 def xenium_morphology(d: Path) -> Path | None:

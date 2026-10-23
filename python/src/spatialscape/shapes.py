@@ -44,6 +44,7 @@ class ShapeStats:
     unmatched: int  # rings whose id is not a cell of the sample (dropped)
     degenerate: int  # rings with fewer than 3 vertices (dropped)
     centroid_offset: float  # median distance between a ring's centroid and its cell's position, um
+    median_area: float  # um2, over the rings written
     tile: int
     tiles: int
     bytes: int
@@ -204,6 +205,7 @@ def write_shapes(
 ) -> ShapeStats:
     """Tile the rings of known cells and write shapes.json plus shapes.bin (or shapes/<ix>_<iy>.bin)."""
     out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     max_vertices = max(3, min(int(max_vertices), 255))  # a ring's vertex count is one byte
     poly_xy = np.asarray(poly_xy, dtype=np.float64)
     rows, starts, counts, unmatched, degenerate = rings_from_vertices(obs_ids, poly_ids, poly_xy, max_vertices=max_vertices)
@@ -218,9 +220,15 @@ def write_shapes(
         centroids = np.add.reduceat(verts, rstart, axis=0) / counts[:, None]
         reach = float(np.sqrt(((verts - np.repeat(centroids, counts, axis=0)) ** 2).sum(axis=1)).max())
         dev = float(np.median(np.hypot(*(centroids - np.asarray(cell_xy, dtype=np.float64)[rows]).T)))
+        # shoelace area per ring: x_i * y_{i+1} - x_{i+1} * y_i summed around each ring
+        ring_id = np.repeat(np.arange(n), counts)
+        nxt = np.arange(len(verts)) + 1
+        nxt[rstart + counts - 1] = rstart  # the last vertex closes onto the first
+        cross = verts[:, 0] * verts[nxt, 1] - verts[nxt, 0] * verts[:, 1]
+        median_area = float(np.median(np.abs(np.bincount(ring_id, weights=cross, minlength=n)) / 2))
     else:
         centroids = np.zeros((0, 2))
-        reach, dev = 0.0, 0.0
+        reach, dev, median_area = 0.0, 0.0, 0.0
     tile = choose_tile(centroids)
     origin = np.floor(centroids.min(axis=0) / tile) * tile if n else np.zeros(2)
     ij = np.floor((centroids - origin) / tile).astype(np.int64) if n else np.zeros((0, 2), dtype=np.int64)
@@ -276,6 +284,7 @@ def write_shapes(
         unmatched=unmatched,
         degenerate=degenerate,
         centroid_offset=dev,
+        median_area=median_area,
         tile=tile,
         tiles=len(tiles),
         bytes=nbytes,

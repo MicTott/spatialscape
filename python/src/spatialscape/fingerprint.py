@@ -17,7 +17,7 @@ from pathlib import Path
 
 from . import __version__
 from .config import DatasetConfig, MicronsSpec, SampleSpec
-from .discover import auto_images
+from .discover import auto_images, auto_segmentations
 from .manifest import FORMAT_VERSION
 
 IMAGE_RECIPE = 2  # bump when images are written differently; rebuilds only samples that have one (2: empty chunks written)
@@ -104,6 +104,10 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
         spec_json["shapes_recipe"] = SHAPES_RECIPE  # cell shapes are tiled since recipe 1
     if resolved.polygons is not None and resolved.polygons.path is not None:
         paths.append(resolved.polygons.path)
+    segs = auto_segmentations(resolved)
+    if segs:
+        spec_json["segmentations"] = [sg.model_dump(mode="json") for sg in segs]  # resolves "auto" to what was found
+        paths += [sg.path for sg in segs]
     if resolved.molecules is not None:
         from .molecules import MOLECULES_RECIPE
 

@@ -28,6 +28,8 @@
                                nx, ny, reach (µm), layout "packed"|"files", tiles: [[ix, iy, offset, bytes, rings, vertices]]}
     shapes.bin                 the tiles' zstd frames back to back, row-major (layout "packed", read with byte ranges);
     shapes/<ix>_<iy>.bin       or one file per tile (layout "files", from `build --no-shard`)
+    segmentations/<id>/shapes.json, shapes.bin   another segmentation of the section, in the shape tile format; its rings are
+                               numbered 0..n-1 (not cell rows); the manifest entry carries cells, vertices, tile, tiles, bytes, medianArea
     molecules.json             molecule tile index: {version, grid (µm per unit, 1/64), tile (µm), origin, nx, ny, genes
                                (names; a molecule's gene id indexes them), counts (per gene), count, flags ["assigned", "nucleus"],
                                layout, tiles: [[ix, iy, offset, bytes, molecules]]}
@@ -107,7 +109,8 @@ type Manifest = {
     expr: {kind: "u8"|"csc", sharded, shardGenes}, hasF16, fields: string[],
     images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?, defaultOpacity}>,
     outlines: string[], shapes?: {path, cells, vertices, tile, tiles, bytes},
-    molecules?: {path, count, genes, tile, tiles, bytes}, idBlock
+    molecules?: {path, count, genes, tile, tiles, bytes},
+    segmentations: Array<{id, name, path, cells, vertices, tile, tiles, bytes, medianArea}>, idBlock
     // polygons?: {path, cells, vertices, scale}: whole-sample polygons of bundles built before shape tiles (still drawn)
   }>;
 };

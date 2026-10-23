@@ -112,6 +112,20 @@ class PolygonSpec(_Model):
         return self
 
 
+class SegmentationSpec(_Model):
+    """Another set of boundaries of the same section (nuclei, a re-segmentation), drawn over the cells for comparison.
+    A long-format table like `polygons.path`; `affine` defaults to the polygons' affine."""
+
+    id: str
+    name: str | None = None
+    path: Path
+    id_column: str = "cell_id"
+    x_column: str = "vertex_x"
+    y_column: str = "vertex_y"
+    max_vertices: int = 24
+    affine: tuple[float, float, float, float, float, float] | None = None
+
+
 class MoleculesSpec(_Model):
     """Individual molecules (Xenium transcripts) from a long-format table, one row per molecule, such as
     `transcripts.parquet`. Positions share the raw frame of the cell boundaries: `affine` defaults to the
@@ -338,6 +352,9 @@ class SampleSpec(_Model):
     images: list[ImageSpec] | Literal["auto"] = "auto"
     polygons: PolygonSpec | None = None
     molecules: MoleculesSpec | None = None  # individual transcripts, tiled for the viewer
+    # other boundary sets of the section, drawn over the cells for comparison; "auto" takes a Xenium
+    # nucleus_boundaries.parquet found next to the polygons' cell_boundaries.parquet
+    segmentations: list[SegmentationSpec] | Literal["auto"] = "auto"
     subset: SubsetSpec | None = None  # rows to keep; the default is every observation in the file
     tracks: TracksSpec | None = None  # genome tracks from a fragment file (ATAC)
     extent: float = 5000.0  # embedding samples: rescale longest side to this many "um"
@@ -537,6 +554,9 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
             s.polygons.path = res(s.polygons.path)
         if s.molecules:
             s.molecules.path = res(s.molecules.path)
+        if isinstance(s.segmentations, list):
+            for sg in s.segmentations:
+                sg.path = res(sg.path)
         if s.tracks is not None:
             t = s.tracks
             if isinstance(t.fragments, dict):

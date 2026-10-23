@@ -159,6 +159,14 @@ open at once, and what is open is remembered per browser:
 The groups are what is drawn, not how; a Transcripts bar reading "GAD1 · 2 pinned" tells you what the molecules show
 without opening it.
 
+## Comparing segmentations
+
+When a bundle carries another segmentation of a section (Xenium's nucleus boundaries are picked up automatically
+next to the cell boundaries; others come from `segmentations:` in the yaml), *Compare with* in the Cells group
+draws it as dashed amber edges over the cells, the image and the molecules once zoomed in, and shows a small table,
+cells and median area, for the focused section (or every section) against the cells' own shapes. The choice
+travels in the URL as `ov`.
+
 ## Molecules
 
 When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), the Molecules layer draws them

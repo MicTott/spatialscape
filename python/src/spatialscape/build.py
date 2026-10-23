@@ -19,7 +19,7 @@ from . import __version__
 from .comparisons import ComparisonAction, plan_comparisons, read_info, samples_signature, write_comparison
 from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
 from .convert import SourceStatus, expand_r_objects
-from .discover import auto_fields, infer_field_spec
+from .discover import auto_fields, auto_segmentations, infer_field_spec
 from .expression import column_moments, detect_lognorm, get_matrix, log1p_cp10k, write_expression
 from .fingerprint import read_sidecar, resolve_auto_images, sample_fingerprint, why_stale, write_sidecar
 from .geometry import default_point_radius, microns_per_unit, transform_points
@@ -47,6 +47,7 @@ from .manifest import (
     MoleculesInfo,
     Sample,
     SampleImage,
+    SegmentationInfo,
     ShapesInfo,
 )
 from .molecules import write_molecules
@@ -288,7 +289,7 @@ def build_sample(
             - shift
         )
         st = write_shapes(out_dir, ids, xy, pids, pxy, max_vertices=ps.max_vertices, packed=sharded)
-        shapes_info = ShapesInfo(cells=st.cells, vertices=st.vertices, tile=st.tile, tiles=st.tiles, bytes=st.bytes)
+        shapes_info = ShapesInfo(cells=st.cells, vertices=st.vertices, tile=st.tile, tiles=st.tiles, bytes=st.bytes, medianArea=round(st.median_area, 2))
         dropped = "".join(f", {k} {v} dropped" for k, v in (("unmatched", st.unmatched), ("degenerate", st.degenerate)) if v)
         log(f"[{spec.id}] cell shapes for {st.cells}/{n_obs} cells: {st.tiles} tiles of {st.tile} um, {st.bytes / 2**20:.1f} MB ({st.bytes / max(st.cells, 1):.0f} B per cell){dropped}")
         with_poly, dev = st.cells, st.centroid_offset
@@ -297,6 +298,22 @@ def build_sample(
                 f"[{spec.id}] warning: polygon centroids sit a median {dev:.1f} um from their cells; "
                 "the boundary file is probably in a different frame than the coordinates (see polygons.affine)"
             )
+
+    # --- other segmentations of the section, for comparison -----------------
+    seg_infos: list[SegmentationInfo] = []
+    for sg in auto_segmentations(spec):
+        log(f"[{spec.id}] segmentation {sg.id}: {sg.path}")
+        sids, sx_, sy_ = read_polygon_table(sg.path, sg.id_column, sg.x_column, sg.y_column)
+        saff = sg.affine or (spec.polygons.affine if spec.polygons else None)
+        if saff:
+            sx_, sy_ = apply_affine(sx_, sy_, saff)
+        sxy = transform_points(np.column_stack([sx_, sy_]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu - shift
+        uniq = pd.unique(sids)  # rings are numbered in file order; they belong to no cell of the sample
+        sst = write_shapes(out_dir / "segmentations" / sg.id, uniq, np.zeros((len(uniq), 2)), sids, sxy, max_vertices=sg.max_vertices, packed=sharded)
+        seg_infos.append(
+            SegmentationInfo(id=sg.id, name=sg.name or sg.id, path=f"segmentations/{sg.id}/shapes", cells=sst.cells, vertices=sst.vertices, tile=sst.tile, tiles=sst.tiles, bytes=sst.bytes, medianArea=round(sst.median_area, 2))
+        )
+        log(f"[{spec.id}] segmentation {sg.id}: {sst.cells:,} rings, median area {sst.median_area:.0f} um2, {sst.tiles} tiles of {sst.tile} um, {sst.bytes / 2**20:.1f} MB")
 
     # --- molecules --------------------------------------------------------
     molecules_info = None
@@ -427,6 +444,7 @@ def build_sample(
         outlines=outlines,
         shapes=shapes_info,
         molecules=molecules_info,
+        segmentations=seg_infos,
         suggestedGene=suggested,
         tracks=tracks_info,
     )

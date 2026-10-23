@@ -230,6 +230,11 @@ means opening two bundles. Two comparison modes, built in order of value:
    their own manifest list, not in `samples`, so counts, the sample strip and the comparisons feature's
    replicate linking never see a section twice.
 
+**Built (2026-10-23).** The overlay as planned: `segmentations:` (or the nucleus file found automatically), tiled
+with the shape format into `segmentations/<id>/`, drawn as dashed amber edges, with cells and median area in a
+table. Molecules per cell and the share of molecules assigned per segmentation are not computed: only the primary
+segmentation's assignments are in the transcript table. Side by side waits for a segmentation with its own cell table.
+
 **Later still, only if asked for after seeing the overlay:** colouring molecules by which segmentation claims
 them (both, only A, only B, neither). It needs one bit per molecule per segmentation (0.1-0.25 B per molecule)
 and a build-time join on transcript id, which at Prime scale (up to 2.6 B rows) needs a partitioned join.

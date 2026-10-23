@@ -37,9 +37,9 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
 
   constructor(
     protected c: ViewerController,
-    private kind: "shapes" | "molecules",
+    private kind: string, // the tiles' path under the sample folder, without extension
     private cacheBytes: number,
-    private hintKey: "shapeHint" | "moleculeHint",
+    private hintKey: "shapeHint" | "moleculeHint" | null,
     protected tileCap = TILE_CAP,
   ) {}
 
@@ -80,7 +80,7 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
         this.bytes -= v.bytes;
       }
     }
-    if (this.nextHint !== this.hint) {
+    if (this.hintKey && this.nextHint !== this.hint) {
       this.hint = this.nextHint;
       store.getState().set({ [this.hintKey]: this.hint } as any);
     }

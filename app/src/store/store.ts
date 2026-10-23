@@ -117,6 +117,7 @@ export interface ViewerState {
   moleculeColors: "follow" | "all"; // follow the colour on screen (others grey under an annotation), or every gene its own colour
   moleculeSize: number; // point radius multiplier for molecules (1 = 1.6 px)
   moleculeHint: string | null; // "zoom in for molecules" when the view holds too many to draw
+  overlay: string | null; // another segmentation of the section (by id) drawn as dashed edges over the cells
   clusterLabels: boolean; // category names at the centre of their cells, in the embedding view
   genome: boolean; // the genome panel under the maps, when a sample carries tracks
   genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
@@ -260,6 +261,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   moleculeColors: "follow",
   moleculeSize: 1,
   moleculeHint: null,
+  overlay: null,
   clusterLabels: true,
   genome: true,
   genomeHeight: storedGenomeHeight(),

@@ -28,7 +28,7 @@ type Handles = {
 const samples = new Map<string, Handles>();
 const inflight = new Map<string, Promise<unknown>>();
 const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
-type TileKind = "shapes" | "molecules";
+type TileKind = string; // "shapes", "molecules", or a segmentation's "segmentations/<id>/shapes": the path under the sample
 const tileIndexes = new Map<string, { index: TileIndexBase; byKey: Map<string, TileEntry> }>(); // `${kind}:${sampleId}`
 let zstdCodec: Promise<{ decode(data: Uint8Array): Uint8Array | Promise<Uint8Array> }> | null = null;
 function zstd() {
@@ -234,6 +234,18 @@ const api = {
     const out: (ShapeTile & { key: string })[] = [];
     const transfer: ArrayBuffer[] = [];
     for (const [key, raw, origin, index] of await tileFrames("shapes", sampleId, keys)) {
+      const t = decodeShapeTile(raw, origin, index.grid);
+      out.push({ key, ...t });
+      transfer.push(t.rows.buffer as ArrayBuffer, t.startIndices.buffer as ArrayBuffer, t.positions.buffer as ArrayBuffer, t.vertexRow.buffer as ArrayBuffer, t.indices.buffer as ArrayBuffer);
+    }
+    return Comlink.transfer(out, transfer);
+  },
+
+  /** Decoded tiles of another segmentation of the section (segmentations/<id>/shapes), the same format as shapes. */
+  async segmentationTiles(segmentation: string, sampleId: string, keys: string[]): Promise<(ShapeTile & { key: string })[]> {
+    const out: (ShapeTile & { key: string })[] = [];
+    const transfer: ArrayBuffer[] = [];
+    for (const [key, raw, origin, index] of await tileFrames(`segmentations/${segmentation}/shapes`, sampleId, keys)) {
       const t = decodeShapeTile(raw, origin, index.grid);
       out.push({ key, ...t });
       transfer.push(t.rows.buffer as ArrayBuffer, t.startIndices.buffer as ArrayBuffer, t.positions.buffer as ArrayBuffer, t.vertexRow.buffer as ArrayBuffer, t.indices.buffer as ArrayBuffer);

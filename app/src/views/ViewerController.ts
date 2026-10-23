@@ -294,7 +294,8 @@ export class ViewerController {
       s.molecules !== prev.molecules ||
       s.moleculeGenes !== prev.moleculeGenes ||
       s.moleculeColors !== prev.moleculeColors ||
-      s.moleculeSize !== prev.moleculeSize
+      s.moleculeSize !== prev.moleculeSize ||
+      s.overlay !== prev.overlay
     ) {
       this.requestLayers();
     }

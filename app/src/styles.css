@@ -390,3 +390,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .group-body section + section { border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent); }
 .group-body section h2 { font-size: 10px; font-weight: 600; }
 .group-body .layer + .layer { border-top: none; }
+
+.overlay-pick { display: flex; align-items: center; gap: 8px; }
+.overlay-pick select { flex: 1; }
+.compare-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
+.compare-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 2px 4px 2px 0; }
+.compare-table th:first-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-table td { padding: 2px 4px 2px 0; font-variant-numeric: tabular-nums; }

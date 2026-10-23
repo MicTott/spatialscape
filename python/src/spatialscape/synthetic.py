@@ -89,6 +89,9 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
         pa.table({"cell_id": cid, "vertex_x": vx.ravel(), "vertex_y": vy.ravel()}),
         path.with_suffix(".polygons.parquet"),
     )
+    # a second segmentation of the same cells to compare against: nuclei at 55% of each cell's radius
+    nx_, ny_ = xy[:, 0:1] + 0.55 * r * np.cos(ang_v), xy[:, 1:2] + 0.55 * r * np.sin(ang_v)
+    pq.write_table(pa.table({"cell_id": cid, "vertex_x": nx_.ravel(), "vertex_y": ny_.ravel()}), path.with_suffix(".nuclei.parquet"))
     # fake molecules, 10x transcripts.parquet style: a few per cell per expressed gene, scattered around the cell
     # (pixel units, the coordinate frame), 40% not assigned to a cell, some below Q20 and a few control probes
     per = np.rint(np.minimum(X, 6)).astype(int)  # molecules of each gene in each cell
@@ -182,6 +185,7 @@ def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparison
                 "images": [{"id": "he", "name": "H&E", "path": "sampleA.png"}],
                 "polygons": {"path": "sampleA.polygons.parquet"},
                 "molecules": {"path": "sampleA.transcripts.parquet"},
+                "segmentations": [{"id": "nucleus", "name": "Nuclei", "path": "sampleA.nuclei.parquet"}],
             },
             {
                 "id": "sampleB",
