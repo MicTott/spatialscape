@@ -35,15 +35,7 @@ export function Sidebar() {
             </div>
             {manifest.description && <p className="muted">{manifest.description}</p>}
           </header>
-          <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
-          <RegionsPanel />
-          <ColorPanel genes={genes} />
-          <CompareSelect />
-          <Legend />
-          <GeneByAnnotation />
-          <FilterPanel genes={genes} />
-          <LayersPanel genes={genes} />
-          <SampleStrip />
+          <Groups genes={genes} />
         </div>
       )}
     </aside>
@@ -331,47 +323,127 @@ function Histogram({ bins, range }: { bins: number[]; range: [number, number] })
   );
 }
 
-/** What is drawn, one row per layer: a switch, the name, a one-line summary, and the layer's few settings when
- * it is on. Colour stays in its own section above, so a gene can be changed while the molecule row follows it. */
-function LayersPanel({ genes }: { genes: string[] }) {
+/** The panel's five groups, each a bar that opens its controls and shows a one-line summary when closed. Several can
+ * be open at once; what is open is remembered per browser. Image and Transcripts carry their switch in the bar. */
+function Groups({ genes }: { genes: string[] }) {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
-  const cellShapes = useViewer((s) => s.cellShapes);
-  const molecules = useViewer((s) => s.molecules);
-  const clusterLabels = useViewer((s) => s.clusterLabels);
   const imageOpacity = useViewer((s) => s.imageOpacity);
   const hiddenChannels = useViewer((s) => s.hiddenChannels);
-  const outline = useViewer((s) => s.outline);
+  const molecules = useViewer((s) => s.molecules);
+  const pins = useViewer((s) => s.moleculeGenes);
+  const moleculeColors = useViewer((s) => s.moleculeColors);
+  const color = useViewer((s) => s.color);
+  const selection = useViewer((s) => s.selectionSummary);
+  const regions = useViewer((s) => s.regions);
+  const layoutMode = useViewer((s) => s.layoutMode);
+  const splitBy = useViewer((s) => s.splitBy);
+  const focus = useViewer((s) => s.focus);
   const set = store.getState().set;
   const hasImages = manifest.samples.some((s) => s.images.length);
-  const hasShapes = manifest.samples.some((s) => s.shapes || s.polygons);
   const hasMolecules = manifest.samples.some((s) => s.molecules);
-  const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
-  const outlineFields = manifest.fields.filter((f) => f.type === "categorical" && manifest.samples.some((s) => s.outlines?.includes(f.id)));
-  const [lastOutline, setLastOutline] = useState<string | null>(null);
-  if (!hasImages && !hasShapes && !hasMolecules && !hasEmbedding && !outlineFields.length) return null;
   const channelRows = channelSummary(manifest);
-  const shapeModes = new Set(manifest.samples.filter((s) => s.shapes || s.polygons).map((s) => shapeMode(cellShapes, showImages && s.images.length > 0)));
-  const shownMode = shapeModes.size === 1 ? [...shapeModes][0] : null;
+  const fieldName = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
+  const colorSummary = !color ? "no colour" : color.kind === "gene" ? color.gene : color.kind === "blend" ? "blend" : fieldName(color.field);
+  const sections = manifest.samples.filter((s) => s.kind !== "embedding").length;
+  const sampleSummary = [`${sections} section${sections === 1 ? "" : "s"}`, splitBy ? `split by ${splitBy.key}` : layoutMode, focus ? `focused on ${manifest.samples.find((s) => s.id === focus)?.name ?? focus}` : null].filter(Boolean).join(" · ");
+  const nRegions = regions.groups.reduce((n, g) => n + g.polygons.length, 0);
+  const selectionSummary = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : "lasso, regions";
+  const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "blend" : "grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");
+  const imageSummary = !showImages ? "off" : channelRows ? `${channelRows - hiddenChannels.length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
   return (
-    <section>
-      <h2 title="what is drawn on the map; colour is chosen above">Layers</h2>
+    <>
       {hasImages && (
-        <LayerRow
-          name="Image"
-          on={showImages}
-          onToggle={(v) => set({ showImages: v })}
-          summary={channelRows ? `${channelRows - hiddenChannels.length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`}
-        >
+        <Group id="image" title="Image" summary={imageSummary} on={showImages} onToggle={(v) => set({ showImages: v })}>
           <label>
             opacity <small>{(imageOpacity * 100).toFixed(0)}%</small>
             <input type="range" min={0} max={1} step={0.02} value={imageOpacity} onChange={(e) => set({ imageOpacity: +e.target.value })} />
           </label>
           <ImageChannels />
-        </LayerRow>
+        </Group>
       )}
+      <Group id="cells" title="Cells" summary={colorSummary} defaultOpen>
+        <ColorPanel genes={genes} />
+        <Legend />
+        <GeneByAnnotation />
+        <FilterPanel genes={genes} />
+        <CellRows />
+      </Group>
+      {hasMolecules && (
+        <Group id="transcripts" title="Transcripts" summary={transcriptSummary} on={molecules} onToggle={(v) => set({ molecules: v })}>
+          <MoleculeGenes genes={genes} />
+        </Group>
+      )}
+      <Group id="selections" title="Selections" summary={selectionSummary}>
+        <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
+        <RegionsPanel />
+      </Group>
+      <Group id="samples" title="Samples" summary={sampleSummary}>
+        <CompareSelect />
+        <SampleStrip />
+      </Group>
+    </>
+  );
+}
+
+function groupOpenKey(id: string) {
+  return `sscape.group.${id}`;
+}
+
+function Group({ id, title, summary, on, onToggle, defaultOpen = false, children }: { id: string; title: string; summary?: string; on?: boolean; onToggle?: (v: boolean) => void; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem(groupOpenKey(id));
+      return v == null ? defaultOpen : v === "1";
+    } catch {
+      return defaultOpen;
+    }
+  });
+  const toggle = () => {
+    setOpen((o) => {
+      try {
+        localStorage.setItem(groupOpenKey(id), o ? "0" : "1");
+      } catch {
+        /* private mode */
+      }
+      return !o;
+    });
+  };
+  return (
+    <div className={`group${open ? " open" : ""}${on === false ? " off" : ""}`}>
+      <div className="group-head" role="button" tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => (e.key === "Enter" || e.key === " " ? (e.preventDefault(), toggle()) : undefined)}>
+        <span className="chev">{open ? "▾" : "▸"}</span>
+        <span className="group-title">{title}</span>
+        {!open && summary && <span className="group-summary">{summary}</span>}
+        {onToggle && (
+          <input type="checkbox" className="group-switch" checked={!!on} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(e.target.checked)} title={`${on ? "hide" : "show"} ${title.toLowerCase()}`} />
+        )}
+      </div>
+      {open && <div className="group-body">{children}</div>}
+    </div>
+  );
+}
+
+/** How cells are drawn: their shapes once zoomed in, annotation boundaries over them, and cluster names in the embedding. */
+function CellRows() {
+  const manifest = useViewer((s) => s.manifest)!;
+  const showImages = useViewer((s) => s.showImages);
+  const cellShapes = useViewer((s) => s.cellShapes);
+  const clusterLabels = useViewer((s) => s.clusterLabels);
+  const outline = useViewer((s) => s.outline);
+  const set = store.getState().set;
+  const hasShapes = manifest.samples.some((s) => s.shapes || s.polygons);
+  const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
+  const outlineFields = manifest.fields.filter((f) => f.type === "categorical" && manifest.samples.some((s) => s.outlines?.includes(f.id)));
+  const [lastOutline, setLastOutline] = useState<string | null>(null);
+  if (!hasShapes && !hasEmbedding && !outlineFields.length) return null;
+  const shapeModes = new Set(manifest.samples.filter((s) => s.shapes || s.polygons).map((s) => shapeMode(cellShapes, showImages && s.images.length > 0)));
+  const shownMode = shapeModes.size === 1 ? [...shapeModes][0] : null;
+  return (
+    <section className="cell-rows">
+      <h2>Drawing</h2>
       {hasShapes && (
-        <LayerRow name="Cells" summary={shownMode ? `${shownMode} when zoomed in` : "by sample"} title="how cells are drawn once zoomed in far enough to see their shapes; the chosen mode again returns to automatic (filled, or edges over an image)">
+        <LayerRow name="Shapes" summary={shownMode ? `${shownMode} when zoomed in` : "by sample"} title="how cells are drawn once zoomed in far enough to see their shapes; the chosen mode again returns to automatic (filled, or edges over an image)">
           <div className="tabs">
             {(["dots", "filled", "edges"] as const).map((m) => (
               <button key={m} className={shownMode === m ? "on" : ""} onClick={() => set({ cellShapes: cellShapes === m ? "auto" : m })}>
@@ -379,11 +451,6 @@ function LayersPanel({ genes }: { genes: string[] }) {
               </button>
             ))}
           </div>
-        </LayerRow>
-      )}
-      {hasMolecules && (
-        <LayerRow name="Molecules" on={molecules} onToggle={(v) => set({ molecules: v })} summary="when zoomed in" title="individual transcripts once a view holds few enough to tell apart">
-          <MoleculeGenes genes={genes} />
         </LayerRow>
       )}
       {outlineFields.length > 0 && (

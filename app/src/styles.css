@@ -373,3 +373,20 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .compare .c-foot { flex: 1; min-height: 0; padding: 2px 12px 6px 46px; font-size: 11px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
 .compare .c-stats { font-variant-numeric: tabular-nums; }
 .compare .c-desc { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* the panel's groups: a bar each, opening its controls; closed bars carry a one-line summary */
+.group { border-top: 1px solid var(--border); }
+.group:last-child { border-bottom: 1px solid var(--border); }
+.group-head { display: flex; align-items: center; gap: 8px; padding: 9px 2px; cursor: pointer; user-select: none; }
+.group-head:hover { background: color-mix(in srgb, var(--panel2) 60%, transparent); }
+.group-head .chev { color: var(--muted); width: 10px; font-size: 11px; }
+.group-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.group-summary { margin-left: auto; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.group-switch { margin-left: auto; }
+.group-summary + .group-switch { margin-left: 8px; }
+.group.off .group-title { color: var(--muted); }
+.group-body { padding: 0 0 8px 12px; }
+.group-body section { border-top: none; padding: 6px 0; }
+.group-body section + section { border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent); }
+.group-body section h2 { font-size: 10px; font-weight: 600; }
+.group-body .layer + .layer { border-top: none; }

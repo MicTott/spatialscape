@@ -144,13 +144,20 @@ H&E or fluorescence pyramids render under the points with an opacity slider. A f
 
 When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Cells when zoomed in* in the Display panel chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **edges**, outlines in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
 
-## Layers
+## The side panel
 
-The Layers section lists what is drawn, one row each with a switch, a one-line summary, and the row's few settings
-when it is on: **Image** (opacity and, for fluorescence, the channel list), **Cells** (dots, filled or edges once
-zoomed in), **Molecules**, **Outlines** (the annotation whose boundaries are traced) and **Labels** (cluster names
-in the embedding). Colour stays in its own section above, so you can change a gene and watch the molecule row follow
-it. The grid or strip layout of the sections sits in the Samples section.
+The panel is five groups, each a bar that opens its controls; closed bars show a one-line summary, several can be
+open at once, and what is open is remembered per browser:
+
+- **Image**: its switch in the bar, opacity and, for fluorescence, the channel list.
+- **Cells**: colour by (gene, cell type weights, blend, annotation), the legend, expression by annotation, the
+  filter, and *Drawing*: cell shapes once zoomed in (dots, filled, edges), annotation outlines, cluster labels.
+- **Transcripts**: its switch in the bar, follow colour or all genes, the pinned genes, the point size.
+- **Selections**: the lasso's selection and your drawn regions.
+- **Samples**: comparisons, the grid or strip layout, focus and the list of sections.
+
+The groups are what is drawn, not how; a Transcripts bar reading "GAD1 · 2 pinned" tells you what the molecules show
+without opening it.
 
 ## Molecules
 
