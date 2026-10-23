@@ -36,6 +36,7 @@ describe("molecule tiles written by the Python build", () => {
     const g = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0 });
     expect([...g.colors.subarray(0, 4)]).toEqual([0, 0, 0, 0]); // A hidden
     expect(g.colors[7]).toBe(255); // B drawn
+    expect([...g.colors.subarray(4, 7)]).toEqual([250, 231, 33]); // the top of the viridis fit, as bytes
     expect(g.shares(counts)).toBeCloseTo(0.3);
     const b = geneColors(genes, { color: { kind: "blend", scheme: "yb", a: ["A"], b: ["B", "A"] }, colormap: "viridis", geneMin: 0 });
     expect(b.colors[3]).toBe(255);

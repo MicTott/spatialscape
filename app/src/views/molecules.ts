@@ -40,7 +40,7 @@ export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colo
   if (color?.kind === "gene") {
     const i = genes.indexOf(color.gene);
     const cm = COLORMAPS[effectiveColormap(s.colormap, s.geneMin < 0)] ?? COLORMAPS.viridis;
-    if (i >= 0) paint(i, cm(1));
+    if (i >= 0) paint(i, cm(1).map((v) => Math.max(0, Math.min(255, Math.round(v * 255)))) as [number, number, number]); // colormaps return 0..1
     return { colors: out, shares: (counts) => (i >= 0 ? counts[i] : 0) / Math.max(1, counts.reduce((a, b) => a + b, 0)) };
   }
   if (color?.kind === "blend") {
