@@ -75,6 +75,12 @@ class ImageSpec(_Model):
     # image pixels per coordinate unit (e.g. tissue_hires_scalef when coords are fullres px)
     pixels_per_unit: float = 1.0
     translate: tuple[float, float] = (0.0, 0.0)  # um, applied after everything else
+    # the image's own frame against the coordinates, before the sample's `transform`: swap the axes and/or mirror
+    # them, for an object whose coordinates were transposed after the image was written (as polygons.affine does for
+    # boundaries: transpose = [0, 1, 0, 1, 0, 0] is `transpose: true`; the anti-transpose [0, -1, Y, -1, 0, X] is
+    # `transpose: true, flip: xy` with `translate` taking up the difference between X, Y and the image's extent)
+    transpose: bool = False
+    flip: Literal["", "x", "y", "xy"] = ""
     channels: list[ImageChannelSpec] | None = None
     default_opacity: float = 1.0
     max_size: int | None = None  # optionally downsample level 0 to at most this many px per side

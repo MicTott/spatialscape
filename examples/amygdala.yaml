@@ -48,8 +48,9 @@ platforms:
 samples:
   # Xenium: cells from the 5 um re-segmentation; boundaries, transcripts and DAPI copied from JHPCE
   # (processed-data/Xenium/01_resegment/5um_segmentations/<run>/outs). Br9206 / Br9192 coordinates were transposed /
-  # anti-transposed in the export, so their vertices carry `affine` (molecules inherit it); their DAPI images wait for an
-  # image transpose. max_size 22939 reads the DAPI at 0.85 um/px.
+  # anti-transposed in the export, so their vertices carry `affine` (molecules inherit it) and their DAPI images carry
+  # `transpose` (Br9192 also `flip: xy` and the 11 x 8 um the export's extents fall short of the image). max_size 22939
+  # reads the DAPI at 0.85 um/px.
   - id: xen_Br9017
     name: Br9017 (Xenium)
     platform: xenium
@@ -65,6 +66,7 @@ samples:
     path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/xenium/Br9192/adata.zarr
     polygons: { path: amygdala-src/xenium_5um/output-XETG00117__0023153__Region_1__20240329__171204/cell_boundaries.parquet, affine: [0, -1, 21675.123047, -1, 0, 11531.958984] }
     molecules: { path: amygdala-src/xenium_5um/output-XETG00117__0023153__Region_1__20240329__171204/transcripts.parquet }
+    images: [{ id: morphology, name: DAPI, path: amygdala-src/xenium_5um/output-XETG00117__0023153__Region_1__20240329__171204/morphology_focus/morphology_focus_0000.ome.tif, kind: multichannel, pixel_size: auto, pixels_per_unit: 4.705882, max_size: 22939, transpose: true, flip: xy, translate: [-11.14, -8.49] }]
   - id: xen_Br9206
     name: Br9206 (Xenium)
     platform: xenium
@@ -72,6 +74,7 @@ samples:
     path: ${SPATIALAMYGDALA}/Vitessce_app/vitessce_bundle/data/xenium/Br9206/adata.zarr
     polygons: { path: amygdala-src/xenium_5um/20240425__170523__0022862/cell_boundaries.parquet, affine: [0, 1, 0, 1, 0, 0] }
     molecules: { path: amygdala-src/xenium_5um/20240425__170523__0022862/transcripts.parquet }
+    images: [{ id: morphology, name: DAPI, path: amygdala-src/xenium_5um/20240425__170523__0022862/morphology_focus/morphology_focus_0000.ome.tif, kind: multichannel, pixel_size: auto, pixels_per_unit: 4.705882, max_size: 22939, transpose: true }]
   - id: xen_Br9280
     name: Br9280 (Xenium)
     platform: xenium

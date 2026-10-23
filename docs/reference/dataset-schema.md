@@ -78,6 +78,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `pixel_size` | µm per level-0 pixel, or `auto` | `auto` |
 | `pixels_per_unit` | image pixels per coordinate unit | `1.0` |
 | `translate` | `[x, y]` µm | `[0, 0]` |
+| `transpose`, `flip` | bool, `x`/`y`/`xy` | `false`, none | the image's own frame against the coordinates, before the sample's `transform`: for an object whose coordinates were transposed after the image was written. `polygons.affine` `[0, 1, 0, 1, 0, 0]` is `transpose: true`; `[0, -1, Y, -1, 0, X]` is `transpose: true, flip: xy` with `translate` taking up `Y - height`, `X - width` |
 | `channels` | list of `{name, color, window}` | |
 | `default_opacity` | 0..1 | `1` |
 | `max_size` | int | | at most this many pixels per side: the pyramid level giving the largest copy within it, reduced while it is read when needed, so memory stays bounded even for a file without pyramid levels. Auto-discovered Xenium morphology uses the size that gives about 0.85 µm per pixel, halved on a machine without the memory for it. A read larger than a sixth of the machine's memory is refused until `max_size` is set or lowered |

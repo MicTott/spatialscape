@@ -294,7 +294,7 @@ def test_a_discovered_image_too_large_for_memory_is_read_smaller(tmp_path, monke
     real = images.prepare_image
     asked: list[int] = []
 
-    def small_machine(path, flip, rotate, max_size, *, rgb):
+    def small_machine(path, flip, rotate, max_size, *, rgb, **_):
         asked.append(max_size)
         if max_size > 2000:
             raise images.ImageReadRefused("too big", kind="memory")
@@ -338,3 +338,14 @@ def test_a_five_dimensional_ome_zarr_is_reduced_band_by_band(tmp_path):
     small = images.read_image(tmp_path / "img.ome.zarr", rgb=False, max_size=300)  # bioformats2raw's layout, reduced 4x
     expect = data[0, :, 0].reshape(2, 256, 4, 256, 4).astype(np.int64).sum(axis=(2, 4))
     assert np.array_equal(small, ((expect + 8) // 16).astype(np.uint16))
+
+
+def test_an_image_can_be_transposed_and_flipped_into_the_coordinates_frame(tmp_path):
+    img = np.arange(2 * 3 * 4, dtype=np.uint16).reshape(2, 3, 4)  # (c, y=3, x=4)
+    p = tmp_path / "t.tif"
+    tifffile.imwrite(p, img, metadata={"axes": "CYX"})
+    out = images.prepare_image(p, "", 0, None, rgb=False, transpose=True)
+    assert out.shape == (2, 4, 3) and out[1, 0, 2] == img[1, 2, 0]  # x' = y, y' = x
+    anti = images.prepare_image(p, "", 0, None, rgb=False, transpose=True, image_flip="xy")
+    assert anti.shape == (2, 4, 3) and anti[0, 0, 0] == img[0, 2, 3]  # x' = Ymax - y, y' = Xmax - x
+    assert np.array_equal(images.prepare_image(p, "", 0, None, rgb=False), img)

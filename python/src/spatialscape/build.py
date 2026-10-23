@@ -208,6 +208,8 @@ def build_sample(
     auto_px_images = [im for im in spec.images if im.pixel_size == "auto"]
     if auto_px_images:
         _c, h, w = read_image_shape(auto_px_images[0].path, rgb=auto_px_images[0].kind == "rgb")
+        if auto_px_images[0].transpose:
+            h, w = w, h
         frame_w, frame_h = w / auto_px_images[0].pixels_per_unit, h / auto_px_images[0].pixels_per_unit
     else:
         frame_w, frame_h = float(coords[:, 0].max()), float(coords[:, 1].max())
@@ -336,7 +338,7 @@ def build_sample(
         max_size = im.max_size
         while img is None:
             try:
-                img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, max_size, rgb=rgb)
+                img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, max_size, rgb=rgb, transpose=im.transpose, image_flip=im.flip)
             except ImageReadRefused as e:
                 if not discovered:
                     raise

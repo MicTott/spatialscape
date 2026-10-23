@@ -411,10 +411,18 @@ def write_ome_zarr(
     return [tuple(lv.shape) for lv in levels]
 
 
-def prepare_image(path: Path, flip: str, rotate: int, max_size: int | None, *, rgb: bool = True) -> np.ndarray:
+def prepare_image(path: Path, flip: str, rotate: int, max_size: int | None, *, rgb: bool = True, transpose: bool = False, image_flip: str = "") -> np.ndarray:
+    """Read, then put the image into the coordinates' frame: the image's own transpose and flips first (an export
+    whose coordinates were transposed), then the sample's flip and rotation, which points and polygons share."""
     img = read_image(path, rgb=rgb, max_size=max_size)
     img = limit_size(img, max_size)
-    return transform_image(img, flip, rotate)
+    if transpose:
+        img = np.swapaxes(img, 1, 2)
+    if "x" in image_flip:
+        img = img[:, :, ::-1]
+    if "y" in image_flip:
+        img = img[:, ::-1, :]
+    return transform_image(np.ascontiguousarray(img), flip, rotate)
 
 
 def read_image_shape(path: Path, *, rgb: bool = True) -> tuple[int, int, int]:
