@@ -44,15 +44,15 @@ from .manifest import (
     Layout,
     Manifest,
     MetaKey,
-    PolygonInfo,
     Sample,
     SampleImage,
+    ShapesInfo,
 )
 from .obs import write_obs
 from .outlines import compute_outlines, write_outlines
-from .polygons import SCALE as POLY_SCALE
-from .polygons import apply_affine, pack_polygons, read_polygon_obsm, read_polygon_table, write_polygons
+from .polygons import apply_affine, read_polygon_obsm, read_polygon_table
 from .readers import load_sample
+from .shapes import write_shapes
 from .vocab import VocabRegistry, load_palette
 
 Log = Callable[[str], None]
@@ -259,8 +259,8 @@ def build_sample(
             write_outlines(out_dir, fid, compute_outlines(xy, codes, len(v["categories"]), skip_codes=na))
             outlines.append(fid)
 
-    # --- polygons ---------------------------------------------------------
-    poly_info = None
+    # --- cell shapes ------------------------------------------------------
+    shapes_info = None
     if spec.polygons is None and spec.kind == "spatial":
         for key in AUTO_POLYGON_OBSM:
             arr = adata.obsm.get(key, None)
@@ -283,10 +283,11 @@ def build_sample(
             * upu
             - shift
         )
-        offsets, deltas, with_poly, dev = pack_polygons(ids, xy, pids, pxy, max_vertices=ps.max_vertices)
-        write_polygons(out_dir, offsets, deltas)
-        poly_info = PolygonInfo(cells=with_poly, vertices=int(len(deltas) // 2), scale=POLY_SCALE)
-        log(f"[{spec.id}] polygons matched {with_poly}/{n_obs} cells, {len(deltas) // 2} vertices")
+        st = write_shapes(out_dir, ids, xy, pids, pxy, max_vertices=ps.max_vertices, packed=sharded)
+        shapes_info = ShapesInfo(cells=st.cells, vertices=st.vertices, tile=st.tile, tiles=st.tiles, bytes=st.bytes)
+        dropped = "".join(f", {k} {v} dropped" for k, v in (("unmatched", st.unmatched), ("degenerate", st.degenerate)) if v)
+        log(f"[{spec.id}] cell shapes for {st.cells}/{n_obs} cells: {st.tiles} tiles of {st.tile} um, {st.bytes / 2**20:.1f} MB ({st.bytes / max(st.cells, 1):.0f} B per cell){dropped}")
+        with_poly, dev = st.cells, st.centroid_offset
         if with_poly and dev > max(10.0, 2.0 * radius):
             log(
                 f"[{spec.id}] warning: polygon centroids sit a median {dev:.1f} um from their cells; "
@@ -388,7 +389,7 @@ def build_sample(
         fields=list(spec.fields.keys()),
         images=images,
         outlines=outlines,
-        polygons=poly_info,
+        shapes=shapes_info,
         suggestedGene=suggested,
         tracks=tracks_info,
     )

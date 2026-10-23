@@ -138,9 +138,11 @@ When an embedding is colored by an annotation, each category's name floats at th
 
 Each view has its own point-size slider at its bottom-left corner: one for the tissue sections, one for the embedding, so dense UMAPs and sparse Visium spots can be tuned independently. Double-click a slider to reset it. The values travel in the URL as `ps` (spatial) and `pse` (embedding).
 
-## Images and polygons
+## Images and cell shapes
 
-H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone, and double-click it again to show them all. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. Cell boundary polygons, when the bundle has them, appear once you zoom in far enough that a cell spans several pixels.
+H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone, and double-click it again to show them all. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. 
+
+When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Cells when zoomed in* in the Display panel chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **edges**, outlines in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
 
 ## Sharing a view
 

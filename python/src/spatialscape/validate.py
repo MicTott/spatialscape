@@ -10,6 +10,52 @@ import numpy as np
 from .manifest import Manifest
 
 
+def _check_shapes(p, s, d: Path) -> None:
+    """The tile index agrees with the files, and every tile decodes to the rings it claims, of known cells."""
+    from .shapes import decode_tile
+
+    try:
+        index = json.loads((d / "shapes.json").read_text())
+    except (OSError, ValueError) as e:
+        _problem(p, f"{s.id}: shapes.json unreadable: {e}")
+        return
+    tiles = index.get("tiles") or []
+    packed = index.get("layout") == "packed"
+    blob = (d / "shapes.bin").read_bytes() if packed and (d / "shapes.bin").exists() else None
+    if packed and blob is None:
+        _problem(p, f"{s.id}: shapes.bin missing")
+        return
+    end = 0
+    rings = vertices = 0
+    for ix, iy, off, nbytes, nr, nv in tiles:
+        if packed:
+            if off != end:
+                _problem(p, f"{s.id}: shape tile {ix},{iy} does not start where the previous one ends")
+                return
+            end = off + nbytes
+            frame = blob[off:end]
+        else:
+            f = d / "shapes" / f"{ix}_{iy}.bin"
+            if not f.exists():
+                _problem(p, f"{s.id}: shapes/{ix}_{iy}.bin missing")
+                return
+            frame = f.read_bytes()
+        try:
+            rows, counts, _xy = decode_tile(frame, (0.0, 0.0), index["grid"])
+        except Exception as e:
+            _problem(p, f"{s.id}: shape tile {ix},{iy} does not decode: {e}")
+            return
+        if len(rows) != nr or int(counts.sum()) != nv or (len(rows) and (rows[-1] >= s.nObs or (np.diff(rows) <= 0).any())):
+            _problem(p, f"{s.id}: shape tile {ix},{iy} disagrees with the index or names rows outside the sample")
+            return
+        rings += nr
+        vertices += nv
+    if packed and blob is not None and end != len(blob):
+        _problem(p, f"{s.id}: shapes.bin is {len(blob)} bytes, the index covers {end}")
+    if rings != s.shapes.cells or vertices != s.shapes.vertices:
+        _problem(p, f"{s.id}: shapes hold {rings} cells and {vertices} vertices, the manifest says {s.shapes.cells} and {s.shapes.vertices}")
+
+
 def _problem(problems: list[str], msg: str) -> None:
     problems.append(msg)
 
@@ -163,6 +209,8 @@ def validate_local(root: Path) -> list[str]:
         for fid in s.outlines or []:
             if not (d / "outlines" / f"{fid}.json").exists():
                 _problem(p, f"{s.id}: outlines/{fid}.json listed but missing")
+        if s.shapes:
+            _check_shapes(p, s, d)
         if s.polygons:
             off = d / "polygons.offsets.u32"
             dl = d / "polygons.i16"

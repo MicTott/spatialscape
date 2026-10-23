@@ -9,6 +9,7 @@ import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
 import { pointScaleFor } from "./panes";
 import { drawCount, intersects } from "./lod";
+import { ShapeManager, shapeMode, type CellColor } from "./shapes";
 import { filterRange, overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
 
@@ -26,8 +27,11 @@ export class LayerBuilder {
   private paletteCache = new Map<string, Uint8Array>();
   private centroidCache = new Map<string, Centroid[]>();
   private outlinePending = new Set<string>(); // outline fetches already counted in store.pending
+  readonly shapes: ShapeManager;
 
-  constructor(private c: ViewerController) {}
+  constructor(private c: ViewerController) {
+    this.shapes = new ShapeManager(c);
+  }
 
   private lut(name: string): Uint8Array {
     let l = this.lutCache.get(name);
@@ -46,6 +50,7 @@ export class LayerBuilder {
     this.paletteCache.clear();
     this.centroidCache.clear();
     this.outlinePending.clear();
+    this.shapes.reset();
   }
 
   /** Forget what was cached for a field whose colours or codes changed under the same name (the drawn regions). */
@@ -106,6 +111,7 @@ export class LayerBuilder {
     if (!c.manifest) return [];
     const layers: any[] = [];
     this.nextLiveImages = new Set();
+    this.shapes.beginBuild();
     const colorField = s.color?.kind === "field" ? fieldById(c.manifest, s.color.field) : undefined;
     const baseMode: 0 | 1 | 3 = s.color?.kind === "blend" ? 3 : colorField?.type === "categorical" ? 1 : 0;
     const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
@@ -120,28 +126,56 @@ export class LayerBuilder {
       const vb = c.viewBbox(view);
       const [vw, vh] = c.viewSize(view);
       const zoom = c.viewStates[view].zoom;
-      for (const [id, p] of L.placements) {
-        const smp = c.samplesById.get(id)!;
+      // a sample's colour props and per-cell inputs, shared by its dots and its cell shapes
+      const colorOf = (id: string): CellColor | undefined => {
         const sd = c.cache.samples.get(id);
-        const visible = intersects(p.worldBbox, vb);
-        if (smp.images.length && visible) layers.push(...this.imageLayers(s, view, id, p.modelMatrix));
-        if (!sd) continue;
-        const inp = this.inputsFor(sd, s);
-        const hasData = baseMode === 1 ? !!inp.cat : baseMode === 3 ? !!(inp.value || inp.value2) : !!inp.value;
+        if (!sd) return undefined;
+        const inputs = this.inputsFor(sd, s);
+        const hasData = baseMode === 1 ? !!inputs.cat : baseMode === 3 ? !!(inputs.value || inputs.value2) : !!inputs.value;
         const mode: 0 | 1 | 2 | 3 = hasData || !s.color ? baseMode : 2; // 2 = feature not measured on this sample
-        const filterActive = !!s.filter && !!inp.filter;
         // gene columns are quantized against each sample's own max; rescale to the shared max unless per-sample was asked for
         let valueScale = 1;
         if (mode === 0 && s.color?.kind === "gene" && !s.scalePerSample && s.geneMax > 0) {
           const g = c.geneGmax.get(`${id}:${s.color.gene}`);
           if (g !== undefined) valueScale = g / s.geneMax;
         }
+        const filterOn = !!s.filter && !!inputs.filter;
+        return {
+          inputs,
+          props: {
+            mode,
+            vmin: s.vrange[0],
+            vmax: s.vrange[1],
+            hideZeros: s.hideZeros,
+            valueScale,
+            valueCenter: signed ? 0.5 : 0,
+            filterOn,
+            filterMin: s.filter ? filterRange(s.filter)[0] : 0,
+            filterMax: s.filter ? filterRange(s.filter)[1] : 1,
+            lut,
+            catColors,
+          },
+        };
+      };
+      const shapePlan =
+        kind === "spatial"
+          ? this.shapes.pane(view, L, s, (id) => shapeMode(s.cellShapes, s.showImages && c.samplesById.get(id)!.images.length > 0), colorOf)
+          : null;
+      for (const [id, p] of L.placements) {
+        const smp = c.samplesById.get(id)!;
+        const sd = c.cache.samples.get(id);
+        const visible = intersects(p.worldBbox, vb);
+        if (smp.images.length && visible) layers.push(...this.imageLayers(s, view, id, p.modelMatrix));
+        if (!sd) continue;
+        const cc = colorOf(id)!;
+        const inp = cc.inputs;
+        const mode = cc.props.mode;
         layers.push(
           new ExpressionScatterLayer({
             id: `pts-${id}`,
             viewId: view,
             data: inp.data as any,
-            visible,
+            visible: visible && !shapePlan?.complete.has(id), // cell shapes stand in for these dots
             modelMatrix: p.modelMatrix,
             radiusUnits: "common",
             getRadius: smp.pointRadius * pointScaleFor(s.pointScale, view, kind),
@@ -153,17 +187,7 @@ export class LayerBuilder {
             pickable: false,
             opacity: mode === 2 ? 0.6 : 1,
             parameters: { depthWriteEnabled: false, depthCompare: "always" },
-            mode,
-            vmin: s.vrange[0],
-            vmax: s.vrange[1],
-            hideZeros: s.hideZeros,
-            valueScale,
-            valueCenter: signed ? 0.5 : 0,
-            filterOn: filterActive,
-            filterMin: s.filter ? filterRange(s.filter)[0] : 0,
-            filterMax: s.filter ? filterRange(s.filter)[1] : 1,
-            lut,
-            catColors,
+            ...cc.props,
             drawCount: drawCount(sd.nObs, p.worldBbox, zoom, [vw, vh]),
             getValue: 0,
             getValue2: 0,
@@ -173,13 +197,15 @@ export class LayerBuilder {
         );
       }
       if (kind === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
-      if (kind === "spatial" && s.showPolygons) layers.push(...this.polygonLayers(view, L));
+      if (shapePlan) layers.push(...shapePlan.layers);
+      if (kind === "spatial" && s.cellShapes !== "dots") layers.push(...this.polygonLayers(view, L));
       if (kind === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
       layers.push(...c.regions.layers(s, view, L));
       layers.push(...c.selection.layers(s, view, L));
       layers.push(...this.frameLayers(s, view, L));
     }
     this.liveImages = this.nextLiveImages;
+    this.shapes.endBuild();
     return layers;
   }
 
@@ -235,7 +261,7 @@ export class LayerBuilder {
     const vb = c.viewBbox(view);
     for (const [id, p] of L.placements) {
       const smp = c.samplesById.get(id)!;
-      if (!smp.polygons || !intersects(p.worldBbox, vb)) continue;
+      if (!smp.polygons || smp.shapes || !intersects(p.worldBbox, vb)) continue; // bundles built before shape tiles
       if (scale * smp.pointRadius * 2 < 6) continue;
       if (!c.cache.samples.get(id)) continue;
       const poly = c.cache.getPolygons(id, smp.polygons.scale);

@@ -166,7 +166,11 @@ Polygons can come from two places:
 
 Vertices must be in the same frame as the coordinates. If the object's coordinates were transposed, mirrored or shifted after segmentation, map the vertices with `affine: [a, b, c, d, e, f]` (`x' = a·x + b·y + c`, `y' = d·x + e·y + f`): a transpose is `[0, 1, 0, 1, 0, 0]`, a mirror across both axes with extents `Xmax`, `Ymax` is `[0, -1, Ymax, -1, 0, Xmax]`. The sample's own `transform:` and micron scaling are applied afterwards, so one setting keeps points, image and polygons together.
 
-The build reports how many cells matched and warns when polygon centroids sit far from their cells, which is the signature of a frame mismatch. A low match rate means the boundary file comes from a different segmentation run than the cells in the object.
+The build reports how many cells matched and warns when polygon centroids sit far from their cells, which is the signature of a frame mismatch. A low match rate means the boundary file comes from a different segmentation run than the cells in the object. Rings of cells that are not in the object (removed by QC) are dropped and counted.
+
+The build cuts the shapes into square tiles of up to 1 mm, so the viewer loads only the tiles in view: a 250k-cell
+Xenium section takes about 10 MB (about 44 B per cell) and 2 s to tile. Each ring keeps at most `max_vertices`
+vertices (24 by default, at most 255), stored to 0.1 µm.
 
 ## snRNA-seq and other embeddings
 

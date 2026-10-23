@@ -144,6 +144,35 @@ never tessellates). Positions upload as float32 rather than deck's default float
 Filled is the default only when no image is shown, so fills never hide the morphology. The word "outlines"
 stays reserved for the existing annotation-boundary panel.
 
+**Built (2026-10-22, branch `tiled-shapes`).** What shipped, and where it differs from the text above:
+
+- **Storage.** Vertices are stored to 0.1 µm in the sample frame, as int16 steps split into byte planes before zstd, not as int8 steps on the instrument grid. Measured on two amygdala sections: 44-45 B per cell (10.3 and 8.1 MB), against the 35 B planned and about 25 MB before. Tiling a 250k-cell section takes about 2 s.
+- **Location.** The tiles live in the sample folder and are rebuilt with the sample, because sections and per-asset fingerprints are not built yet. A `shapes_recipe` key in the fingerprint rebuilds samples with polygons once.
+- **Cell link.** Each ring stores its cell's bundle row, an idea taken from the Celldega review below. Shapes are coloured by gathering the four per-cell colour bytes per vertex from the arrays the dots already hold, through a shared GLSL colour function (`layers/colorModule.ts`). They are packed into two attributes, because deck's PathLayer already declares 13 of WebGL's 16.
+- **Viewer gates.** Shapes need a cell at least 6 px across, at most 40,000 cells per pane and at most 64 tiles across all panes. Tiles are fetched only once the camera has been still for 150 ms, with adjacent tiles coalesced into range requests of at most 1 MB. A 200 answer to a range request is an error. The cache holds 128 MB, and a sample whose visible tiles are all loaded hides its dots. At the busiest view, with 9 tiles and 11.4k cells in a 1440 x 900 pane, a frame costs 0.5 ms filled and 1.1 ms as edges, against about 29 ms for the whole-section PathLayer.
+- **Not yet built.** Hover on the shape under the cursor, the shared hover dispatcher, the tile container shared with molecules, and sections with per-asset fingerprints.
+
+## Prior art reviewed: Celldega (ideas only)
+
+Celldega (Broad Institute, academic non-commercial license; bioRxiv 2026, 10.64898/2026.08.13.744672) is fast for
+the same reason this plan is: it loads only the tiles in view and draws cell dots when zoomed out. We take ideas,
+never code, file layouts or names; whoever builds the molecule tiler works from this document. Adopted or to adopt:
+
+1. **Every outline knows its cell** (adopted in the shape tiles above).
+2. **Fetch only when the set of visible tiles changes and the camera settles** (adopted for shapes; molecules too).
+3. **Stream the molecule build** over 10x's gene-sorted `transcripts.parquet` one row group at a time into per-tile
+   buffers, which are gene-ordered for free, spilling to disk only above the memory guard.
+4. **Refuse a 200 answer to a range request** (adopted in the worker).
+5. **Molecules per gene in view** from the per-gene runs of loaded tiles, feeding the existing gene search rather
+   than a new panel.
+6. **A tile cap summed across panes** (adopted, 64).
+
+Where Celldega's choices would be worse here: Parquet decoded on the main thread (a 4 MB WebAssembly module, about
+16-18 B per transcript against our planned 3.2), one file per tile (its billion-transcript bundle is about 112,000
+files), no image tile cache, normal rather than additive channel blending, whole channels read into memory at build,
+and Visium HD bins turned into pseudo-transcripts. Its full-resolution 8-bit WebP default supports the lossy display
+path in Feature 4.
+
 ## Feature 2: molecules
 
 **Format.** Per section, stored once in the raw section frame and shared by every segmentation of that

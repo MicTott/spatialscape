@@ -290,7 +290,7 @@ export class ViewerController {
       s.selected !== prev.selected ||
       s.sampleStatus !== prev.sampleStatus ||
       s.outline !== prev.outline ||
-      s.showPolygons !== prev.showPolygons
+      s.cellShapes !== prev.cellShapes
     ) {
       this.requestLayers();
     }

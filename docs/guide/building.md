@@ -67,7 +67,7 @@ change. When every sample is rebuilt, vocabularies start fresh in the declared o
 
 - manifest parses; every referenced vocabulary, field and sample exists
 - expression arrays have the right shape and gene-major chunking, and one chunk reads back
-- observation arrays, id blocks and polygon files match `nObs`
+- observation arrays, id blocks and polygon files match `nObs`; every cell shape tile decodes to the rings its index claims, of rows inside the sample
 - categorical codes are below their vocabulary's size
 - images open and match their recorded size
 

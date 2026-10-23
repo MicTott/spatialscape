@@ -4,6 +4,7 @@ import type { FeatureList, LayoutMode, Manifest } from "../data/manifest";
 import type { Locus } from "../genome/model";
 
 export type BlendScheme = "yb" | "cm" | "rg";
+export type CellShapes = "auto" | "dots" | "filled" | "edges";
 export type ColorSpec = { kind: "gene"; gene: string } | { kind: "field"; field: string } | { kind: "blend"; a: string[]; b: string[]; scheme: BlendScheme };
 /** A lasso kept as part of a region group, in the coordinates of the section it was drawn on. */
 export interface RegionPolygon {
@@ -109,7 +110,8 @@ export interface ViewerState {
   groupField: string | null;
   groupStats: GroupStats | null;
   tool: "pan" | "lasso";
-  showPolygons: boolean;
+  cellShapes: CellShapes; // cell shapes once zoomed in: auto (filled, or edges over an image), dots, filled, edges
+  shapeHint: string | null; // "zoom in for cell shapes" when too many cells are in view to draw their shapes
   clusterLabels: boolean; // category names at the centre of their cells, in the embedding view
   genome: boolean; // the genome panel under the maps, when a sample carries tracks
   genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
@@ -246,7 +248,8 @@ export const store = createStore<ViewerState>((set, get) => ({
   groupField: null,
   groupStats: null,
   tool: "pan",
-  showPolygons: true,
+  cellShapes: "auto",
+  shapeHint: null,
   clusterLabels: true,
   genome: true,
   genomeHeight: storedGenomeHeight(),

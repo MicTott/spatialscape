@@ -17,7 +17,10 @@ Each one traces to a lesson from an earlier viewer:
 app/src
   views/ViewerController.ts   deck.gl Deck, two OrthographicViews, camera, store subscription, diagnostics
   views/loader.ts             manifest + sample opening + the arrays the current state needs
-  views/layers.ts             store state → deck.gl layers (points, images, outlines, polygons, frames, labels)
+  views/layers.ts             store state → deck.gl layers (points, images, outlines, cell shapes, frames, labels)
+  views/shapes.ts             cell shape tiles per pane: gate and budgets, fetch once the camera settles, cache, colour bytes
+  layers/colorModule.ts       the cell colour rule shared by dots, filled shapes and shape edges
+  layers/ShapeLayers.ts       ShapeFillLayer (worker-triangulated) and ShapeEdgeLayer
   views/interaction.ts        pointer + keyboard: hover lookup and tooltip rows, click, lasso gestures, shortcuts
   views/selection.ts          lasso polygon → selected indices, highlight layers, summary, CSV
   views/stats.ts              category counts, filter histogram, gene-by-annotation table
@@ -25,7 +28,8 @@ app/src
   layers/ExpressionScatterLayer.ts  ScatterplotLayer + 4 per-instance bytes (value, value2, category, filter),
                                     1D/2D LUT + palette textures, LOD prefix draw
   layers/imageLayers.ts       Viv MultiscaleImageLayer per sample image
-  data/worker.ts              zarrita reads (sharded zarr v3 + zstd), KDBush build, polygon decode
+  data/worker.ts              zarrita reads (sharded zarr v3 + zstd), KDBush build, shape tiles (coalesced ranges, decode, earcut)
+  data/shapeTiles.ts          shape tile index, tiles in view, range coalescing, tile decoder
   data/cache.ts               main-thread caches keyed by sample: positions, index, obs arrays, gene LRU
   store/store.ts              Zustand store: small descriptors only, never typed arrays
   url/urlState.ts             URLSearchParams ⇄ store

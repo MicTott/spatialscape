@@ -24,8 +24,10 @@
       num/<fieldId>  float32 (nObs)
     ids/<block>.json           obs names in blocks of idBlock (default 65536)
     outlines/<fieldId>.json    {bin, paths:[{c: code, p:[[x, y], ...]}]} µm polylines
-    polygons.offsets.u32       uint32[nObs+1] vertex start per cell
-    polygons.i16               int16 (dx, dy) × 10 deltas from the cell centroid
+    shapes.json                cell shape tile index: {version, grid (µm per unit, 0.1), tile (µm), origin [x, y] µm,
+                               nx, ny, reach (µm), layout "packed"|"files", tiles: [[ix, iy, offset, bytes, rings, vertices]]}
+    shapes.bin                 the tiles' zstd frames back to back, row-major (layout "packed", read with byte ranges);
+    shapes/<ix>_<iy>.bin       or one file per tile (layout "files", from `build --no-shard`)
     <imageId>.ome.zarr/        OME-Zarr NGFF 0.4 (zarr v2), axes c,y,x, 512² chunks
     tracks/                    ATAC samples built with `tracks:` (manifest samples[].tracks: genome, bin, units, all?, by)
       all.bw                   every cell, binned (bigWig): built from fragments, or copied when `bigwigs.all` was given
@@ -35,6 +37,24 @@
       genes/index.json         gene names per chromosome (search); genes/<chrom>.json: [name, strand, start, end, exon starts, exon ends]
     thumbnail.png
 ```
+
+### Cell shape tiles
+
+A ring belongs to the tile holding its centroid and is never clipped; a reader widens its view by `reach`, the
+largest distance from a ring's centroid to one of its vertices. One tile, after zstd, is little endian, with every
+multi-byte stream split into byte planes (low byte first):
+
+```
+u32 rings, u32 vertices
+row steps   u32[rings], 4 planes        bundle rows ascending; the first step is the first row itself
+counts      u8[rings]                   vertices per ring, the closing vertex not repeated
+start x, y  i16[rings] each, 2 planes   first vertex, grid units from the tile origin
+step x, y   i16[vertices - rings] each, 2 planes   steps between consecutive vertices of a ring
+```
+
+The tile size is the largest of 1024, 512, 256, 128 or 64 µm whose densest tile holds at most 2,048 rings. Every
+ring records its cell's bundle row, so the viewer colours shapes from the per-cell arrays it already holds.
+`python/src/spatialscape/shapes.py` writes and decodes it; `app/src/data/shapeTiles.ts` is the viewer's decoder.
 
 ## Design notes
 
@@ -65,7 +85,8 @@ type Manifest = {
     bbox: [minx, miny, maxx, maxy], toDataset: number[9], pointRadius,
     expr: {kind: "u8"|"csc", sharded, shardGenes}, hasF16, fields: string[],
     images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?, defaultOpacity}>,
-    outlines: string[], polygons?: {path, cells, vertices, scale}, idBlock
+    outlines: string[], shapes?: {path, cells, vertices, tile, tiles, bytes}, idBlock
+    // polygons?: {path, cells, vertices, scale}: whole-sample polygons of bundles built before shape tiles (still drawn)
   }>;
 };
 ```

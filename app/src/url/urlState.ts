@@ -82,7 +82,9 @@ export function readUrl(): Partial<ViewerState> {
     if (field) out.outline = { field, style: (["field", "light", "dark"].includes(style) ? style : "light") as "field" | "light" | "dark", width: num(width, 1.5) };
   }
   if (q.get("gf")) out.groupField = q.get("gf");
-  if (q.get("poly") === "0") out.showPolygons = false;
+  if (q.get("poly") === "0") out.cellShapes = "dots"; // links written before cell shapes had modes
+  const cs = q.get("cs");
+  if (cs === "dots" || cs === "filled" || cs === "edges") out.cellShapes = cs;
   if (q.get("cl") === "0") out.clusterLabels = false;
   if (q.get("gb") === "0") out.genome = false;
   const gl = /^([^:]+):(\d+)-(\d+)$/.exec(q.get("gl") ?? "");
@@ -146,7 +148,7 @@ export function serialize(s: ViewerState): string {
   if (groupScales.length) q.set("psg", groupScales.join(","));
   if (s.platforms) q.set("p", s.platforms.join(","));
   if (s.groupField) q.set("gf", s.groupField);
-  if (!s.showPolygons) q.set("poly", "0");
+  if (s.cellShapes !== "auto") q.set("cs", s.cellShapes);
   if (!s.clusterLabels) q.set("cl", "0");
   if (!s.genome) q.set("gb", "0");
   if (s.locus) q.set("gl", `${s.locus.chrom}:${Math.round(s.locus.start)}-${Math.round(s.locus.end)}`);

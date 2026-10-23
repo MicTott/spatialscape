@@ -86,10 +86,23 @@ class ExprSpec(_Model):
 
 
 class PolygonInfo(_Model):
+    """Whole-sample polygons of bundles built before cell shapes were tiled (read by the viewer, never written)."""
+
     path: str = "polygons"  # polygons.i16 + polygons.offsets.u32
     cells: int = 0  # cells that have a polygon
     vertices: int = 0
     scale: float = 0.1  # µm per int16 unit (deltas from the cell centroid)
+
+
+class ShapesInfo(_Model):
+    """Cell boundary shapes in spatial tiles: shapes.json (the index) plus shapes.bin or shapes/<ix>_<iy>.bin."""
+
+    path: str = "shapes"
+    cells: int = 0  # cells that have a shape
+    vertices: int = 0
+    tile: int = 0  # tile size, um
+    tiles: int = 0  # non-empty tiles
+    bytes: int = 0  # compressed size of all tiles
 
 
 class TrackSet(_Model):
@@ -136,7 +149,8 @@ class Sample(_Model):
     fields: list[str] = Field(default_factory=list)
     images: list[SampleImage] = Field(default_factory=list)
     outlines: list[str] = Field(default_factory=list)  # categorical field ids with outlines/<field>.json
-    polygons: PolygonInfo | None = None
+    polygons: PolygonInfo | None = None  # legacy, see PolygonInfo
+    shapes: ShapesInfo | None = None
     idBlock: int = 65536
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
     tracks: TracksInfo | None = None  # genome tracks (ATAC samples)

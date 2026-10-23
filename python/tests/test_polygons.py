@@ -1,38 +1,48 @@
+"""Cell boundary shapes: read from a parquet file or obsm, mapped into the sample frame, cut into spatial tiles that
+the viewer loads one view at a time, and decoded back exactly."""
+import json
+
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import yaml
 
+from spatialscape import shapes as S
 from spatialscape.build import build_dataset
 from spatialscape.config import load_config
-from spatialscape.polygons import pack_polygons
 from spatialscape.synthetic import make_synthetic
+from spatialscape.validate import validate_local
 
 
-def _build(cfg_path, out, patch):
+def _build(cfg_path, out, patch, *, sharded=True):
     doc = yaml.safe_load(cfg_path.read_text())
     doc["samples"] = [s for s in doc["samples"] if s["id"] == "sampleA"]
     patch(doc["samples"][0])
     cfg_path.write_text(yaml.safe_dump(doc))
     logs: list[str] = []
-    m = build_dataset(load_config(cfg_path), out, log=logs.append)
-    return m.samples[0], (out / "samples/sampleA/polygons.i16").read_bytes(), logs
+    m = build_dataset(load_config(cfg_path), out, sharded=sharded, log=logs.append)
+    return m.samples[0], S.read_shapes(out / "samples/sampleA"), logs
+
+
+def _same(a: dict, b: dict) -> bool:
+    return a.keys() == b.keys() and all(np.allclose(a[k], b[k], atol=1e-9) for k in a)
 
 
 def test_obsm_polygons_match_parquet_polygons(tmp_path):
     cfg = make_synthetic(tmp_path / "src", n_cells=150, n_genes=5)
-    s1, b1, _ = _build(cfg, tmp_path / "a", lambda s: None)  # parquet, as generated
-    s2, b2, logs = _build(cfg, tmp_path / "b", lambda s: s.update(polygons={"obsm": "segmentations"}))
-    assert s1.polygons.cells == s1.nObs == s2.polygons.cells
-    assert b1 == b2
+    s1, r1, logs1 = _build(cfg, tmp_path / "a", lambda s: None)  # parquet, as generated
+    s2, r2, logs = _build(cfg, tmp_path / "b", lambda s: s.update(polygons={"obsm": "segmentations"}))
+    assert s1.shapes.cells == s1.nObs == s2.shapes.cells and s1.polygons is None
+    assert _same(r1, r2)
     assert any("from obsm/segmentations" in line for line in logs)
+    assert any("cell shapes for 150/150 cells" in line for line in logs1)
 
 
 def test_obsm_polygons_are_auto_detected(tmp_path):
     cfg = make_synthetic(tmp_path / "src", n_cells=120, n_genes=5)
     s, _, logs = _build(cfg, tmp_path / "a", lambda s: s.pop("polygons"))
-    assert s.polygons is not None and s.polygons.cells == s.nObs
+    assert s.shapes is not None and s.shapes.cells == s.nObs
     assert any("auto polygons: obsm/segmentations" in line for line in logs)
 
 
@@ -43,13 +53,13 @@ def test_affine_maps_a_transposed_boundary_file_back(tmp_path):
         pa.table({"cell_id": t["cell_id"], "vertex_x": t["vertex_y"], "vertex_y": t["vertex_x"]}),
         tmp_path / "src/transposed.parquet",
     )
-    _, b_ref, _ = _build(cfg, tmp_path / "ref", lambda s: None)
-    _, b_fixed, logs_fixed = _build(
+    _, r_ref, _ = _build(cfg, tmp_path / "ref", lambda s: None)
+    _, r_fixed, logs_fixed = _build(
         cfg,
         tmp_path / "fixed",
         lambda s: s.update(polygons={"path": "transposed.parquet", "affine": [0, 1, 0, 1, 0, 0]}),
     )
-    assert b_fixed == b_ref
+    assert _same(r_fixed, r_ref)
     assert not any("warning: polygon centroids" in line for line in logs_fixed)
     _, _, logs_bad = _build(cfg, tmp_path / "bad", lambda s: s.update(polygons={"path": "transposed.parquet"}))
     assert any("warning: polygon centroids" in line for line in logs_bad)
@@ -64,13 +74,73 @@ def test_polygon_spec_requires_one_source(tmp_path):
         load_config(cfg)
 
 
-def test_pack_reports_centroid_offset():
-    xy = np.array([[0.0, 0.0], [10.0, 10.0]])
-    ids = ["a", "b"]
-    sq = np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=float)
-    pids = np.array(["a"] * 4 + ["b"] * 4)
-    pxy = np.vstack([sq, sq + [10, 10]])
-    _, _, n, dev = pack_polygons(ids, xy, pids, pxy)
-    assert n == 2 and dev == pytest.approx(0.0)
-    _, _, n, dev = pack_polygons(ids, xy, pids, pxy + [5, 0])
-    assert dev == pytest.approx(5.0)
+def _rings(n=400, seed=0, spread=3000.0, closed=True, k=8):
+    """n jittered k-gons scattered over `spread` um; returns obs ids, cell xy, long-format ids and vertices."""
+    rng = np.random.default_rng(seed)
+    xy = rng.random((n, 2)) * spread
+    ids = [f"c{i}" for i in range(n)]
+    ang = np.linspace(0, 2 * np.pi, k, endpoint=False)
+    pids, pts = [], []
+    for i in range(n):
+        r = 4 + rng.random(k) * 3
+        ring = xy[i] + np.c_[np.cos(ang) * r, np.sin(ang) * r]
+        ring = np.round(ring / 0.2125) * 0.2125  # on a Xenium-like pixel grid
+        if closed:
+            ring = np.vstack([ring, ring[:1]])
+        pids += [ids[i]] * len(ring)
+        pts.append(ring)
+    return ids, xy, np.array(pids), np.vstack(pts)
+
+
+def test_tiles_round_trip_every_ring_to_its_own_cell(tmp_path):
+    ids, xy, pids, pxy = _rings()
+    perm = np.random.default_rng(1).permutation(len(ids))  # bundle rows are shuffled relative to the file
+    obs = [ids[i] for i in perm]
+    st = S.write_shapes(tmp_path, obs, xy[perm], pids, pxy, max_vertices=24)
+    assert st.cells == 400 and st.vertices == 400 * 8 and st.unmatched == 0 and st.centroid_offset < 1.0
+    index = json.loads((tmp_path / "shapes.json").read_text())
+    assert index["layout"] == "packed" and sum(t[4] for t in index["tiles"]) == 400
+    back = S.read_shapes(tmp_path)
+    for row, ring in back.items():
+        cell = obs[row]
+        src = pxy[pids == cell][:-1]  # the closing vertex is not stored
+        assert np.abs(ring - src).max() <= S.GRID / 2 + 1e-9
+    # every ring sits in the tile of its centroid, and reach covers its vertices
+    blob = (tmp_path / "shapes.bin").read_bytes()
+    for ix, iy, off, nb, _nr, _nv in index["tiles"]:
+        o = (index["origin"][0] + ix * index["tile"], index["origin"][1] + iy * index["tile"])
+        rows, counts, v = S.decode_tile(blob[off : off + nb], o, index["grid"])
+        assert (np.diff(rows) > 0).all()  # ascending: the viewer gathers colours in row order
+        starts = np.cumsum(counts) - counts
+        cen = np.add.reduceat(v, starts, axis=0) / counts[:, None]
+        assert (np.floor((cen - o) / index["tile"]) == 0).all()
+        assert np.hypot(*(v - np.repeat(cen, counts, axis=0)).T).max() <= index["reach"] + 1e-6
+
+
+def test_long_rings_are_thinned_and_bad_rings_counted(tmp_path):
+    ids, xy, pids, pxy = _rings(n=30, k=40)
+    pids = np.concatenate([pids, ["ghost"] * 5, ["c0b"] * 2])  # an unknown cell, and a two-vertex ring
+    pxy = np.vstack([pxy, np.zeros((5, 2)), np.ones((2, 2))])
+    st = S.write_shapes(tmp_path, ids + ["c0b"], np.vstack([xy, [[1, 1]]]), pids, pxy, max_vertices=24)
+    assert st.cells == 30 and st.vertices == 30 * 24 and st.unmatched == 1 and st.degenerate == 1
+
+
+def test_dense_tissue_gets_smaller_tiles(tmp_path):
+    ids, xy, pids, pxy = _rings(n=3000, spread=600.0, closed=False)  # about 8k cells per mm2
+    st = S.write_shapes(tmp_path, ids, xy, pids, pxy)
+    assert st.tile < 1024
+    index = json.loads((tmp_path / "shapes.json").read_text())
+    assert max(t[4] for t in index["tiles"]) <= S.TILE_TARGET
+
+
+def test_one_file_per_tile_for_hosts_without_ranges_and_validate(tmp_path):
+    cfg = make_synthetic(tmp_path / "src", n_cells=150, n_genes=5)
+    _, r1, _ = _build(cfg, tmp_path / "packed", lambda s: None)
+    _, r2, _ = _build(cfg, tmp_path / "files", lambda s: None, sharded=False)
+    assert _same(r1, r2)
+    assert (tmp_path / "files/samples/sampleA/shapes").is_dir() and not (tmp_path / "files/samples/sampleA/shapes.bin").exists()
+    for d in ("packed", "files"):
+        assert validate_local(tmp_path / d) == []
+    blob = tmp_path / "packed/samples/sampleA/shapes.bin"
+    blob.write_bytes(blob.read_bytes()[:-3])
+    assert any("shape" in p for p in validate_local(tmp_path / "packed"))

@@ -353,7 +353,7 @@ function OutlinePanel() {
 function DisplayPanel() {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
-  const showPolygons = useViewer((s) => s.showPolygons);
+  const cellShapes = useViewer((s) => s.cellShapes);
   const clusterLabels = useViewer((s) => s.clusterLabels);
   const imageOpacity = useViewer((s) => s.imageOpacity);
   const layoutMode = useViewer((s) => s.layoutMode);
@@ -370,10 +370,21 @@ function DisplayPanel() {
           Strip
         </button>
       </div>
-      {manifest.samples.some((s) => s.polygons) && (
-        <label className="check">
-          <input type="checkbox" checked={showPolygons} onChange={(e) => set({ showPolygons: e.target.checked })} /> cell boundaries when zoomed in
-        </label>
+      {manifest.samples.some((s) => s.shapes || s.polygons) && (
+        <div className="cell-shapes" title="how cells are drawn once zoomed in far enough to see their shapes">
+          <span>cells when zoomed in</span>
+          <div className="tabs">
+            {(["dots", "filled", "edges"] as const).map((m) => {
+              // "auto" shows as filled, or as edges while an image is drawn under the cells
+              const shown = cellShapes === "auto" ? (showImages && hasImages ? "edges" : "filled") : cellShapes;
+              return (
+                <button key={m} className={shown === m ? "on" : ""} onClick={() => set({ cellShapes: m })}>
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
       {manifest.samples.some((s) => s.kind === "embedding") && (
         <label className="check">

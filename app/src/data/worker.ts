@@ -8,6 +8,7 @@ import * as Comlink from "comlink";
 import KDBush from "kdbush";
 import * as zarr from "zarrita";
 import { rasterize } from "../genome/raster";
+import { coalesce, decodeShapeTile, tileKey, type ShapeIndex, type ShapeTile, type ShapeTileEntry } from "./shapeTiles";
 
 type U8Array = zarr.Array<"uint8", zarr.FetchStore>;
 type Handles = {
@@ -25,6 +26,29 @@ type Handles = {
 const samples = new Map<string, Handles>();
 const inflight = new Map<string, Promise<unknown>>();
 const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
+const shapeIndexes = new Map<string, { index: ShapeIndex; byKey: Map<string, ShapeTileEntry> }>();
+let zstdCodec: Promise<{ decode(data: Uint8Array): Uint8Array | Promise<Uint8Array> }> | null = null;
+function zstd() {
+  zstdCodec ??= import("numcodecs/zstd").then((m) => m.default.fromConfig({ id: "zstd", level: 1 } as any));
+  return zstdCodec;
+}
+
+/** A byte range of a packed file. A host that ignores Range answers 200 with the whole file: refuse that rather
+ *  than download a whole section's shapes for one tile. */
+async function fetchRange(url: string, start: number, length: number): Promise<Uint8Array> {
+  const r = await fetch(url, { headers: { Range: `bytes=${start}-${start + length - 1}` } });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${url}`);
+  if (r.status !== 206) {
+    const len = Number(r.headers.get("Content-Length") ?? NaN);
+    if (!(start === 0 && len === length)) {
+      void r.body?.cancel();
+      throw new Error(`the host ignored the byte range for ${url}; serve the bundle from a host that supports Range requests, or build it with --no-shard`);
+    }
+  }
+  const b = new Uint8Array(await r.arrayBuffer());
+  if (b.length !== length) throw new Error(`expected ${length} bytes from ${url}, got ${b.length}`);
+  return b;
+}
 
 function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const cur = inflight.get(key) as Promise<T> | undefined;
@@ -149,6 +173,60 @@ const api = {
     const f = await bw.getFeaturesAsArrays(chrom, start, start + n * bin, { basesPerSpan: bin / 2 });
     const out = rasterize(f.starts, f.ends, f.scores, start, bin, n);
     return Comlink.transfer(out, [out.buffer]);
+  },
+
+  /** The cell shape tile index of a sample (shapes.json). */
+  async shapeIndex(sampleId: string): Promise<ShapeIndex> {
+    const hit = shapeIndexes.get(sampleId);
+    if (hit) return hit.index;
+    const h = samples.get(sampleId)!;
+    return dedupe(`shapes:${sampleId}`, async () => {
+      const index = await fetchJSON<ShapeIndex>(`${h.base}/shapes.json`);
+      shapeIndexes.set(sampleId, { index, byKey: new Map(index.tiles.map((e) => [tileKey(e[0], e[1]), e])) });
+      return index;
+    });
+  },
+
+  /** Decoded shape tiles by key ("ix_iy"): adjacent tiles of a packed file come in one range request of at most
+   *  1 MB, are decompressed and triangulated here, and every array is transferred. */
+  async shapeTiles(sampleId: string, keys: string[]): Promise<(ShapeTile & { key: string })[]> {
+    await api.shapeIndex(sampleId);
+    const { index, byKey } = shapeIndexes.get(sampleId)!;
+    const h = samples.get(sampleId)!;
+    const entries = keys.map((k) => byKey.get(k)).filter((e): e is ShapeTileEntry => !!e);
+    const codec = await zstd();
+    const frames: [ShapeTileEntry, Uint8Array][] = [];
+    if (index.layout === "packed") {
+      const runs = coalesce(entries);
+      const blobs = await Promise.all(runs.map((run) => fetchRange(`${h.base}/shapes.bin`, run[0][2], run.reduce((n, e) => n + e[3], 0))));
+      runs.forEach((run, i) => {
+        let o = 0;
+        for (const e of run) {
+          frames.push([e, blobs[i].subarray(o, o + e[3])]);
+          o += e[3];
+        }
+      });
+    } else {
+      const got = await Promise.all(
+        entries.map((e) =>
+          fetch(`${h.base}/shapes/${tileKey(e[0], e[1])}.bin`).then(async (r) => {
+            if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${r.url}`);
+            return new Uint8Array(await r.arrayBuffer());
+          }),
+        ),
+      );
+      entries.forEach((e, i) => frames.push([e, got[i]]));
+    }
+    const out: (ShapeTile & { key: string })[] = [];
+    const transfer: ArrayBuffer[] = [];
+    for (const [e, frame] of frames) {
+      const raw = await codec.decode(frame);
+      const origin: [number, number] = [index.origin[0] + e[0] * index.tile, index.origin[1] + e[1] * index.tile];
+      const t = decodeShapeTile(raw, origin, index.grid);
+      out.push({ key: tileKey(e[0], e[1]), ...t });
+      transfer.push(t.rows.buffer as ArrayBuffer, t.startIndices.buffer as ArrayBuffer, t.positions.buffer as ArrayBuffer, t.vertexRow.buffer as ArrayBuffer, t.indices.buffer as ArrayBuffer);
+    }
+    return Comlink.transfer(out, transfer);
   },
 
   async getPolygons(sampleId: string, xy: Float32Array, scale: number): Promise<{ positions: Float32Array; startIndices: Uint32Array }> {
