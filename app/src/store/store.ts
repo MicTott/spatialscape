@@ -112,6 +112,8 @@ export interface ViewerState {
   tool: "pan" | "lasso";
   cellShapes: CellShapes; // cell shapes once zoomed in: auto (filled, or edges over an image), dots, filled, edges
   shapeHint: string | null; // "zoom in for cell shapes" when too many cells are in view to draw their shapes
+  molecules: boolean; // individual molecules (transcripts) once zoomed in, when the bundle has them
+  moleculeHint: string | null; // "zoom in for molecules" when the view holds too many to draw
   clusterLabels: boolean; // category names at the centre of their cells, in the embedding view
   genome: boolean; // the genome panel under the maps, when a sample carries tracks
   genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
@@ -250,6 +252,8 @@ export const store = createStore<ViewerState>((set, get) => ({
   tool: "pan",
   cellShapes: "auto",
   shapeHint: null,
+  molecules: false,
+  moleculeHint: null,
   clusterLabels: true,
   genome: true,
   genomeHeight: storedGenomeHeight(),

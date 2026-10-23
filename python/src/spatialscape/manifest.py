@@ -105,6 +105,18 @@ class ShapesInfo(_Model):
     bytes: int = 0  # compressed size of all tiles
 
 
+class MoleculesInfo(_Model):
+    """Individual molecules in spatial tiles: molecules.json (the index, with the gene names) plus molecules.bin
+    or molecules/<ix>_<iy>.bin."""
+
+    path: str = "molecules"
+    count: int = 0
+    genes: int = 0
+    tile: int = 0  # tile size, um
+    tiles: int = 0
+    bytes: int = 0
+
+
 class TrackSet(_Model):
     field: str
     categories: dict[str, str]  # category label -> bigWig path relative to the sample folder
@@ -151,6 +163,7 @@ class Sample(_Model):
     outlines: list[str] = Field(default_factory=list)  # categorical field ids with outlines/<field>.json
     polygons: PolygonInfo | None = None  # legacy, see PolygonInfo
     shapes: ShapesInfo | None = None
+    molecules: MoleculesInfo | None = None
     idBlock: int = 65536
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
     tracks: TracksInfo | None = None  # genome tracks (ATAC samples)

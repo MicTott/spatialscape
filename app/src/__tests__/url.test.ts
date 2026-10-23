@@ -132,3 +132,15 @@ describe("image channels", () => {
     expect(new URLSearchParams(serialize(store.getState())).has("hc")).toBe(false);
   });
 });
+
+describe("molecules", () => {
+  it("round-trips the switch", () => {
+    expect(new URLSearchParams(serialize({ ...store.getState(), molecules: true } as ViewerState)).get("mol")).toBe("1");
+    expect(new URLSearchParams(serialize(store.getState())).has("mol")).toBe(false);
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: "?mol=1" } };
+    expect(readUrl().molecules).toBe(true);
+    g.window = saved;
+  });
+});

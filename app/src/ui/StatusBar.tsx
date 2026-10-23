@@ -9,6 +9,7 @@ export function StatusBar() {
   const manifest = useViewer((s) => s.manifest);
   const debug = useViewer((s) => s.debug);
   const shapeHint = useViewer((s) => s.shapeHint);
+  const moleculeHint = useViewer((s) => s.moleculeHint);
   if (status === "idle") return null;
   const n = Object.keys(sampleStatus).length;
   const ready = Object.values(sampleStatus).filter((x) => x === "ready").length;
@@ -20,7 +21,7 @@ export function StatusBar() {
       <span>{status === "loading" ? `loading ${ready}/${n} samples` : `${ready}/${n} samples`}</span>
       {errs > 0 && <span className="warn">{errs} failed</span>}
       {pending > 0 && <span className="pending">fetching {pending}…</span>}
-      {shapeHint && <span className="muted">{shapeHint}</span>}
+      {(shapeHint || moleculeHint) && <span className="muted">{[shapeHint, moleculeHint].filter(Boolean).join(" · ")}</span>}
       {debug && timings.lastGeneMs != null && <span title="time from gene selection to all samples colored">gene switch {timings.lastGeneMs.toFixed(0)} ms</span>}
       {debug && <span>{timings.fps} fps</span>}
       <span className="grow" />

@@ -60,6 +60,53 @@ def _check_shapes(p, s, d: Path) -> None:
         _problem(p, f"{s.id}: shapes hold {rings} cells and {vertices} vertices, the manifest says {s.shapes.cells} and {s.shapes.vertices}")
 
 
+def _check_molecules(p, s, d: Path) -> None:
+    """The molecule index agrees with its files, and every tile decodes to the count it claims."""
+    from .molecules import decode_tile
+
+    try:
+        index = json.loads((d / "molecules.json").read_text())
+        tiles = index["tiles"]
+        grid = float(index["grid"])
+        genes = index["genes"]
+        assert all(isinstance(t, list) and len(t) == 5 for t in tiles)
+    except (OSError, ValueError, KeyError, TypeError, AssertionError) as e:
+        _problem(p, f"{s.id}: molecules.json is not a molecule tile index ({e})")
+        return
+    packed = index.get("layout") == "packed"
+    blob = (d / "molecules.bin").read_bytes() if packed and (d / "molecules.bin").exists() else None
+    if packed and blob is None:
+        _problem(p, f"{s.id}: molecules.bin missing")
+        return
+    end = total = 0
+    for ix, iy, off, nbytes, n in tiles:
+        if packed:
+            if off != end:
+                _problem(p, f"{s.id}: molecule tile {ix},{iy} does not start where the previous one ends")
+                return
+            end = off + nbytes
+            frame = blob[off:end]
+        else:
+            f = d / "molecules" / f"{ix}_{iy}.bin"
+            if not f.exists():
+                _problem(p, f"{s.id}: molecules/{ix}_{iy}.bin missing")
+                return
+            frame = f.read_bytes()
+        try:
+            gene, _xy, flags = decode_tile(frame, (0.0, 0.0), grid)
+        except Exception as e:
+            _problem(p, f"{s.id}: molecule tile {ix},{iy} does not decode: {e}")
+            return
+        if len(gene) != n or len(flags) != n or (n and gene.max() >= len(genes)):
+            _problem(p, f"{s.id}: molecule tile {ix},{iy} disagrees with the index")
+            return
+        total += n
+    if packed and blob is not None and end != len(blob):
+        _problem(p, f"{s.id}: molecules.bin is {len(blob)} bytes, the index covers {end}")
+    if total != s.molecules.count or len(genes) != s.molecules.genes:
+        _problem(p, f"{s.id}: molecules hold {total} of {len(genes)} genes, the manifest says {s.molecules.count} of {s.molecules.genes}")
+
+
 def _problem(problems: list[str], msg: str) -> None:
     problems.append(msg)
 
@@ -215,6 +262,8 @@ def validate_local(root: Path) -> list[str]:
                 _problem(p, f"{s.id}: outlines/{fid}.json listed but missing")
         if s.shapes:
             _check_shapes(p, s, d)
+        if s.molecules:
+            _check_molecules(p, s, d)
         if s.polygons:
             off = d / "polygons.offsets.u32"
             dl = d / "polygons.i16"

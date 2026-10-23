@@ -355,6 +355,7 @@ function DisplayPanel() {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
   const cellShapes = useViewer((s) => s.cellShapes);
+  const molecules = useViewer((s) => s.molecules);
   const clusterLabels = useViewer((s) => s.clusterLabels);
   const imageOpacity = useViewer((s) => s.imageOpacity);
   const layoutMode = useViewer((s) => s.layoutMode);
@@ -388,6 +389,11 @@ function DisplayPanel() {
             })}
           </div>
         </div>
+      )}
+      {manifest.samples.some((s) => s.molecules) && (
+        <label className="check" title="individual transcripts once zoomed in far enough to tell them apart; they follow the gene or blend on screen, and draw in grey under an annotation">
+          <input type="checkbox" checked={molecules} onChange={(e) => set({ molecules: e.target.checked })} /> molecules when zoomed in
+        </label>
       )}
       {manifest.samples.some((s) => s.kind === "embedding") && (
         <label className="check">

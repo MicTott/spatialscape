@@ -28,6 +28,10 @@
                                nx, ny, reach (µm), layout "packed"|"files", tiles: [[ix, iy, offset, bytes, rings, vertices]]}
     shapes.bin                 the tiles' zstd frames back to back, row-major (layout "packed", read with byte ranges);
     shapes/<ix>_<iy>.bin       or one file per tile (layout "files", from `build --no-shard`)
+    molecules.json             molecule tile index: {version, grid (µm per unit, 1/64), tile (µm), origin, nx, ny, genes
+                               (names; a molecule's gene id indexes them), counts (per gene), count, flags ["assigned", "nucleus"],
+                               layout, tiles: [[ix, iy, offset, bytes, molecules]]}
+    molecules.bin              the tiles' zstd frames back to back, or molecules/<ix>_<iy>.bin
     <imageId>.ome.zarr/        OME-Zarr NGFF 0.4 (zarr v2), axes c,y,x, 512² chunks
     tracks/                    ATAC samples built with `tracks:` (manifest samples[].tracks: genome, bin, units, all?, by)
       all.bw                   every cell, binned (bigWig): built from fragments, or copied when `bigwigs.all` was given
@@ -55,6 +59,23 @@ step x, y   i16[vertices - rings] each, 2 planes   steps between consecutive ver
 The tile size is the largest of 1024, 512, 256, 128 or 64 µm whose densest tile holds at most 2,048 rings. Every
 ring records its cell's bundle row, so the viewer colours shapes from the per-cell arrays it already holds.
 `python/src/spatialscape/shapes.py` writes and decodes it; `app/src/data/shapeTiles.ts` is the viewer's decoder.
+
+### Molecule tiles
+
+Per sample, in the sample frame. The tile size is the largest of 512, 256, 128 or 64 µm whose densest tile holds at
+most 50,000 molecules. One tile, after zstd, little endian, multi-byte streams split into byte planes:
+
+```
+u32 n, u32 runs
+run gene    u16[runs], 2 planes    gene ids ascending (indexes molecules.json genes)
+run count   u32[runs], 4 planes    molecules of that gene
+dx, dy      i16[n] each, 2 planes  steps between consecutive molecules on the 1/64 µm grid, the first from the tile
+                                   origin; within a gene the order is a Morton curve, so steps are short
+flags       u8[n]                  bit 0 assigned to a cell, bit 1 overlaps the nucleus
+```
+
+About 3.5 bytes per molecule on Xenium data. `python/src/spatialscape/molecules.py` writes and decodes it;
+`app/src/data/moleculeTiles.ts` is the viewer's decoder.
 
 ## Design notes
 
@@ -85,7 +106,8 @@ type Manifest = {
     bbox: [minx, miny, maxx, maxy], toDataset: number[9], pointRadius,
     expr: {kind: "u8"|"csc", sharded, shardGenes}, hasF16, fields: string[],
     images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?, defaultOpacity}>,
-    outlines: string[], shapes?: {path, cells, vertices, tile, tiles, bytes}, idBlock
+    outlines: string[], shapes?: {path, cells, vertices, tile, tiles, bytes},
+    molecules?: {path, count, genes, tile, tiles, bytes}, idBlock
     // polygons?: {path, cells, vertices, scale}: whole-sample polygons of bundles built before shape tiles (still drawn)
   }>;
 };

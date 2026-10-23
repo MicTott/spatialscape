@@ -106,6 +106,22 @@ class PolygonSpec(_Model):
         return self
 
 
+class MoleculesSpec(_Model):
+    """Individual molecules (Xenium transcripts) from a long-format table, one row per molecule, such as
+    `transcripts.parquet`. Positions share the raw frame of the cell boundaries: `affine` defaults to the
+    polygons' affine, so a transposed export needs it only once."""
+
+    path: Path
+    feature_column: str = "feature_name"
+    x_column: str = "x_location"
+    y_column: str = "y_location"
+    qv_column: str | None = "qv"  # Phred quality; None keeps every row
+    min_qv: float = 20.0  # 10x's own threshold for the cell-by-gene matrix
+    cell_column: str | None = "cell_id"  # "UNASSIGNED" or null means not assigned to a cell
+    nucleus_column: str | None = "overlaps_nucleus"
+    affine: tuple[float, float, float, float, float, float] | None = None  # as polygons.affine; default: the polygons' affine
+
+
 def is_remote(p: object) -> bool:
     """`ssh://host/path`: read over ssh at build time, nothing stored locally."""
     return isinstance(p, str) and p.startswith("ssh://")
@@ -315,6 +331,7 @@ class SampleSpec(_Model):
     # explicit list, or "auto" to pick up image.ome.zarr / *.ome.zarr / spatial/tissue_hires_image.png next to the data
     images: list[ImageSpec] | Literal["auto"] = "auto"
     polygons: PolygonSpec | None = None
+    molecules: MoleculesSpec | None = None  # individual transcripts, tiled for the viewer
     subset: SubsetSpec | None = None  # rows to keep; the default is every observation in the file
     tracks: TracksSpec | None = None  # genome tracks from a fragment file (ATAC)
     extent: float = 5000.0  # embedding samples: rescale longest side to this many "um"
@@ -512,6 +529,8 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
                 im.path = res(im.path)
         if s.polygons and s.polygons.path is not None:
             s.polygons.path = res(s.polygons.path)
+        if s.molecules:
+            s.molecules.path = res(s.molecules.path)
         if s.tracks is not None:
             t = s.tracks
             if isinstance(t.fragments, dict):

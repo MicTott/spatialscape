@@ -44,10 +44,12 @@ from .manifest import (
     Layout,
     Manifest,
     MetaKey,
+    MoleculesInfo,
     Sample,
     SampleImage,
     ShapesInfo,
 )
+from .molecules import write_molecules
 from .obs import write_obs
 from .outlines import compute_outlines, write_outlines
 from .polygons import apply_affine, read_polygon_obsm, read_polygon_table
@@ -294,6 +296,37 @@ def build_sample(
                 "the boundary file is probably in a different frame than the coordinates (see polygons.affine)"
             )
 
+    # --- molecules --------------------------------------------------------
+    molecules_info = None
+    if spec.molecules:
+        ms = spec.molecules
+        affine = ms.affine or (spec.polygons.affine if spec.polygons else None)
+        log(f"[{spec.id}] molecules {ms.path}")
+
+        def to_frame(raw: np.ndarray, _affine=affine) -> np.ndarray:
+            x, y = raw[:, 0], raw[:, 1]
+            if _affine:
+                x, y = apply_affine(x, y, _affine)
+            return transform_points(np.column_stack([x, y]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu - shift
+
+        mst = write_molecules(
+            out_dir,
+            ms.path,
+            to_frame=to_frame,
+            columns={"feature": ms.feature_column, "x": ms.x_column, "y": ms.y_column, "qv": ms.qv_column or "", "cell": ms.cell_column or "", "nucleus": ms.nucleus_column or ""},
+            min_qv=ms.min_qv,
+            packed=sharded,
+            log=lambda m: log(f"[{spec.id}] {m}"),
+        )
+        molecules_info = MoleculesInfo(count=mst.count, genes=mst.genes, tile=mst.tile, tiles=mst.tiles, bytes=mst.bytes)
+        log(
+            f"[{spec.id}] molecules: {mst.count:,} of {mst.read:,} rows kept ({mst.low_quality:,} below Q{ms.min_qv:g}, {mst.controls:,} controls), "
+            f"{mst.genes} genes, {mst.tiles} tiles of {mst.tile} um, {mst.bytes / 2**20:.0f} MB ({mst.bytes / max(mst.count, 1):.1f} B each) in {mst.seconds:.0f} s"
+        )
+        unknown = [g for g in json.loads((out_dir / "molecules.json").read_text())["genes"] if g not in set(genes)]
+        if unknown:
+            log(f"[{spec.id}] note: {len(unknown)} molecule feature{'s' if len(unknown) != 1 else ''} not in the expression matrix (for example {', '.join(unknown[:3])}); they draw in grey only")
+
     # --- images -----------------------------------------------------------
     images: list[SampleImage] = []
     for im in spec.images:
@@ -390,6 +423,7 @@ def build_sample(
         images=images,
         outlines=outlines,
         shapes=shapes_info,
+        molecules=molecules_info,
         suggestedGene=suggested,
         tracks=tracks_info,
     )

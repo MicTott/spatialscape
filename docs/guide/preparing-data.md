@@ -172,6 +172,21 @@ The build cuts the shapes into square tiles of up to 1 mm, so the viewer loads o
 Xenium section takes about 10 MB (about 44 B per cell) and 2 s to tile. Each ring keeps at most `max_vertices`
 vertices (24 by default, at most 255), stored to 0.1 µm.
 
+## Molecules
+
+Xenium's `transcripts.parquet` (one row per decoded transcript) becomes molecules the viewer draws once zoomed in:
+
+```yaml
+molecules: { path: outs/transcripts.parquet }
+```
+
+The 10x column names are the defaults (`feature_name`, `x_location`, `y_location`, `qv`, `cell_id`,
+`overlaps_nucleus`); rows below `min_qv` (20, 10x's own threshold for the matrix) and control features are dropped
+and counted. Positions share the raw frame of the cell boundaries, so a `polygons.affine` applies to them too. The
+table is read one row group at a time and needs about 7 bytes of memory per kept molecule; a 100 M-molecule section
+tiles in about 40 s into about 340 MB (3.5 B per molecule). Genes not in the expression matrix are kept (they draw in
+grey only) and listed in the build log.
+
 ## snRNA-seq and other embeddings
 
 Declare the sample with `kind: embedding` and point `coords` at the UMAP (`obsm/X_umap`). It shares genes, annotations and the renderer with the spatial samples and appears in the embedding view beside the tissue. When its cell type labels use the same names as a spatial annotation, map both to the same field id and they share one vocabulary and one set of colors.

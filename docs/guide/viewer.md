@@ -144,6 +144,16 @@ H&E or fluorescence pyramids render under the points with an opacity slider. A f
 
 When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Cells when zoomed in* in the Display panel chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **edges**, outlines in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
 
+## Molecules
+
+When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), *molecules when zoomed in* in
+the Display panel draws them once a view holds few enough to tell apart: about one per ten screen pixels, counted
+from the tiles in view. Until then the status line says *zoom in for molecules*. They follow the colour on screen: the
+gene you are looking at draws in the colormap's top colour, a blend's two gene sets in the blend's colours, and under
+an annotation every molecule draws in grey, which is the view for judging a segmentation. Molecules not assigned to a
+cell draw dimmer, and the cell dots fade under them. Only the tiles in view are fetched, once the camera stops. The
+switch travels in the URL as `mol=1`.
+
 ## Sharing a view
 
 Copy the URL. It encodes the dataset, the focused sample, color and filter settings, hidden categories, outlines, split layout and camera. See [URL parameters](../reference/url) for the keys.

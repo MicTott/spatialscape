@@ -85,6 +85,7 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("poly") === "0") out.cellShapes = "dots"; // links written before cell shapes had modes
   const cs = q.get("cs");
   if (cs === "dots" || cs === "filled" || cs === "edges") out.cellShapes = cs;
+  if (q.get("mol") === "1") out.molecules = true;
   if (q.get("cl") === "0") out.clusterLabels = false;
   if (q.get("gb") === "0") out.genome = false;
   const gl = /^([^:]+):(\d+)-(\d+)$/.exec(q.get("gl") ?? "");
@@ -149,6 +150,7 @@ export function serialize(s: ViewerState): string {
   if (s.platforms) q.set("p", s.platforms.join(","));
   if (s.groupField) q.set("gf", s.groupField);
   if (s.cellShapes !== "auto") q.set("cs", s.cellShapes);
+  if (s.molecules) q.set("mol", "1");
   if (!s.clusterLabels) q.set("cl", "0");
   if (!s.genome) q.set("gb", "0");
   if (s.locus) q.set("gl", `${s.locus.chrom}:${Math.round(s.locus.start)}-${Math.round(s.locus.end)}`);

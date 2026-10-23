@@ -4,19 +4,13 @@
  * Pure functions, shared by the worker and the tests.
  */
 import { earcut } from "@math.gl/polygon";
+import { tilesInRect as tilesInRectBase, unplane16, unplane32, type TileIndexBase } from "./tileIndex";
 
 /** [ix, iy, byte offset in shapes.bin, bytes, rings, vertices] */
 export type ShapeTileEntry = [number, number, number, number, number, number];
 
-export interface ShapeIndex {
-  version: number;
-  grid: number; // um per stored unit
-  tile: number; // um
-  origin: [number, number]; // um, sample frame
-  nx: number;
-  ny: number;
+export interface ShapeIndex extends TileIndexBase {
   reach: number; // um: the largest centroid-to-vertex distance, by which a view is widened
-  layout: "packed" | "files";
   tiles: ShapeTileEntry[];
 }
 
@@ -30,53 +24,11 @@ export interface ShapeTile {
   bytes: number; // memory held, for the cache budget
 }
 
-export const tileKey = (ix: number, iy: number) => `${ix}_${iy}`;
+export { coalesce, tileKey } from "./tileIndex";
 
 /** The tiles a rectangle of the sample frame needs, widened by the index's reach. */
 export function tilesInRect(index: ShapeIndex, byKey: Map<string, ShapeTileEntry>, rect: [number, number, number, number]): ShapeTileEntry[] {
-  const [x0, y0, x1, y1] = rect;
-  const r = index.reach;
-  const i0 = Math.max(0, Math.floor((x0 - r - index.origin[0]) / index.tile));
-  const i1 = Math.min(index.nx - 1, Math.floor((x1 + r - index.origin[0]) / index.tile));
-  const j0 = Math.max(0, Math.floor((y0 - r - index.origin[1]) / index.tile));
-  const j1 = Math.min(index.ny - 1, Math.floor((y1 + r - index.origin[1]) / index.tile));
-  const out: ShapeTileEntry[] = [];
-  if (i1 < i0 || j1 < j0) return out;
-  if ((i1 - i0 + 1) * (j1 - j0 + 1) > byKey.size) {
-    for (const e of index.tiles) if (e[0] >= i0 && e[0] <= i1 && e[1] >= j0 && e[1] <= j1) out.push(e);
-    return out;
-  }
-  for (let j = j0; j <= j1; j++)
-    for (let i = i0; i <= i1; i++) {
-      const e = byKey.get(tileKey(i, j));
-      if (e) out.push(e);
-    }
-  return out;
-}
-
-/** Group tiles of a packed file into runs of adjacent bytes, each at most `maxBytes` (one range request per run). */
-export function coalesce(entries: ShapeTileEntry[], maxBytes = 1 << 20): ShapeTileEntry[][] {
-  const sorted = [...entries].sort((a, b) => a[2] - b[2]);
-  const runs: ShapeTileEntry[][] = [];
-  let cur: ShapeTileEntry[] = [];
-  let start = 0;
-  for (const e of sorted) {
-    const prev = cur[cur.length - 1];
-    if (prev && prev[2] + prev[3] === e[2] && e[2] + e[3] - start <= maxBytes) cur.push(e);
-    else {
-      if (cur.length) runs.push(cur);
-      cur = [e];
-      start = e[2];
-    }
-  }
-  if (cur.length) runs.push(cur);
-  return runs;
-}
-
-function unplane16(buf: Uint8Array, o: number, n: number): Int16Array {
-  const out = new Int16Array(n);
-  for (let i = 0; i < n; i++) out[i] = (buf[o + i] | (buf[o + n + i] << 8)) << 16 >> 16;
-  return out;
+  return tilesInRectBase(index, byKey, rect, index.reach);
 }
 
 /** Decode one decompressed tile (see the layout in shapes.py). */
@@ -88,12 +40,8 @@ export function decodeShapeTile(buf: Uint8Array, origin: [number, number], grid:
     return { rows: new Uint32Array(0), startIndices: new Uint32Array(1), positions: new Float32Array(0), vertexRow: new Uint32Array(0), indices: new Uint32Array(0), bytes: 0 };
   }
   let o = 8;
-  const rows = new Uint32Array(rings);
-  let acc = 0;
-  for (let i = 0; i < rings; i++) {
-    acc += (buf[o + i] | (buf[o + rings + i] << 8) | (buf[o + 2 * rings + i] << 16) | (buf[o + 3 * rings + i] << 24)) >>> 0;
-    rows[i] = acc;
-  }
+  const rows = unplane32(buf, o, rings);
+  for (let i = 1; i < rings; i++) rows[i] += rows[i - 1]; // steps -> rows
   o += 4 * rings;
   const counts = buf.subarray(o, o + rings);
   o += rings;

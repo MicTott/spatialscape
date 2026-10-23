@@ -290,7 +290,8 @@ export class ViewerController {
       s.selected !== prev.selected ||
       s.sampleStatus !== prev.sampleStatus ||
       s.outline !== prev.outline ||
-      s.cellShapes !== prev.cellShapes
+      s.cellShapes !== prev.cellShapes ||
+      s.molecules !== prev.molecules
     ) {
       this.requestLayers();
     }

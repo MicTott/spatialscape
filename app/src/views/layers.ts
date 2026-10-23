@@ -9,6 +9,7 @@ import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
 import { pointScaleFor } from "./panes";
 import { drawCount, intersects } from "./lod";
+import { MoleculeManager } from "./molecules";
 import { ShapeManager, shapeMode, type CellColor } from "./shapes";
 import { filterRange, overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -28,9 +29,11 @@ export class LayerBuilder {
   private centroidCache = new Map<string, Centroid[]>();
   private outlinePending = new Set<string>(); // outline fetches already counted in store.pending
   readonly shapes: ShapeManager;
+  readonly molecules: MoleculeManager;
 
   constructor(private c: ViewerController) {
     this.shapes = new ShapeManager(c);
+    this.molecules = new MoleculeManager(c);
   }
 
   private lut(name: string): Uint8Array {
@@ -51,6 +54,7 @@ export class LayerBuilder {
     this.centroidCache.clear();
     this.outlinePending.clear();
     this.shapes.reset();
+    this.molecules.reset();
   }
 
   /** Forget what was cached for a field whose colours or codes changed under the same name (the drawn regions). */
@@ -112,6 +116,7 @@ export class LayerBuilder {
     const layers: any[] = [];
     this.nextLiveImages = new Set();
     this.shapes.beginBuild();
+    this.molecules.beginBuild();
     const colorField = s.color?.kind === "field" ? fieldById(c.manifest, s.color.field) : undefined;
     const baseMode: 0 | 1 | 3 = s.color?.kind === "blend" ? 3 : colorField?.type === "categorical" ? 1 : 0;
     const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
@@ -161,6 +166,7 @@ export class LayerBuilder {
         kind === "spatial"
           ? this.shapes.pane(view, L, s, (id) => shapeMode(s.cellShapes, s.showImages && c.samplesById.get(id)!.images.length > 0), colorOf)
           : null;
+      const moleculePlan = kind === "spatial" ? this.molecules.pane(view, L, s) : null;
       for (const [id, p] of L.placements) {
         const smp = c.samplesById.get(id)!;
         const sd = c.cache.samples.get(id);
@@ -186,7 +192,8 @@ export class LayerBuilder {
             filled: true,
             antialiasing: true,
             pickable: false,
-            opacity: mode === 2 ? 0.6 : 1,
+            // dots fade under molecules, which carry the same information at a finer grain
+            opacity: (mode === 2 ? 0.6 : 1) * (moleculePlan?.drawn.has(id) ? 0.35 : 1),
             parameters: { depthWriteEnabled: false, depthCompare: "always" },
             ...cc.props,
             drawCount: drawCount(sd.nObs, p.worldBbox, zoom, [vw, vh]),
@@ -199,6 +206,7 @@ export class LayerBuilder {
       }
       if (kind === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
       if (shapePlan) layers.push(...shapePlan.layers);
+      if (moleculePlan) layers.push(...moleculePlan.layers);
       if (kind === "spatial" && s.cellShapes !== "dots") layers.push(...this.polygonLayers(view, L));
       if (kind === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
       layers.push(...c.regions.layers(s, view, L));
@@ -207,6 +215,7 @@ export class LayerBuilder {
     }
     this.liveImages = this.nextLiveImages;
     this.shapes.endBuild();
+    this.molecules.endBuild();
     return layers;
   }
 

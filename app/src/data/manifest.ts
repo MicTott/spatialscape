@@ -95,6 +95,7 @@ export interface Sample {
   outlines?: string[];
   polygons?: { path: string; cells: number; vertices: number; scale: number } | null; // bundles built before shape tiles
   shapes?: { path: string; cells: number; vertices: number; tile: number; tiles: number; bytes: number } | null;
+  molecules?: { path: string; count: number; genes: number; tile: number; tiles: number; bytes: number } | null;
   idBlock: number;
   suggestedGene?: string | null; // most variable gene; the dataset default when none is configured
   tracks?: TracksInfo | null; // genome tracks (ATAC samples)

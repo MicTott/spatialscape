@@ -104,6 +104,11 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
         spec_json["shapes_recipe"] = SHAPES_RECIPE  # cell shapes are tiled since recipe 1
     if resolved.polygons is not None and resolved.polygons.path is not None:
         paths.append(resolved.polygons.path)
+    if resolved.molecules is not None:
+        from .molecules import MOLECULES_RECIPE
+
+        spec_json["molecules_recipe"] = MOLECULES_RECIPE
+        paths.append(resolved.molecules.path)
     if resolved.tracks is not None:
         from .tracks import TRACKS_RECIPE
 

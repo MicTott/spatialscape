@@ -8,7 +8,9 @@ import * as Comlink from "comlink";
 import KDBush from "kdbush";
 import * as zarr from "zarrita";
 import { rasterize } from "../genome/raster";
-import { coalesce, decodeShapeTile, tileKey, type ShapeIndex, type ShapeTile, type ShapeTileEntry } from "./shapeTiles";
+import { decodeMoleculeTile, type MoleculeTile } from "./moleculeTiles";
+import { decodeShapeTile, type ShapeTile } from "./shapeTiles";
+import { coalesce, indexByKey, tileKey, type TileEntry, type TileIndexBase } from "./tileIndex";
 
 type U8Array = zarr.Array<"uint8", zarr.FetchStore>;
 type Handles = {
@@ -26,7 +28,8 @@ type Handles = {
 const samples = new Map<string, Handles>();
 const inflight = new Map<string, Promise<unknown>>();
 const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
-const shapeIndexes = new Map<string, { index: ShapeIndex; byKey: Map<string, ShapeTileEntry> }>();
+type TileKind = "shapes" | "molecules";
+const tileIndexes = new Map<string, { index: TileIndexBase; byKey: Map<string, TileEntry> }>(); // `${kind}:${sampleId}`
 let zstdCodec: Promise<{ decode(data: Uint8Array): Uint8Array | Promise<Uint8Array> }> | null = null;
 function zstd() {
   zstdCodec ??= import("numcodecs/zstd").then((m) => m.default.fromConfig({ id: "zstd", level: 1 } as any));
@@ -48,6 +51,44 @@ async function fetchRange(url: string, start: number, length: number): Promise<U
   const b = new Uint8Array(await r.arrayBuffer());
   if (b.length !== length) throw new Error(`expected ${length} bytes from ${url}, got ${b.length}`);
   return b;
+}
+
+/** The decompressed frames of some tiles of a sample: [key, bytes, tile origin, index]. Adjacent tiles of a packed
+ *  file come in one range request of at most 1 MB; the "files" layout fetches one file per tile. */
+async function tileFrames(kind: TileKind, sampleId: string, keys: string[]): Promise<[string, Uint8Array, [number, number], TileIndexBase][]> {
+  await api.tileIndex(kind, sampleId);
+  const { index, byKey } = tileIndexes.get(`${kind}:${sampleId}`)!;
+  const h = samples.get(sampleId)!;
+  const entries = keys.map((k) => byKey.get(k)).filter((e): e is TileEntry => !!e);
+  const codec = await zstd();
+  const frames: [TileEntry, Uint8Array][] = [];
+  if (index.layout === "packed") {
+    const runs = coalesce(entries);
+    const blobs = await Promise.all(runs.map((run) => fetchRange(`${h.base}/${kind}.bin`, run[0][2], run.reduce((n, e) => n + e[3], 0))));
+    runs.forEach((run, i) => {
+      let o = 0;
+      for (const e of run) {
+        frames.push([e, blobs[i].subarray(o, o + e[3])]);
+        o += e[3];
+      }
+    });
+  } else {
+    const got = await Promise.all(
+      entries.map((e) =>
+        fetch(`${h.base}/${kind}/${tileKey(e[0], e[1])}.bin`).then(async (r) => {
+          if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${r.url}`);
+          return new Uint8Array(await r.arrayBuffer());
+        }),
+      ),
+    );
+    entries.forEach((e, i) => frames.push([e, got[i]]));
+  }
+  const out: [string, Uint8Array, [number, number], TileIndexBase][] = [];
+  for (const [e, frame] of frames) {
+    const raw = await codec.decode(frame);
+    out.push([tileKey(e[0], e[1]), raw, [index.origin[0] + e[0] * index.tile, index.origin[1] + e[1] * index.tile], index]);
+  }
+  return out;
 }
 
 function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -175,14 +216,14 @@ const api = {
     return Comlink.transfer(out, [out.buffer]);
   },
 
-  /** The cell shape tile index of a sample (shapes.json). */
-  async shapeIndex(sampleId: string): Promise<ShapeIndex> {
-    const hit = shapeIndexes.get(sampleId);
+  /** A sample's tile index (shapes.json or molecules.json). */
+  async tileIndex(kind: TileKind, sampleId: string): Promise<TileIndexBase> {
+    const hit = tileIndexes.get(`${kind}:${sampleId}`);
     if (hit) return hit.index;
     const h = samples.get(sampleId)!;
-    return dedupe(`shapes:${sampleId}`, async () => {
-      const index = await fetchJSON<ShapeIndex>(`${h.base}/shapes.json`);
-      shapeIndexes.set(sampleId, { index, byKey: new Map(index.tiles.map((e) => [tileKey(e[0], e[1]), e])) });
+    return dedupe(`${kind}:${sampleId}`, async () => {
+      const index = await fetchJSON<TileIndexBase>(`${h.base}/${kind}.json`);
+      tileIndexes.set(`${kind}:${sampleId}`, { index, byKey: indexByKey(index.tiles) });
       return index;
     });
   },
@@ -190,41 +231,24 @@ const api = {
   /** Decoded shape tiles by key ("ix_iy"): adjacent tiles of a packed file come in one range request of at most
    *  1 MB, are decompressed and triangulated here, and every array is transferred. */
   async shapeTiles(sampleId: string, keys: string[]): Promise<(ShapeTile & { key: string })[]> {
-    await api.shapeIndex(sampleId);
-    const { index, byKey } = shapeIndexes.get(sampleId)!;
-    const h = samples.get(sampleId)!;
-    const entries = keys.map((k) => byKey.get(k)).filter((e): e is ShapeTileEntry => !!e);
-    const codec = await zstd();
-    const frames: [ShapeTileEntry, Uint8Array][] = [];
-    if (index.layout === "packed") {
-      const runs = coalesce(entries);
-      const blobs = await Promise.all(runs.map((run) => fetchRange(`${h.base}/shapes.bin`, run[0][2], run.reduce((n, e) => n + e[3], 0))));
-      runs.forEach((run, i) => {
-        let o = 0;
-        for (const e of run) {
-          frames.push([e, blobs[i].subarray(o, o + e[3])]);
-          o += e[3];
-        }
-      });
-    } else {
-      const got = await Promise.all(
-        entries.map((e) =>
-          fetch(`${h.base}/shapes/${tileKey(e[0], e[1])}.bin`).then(async (r) => {
-            if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${r.url}`);
-            return new Uint8Array(await r.arrayBuffer());
-          }),
-        ),
-      );
-      entries.forEach((e, i) => frames.push([e, got[i]]));
-    }
     const out: (ShapeTile & { key: string })[] = [];
     const transfer: ArrayBuffer[] = [];
-    for (const [e, frame] of frames) {
-      const raw = await codec.decode(frame);
-      const origin: [number, number] = [index.origin[0] + e[0] * index.tile, index.origin[1] + e[1] * index.tile];
+    for (const [key, raw, origin, index] of await tileFrames("shapes", sampleId, keys)) {
       const t = decodeShapeTile(raw, origin, index.grid);
-      out.push({ key: tileKey(e[0], e[1]), ...t });
+      out.push({ key, ...t });
       transfer.push(t.rows.buffer as ArrayBuffer, t.startIndices.buffer as ArrayBuffer, t.positions.buffer as ArrayBuffer, t.vertexRow.buffer as ArrayBuffer, t.indices.buffer as ArrayBuffer);
+    }
+    return Comlink.transfer(out, transfer);
+  },
+
+  /** Decoded molecule tiles by key, the same way. */
+  async moleculeTiles(sampleId: string, keys: string[]): Promise<(MoleculeTile & { key: string })[]> {
+    const out: (MoleculeTile & { key: string })[] = [];
+    const transfer: ArrayBuffer[] = [];
+    for (const [key, raw, origin, index] of await tileFrames("molecules", sampleId, keys)) {
+      const t = decodeMoleculeTile(raw, origin, index.grid);
+      out.push({ key, ...t });
+      transfer.push(t.positions.buffer as ArrayBuffer, t.gene.buffer as ArrayBuffer, t.flags.buffer as ArrayBuffer, t.runs.buffer as ArrayBuffer, t.runStarts.buffer as ArrayBuffer);
     }
     return Comlink.transfer(out, transfer);
   },

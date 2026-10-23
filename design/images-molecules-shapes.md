@@ -203,6 +203,15 @@ FOV or codeword columns; serving 10x's `transcripts.zarr.zip` or the parquet dir
 molecule, no JavaScript reader); a gene-major second copy (only useful to see one sparse gene's molecules across
 a whole section, which the cell colouring already shows); KDBush or GPU picking for molecules.
 
+**Built (2026-10-23, branch `tiled-shapes`).** As planned, with these differences: tiles are 512 to 64 µm (512 µm
+is the int16 step range at 1/64 µm), the amygdala lands on 128 µm (the plan guessed 256); gene runs carry an explicit
+(gene, count) table rather than implicit ids; the raw amygdala tables (XOA 1.9/2.0) are sorted spatially, not by gene,
+so the build collects per tile in memory (7 B per kept molecule) and sorts each tile, with no spill to disk yet (a
+137 M-molecule section needs about 1 GB). Measured: Br9017 51.6 M molecules in 20 s, 183 MB (3.7 B each); Br9280
+101 M in 38 s, 338 MB (3.5 B each). The viewer's gate scales each tile's count by the share of the tile inside the
+view. Not yet built: hover on molecules, the legend row, PNG export waiting on molecule tiles, molecule-per-gene counts
+in view, and `init` proposing the `molecules:` line.
+
 ## Feature 3: comparing segmentations
 
 Xenium Explorer shows one cell and one nucleus polygon set per bundle and has no in-app comparison; comparing

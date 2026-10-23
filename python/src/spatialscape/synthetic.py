@@ -89,6 +89,29 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
         pa.table({"cell_id": cid, "vertex_x": vx.ravel(), "vertex_y": vy.ravel()}),
         path.with_suffix(".polygons.parquet"),
     )
+    # fake molecules, 10x transcripts.parquet style: a few per cell per expressed gene, scattered around the cell
+    # (pixel units, the coordinate frame), 40% not assigned to a cell, some below Q20 and a few control probes
+    per = np.rint(np.minimum(X, 6)).astype(int)  # molecules of each gene in each cell
+    cell_i = np.repeat(np.arange(n), per.sum(1))
+    gene_i = np.concatenate([np.repeat(np.arange(n_genes), per[i]) for i in range(n)]) if per.sum() else np.zeros(0, dtype=int)
+    m = len(cell_i)
+    mxy = xy[cell_i] + rng.normal(0, 2.0, size=(m, 2))
+    assigned = rng.random(m) < 0.6
+    rows = {
+        "transcript_id": np.arange(m, dtype=np.uint64),
+        "cell_id": np.where(assigned, np.asarray(obs.index)[cell_i], "UNASSIGNED"),
+        "overlaps_nucleus": (assigned & (rng.random(m) < 0.5)).astype(np.uint8),
+        "feature_name": np.asarray(genes)[gene_i],
+        "x_location": mxy[:, 0].astype(np.float32),
+        "y_location": mxy[:, 1].astype(np.float32),
+        "qv": np.where(rng.random(m) < 0.15, 12.0, 32.5).astype(np.float32),
+    }
+    ctrl = 40
+    for k, v in rows.items():
+        extra = {"feature_name": np.array([f"NegControlProbe_{i % 4:05d}" for i in range(ctrl)]), "cell_id": np.array(["UNASSIGNED"] * ctrl), "qv": np.full(ctrl, 32.5, np.float32)}
+        rows[k] = np.concatenate([v, extra.get(k, np.resize(v[:1], ctrl) if len(v) else np.zeros(ctrl, v.dtype))])
+    order = rng.permutation(len(rows["qv"]))  # like 10x, not sorted by gene
+    pq.write_table(pa.table({k: v[order] for k, v in rows.items()}), path.with_suffix(".transcripts.parquet"), row_group_size=5000)
 
 
 def _write_de_tables(out: Path, groups: dict[str, tuple[str, str]], n_genes: int) -> None:
@@ -158,6 +181,7 @@ def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparison
                 "fields": {"cluster": "cluster", "total_counts": "total_counts"},
                 "images": [{"id": "he", "name": "H&E", "path": "sampleA.png"}],
                 "polygons": {"path": "sampleA.polygons.parquet"},
+                "molecules": {"path": "sampleA.transcripts.parquet"},
             },
             {
                 "id": "sampleB",
@@ -169,6 +193,7 @@ def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparison
                 "fields": {"cluster": "cluster", "total_counts": "total_counts"},
                 "images": [{"id": "he", "name": "H&E", "path": "sampleB.png"}],
                 "polygons": {"path": "sampleB.polygons.parquet"},
+                "molecules": {"path": "sampleB.transcripts.parquet"},
             },
             {
                 "id": "umapA",
