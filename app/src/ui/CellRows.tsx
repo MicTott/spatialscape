@@ -60,7 +60,7 @@ export function CellRows() {
           name="Annotation boundaries"
           on={outline.field != null}
           onToggle={(v) => set({ outline: { ...outline, field: v ? (lastOutline ?? outlineFields[0].id) : null } })}
-          summary={outline.field ? (manifest.fields.find((f) => f.id === outline.field)?.name ?? outline.field) : "annotation boundaries"}
+          summary={outline.field ? (manifest.fields.find((f) => f.id === outline.field)?.name ?? outline.field) : "off"}
         >
           <select
             value={outline.field ?? ""}
