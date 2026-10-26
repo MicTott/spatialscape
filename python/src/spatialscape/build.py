@@ -7,8 +7,9 @@ import json
 import re
 import shutil
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -75,7 +76,13 @@ def _fields_manifest(fields: list[FieldSpec], vocab: VocabRegistry):
     return out
 
 
-def crop_to_points(img: np.ndarray, pixel_size: float, translate: tuple[float, float], bbox: tuple[float, float, float, float], margin: float = 0.03) -> tuple[np.ndarray, tuple[float, float]]:
+def crop_to_points(
+    img: np.ndarray,
+    pixel_size: float,
+    translate: tuple[float, float],
+    bbox: tuple[float, float, float, float],
+    margin: float = 0.03,
+) -> tuple[np.ndarray, tuple[float, float]]:
     """Cut an image (c, y, x) placed at `translate` (um) with `pixel_size` um/px down to the points' bounding box plus
     a margin (a fraction of its longer side), and return the image with its new translate. A slide scan reaches well
     past the capture area; without this the H&E, not the tissue, sets the size of every grid cell."""
@@ -94,7 +101,9 @@ def crop_to_points(img: np.ndarray, pixel_size: float, translate: tuple[float, f
     return out, (translate[0] + px0 * pixel_size, translate[1] + py0 * pixel_size)
 
 
-def mask_to_points(img: np.ndarray, pixel_size: float, translate: tuple[float, float], xy: np.ndarray, margin_um: float, *, rgb: bool) -> np.ndarray:
+def mask_to_points(
+    img: np.ndarray, pixel_size: float, translate: tuple[float, float], xy: np.ndarray, margin_um: float, *, rgb: bool
+) -> np.ndarray:
     """Blank every pixel farther than `margin_um` from any point (white for RGB, black for fluorescence), so a slide
     image shared by several sections shows only this section's tissue."""
     from scipy import ndimage
@@ -138,6 +147,283 @@ def suggested_default(samples: list[Sample], genes: list[str]) -> str | None:
         if s.suggestedGene in genes:
             return s.suggestedGene
     return genes[0] if genes else None
+
+
+@dataclass(frozen=True)
+class _Frame:
+    """The sample's frame: source coordinates to microns, flipped and rotated with the sample, and shifted so the
+    cells' minimum sits at the origin. Cells, cell shapes, other segmentations and molecules all pass through the
+    one frame, so they land on each other."""
+
+    width: (
+        float  # of the source frame in source units: the image's extent when one sets the scale, else the coordinates'
+    )
+    height: float
+    flip: str
+    rotate: int
+    upu: float  # microns per source unit
+    shift: np.ndarray = field(default_factory=lambda: np.zeros(2))
+
+    def points(self, raw: np.ndarray, affine=None) -> np.ndarray:
+        """Source points (n, 2), through `affine` when given, into the sample frame in microns."""
+        if affine:
+            x, y = apply_affine(raw[:, 0], raw[:, 1], affine)
+            raw = np.column_stack([x, y])
+        return transform_points(raw, self.width, self.height, self.flip, self.rotate) * self.upu - self.shift
+
+
+def _auto_polygons(spec: SampleSpec, adata, log: Log) -> SampleSpec:
+    """A spatial sample without `polygons:` takes its cell boundaries from a known obsm key when one is there."""
+    if spec.polygons is not None or spec.kind != "spatial":
+        return spec
+    for key in AUTO_POLYGON_OBSM:
+        arr = adata.obsm.get(key, None)
+        if arr is not None and np.ndim(arr) == 3 and np.shape(arr)[2] == 2:
+            log(f"[{spec.id}] auto polygons: obsm/{key}")
+            return spec.model_copy(update={"polygons": PolygonSpec(obsm=key)})
+    return spec
+
+
+def _write_cell_shapes(
+    spec: SampleSpec,
+    adata,
+    out_dir: Path,
+    frame: _Frame,
+    ids: list[str],
+    xy: np.ndarray,
+    radius: float,
+    *,
+    sharded: bool,
+    log: Log,
+) -> ShapesInfo | None:
+    """The cells' own boundaries as shape tiles, with a warning when they sit in another frame than the cells."""
+    ps = spec.polygons
+    if not ps:
+        return None
+    if ps.obsm:
+        log(f"[{spec.id}] polygons from obsm/{ps.obsm}")
+        pids, px_, py_ = read_polygon_obsm(adata, ps.obsm)
+    else:
+        log(f"[{spec.id}] polygons {ps.path}")
+        pids, px_, py_ = read_polygon_table(ps.path, ps.id_column, ps.x_column, ps.y_column)
+    pxy = frame.points(np.column_stack([px_, py_]), ps.affine)
+    st = write_shapes(out_dir, ids, xy, pids, pxy, max_vertices=ps.max_vertices, packed=sharded)
+    info = ShapesInfo(
+        cells=st.cells,
+        vertices=st.vertices,
+        tile=st.tile,
+        tiles=st.tiles,
+        bytes=st.bytes,
+        medianArea=round(st.median_area, 2),
+    )
+    dropped = "".join(
+        f", {k} {v} dropped" for k, v in (("unmatched", st.unmatched), ("degenerate", st.degenerate)) if v
+    )
+    log(
+        f"[{spec.id}] cell shapes for {st.cells}/{len(ids)} cells: {st.tiles} tiles of {st.tile} um, {st.bytes / 2**20:.1f} MB ({st.bytes / max(st.cells, 1):.0f} B per cell){dropped}"
+    )
+    with_poly, dev = st.cells, st.centroid_offset
+    if with_poly and dev > max(10.0, 2.0 * radius):
+        log(
+            f"[{spec.id}] warning: polygon centroids sit a median {dev:.1f} um from their cells; "
+            "the boundary file is probably in a different frame than the coordinates (see polygons.affine)"
+        )
+
+    return info
+
+
+def _write_segmentations(
+    spec: SampleSpec, out_dir: Path, frame: _Frame, *, sharded: bool, log: Log
+) -> list[SegmentationInfo]:
+    """Other boundary sets of the section (nuclei, a re-segmentation) as shape tiles of their own, for comparison."""
+    seg_infos: list[SegmentationInfo] = []
+    for sg in auto_segmentations(spec):
+        log(f"[{spec.id}] segmentation {sg.id}: {sg.path}")
+        sids, sx_, sy_ = read_polygon_table(sg.path, sg.id_column, sg.x_column, sg.y_column)
+        sxy = frame.points(np.column_stack([sx_, sy_]), sg.affine or (spec.polygons.affine if spec.polygons else None))
+        uniq = pd.unique(sids)  # rings are numbered in file order; they belong to no cell of the sample
+        sst = write_shapes(
+            out_dir / "segmentations" / sg.id,
+            uniq,
+            np.zeros((len(uniq), 2)),
+            sids,
+            sxy,
+            max_vertices=sg.max_vertices,
+            packed=sharded,
+        )
+        seg_infos.append(
+            SegmentationInfo(
+                id=sg.id,
+                name=sg.name or sg.id,
+                path=f"segmentations/{sg.id}/shapes",
+                cells=sst.cells,
+                vertices=sst.vertices,
+                tile=sst.tile,
+                tiles=sst.tiles,
+                bytes=sst.bytes,
+                medianArea=round(sst.median_area, 2),
+            )
+        )
+        log(
+            f"[{spec.id}] segmentation {sg.id}: {sst.cells:,} rings, median area {sst.median_area:.0f} um2, {sst.tiles} tiles of {sst.tile} um, {sst.bytes / 2**20:.1f} MB"
+        )
+
+    return seg_infos
+
+
+def _write_sample_molecules(
+    spec: SampleSpec, out_dir: Path, frame: _Frame, genes: list[str], *, sharded: bool, log: Log
+) -> MoleculesInfo | None:
+    """The sample's molecule table as tiles; features the expression matrix lacks are noted."""
+    ms = spec.molecules
+    if not ms:
+        return None
+    affine = ms.affine or (spec.polygons.affine if spec.polygons else None)
+    log(f"[{spec.id}] molecules {ms.path}")
+    mst = write_molecules(
+        out_dir,
+        ms.path,
+        to_frame=partial(frame.points, affine=affine),
+        columns={
+            "feature": ms.feature_column,
+            "x": ms.x_column,
+            "y": ms.y_column,
+            "qv": ms.qv_column or "",
+            "cell": ms.cell_column or "",
+            "nucleus": ms.nucleus_column or "",
+        },
+        min_qv=ms.min_qv,
+        packed=sharded,
+        log=lambda m: log(f"[{spec.id}] {m}"),
+    )
+    info = MoleculesInfo(count=mst.count, genes=mst.genes, tile=mst.tile, tiles=mst.tiles, bytes=mst.bytes)
+    log(
+        f"[{spec.id}] molecules: {mst.count:,} of {mst.read:,} rows kept ({mst.low_quality:,} below Q{ms.min_qv:g}, {mst.controls:,} controls), "
+        f"{mst.genes} genes, {mst.tiles} tiles of {mst.tile} um, {mst.bytes / 2**20:.0f} MB ({mst.bytes / max(mst.count, 1):.1f} B each) in {mst.seconds:.0f} s"
+    )
+    known = set(genes)
+    unknown = [g for g in json.loads((out_dir / "molecules.json").read_text())["genes"] if g not in known]
+    if unknown:
+        log(
+            f"[{spec.id}] note: {len(unknown)} molecule feature{'s' if len(unknown) != 1 else ''} not in the expression matrix (for example {', '.join(unknown[:3])}); they draw in grey only"
+        )
+
+    return info
+
+
+def _write_images(
+    spec: SampleSpec, out_dir: Path, frame: _Frame, xy: np.ndarray, bbox: tuple, *, discovered: bool, log: Log
+) -> list[SampleImage]:
+    """Every image of the sample as an OME-Zarr pyramid placed in the frame; a discovered image that cannot be read
+    is skipped with a note (smaller first, when memory is what it lacks), a listed one stops the build."""
+    images: list[SampleImage] = []
+    for im in spec.images:
+        log(f"[{spec.id}] image {im.path}")
+        rgb = im.kind == "rgb"
+        img = None
+        max_size = im.max_size
+        while img is None:
+            try:
+                img = prepare_image(
+                    im.path,
+                    spec.transform.flip,
+                    spec.transform.rotate,
+                    max_size,
+                    rgb=rgb,
+                    transpose=im.transpose,
+                    image_flip=im.flip,
+                )
+            except ImageReadRefused as e:
+                if not discovered:
+                    raise
+                if e.kind == "memory" and max_size and max_size >= 2048:  # a smaller copy on a smaller machine
+                    max_size //= 2
+                    log(
+                        f"[{spec.id}] note: the image found next to the data does not fit in memory at that size; reading it at most {max_size:,} px per side"
+                    )
+                    continue
+                log(f"[{spec.id}] note: skipping the image found next to the data: {e}")
+                break
+        if img is None:
+            continue
+        if im.pixel_size == "auto":
+            # pixels_per_unit image px per coord unit; after max_size downsampling the ratio changes
+            _c, h0, w0 = read_image_shape(im.path, rgb=rgb)
+            ds = max(h0, w0) / max(img.shape[1], img.shape[2]) if max_size else 1.0
+            pixel_size = frame.upu / im.pixels_per_unit * ds
+        else:
+            pixel_size = float(im.pixel_size)
+        translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
+        if im.crop:
+            img, translate = crop_to_points(img, pixel_size, translate, bbox)
+            log(f"[{spec.id}] image cropped to the points: {img.shape[2]} x {img.shape[1]} px")
+        if im.mask:
+            img = mask_to_points(img, pixel_size, translate, xy, im.mask_margin, rgb=rgb)
+            log(
+                f"[{spec.id}] image blanked beyond {im.mask_margin:g} um of the sample's own points (a slide image shared with another section)"
+            )
+        names = [ch.name for ch in im.channels] if im.channels else None
+        colors = [ch.color for ch in im.channels] if im.channels else None
+        wins = [ch.window for ch in im.channels] if im.channels and all(ch.window for ch in im.channels) else None
+        chans = None
+        if not rgb:
+            # fluorescence: names from the file's OME metadata, a distinct colour each, and a window fitted to the
+            # signal wherever the yaml gives none (a 16-bit channel drawn against 0..65535 looks black)
+            nch = img.shape[0]
+            if im.channels and len(im.channels) != nch:
+                log(
+                    f"[{spec.id}] warning: `channels:` lists {len(im.channels)} entries but {im.path.name} has {nch} channels; using the file's names, default colours and fitted windows"
+                )
+            listed = im.channels if im.channels and len(im.channels) == nch else None
+            if nch > 6:
+                log(
+                    f"[{spec.id}] note: {im.path.name} has {nch} channels; the viewer draws the first 6 until per-channel controls arrive"
+                )
+            if listed is None:
+                ome = ome_channel_names(im.path)
+                names = (
+                    ome
+                    if ome and len(ome) == nch
+                    else ([im.name] if nch == 1 else [f"{im.name} {k + 1}" for k in range(nch)])
+                )
+            default_colors = (
+                ["#ffffff"]
+                if nch == 1
+                else [DEFAULT_CHANNEL_COLORS[k % len(DEFAULT_CHANNEL_COLORS)] for k in range(nch)]
+            )
+            colors = [(listed[k].color if listed and listed[k].color else default_colors[k]) for k in range(nch)]
+            given = [ch.window for ch in listed] if listed else [None] * nch
+            fitted = auto_windows(img) if any(w is None for w in given) else []
+            wins = [tuple(w) if w is not None else fitted[k] for k, w in enumerate(given)]
+            chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]
+            if fitted:
+                log(
+                    f"[{spec.id}] image channel windows fitted to the signal: "
+                    + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None)
+                )
+        elif im.channels:
+            maxv = 255 if img.dtype == np.uint8 else int(np.iinfo(img.dtype).max)
+            chans = [
+                ImageChannel(name=ch.name, color=ch.color or "#ffffff", window=ch.window or (0, maxv))
+                for ch in im.channels
+            ]
+            colors = [ch.color or "#ffffff" for ch in im.channels]
+        out_path = out_dir / f"{im.id}.ome.zarr"
+        write_ome_zarr(img, out_path, rgb=rgb, channel_names=names, channel_colors=colors, windows=wins)
+        images.append(
+            SampleImage(
+                id=im.id,
+                name=im.name,
+                path=out_path.name,
+                kind=im.kind,
+                pixelSize=pixel_size,
+                translate=translate,
+                size=(int(img.shape[1]), int(img.shape[2])),
+                channels=chans,
+                defaultOpacity=im.default_opacity,
+            )
+        )
+    return images
 
 
 def build_sample(
@@ -187,7 +473,10 @@ def build_sample(
         mode = "lognorm" if detect_lognorm(M) else "counts"
         mx = float(M.data.max()) if getattr(M, "nnz", 1) else 0.0
         why = "non-integer values" if mode == "lognorm" else f"all-integer values, max {mx:g}"
-        log(f"[{spec.id}] expression layer {spec.expression.layer!r} looks {'log-normalized' if mode == 'lognorm' else 'like counts'} ({why})" + ("" if mode == "lognorm" else ": applying log1p(CP10k)"))
+        log(
+            f"[{spec.id}] expression layer {spec.expression.layer!r} looks {'log-normalized' if mode == 'lognorm' else 'like counts'} ({why})"
+            + ("" if mode == "lognorm" else ": applying log1p(CP10k)")
+        )
     if mode == "counts":
         M = log1p_cp10k(M)
     rng = np.random.default_rng(spec.seed)
@@ -214,10 +503,10 @@ def build_sample(
         frame_w, frame_h = w / auto_px_images[0].pixels_per_unit, h / auto_px_images[0].pixels_per_unit
     else:
         frame_w, frame_h = float(coords[:, 0].max()), float(coords[:, 1].max())
-    xy = transform_points(coords, frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu
-    shift = xy.min(axis=0)
-    xy = xy - shift
-    xy = xy[perm]
+    frame = _Frame(frame_w, frame_h, spec.transform.flip, spec.transform.rotate, upu)
+    xy = frame.points(coords)
+    frame = replace(frame, shift=xy.min(axis=0))
+    xy = (xy - frame.shift)[perm]
     bbox = (0.0, 0.0, float(xy[:, 0].max()), float(xy[:, 1].max()))
     radius = default_point_radius(spec, xy)
 
@@ -248,9 +537,16 @@ def build_sample(
         barcodes = [str(b) for b in adata.obs[tr.barcode_column].iloc[perm]] if tr.barcode_column else None
         runs = [str(r) for r in adata.obs[tr.sample_column].iloc[perm]] if tr.sample_column else None
         tracks_info = write_tracks(
-            tr, out_dir, ids=ids, barcodes=barcodes, runs=runs, cats=cats,
+            tr,
+            out_dir,
+            ids=ids,
+            barcodes=barcodes,
+            runs=runs,
+            cats=cats,
             categories={fid: list(vocab.vocabs[vocab.vocab_id(fid)]["categories"]) for fid in cats},
-            aliases={fid: dict(vocab.vocabs[vocab.vocab_id(fid)]["aliases"]) for fid in cats}, feature_names=genes, log=log,
+            aliases={fid: dict(vocab.vocabs[vocab.vocab_id(fid)]["aliases"]) for fid in cats},
+            feature_names=genes,
+            log=log,
         )
     outlines: list[str] = []
     if spec.kind == "spatial" and outline_fields is not False:
@@ -264,167 +560,11 @@ def build_sample(
             write_outlines(out_dir, fid, compute_outlines(xy, codes, len(v["categories"]), skip_codes=na))
             outlines.append(fid)
 
-    # --- cell shapes ------------------------------------------------------
-    shapes_info = None
-    if spec.polygons is None and spec.kind == "spatial":
-        for key in AUTO_POLYGON_OBSM:
-            arr = adata.obsm.get(key, None)
-            if arr is not None and np.ndim(arr) == 3 and np.shape(arr)[2] == 2:
-                spec = spec.model_copy(update={"polygons": PolygonSpec(obsm=key)})
-                log(f"[{spec.id}] auto polygons: obsm/{key}")
-                break
-    if spec.polygons:
-        ps = spec.polygons
-        if ps.obsm:
-            log(f"[{spec.id}] polygons from obsm/{ps.obsm}")
-            pids, px_, py_ = read_polygon_obsm(adata, ps.obsm)
-        else:
-            log(f"[{spec.id}] polygons {ps.path}")
-            pids, px_, py_ = read_polygon_table(ps.path, ps.id_column, ps.x_column, ps.y_column)
-        if ps.affine:
-            px_, py_ = apply_affine(px_, py_, ps.affine)
-        pxy = (
-            transform_points(np.column_stack([px_, py_]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate)
-            * upu
-            - shift
-        )
-        st = write_shapes(out_dir, ids, xy, pids, pxy, max_vertices=ps.max_vertices, packed=sharded)
-        shapes_info = ShapesInfo(cells=st.cells, vertices=st.vertices, tile=st.tile, tiles=st.tiles, bytes=st.bytes, medianArea=round(st.median_area, 2))
-        dropped = "".join(f", {k} {v} dropped" for k, v in (("unmatched", st.unmatched), ("degenerate", st.degenerate)) if v)
-        log(f"[{spec.id}] cell shapes for {st.cells}/{n_obs} cells: {st.tiles} tiles of {st.tile} um, {st.bytes / 2**20:.1f} MB ({st.bytes / max(st.cells, 1):.0f} B per cell){dropped}")
-        with_poly, dev = st.cells, st.centroid_offset
-        if with_poly and dev > max(10.0, 2.0 * radius):
-            log(
-                f"[{spec.id}] warning: polygon centroids sit a median {dev:.1f} um from their cells; "
-                "the boundary file is probably in a different frame than the coordinates (see polygons.affine)"
-            )
-
-    # --- other segmentations of the section, for comparison -----------------
-    seg_infos: list[SegmentationInfo] = []
-    for sg in auto_segmentations(spec):
-        log(f"[{spec.id}] segmentation {sg.id}: {sg.path}")
-        sids, sx_, sy_ = read_polygon_table(sg.path, sg.id_column, sg.x_column, sg.y_column)
-        saff = sg.affine or (spec.polygons.affine if spec.polygons else None)
-        if saff:
-            sx_, sy_ = apply_affine(sx_, sy_, saff)
-        sxy = transform_points(np.column_stack([sx_, sy_]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu - shift
-        uniq = pd.unique(sids)  # rings are numbered in file order; they belong to no cell of the sample
-        sst = write_shapes(out_dir / "segmentations" / sg.id, uniq, np.zeros((len(uniq), 2)), sids, sxy, max_vertices=sg.max_vertices, packed=sharded)
-        seg_infos.append(
-            SegmentationInfo(id=sg.id, name=sg.name or sg.id, path=f"segmentations/{sg.id}/shapes", cells=sst.cells, vertices=sst.vertices, tile=sst.tile, tiles=sst.tiles, bytes=sst.bytes, medianArea=round(sst.median_area, 2))
-        )
-        log(f"[{spec.id}] segmentation {sg.id}: {sst.cells:,} rings, median area {sst.median_area:.0f} um2, {sst.tiles} tiles of {sst.tile} um, {sst.bytes / 2**20:.1f} MB")
-
-    # --- molecules --------------------------------------------------------
-    molecules_info = None
-    if spec.molecules:
-        ms = spec.molecules
-        affine = ms.affine or (spec.polygons.affine if spec.polygons else None)
-        log(f"[{spec.id}] molecules {ms.path}")
-
-        def to_frame(raw: np.ndarray, _affine=affine) -> np.ndarray:
-            x, y = raw[:, 0], raw[:, 1]
-            if _affine:
-                x, y = apply_affine(x, y, _affine)
-            return transform_points(np.column_stack([x, y]), frame_w, frame_h, spec.transform.flip, spec.transform.rotate) * upu - shift
-
-        mst = write_molecules(
-            out_dir,
-            ms.path,
-            to_frame=to_frame,
-            columns={"feature": ms.feature_column, "x": ms.x_column, "y": ms.y_column, "qv": ms.qv_column or "", "cell": ms.cell_column or "", "nucleus": ms.nucleus_column or ""},
-            min_qv=ms.min_qv,
-            packed=sharded,
-            log=lambda m: log(f"[{spec.id}] {m}"),
-        )
-        molecules_info = MoleculesInfo(count=mst.count, genes=mst.genes, tile=mst.tile, tiles=mst.tiles, bytes=mst.bytes)
-        log(
-            f"[{spec.id}] molecules: {mst.count:,} of {mst.read:,} rows kept ({mst.low_quality:,} below Q{ms.min_qv:g}, {mst.controls:,} controls), "
-            f"{mst.genes} genes, {mst.tiles} tiles of {mst.tile} um, {mst.bytes / 2**20:.0f} MB ({mst.bytes / max(mst.count, 1):.1f} B each) in {mst.seconds:.0f} s"
-        )
-        known = set(genes)
-        unknown = [g for g in json.loads((out_dir / "molecules.json").read_text())["genes"] if g not in known]
-        if unknown:
-            log(f"[{spec.id}] note: {len(unknown)} molecule feature{'s' if len(unknown) != 1 else ''} not in the expression matrix (for example {', '.join(unknown[:3])}); they draw in grey only")
-
-    # --- images -----------------------------------------------------------
-    images: list[SampleImage] = []
-    for im in spec.images:
-        log(f"[{spec.id}] image {im.path}")
-        rgb = im.kind == "rgb"
-        img = None
-        max_size = im.max_size
-        while img is None:
-            try:
-                img = prepare_image(im.path, spec.transform.flip, spec.transform.rotate, max_size, rgb=rgb, transpose=im.transpose, image_flip=im.flip)
-            except ImageReadRefused as e:
-                if not discovered:
-                    raise
-                if e.kind == "memory" and max_size and max_size >= 2048:  # a smaller copy on a smaller machine
-                    max_size //= 2
-                    log(f"[{spec.id}] note: the image found next to the data does not fit in memory at that size; reading it at most {max_size:,} px per side")
-                    continue
-                log(f"[{spec.id}] note: skipping the image found next to the data: {e}")
-                break
-        if img is None:
-            continue
-        if im.pixel_size == "auto":
-            # pixels_per_unit image px per coord unit; after max_size downsampling the ratio changes
-            _c, h0, w0 = read_image_shape(im.path, rgb=rgb)
-            ds = max(h0, w0) / max(img.shape[1], img.shape[2]) if max_size else 1.0
-            pixel_size = upu / im.pixels_per_unit * ds
-        else:
-            pixel_size = float(im.pixel_size)
-        translate = (float(-shift[0] + im.translate[0]), float(-shift[1] + im.translate[1]))
-        if im.crop:
-            img, translate = crop_to_points(img, pixel_size, translate, bbox)
-            log(f"[{spec.id}] image cropped to the points: {img.shape[2]} x {img.shape[1]} px")
-        if im.mask:
-            img = mask_to_points(img, pixel_size, translate, xy, im.mask_margin, rgb=rgb)
-            log(f"[{spec.id}] image blanked beyond {im.mask_margin:g} um of the sample's own points (a slide image shared with another section)")
-        names = [ch.name for ch in im.channels] if im.channels else None
-        colors = [ch.color for ch in im.channels] if im.channels else None
-        wins = [ch.window for ch in im.channels] if im.channels and all(ch.window for ch in im.channels) else None
-        chans = None
-        if not rgb:
-            # fluorescence: names from the file's OME metadata, a distinct colour each, and a window fitted to the
-            # signal wherever the yaml gives none (a 16-bit channel drawn against 0..65535 looks black)
-            nch = img.shape[0]
-            if im.channels and len(im.channels) != nch:
-                log(f"[{spec.id}] warning: `channels:` lists {len(im.channels)} entries but {im.path.name} has {nch} channels; using the file's names, default colours and fitted windows")
-            listed = im.channels if im.channels and len(im.channels) == nch else None
-            if nch > 6:
-                log(f"[{spec.id}] note: {im.path.name} has {nch} channels; the viewer draws the first 6 until per-channel controls arrive")
-            if listed is None:
-                ome = ome_channel_names(im.path)
-                names = ome if ome and len(ome) == nch else ([im.name] if nch == 1 else [f"{im.name} {k + 1}" for k in range(nch)])
-            default_colors = ["#ffffff"] if nch == 1 else [DEFAULT_CHANNEL_COLORS[k % len(DEFAULT_CHANNEL_COLORS)] for k in range(nch)]
-            colors = [(listed[k].color if listed and listed[k].color else default_colors[k]) for k in range(nch)]
-            given = [ch.window for ch in listed] if listed else [None] * nch
-            fitted = auto_windows(img) if any(w is None for w in given) else []
-            wins = [tuple(w) if w is not None else fitted[k] for k, w in enumerate(given)]
-            chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]
-            if fitted:
-                log(f"[{spec.id}] image channel windows fitted to the signal: " + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None))
-        elif im.channels:
-            maxv = 255 if img.dtype == np.uint8 else int(np.iinfo(img.dtype).max)
-            chans = [ImageChannel(name=ch.name, color=ch.color or "#ffffff", window=ch.window or (0, maxv)) for ch in im.channels]
-            colors = [ch.color or "#ffffff" for ch in im.channels]
-        out_path = out_dir / f"{im.id}.ome.zarr"
-        write_ome_zarr(img, out_path, rgb=rgb, channel_names=names, channel_colors=colors, windows=wins)
-        images.append(
-            SampleImage(
-                id=im.id,
-                name=im.name,
-                path=out_path.name,
-                kind=im.kind,
-                pixelSize=pixel_size,
-                translate=translate,
-                size=(int(img.shape[1]), int(img.shape[2])),
-                channels=chans,
-                defaultOpacity=im.default_opacity,
-            )
-        )
+    spec = _auto_polygons(spec, adata, log)
+    shapes_info = _write_cell_shapes(spec, adata, out_dir, frame, ids, xy, radius, sharded=sharded, log=log)
+    seg_infos = _write_segmentations(spec, out_dir, frame, sharded=sharded, log=log)
+    molecules_info = _write_sample_molecules(spec, out_dir, frame, genes, sharded=sharded, log=log)
+    images = _write_images(spec, out_dir, frame, xy, bbox, discovered=discovered, log=log)
 
     return Sample(
         id=spec.id,
@@ -437,7 +577,12 @@ def build_sample(
         nGenes=len(genes),
         bbox=bbox,
         pointRadius=radius,
-        expr=ExprSpec(kind="u8", sharded=res.sharded, shardGenes=res.shard_genes, normalized="log1p_cp10k" if mode == "counts" else "lognorm"),
+        expr=ExprSpec(
+            kind="u8",
+            sharded=res.sharded,
+            shardGenes=res.shard_genes,
+            normalized="log1p_cp10k" if mode == "counts" else "lognorm",
+        ),
         hasF16=spec.expression.keep_f16,
         fields=list(spec.fields.keys()),
         images=images,
@@ -493,7 +638,13 @@ def gene_union(out: Path, samples: list[Sample]) -> set[str]:
     return union
 
 
-def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], vocab: VocabRegistry, comparisons: list[ComparisonInfo] | None = None) -> Manifest:
+def _write_dataset_files(
+    out: Path,
+    cfg: DatasetConfig,
+    samples: list[Sample],
+    vocab: VocabRegistry,
+    comparisons: list[ComparisonInfo] | None = None,
+) -> Manifest:
     union = gene_union(out, samples)
     genes, groups = _split_features(cfg, sorted(union))
     with open(out / "genes.json", "w") as fh:
@@ -511,7 +662,11 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         dc = ColorSpec(kind="gene", gene=cfg.default_gene)
     else:
         cat_fields = [f for f in cfg.fields if f.type == "categorical"]
-        dc = ColorSpec(kind="field", field=cat_fields[0].id) if cat_fields else ColorSpec(kind="gene", gene=suggested_default(samples, genes) or _any_feature(genes, groups))
+        dc = (
+            ColorSpec(kind="field", field=cat_fields[0].id)
+            if cat_fields
+            else ColorSpec(kind="gene", gene=suggested_default(samples, genes) or _any_feature(genes, groups))
+        )
     default_gene = cfg.default_gene or (dc.gene if dc.kind == "gene" else suggested_default(samples, genes))
     order = cfg.layout.order or [s.id for s in samples]
     manifest = Manifest(
@@ -520,7 +675,9 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
         description=cfg.description,
         defaultGene=default_gene,
         defaultColor=dc,
-        layout=Layout(mode=cfg.layout.mode, gutterFraction=cfg.layout.gutter_fraction, order=order, columns=cfg.layout.columns),
+        layout=Layout(
+            mode=cfg.layout.mode, gutterFraction=cfg.layout.gutter_fraction, order=order, columns=cfg.layout.columns
+        ),
         colormaps=cfg.colormaps or list(BUILTIN_COLORMAPS),
         vocabularies=vocab.to_manifest(),
         fields=_fields_manifest(_all_fields(cfg, vocab), vocab),
@@ -535,7 +692,15 @@ def _write_dataset_files(out: Path, cfg: DatasetConfig, samples: list[Sample], v
     with open(out / "manifest.json", "w") as fh:
         fh.write(manifest.model_dump_json(indent=1, exclude_none=True))
     with open(out / "build-info.json", "w") as fh:
-        json.dump({"spatialscape": __version__, "config": str(cfg.path) if cfg.path else None, "built": datetime.now(UTC).isoformat(timespec="seconds")}, fh, indent=1)
+        json.dump(
+            {
+                "spatialscape": __version__,
+                "config": str(cfg.path) if cfg.path else None,
+                "built": datetime.now(UTC).isoformat(timespec="seconds"),
+            },
+            fh,
+            indent=1,
+        )
     return manifest
 
 
@@ -547,7 +712,9 @@ def resolve_meta(spec: SampleSpec, adata) -> dict[str, str]:
             out[key] = v
             continue
         if v.column not in adata.obs:
-            raise KeyError(f"sample {spec.id}: meta column {v.column!r} (key {key}) not found; obs columns: {', '.join(map(str, adata.obs.columns))}")
+            raise KeyError(
+                f"sample {spec.id}: meta column {v.column!r} (key {key}) not found; obs columns: {', '.join(map(str, adata.obs.columns))}"
+            )
         vals = [str(x) for x in pd.unique(adata.obs[v.column].dropna().astype(str))]
         if not vals:
             raise ValueError(f"sample {spec.id}: meta column {v.column!r} (key {key}) has no values")
@@ -640,7 +807,9 @@ def plan_build(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force: bo
     wanted = {s.id for s in cfg.samples}
     folders = sorted(p.name for p in (out / "samples").iterdir() if p.is_dir()) if (out / "samples").is_dir() else []
     plan = BuildPlan(out, actions, [f for f in folders if f not in wanted], existing)
-    plan.comparisons, plan.removed_comparisons = plan_comparisons(cfg, out, samples_signature({a.spec.id: a.fingerprint for a in actions}), force=force)
+    plan.comparisons, plan.removed_comparisons = plan_comparisons(
+        cfg, out, samples_signature({a.spec.id: a.fingerprint for a in actions}), force=force
+    )
     return plan
 
 
@@ -665,8 +834,12 @@ def describe_plan(plan: BuildPlan) -> list[str]:
     n_build, n_skip = len(plan.to_build), len(plan.reused)
     pending = sum(st.state == "pending" for st in plan.sources)
     if pending:
-        lines.append(f"{pending} R object{'s' if pending != 1 else ''} to convert first (their samples are listed once converted)")
-    lines.append(f"{n_build} sample{'s' if n_build != 1 else ''} to build, {n_skip} unchanged; manifest.json, genes.json, features.json and thumbnails are rewritten every time")
+        lines.append(
+            f"{pending} R object{'s' if pending != 1 else ''} to convert first (their samples are listed once converted)"
+        )
+    lines.append(
+        f"{n_build} sample{'s' if n_build != 1 else ''} to build, {n_skip} unchanged; manifest.json, genes.json, features.json and thumbnails are rewritten every time"
+    )
     return lines
 
 
@@ -678,14 +851,28 @@ def _registry_for(cfg: DatasetConfig, existing: Manifest | None, reused: list[Sa
         return VocabRegistry(cfg.fields, palette)
     by_id = {s.id: s for s in existing.samples}
     reused_fields = {fid for a in reused for fid in by_id[a.spec.id].fields}
-    keep_vocabs = {f.vocabulary for fid in reused_fields if (f := existing.field_by_id(fid)) is not None and f.type == "categorical"}
-    vocab = VocabRegistry(cfg.fields, palette, existing={vid: v for vid, v in existing.vocabularies.items() if vid in keep_vocabs})
+    keep_vocabs = {
+        f.vocabulary
+        for fid in reused_fields
+        if (f := existing.field_by_id(fid)) is not None and f.type == "categorical"
+    }
+    vocab = VocabRegistry(
+        cfg.fields, palette, existing={vid: v for vid, v in existing.vocabularies.items() if vid in keep_vocabs}
+    )
     vocab.adopt_manifest_fields(existing, only=reused_fields)
     vocab.recolor_from_palette()
     return vocab
 
 
-def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force: bool = False, plan: BuildPlan | None = None, log: Log = print) -> Manifest:
+def build_dataset(
+    cfg: DatasetConfig,
+    out: Path,
+    *,
+    sharded: bool = True,
+    force: bool = False,
+    plan: BuildPlan | None = None,
+    log: Log = print,
+) -> Manifest:
     """Bring the bundle directory in line with the yaml: build new and changed samples, keep the rest, drop
     samples the yaml no longer lists, and rewrite the dataset-level files."""
     out = Path(out)
@@ -704,7 +891,13 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force:
             prev = by_id[a.spec.id]
             # values given in the yaml apply without a rebuild; values read from a column were fixed when the sample was built
             meta = {k: (v if isinstance(v, str) else prev.meta.get(k)) for k, v in a.spec.meta.items()}
-            s = prev.model_copy(update={"name": a.spec.name or a.spec.id, "group": a.spec.group, "meta": {k: v for k, v in meta.items() if v is not None}})
+            s = prev.model_copy(
+                update={
+                    "name": a.spec.name or a.spec.id,
+                    "group": a.spec.group,
+                    "meta": {k: v for k, v in meta.items() if v is not None},
+                }
+            )
         samples.append(s)
     for sid in plan.removed:
         shutil.rmtree(out / "samples" / sid, ignore_errors=True)
@@ -719,7 +912,13 @@ def build_dataset(cfg: DatasetConfig, out: Path, *, sharded: bool = True, force:
                 info = write_comparison(out, a.spec, samples, mkeys, union, log=log)
                 built.append((out / "comparisons" / a.spec.id, a.fingerprint))
             else:
-                info = info.model_copy(update={"name": a.spec.name or a.spec.id.replace("_", " "), "description": a.spec.description, "units": a.spec.units})
+                info = info.model_copy(
+                    update={
+                        "name": a.spec.name or a.spec.id.replace("_", " "),
+                        "description": a.spec.description,
+                        "units": a.spec.units,
+                    }
+                )
             comparisons.append(info)
     for cid in plan.removed_comparisons:
         shutil.rmtree(out / "comparisons" / cid, ignore_errors=True)
@@ -741,7 +940,15 @@ class BuildResult:
     problems: list[str] = field(default_factory=list)
 
 
-def build_bundle(cfg: DatasetConfig, out: Path | None = None, *, sharded: bool | None = None, force: bool = False, dry_run: bool = False, log: Log = print) -> BuildResult:
+def build_bundle(
+    cfg: DatasetConfig,
+    out: Path | None = None,
+    *,
+    sharded: bool | None = None,
+    force: bool = False,
+    dry_run: bool = False,
+    log: Log = print,
+) -> BuildResult:
     """Everything `spatialscape build` does: convert R objects into the cache, plan, build, render thumbnails,
     validate. `site build` runs the same for every dataset yaml it lists. `sharded` defaults to the yaml's
     `sharded:` so a bundle built for a host without Range support stays that way in every later build."""
