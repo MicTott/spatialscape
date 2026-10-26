@@ -1,21 +1,23 @@
 /** The Compare panel under the maps. Left: a matrix of genes by levels (every cluster of a marker table, every
- *  cell type a contrast was fit in, or the one column of a plain two-group result) holding the effect, tinted by
- *  sign and size; click a column head to focus that level and sort by it, click a row to colour the maps by the
- *  gene, ↑/↓ to step. Right, for the gene on screen: its expression per category as violins (drawn from the same
- *  per-cell values the maps use) when the levels are an annotation's categories, or one dot per replicate with a
- *  median line and a box on request when the comparison carries pseudobulk values; else the table's numbers. The
- *  top edge drags to resize. Nothing statistical is computed here: the matrix is what the tables held. */
+ *  cell type a contrast was fit in, or the one column of a plain two-group result), each cell the log2 fold change
+ *  as a chip tinted by sign and size, the level's legend colour in its column head; click a head to focus that
+ *  level and sort by it, click a row to colour the maps by the gene, ↑/↓ to step. Right, for the gene on screen:
+ *  its expression per category as violins (drawn from the same per-cell values the maps use) when the levels are
+ *  an annotation's categories, or one dot per replicate with a median line and a box on request when the
+ *  comparison carries pseudobulk values; the table's numbers for the gene in the focused level sit under the plot.
+ *  The top edge drags to resize. Nothing statistical is computed here: the matrix is what the tables held. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fieldById } from "../data/manifest";
 import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer, type GroupStats } from "../store/store";
 import { activateComparison, populationFilterActive, toggleLevelFilter } from "./activate";
 import { loadComparison, loadMatrix } from "./data";
-import { arrangeMatrix, cellDetail, fmtEffect, fmtMean, fmtP, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow } from "./model";
+import { arrangeMatrix, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow } from "./model";
 
-const ROW_H = 22;
-const GENE_W = 112;
-const COL_W = 78;
-const clampHeight = (h: number) => Math.max(180, Math.min(Math.max(180, window.innerHeight - 220), Math.round(h)));
+const ROW_H = 27;
+const HEAD_H = 34;
+const GENE_W = 132;
+const COL_W = 96;
+const clampHeight = (h: number) => Math.max(200, Math.min(Math.max(200, window.innerHeight - 220), Math.round(h)));
 
 export function ComparePanel() {
   const manifest = useViewer((s) => s.manifest);
@@ -61,19 +63,29 @@ export function ComparePanel() {
       cancelled = true;
     };
   }, [info, level, datasetUrl]);
-
   // the violins and the dot plot read the facet field: make it the grouping field while the comparison is open
   // (a comparison opened from the URL never went through activateComparison)
   const facetFieldId = info?.facet?.field ?? null;
   useEffect(() => {
     if (facetFieldId && store.getState().groupField !== facetFieldId) store.getState().set({ groupField: facetFieldId });
   }, [facetFieldId]);
+
   const stat = matrix ? matrixStat(matrix) : "effect";
   const col = matrix && level ? matrix.levels.indexOf(level.id) : -1;
   const all = useMemo(() => (matrix ? matrixRows(matrix) : []), [matrix]);
-  const shown = useMemo(() => (matrix ? arrangeMatrix(matrix, all, stat, col, stat === "effect" ? desc : !desc, query) : []), [matrix, all, stat, col, desc, query]);
+  const descending = stat === "effect" ? desc : !desc;
+  const shown = useMemo(() => (matrix ? arrangeMatrix(matrix, all, stat, col, descending, query) : []), [matrix, all, stat, col, descending, query]);
   const gene = color?.kind === "gene" ? color.gene : null;
   const geneRow = gene && matrix ? (matrix.geneIndex.get(gene) ?? null) : null;
+
+  // a comparison always shows a gene: when the colour is not one of its genes, the top of the focused level
+  useEffect(() => {
+    if (!matrix || col < 0) return;
+    const cur = store.getState().color;
+    if (cur?.kind === "gene" && matrix.geneIndex.has(cur.gene)) return;
+    const first = arrangeMatrix(matrix, matrixRows(matrix), matrixStat(matrix), col, matrixStat(matrix) === "effect", "").find((r) => r.measured);
+    if (first) store.getState().setColor({ kind: "gene", gene: first.gene });
+  }, [matrix, col]);
 
   // ↑ / ↓ step through the table as sorted; the map follows
   useEffect(() => {
@@ -124,6 +136,10 @@ export function ComparePanel() {
   const markers = info.kind === "markers";
   const facetField = info.facet?.field ? fieldById(manifest, info.facet.field) : undefined;
   const vocab = facetField?.type === "categorical" ? manifest.vocabularies[facetField.vocabulary] : null;
+  const swatch = (name: string): string | undefined => {
+    const k = vocab ? vocab.categories.indexOf(name) : -1;
+    return k >= 0 ? vocab!.colors[k] : undefined;
+  };
   const hasDots = !!(levelData && levelData.replicates.length && levelData.pseudobulk);
   const hasViolins = !!(vocab && groupStats && groupStats.field === facetField!.id && gene && groupStats.gene === gene);
   const bottom = 26 + (genomeOn ? genomeHeight : 0);
@@ -131,83 +147,136 @@ export function ComparePanel() {
     if (lv === level.id) setDesc((d) => !d);
     else void activateComparison(info.id, lv);
   };
-  const sig = matrix && level ? level.nSignificant : 0;
+  const subtitle = [
+    markers ? `each ${facetField ? facetField.name.toLowerCase() : "cluster"} against the rest` : info.groups.join(" vs ") + (info.levels.length > 1 && facetField ? ` within each ${facetField.name.toLowerCase()}` : ""),
+    !markers && info.nReplicates ? `${info.nReplicates} replicates` : null,
+    matrix ? `${matrix.genes.length.toLocaleString()} genes` : null,
+    info.nUnmatched ? `${info.nUnmatched.toLocaleString()} not in this dataset` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const single = info.levels.length === 1;
+  const focusLabel = single ? (markers ? level.name : info.groups.join(" vs ")) : level.name;
+  const focusColor = swatch(level.name);
+  const levelRow = levelData && gene ? (levelData.geneIndex.get(gene) ?? null) : null;
+  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel });
   return (
     <div className={`compare${sidebarOpen ? " with-sidebar" : ""}`} style={{ height, bottom }}>
       <div className="c-handle" onPointerDown={onHandleDown} title="drag to resize" />
+      <div className="c-grip" />
       <div className="c-head">
-        <select value={info.id} onChange={(e) => void activateComparison(e.target.value || null)} title="which comparison to show">
-          {(manifest.comparisons ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <input className="c-search" placeholder="find a gene…" value={query} onChange={(e) => setQuery(e.target.value)} spellCheck={false} />
-        <span className="muted c-count">
-          {matrix ? `${matrix.genes.length.toLocaleString()} genes` : "loading…"}
-          {matrix && matrix.levels.length > 1 ? ` · ${matrix.levels.length} ${markers ? "clusters" : "levels"}` : ""}
-          {matrix && info.hasPadj ? ` · ${sig.toLocaleString()} at padj < 0.05 in ${level.name}` : ""}
-          {info.nUnmatched ? ` · ${info.nUnmatched.toLocaleString()} not in this dataset` : ""}
-          {query ? ` · ${shown.length.toLocaleString()} listed` : ""}
-        </span>
-        {markers && level.population && (
-          <button className={`c-sort${population ? " on" : ""}`} onClick={toggleLevelFilter} title={population ? "show every cell again" : `filter the map to the cells of ${level.name}`}>
-            only {level.name}
+        <span className="c-title">{info.name}</span>
+        <span className="c-sub">{subtitle}</span>
+        <label className="c-searchwrap" title="find a gene in the table">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input className="c-search" placeholder="Find a gene" value={query} onChange={(e) => setQuery(e.target.value)} spellCheck={false} />
+        </label>
+        {info.description && (
+          <button className="c-ib" title={info.description} aria-label="how this was computed">
+            i
           </button>
         )}
-        {!markers && population && (
-          <span className="chip pop" title={`the comparison was fit in these cells; the map is filtered to them (field ${population.field})`}>
-            map filtered to {population.value}
-            <button onClick={() => store.getState().setFilter(null)} title="clear the filter">
-              ×
-            </button>
-          </span>
-        )}
-        <span className="right">
-          {hasDots && (
-            <button className={`c-sort${box ? " on" : ""}`} onClick={toggleBox} title="draw the quartiles behind the dots">
-              box
-            </button>
-          )}
-          <button className="c-close" onClick={() => void activateComparison(null)} title="close the panel (the split and the filter stay); the Comparisons group reopens it">
-            ×
-          </button>
-        </span>
+        <button className="c-ib" onClick={() => void activateComparison(null)} title="close the panel (the split and the filter stay); the Comparisons group reopens it" aria-label="close">
+          ×
+        </button>
       </div>
       <div className="c-body">
         <div className="c-matrix">
           {error && <div className="muted small c-note">could not load the comparison: {error}</div>}
           {!matrix && !error && <div className="muted small c-note">loading…</div>}
-          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={stat === "effect" ? desc : !desc} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} groups={info.groups} />}
+          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(l.name))} single={single ? focusLabel : null} />}
         </div>
-        <div className="c-plot right">
-          {hasDots && levelData && gene && levelData.geneIndex.has(gene) ? (
-            <ReplicatePlot data={levelData} geneRow={levelData.geneIndex.get(gene)!} gene={gene} box={box} />
-          ) : hasViolins && vocab ? (
-            <Violins stats={groupStats!} vocab={vocab} gene={gene!} focus={level.name} order={info.levels.map((l) => l.name)} detail={matrix && geneRow != null && col >= 0 ? cellDetail(matrix, geneRow, col) : ""} description={info.description ?? null} />
-          ) : matrix && geneRow != null ? (
-            <div className="c-plotwrap c-genenote">
-              <div className="c-title">
-                {gene}
-                <span className="muted"> · {markers ? `${level.name} vs rest` : level.name !== "all" ? level.name : info.groups.join(" vs ")}</span>
-                {matrix.unmeasured.has(geneRow) ? <span className="warn"> · not measured by any section</span> : null}
-              </div>
-              {col >= 0 && <div className="c-stats">{cellDetail(matrix, geneRow, col) || `rank ${geneRow + 1}`}</div>}
-              <div className="muted small">{hasViolins === false && vocab ? "computing the distributions…" : "no replicate values in this comparison; add `pseudobulk:` for a dot per replicate"}</div>
-              {info.description && <div className="muted c-desc">{info.description}</div>}
-            </div>
-          ) : matrix ? (
-            <div className="muted c-note">pick a gene in the table, or colour the maps by one of its genes</div>
-          ) : null}
+        <div className="c-dist">
+          <div className="d-head">
+            <span className="d-gene">{gene ?? "—"}</span>
+            {focusColor ? (
+              <span className="d-tag" style={{ color: focusColor, background: `color-mix(in srgb, ${focusColor} 18%, transparent)` }}>
+                <i />
+                {focusLabel}
+              </span>
+            ) : (
+              <span className="d-tag plain">{focusLabel}</span>
+            )}
+            {markers && <span className="muted small">vs rest</span>}
+            <span className="d-right">
+              {markers && level.population && (
+                <label className="d-toggle" title={population ? "show every cell again" : `filter the map to the cells of ${level.name}`}>
+                  <input type="checkbox" checked={!!population} onChange={toggleLevelFilter} />
+                  only {level.name} on the map
+                </label>
+              )}
+              {!markers && population && (
+                <span className="chip pop" title={`the comparison was fit in these cells; the map is filtered to them (field ${population.field})`}>
+                  map filtered to {population.value}
+                  <button onClick={() => store.getState().setFilter(null)} title="clear the filter">
+                    ×
+                  </button>
+                </span>
+              )}
+              {hasDots && (
+                <button className={`c-ib text${box ? " on" : ""}`} onClick={toggleBox} title="draw the quartiles behind the dots">
+                  box
+                </button>
+              )}
+            </span>
+          </div>
+          <div className="d-plot">
+            {hasDots && levelData && levelRow != null ? (
+              <ReplicatePlot data={levelData} geneRow={levelRow} box={box} />
+            ) : hasViolins && vocab ? (
+              <Violins stats={groupStats!} vocab={vocab} focus={level.name} order={info.levels.map((l) => l.name)} />
+            ) : (
+              <div className="muted small c-note">{!matrix ? "" : !gene ? "pick a gene in the table" : vocab ? "computing the distributions…" : "no replicate values in this comparison; add `pseudobulk:` for a dot per replicate"}</div>
+            )}
+          </div>
+          <div className="d-foot" title={foot.title}>
+            {foot.parts.map((p, k) => (
+              <span key={k}>
+                {k > 0 ? " · " : ""}
+                {k === 0 ? <b>{p}</b> : p}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/** genes x levels, windowed by rows, scrolling both ways; the gene column and one column per level. */
-function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, labels, groups }: { matrix: MatrixData; rows: MatrixRow[]; stat: "effect" | "rank"; gene: string | null; focus: string; desc: boolean; onFocus: (level: string) => void; labels: string[]; groups: string[] }) {
+/** The footer under the plot: the table's numbers for the gene in the focused level. */
+function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col: number; levelData: ComparisonData | null; levelRow: number | null; markers: boolean; levelName: string }): { parts: string[]; title: string } {
+  const { matrix, geneRow, col, levelData, levelRow, markers, levelName } = a;
+  if (!matrix || geneRow == null) return { parts: [], title: "" };
+  const k = matrix.levels.length;
+  const at = (name: string): number | null => {
+    const v = matrix.stats[name]?.[geneRow * k + col];
+    return v == null || Number.isNaN(v) ? null : v;
+  };
+  const parts: string[] = [];
+  const eff = at("effect");
+  if (eff != null) parts.push(`log2FC ${fmtEffect(eff)}`);
+  const padj = at("padj");
+  const p = at("p");
+  if (padj != null) parts.push(`padj ${fmtP(padj)}`);
+  else if (p != null) parts.push(`p ${fmtP(p)}`);
+  const pin = at("pct_in");
+  const pout = at("pct_out");
+  if (pin != null || pout != null) parts.push(markers ? `${fmtPct(pin)}% of ${levelName} cells express it, ${fmtPct(pout)}% of the rest` : `expressed in ${fmtPct(pin)}% / ${fmtPct(pout)}%`);
+  if (levelData && levelRow != null && levelData.results.mean) {
+    const m = levelData.results.mean[levelRow];
+    if (m != null) parts.push(`mean ${fmtMean(m)}`);
+  }
+  const rank = at("rank");
+  if (!parts.length && rank != null) parts.push(`rank ${rank} of ${matrix.genes.length} in ${levelName}`);
+  if (col < 0) return { parts: [], title: "" };
+  return { parts, title: `${matrix.genes[geneRow]} in ${levelName}` };
+}
+
+/** genes x levels, windowed by rows, scrolling both ways; the gene column stays put, the focused column is lit. */
+function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, labels, colors, single }: { matrix: MatrixData; rows: MatrixRow[]; stat: "effect" | "rank"; gene: string | null; focus: string; desc: boolean; onFocus: (level: string) => void; labels: string[]; colors: (string | undefined)[]; single: string | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [h, setH] = useState(300);
@@ -224,8 +293,8 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
     if (!el || !gene) return;
     const k = list.findIndex((r) => r.gene === gene);
     if (k < 0) return;
-    const y = 26 + k * ROW_H;
-    if (y < el.scrollTop + 26 || y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = Math.max(0, y - el.clientHeight / 2);
+    const y = HEAD_H + k * ROW_H;
+    if (y < el.scrollTop + HEAD_H || y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = Math.max(0, y - el.clientHeight / 2);
   }, [gene, list]);
   const k = matrix.levels.length;
   const a = matrix.stats[stat];
@@ -239,20 +308,36 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
   const columns = `${GENE_W}px repeat(${k}, ${COL_W}px)`;
   const first = Math.max(0, Math.floor(top / ROW_H) - 8);
   const last = Math.min(list.length, Math.ceil((top + h) / ROW_H) + 8);
+  const focusCol = matrix.levels.indexOf(focus);
   const tint = (v: number): string | undefined => {
     if (Number.isNaN(v)) return undefined;
-    if (stat === "rank") return `color-mix(in srgb, var(--accent) ${Math.round(40 * (1 - (v - 1) / nRank))}%, transparent)`;
-    const pct = Math.round(60 * Math.min(1, Math.abs(v) / maxAbs));
+    if (stat === "rank") return `color-mix(in srgb, var(--accent) ${Math.round(8 + 32 * (1 - (v - 1) / nRank))}%, transparent)`;
+    const pct = Math.round(10 + 40 * Math.min(1, Math.abs(v) / maxAbs));
     return `color-mix(in srgb, var(${v >= 0 ? "--c-up" : "--c-down"}) ${pct}%, transparent)`;
   };
-  const single = k === 1 && groups.length >= 2;
+  const detail = (i: number, j: number): string => {
+    const at = (name: string) => matrix.stats[name]?.[i * k + j];
+    const bits: string[] = [];
+    const eff = at("effect");
+    if (eff != null && !Number.isNaN(eff)) bits.push(`log2FC ${fmtEffect(eff)}`);
+    const padj = at("padj");
+    if (padj != null && !Number.isNaN(padj)) bits.push(`padj ${fmtP(padj)}`);
+    const pin = at("pct_in");
+    const pout = at("pct_out");
+    if (pin != null && !Number.isNaN(pin)) bits.push(`in ${fmtPct(pin)}% · out ${fmtPct(pout ?? null)}%`);
+    const rank = at("rank");
+    if (rank != null && !Number.isNaN(rank)) bits.push(`rank ${rank}`);
+    return bits.length ? `${matrix.genes[i]} in ${labels[j]}: ${bits.join(" · ")}` : `${matrix.genes[i]}: not in ${labels[j]}'s table`;
+  };
   return (
-    <div className="c-scroll m-scroll" ref={ref} onScroll={(e) => setTop((e.target as HTMLDivElement).scrollTop)}>
+    <div className="m-scroll" ref={ref} onScroll={(e) => setTop((e.target as HTMLDivElement).scrollTop)}>
+      {focusCol >= 0 && k > 1 && <div className="m-colbg" style={{ left: GENE_W + focusCol * COL_W, height: Math.max(HEAD_H + list.length * ROW_H, h) }} />}
       <div className="m-head" style={{ gridTemplateColumns: columns, width }}>
-        <span className="m-gene muted">{stat === "effect" ? "gene · log2FC" : "gene · rank"}</span>
+        <span className="m-gene">{stat === "effect" ? "Gene · log2FC" : "Gene · rank"}</span>
         {matrix.levels.map((lv, j) => (
-          <button key={lv} className={lv === focus ? "on" : ""} onClick={() => onFocus(lv)} title={single ? `${groups[groups.length - 1]} against ${groups[0]}: click to flip the order` : `${labels[j]}: click to sort by it and focus it`}>
-            {single ? `${groups[groups.length - 1]} vs ${groups[0]}` : labels[j]}
+          <button key={lv} className={lv === focus ? "on" : ""} onClick={() => onFocus(lv)} title={single ? `${single}: click to flip the order` : `${labels[j]}: click to sort by it and focus it`}>
+            {colors[j] && <i style={{ background: colors[j] }} />}
+            {single ?? labels[j]}
             {lv === focus ? (desc ? " ▾" : " ▴") : ""}
           </button>
         ))}
@@ -271,9 +356,10 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
               <span className="m-gene">{r.gene}</span>
               {matrix.levels.map((lv, j) => {
                 const v = a[r.i * k + j];
+                const blank = Number.isNaN(v);
                 return (
-                  <span key={lv} className="m-cell" style={{ background: tint(v) }} title={cellDetail(matrix, r.i, j)}>
-                    {Number.isNaN(v) ? "" : stat === "rank" ? v : fmtEffect(v)}
+                  <span key={lv} className={`m-cell${blank ? " e" : ""}`} style={{ background: tint(v) }} title={detail(r.i, j)}>
+                    {blank ? "" : stat === "rank" ? v : fmtEffect(v)}
                   </span>
                 );
               })}
@@ -287,8 +373,8 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
 }
 
 /** The gene's expression per category as violins, from the histograms the dot plot already computes; the focused
- *  level in full colour, the rest dimmed; a tick at each median. */
-function Violins({ stats, vocab, gene, focus, order, detail, description }: { stats: GroupStats; vocab: { categories: string[]; colors: string[] }; gene: string; focus: string; order: string[]; detail: string; description: string | null }) {
+ *  level in full colour, the rest dimmed; a tick at each median. Labels thin out when the categories crowd. */
+function Violins({ stats, vocab, focus, order }: { stats: GroupStats; vocab: { categories: string[]; colors: string[] }; focus: string; order: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<[number, number]>([320, 200]);
   useEffect(() => {
@@ -315,16 +401,16 @@ function Violins({ stats, vocab, gene, focus, order, detail, description }: { st
     return out;
   }, [stats, vocab, order]);
   const [W, H] = size;
-  const footer = 44;
-  const pad = { l: 40, r: 8, t: 24, b: 34 };
-  const ph = Math.max(60, H - footer - pad.t - pad.b);
+  const pad = { l: 44, r: 10, t: 18, b: 30 };
+  const ph = Math.max(50, H - pad.t - pad.b);
   const pw = Math.max(80, W - pad.l - pad.r);
-  const slot = Math.min(64, pw / Math.max(1, rows.length));
-  const half = slot * 0.44;
+  const slot = Math.min(72, pw / Math.max(1, rows.length));
+  const half = slot * 0.42;
   const { vmin, vmax, bins } = stats;
   const y = (v: number) => pad.t + ph - ((v - vmin) / (vmax - vmin)) * ph;
   const bw = (vmax - vmin) / bins;
   const x0 = pad.l + (pw - slot * rows.length) / 2;
+  const crowded = slot < 44;
   const path = (hist: number[], cx: number) => {
     const peak = Math.max(1, ...hist);
     const left: string[] = [];
@@ -338,16 +424,15 @@ function Violins({ stats, vocab, gene, focus, order, detail, description }: { st
     return `M${left.join(" L")} L${right.join(" L")} Z`;
   };
   return (
-    <div className="c-plotwrap" ref={ref}>
-      <svg width={W} height={Math.max(100, H - footer)} className="violins">
-        <text x={pad.l} y={14} className="c-title">
-          {gene}
-          <tspan className="muted"> · expression per {rows.length} categor{rows.length === 1 ? "y" : "ies"} · log-normalized</tspan>
+    <div className="d-plotwrap" ref={ref}>
+      <svg width={W} height={H}>
+        <text x={pad.l} y={12} className="c-axis">
+          log-normalized
         </text>
         {ticks(vmin, vmax).map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={pad.l + pw} y1={y(t)} y2={y(t)} className="c-grid" />
-            <text x={pad.l - 6} y={y(t) + 3} className="c-tick">
+            <text x={pad.l - 8} y={y(t) + 3} className="c-tick">
               {fmtMean(t)}
             </text>
           </g>
@@ -357,36 +442,25 @@ function Violins({ stats, vocab, gene, focus, order, detail, description }: { st
           const cx = x0 + slot * (k + 0.5);
           const on = name === focus;
           return (
-            <g key={r.code} className={on ? "" : "dim"}>
+            <g key={r.code}>
               <title>{`${name} · ${r.n.toLocaleString()} cells · median ${fmtMean(r.median)} · ${(100 * r.frac).toFixed(0)}% expressing`}</title>
-              <path d={path(r.hist, cx)} className="violin" style={{ fill: vocab.colors[r.code] }} />
-              <line x1={cx - half * 0.6} x2={cx + half * 0.6} y1={y(r.median)} y2={y(r.median)} className="v-median" />
-              <text x={cx} y={pad.t + ph + 14} className="c-group" style={{ fill: vocab.colors[r.code] }} transform={slot < 44 ? `rotate(-35 ${cx} ${pad.t + ph + 14})` : undefined} textAnchor={slot < 44 ? "end" : "middle"}>
-                {name.length > 10 && slot < 64 ? name.slice(0, 9) + "…" : name}
-              </text>
+              <path d={path(r.hist, cx)} className={`violin${on ? "" : " dim"}`} style={{ fill: vocab.colors[r.code] }} />
+              <line x1={cx - half * 0.55} x2={cx + half * 0.55} y1={y(r.median)} y2={y(r.median)} className="v-median" opacity={on ? 1 : 0.6} />
+              {(on || !crowded) && (
+                <text x={cx} y={pad.t + ph + 16} className={`c-group${on ? " on" : ""}`} style={{ fill: on ? vocab.colors[r.code] : undefined }}>
+                  {name.length > 11 && slot < 72 ? name.slice(0, 10) + "…" : name}
+                </text>
+              )}
             </g>
           );
         })}
       </svg>
-      <div className="c-foot">
-        <span className="c-stats">{detail ? `${focus}: ${detail}` : ""}</span>
-        {description && <span className="muted c-desc">{description}</span>}
-      </div>
     </div>
   );
 }
 
-function geneStats(data: ComparisonData, geneRow: number): string[] {
-  const r = data.results;
-  return [
-    r.effect ? `effect ${fmtEffect(r.effect[geneRow])}` : null,
-    r.p ? `p ${fmtP(r.p[geneRow])}` : null,
-    r.padj ? `padj ${fmtP(r.padj[geneRow])}` : null,
-    r.mean ? `mean ${fmtMean(r.mean[geneRow])}` : null,
-  ].filter(Boolean) as string[];
-}
-
-function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; geneRow: number; gene: string; box: boolean }) {
+/** One dot per replicate for the gene, by group; a median line, a box on request, lines between paired subjects. */
+function ReplicatePlot({ data, geneRow, box }: { data: ComparisonData; geneRow: number; box: boolean }) {
   const manifest = useViewer((s) => s.manifest)!;
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<[number, number]>([320, 200]);
@@ -402,11 +476,9 @@ function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; gen
   const groups = useMemo(() => groupValues(data, geneRow), [data, geneRow]);
   const colors = useMemo(() => groupColors(manifest, data.info), [manifest, data.info]);
   const paired = useMemo(() => pairs(groups), [groups]);
-  const stats = geneStats(data, geneRow);
   const [W, H] = size;
-  const footer = 44;
-  const pad = { l: 46, r: 12, t: 26, b: 28 };
-  const ph = Math.max(60, H - footer - pad.t - pad.b);
+  const pad = { l: 46, r: 12, t: 18, b: 30 };
+  const ph = Math.max(50, H - pad.t - pad.b);
   const pw = Math.max(80, W - pad.l - pad.r);
   const values = groups.flatMap((g) => g.values.map((v) => v.value));
   const any = values.length > 0;
@@ -423,20 +495,16 @@ function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; gen
   const slot = pw / Math.max(1, groups.length);
   const gx = (k: number) => pad.l + slot * (k + 0.5);
   const half = Math.min(22, slot * 0.22);
-  const unmeasured = data.unmeasured.has(geneRow);
   return (
-    <div className="c-plotwrap" ref={ref}>
-      <svg width={W} height={Math.max(100, H - footer)}>
-        <text x={pad.l} y={14} className="c-title">
-          {gene}
-          {data.level.name !== "all" ? <tspan className="muted"> · {data.level.name}</tspan> : null}
-          {data.info.units ? <tspan className="muted"> · {data.info.units}</tspan> : null}
-          {unmeasured ? <tspan className="warn"> · not measured by any section</tspan> : null}
+    <div className="d-plotwrap" ref={ref}>
+      <svg width={W} height={H}>
+        <text x={pad.l} y={12} className="c-axis">
+          {data.info.units ?? "replicate value"}
         </text>
         {ticks(lo, hi).map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={pad.l + pw} y1={y(t)} y2={y(t)} className="c-grid" />
-            <text x={pad.l - 6} y={y(t) + 3} className="c-tick">
+            <text x={pad.l - 8} y={y(t) + 3} className="c-tick">
               {fmtMean(t)}
             </text>
           </g>
@@ -470,7 +538,7 @@ function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; gen
                 </g>
               );
             })}
-            <text x={gx(k)} y={pad.t + ph + 16} className="c-group" style={{ fill: colors[k] }}>
+            <text x={gx(k)} y={pad.t + ph + 16} className="c-group on" style={{ fill: colors[k] }}>
               {g.group}
               <tspan className="muted"> {g.values.length}</tspan>
             </text>
@@ -482,10 +550,6 @@ function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; gen
           {hover.text}
         </div>
       )}
-      <div className="c-foot">
-        <span className="c-stats">{stats.join(" · ")}</span>
-        {data.info.description && <span className="muted c-desc">{data.info.description}</span>}
-      </div>
     </div>
   );
 }

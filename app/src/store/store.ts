@@ -213,9 +213,9 @@ function storedGenomeHeight(): number {
 function storedCompareHeight(): number {
   try {
     const v = Number(localStorage.getItem(COMPARE_HEIGHT_KEY));
-    return v >= 180 && v <= 2000 ? v : 280;
+    return v >= 180 && v <= 2000 ? v : 340;
   } catch {
-    return 280;
+    return 340;
   }
 }
 function storedCompareBox(): boolean {
