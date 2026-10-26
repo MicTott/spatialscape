@@ -148,6 +148,10 @@ describe("molecules", () => {
     expect(new URLSearchParams(serialize({ ...store.getState(), overlay: "nucleus" } as ViewerState)).get("ov")).toBe("nucleus");
     g.window = { location: { search: "?ov=nucleus" } };
     expect(readUrl().overlay).toBe("nucleus");
+    g.window = { location: { search: "?cs=edges" } };
+    expect(readUrl().cellShapes).toBe("outlined"); // the mode's name before 0.4.1
+    g.window = { location: { search: "?cs=outlined" } };
+    expect(readUrl().cellShapes).toBe("outlined");
     g.window = saved;
   });
 });

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Plainer names in the side panel.** Transcripts: *selected genes* (the gene on screen and the pins) replaces *follow colour*. Cells: *Draw cells as* (dots, filled, outlined) replaces *Shapes* (dots, filled, edges), and *Annotation boundaries* replaces *Outlines*, which read as the cells' outlines one row above it. `cs=outlined` in the URL; `cs=edges` in older links still works.
 - **Compare segmentations.** `segmentations:` on a sample lists other boundary sets of the same section (a long-format table like `polygons`, the polygons' `affine` inherited); a Xenium `nucleus_boundaries.parquet` next to the cell boundaries is taken automatically. Each is tiled like the cell shapes into `segmentations/<id>/shapes.*`, with its median ring area. In the viewer, *Compare with* in the Cells group draws one of them as dashed amber edges over the cells, image and molecules once zoomed in (URL `ov`), with a table of cells and median area for the focused section (or all sections) against the cells' own shapes.
 
 ## 0.4.0 (2026-10-23)

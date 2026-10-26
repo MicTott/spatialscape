@@ -4,7 +4,7 @@ import type { FeatureList, LayoutMode, Manifest } from "../data/manifest";
 import type { Locus } from "../genome/model";
 
 export type BlendScheme = "yb" | "cm" | "rg";
-export type CellShapes = "auto" | "dots" | "filled" | "edges";
+export type CellShapes = "auto" | "dots" | "filled" | "outlined";
 export type ColorSpec = { kind: "gene"; gene: string } | { kind: "field"; field: string } | { kind: "blend"; a: string[]; b: string[]; scheme: BlendScheme };
 /** A lasso kept as part of a region group, in the coordinates of the section it was drawn on. */
 export interface RegionPolygon {
@@ -110,11 +110,11 @@ export interface ViewerState {
   groupField: string | null;
   groupStats: GroupStats | null;
   tool: "pan" | "lasso";
-  cellShapes: CellShapes; // cell shapes once zoomed in: auto (filled, or edges over an image), dots, filled, edges
+  cellShapes: CellShapes; // how cells draw once zoomed in: auto (filled, or outlined over an image), dots, filled, outlined
   shapeHint: string | null; // "zoom in for cell shapes" when too many cells are in view to draw their shapes
   molecules: boolean; // individual molecules (transcripts) once zoomed in, when the bundle has them
   moleculeGenes: string[]; // pinned genes whose molecules draw in fixed colours next to the gene on screen
-  moleculeColors: "follow" | "all"; // follow the colour on screen (others grey under an annotation), or every gene its own colour
+  moleculeColors: "selected" | "all"; // the selected genes (the one on screen and the pins; others grey under an annotation), or every gene in its own colour
   moleculeSize: number; // point radius multiplier for molecules (1 = 1.6 px)
   moleculeHint: string | null; // "zoom in for molecules" when the view holds too many to draw
   overlay: string | null; // another segmentation of the section (by id) drawn as dashed edges over the cells
@@ -258,7 +258,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   shapeHint: null,
   molecules: false,
   moleculeGenes: [],
-  moleculeColors: "follow",
+  moleculeColors: "selected",
   moleculeSize: 1,
   moleculeHint: null,
   overlay: null,

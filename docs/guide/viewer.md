@@ -56,9 +56,9 @@ When coloring by a gene, this panel shows mean expression and percent expressing
 
 The tooltip lists the current gene's value, the filter gene's value if different, every categorical annotation of the cell with its swatch, and the cell id.
 
-## Outlines
+## Annotation boundaries
 
-The Outlines section of the side panel lists the categorical annotations whose boundaries were traced at build time (every categorical field, by default); pick one to draw its boundaries over whatever you are coloring by, or *none*. The section is absent when the bundle has no outlines. See [Building](./building#what-happens-per-sample).
+*Annotation boundaries* in the Cells group lists the categorical annotations whose boundaries were traced at build time (every categorical field, by default); pick one to draw its boundaries over whatever you are coloring by, or *none*. The row is absent when the bundle has no outlines. See [Building](./building#what-happens-per-sample).
 
 ## Lasso
 
@@ -142,7 +142,7 @@ Each view has its own point-size slider at its bottom-left corner: one for the t
 
 H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone, and double-click it again to show them all. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. 
 
-When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Cells when zoomed in* in the Display panel chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **edges**, outlines in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
+When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Draw cells as* in the Cells group chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **outlined**, in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
 
 ## The side panel
 
@@ -151,8 +151,8 @@ open at once, and what is open is remembered per browser:
 
 - **Image**: its switch in the bar, opacity and, for fluorescence, the channel list.
 - **Cells**: colour by (gene, cell type weights, blend, annotation), the legend, expression by annotation, the
-  filter, and *Drawing*: cell shapes once zoomed in (dots, filled, edges), annotation outlines, cluster labels.
-- **Transcripts**: its switch in the bar, follow colour or all genes, the pinned genes, the point size.
+  filter, and *Drawing*: how cells draw once zoomed in (dots, filled, outlined), annotation boundaries, cluster labels.
+- **Transcripts**: its switch in the bar, selected genes or all genes, the pinned genes, the point size.
 - **Selections**: the lasso's selection and your drawn regions.
 - **Samples**: comparisons, the grid or strip layout, focus and the list of sections.
 
@@ -169,15 +169,15 @@ travels in the URL as `ov`.
 
 ## Molecules
 
-When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), the Molecules layer draws them
+When a bundle carries molecules (Xenium transcripts, from `molecules:` in the yaml), the Transcripts group draws them
 once a view holds at most about one per screen pixel, counted from the tiles in view (about a million in a large
 window, which keeps a laptop near 60 frames per second; every molecule of a view is drawn, none are sampled). Until
-then the status line says *zoom in for molecules*. A size slider in the row scales the points (double-click to
-reset; `msz` in the URL). They follow the colour on screen: the gene you are looking at draws
+then the status line says *zoom in for molecules*. A size slider in the group scales the points (double-click to
+reset; `msz` in the URL). **Selected genes** colours the genes you have chosen: the gene you are looking at draws
 in the colormap's top colour, a blend's two gene sets in the blend's colours, and under an annotation every molecule
 draws in grey, which is the view for judging a segmentation.
 
-Zoomed out, a cell can show one gene; zoomed in, the molecules can show several. The Molecules row lists the gene on
+Zoomed out, a cell can show one gene; zoomed in, the molecules can show several. The Transcripts group lists the gene on
 screen and lets you **pin** more, each in a fixed colour, with a search box; a pin stays while you step through other
 genes, so a few anchors remain visible, and click × to unpin. **All genes** colours every gene by its own hue at once,
 the view for seeing where transcripts of different kinds gather; pins and the gene on screen keep their colours on

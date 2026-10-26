@@ -3,8 +3,10 @@
  * over the cells, the image and the molecules, so two segmentations can be judged against each other. Its rings are
  * numbered, not tied to cells, so they carry no colour of their own. Same tiles, gate and fetching as cell shapes.
  */
+import type { Layer } from "@deck.gl/core";
 import { PathLayer } from "@deck.gl/layers";
-import { PathStyleExtension } from "@deck.gl/extensions";
+import { PathStyleExtension, type PathStyleExtensionProps } from "@deck.gl/extensions";
+import type { Matrix4 } from "@math.gl/core";
 import type { ShapeIndex, ShapeTile, ShapeTileEntry } from "../data/shapeTiles";
 import type { ViewId } from "../store/store";
 import type { LayoutResult } from "./layout";
@@ -19,7 +21,7 @@ export const OVERLAY_HEX = "#ffb02e";
 const DASH = new PathStyleExtension({ dash: true });
 
 interface OverlayCached extends Cached<ShapeTile> {
-  data?: any;
+  data?: { length: number; startIndices: Uint32Array; attributes: { getPath: { value: Float32Array; size: number } } };
 }
 
 export class OverlayManager extends TileManager<ShapeIndex, ShapeTile> {
@@ -39,13 +41,13 @@ export class OverlayManager extends TileManager<ShapeIndex, ShapeTile> {
   }
 
   /** One pane: dashed edges of this segmentation for every sample that carries it. */
-  pane(view: ViewId, L: LayoutResult): any[] {
+  pane(view: ViewId, L: LayoutResult): Layer[] {
     const c = this.c;
-    const layers: any[] = [];
+    const layers: Layer[] = [];
     const vb = c.viewBbox(view);
     const zoomScale = Math.pow(2, c.viewStates[view].zoom);
     const settled = this.settled(view, vb);
-    const wants: { id: string; matrix: any; tiles: ShapeTileEntry[] }[] = [];
+    const wants: { id: string; matrix: Matrix4; tiles: ShapeTileEntry[] }[] = [];
     let cells = 0;
     for (const [id, p] of L.placements) {
       const smp = c.samplesById.get(id)!;
@@ -66,7 +68,7 @@ export class OverlayManager extends TileManager<ShapeIndex, ShapeTile> {
       for (const t of ready as OverlayCached[]) {
         t.data ??= { length: t.tile.rows.length, startIndices: t.tile.startIndices, attributes: { getPath: { value: t.tile.positions, size: 2 } } };
         layers.push(
-          new PathLayer({
+          new PathLayer<unknown, PathStyleExtensionProps>({
             ...overlayProps(view),
             id: `overlay-${this.segmentation}-${w.id}-${t.key}`,
             data: t.data,
@@ -79,7 +81,7 @@ export class OverlayManager extends TileManager<ShapeIndex, ShapeTile> {
             getDashArray: [5, 3],
             dashJustified: false,
             extensions: [DASH],
-          } as any),
+          }),
         );
       }
     }

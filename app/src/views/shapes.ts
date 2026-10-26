@@ -7,6 +7,8 @@
  * SHAPE_CELL_BUDGET cells for the pane and at most TILE_CAP tiles across all panes; otherwise the dots stay and
  * the status line says to zoom in. A sample whose visible tiles are all loaded shows shapes instead of dots.
  */
+import type { Layer } from "@deck.gl/core";
+import type { Matrix4 } from "@math.gl/core";
 import type { ShapeIndex, ShapeTile, ShapeTileEntry } from "../data/shapeTiles";
 import { ShapeEdgeLayer, ShapeFillLayer } from "../layers/ShapeLayers";
 import type { CellColorProps } from "../layers/colorModule";
@@ -20,11 +22,13 @@ import type { ViewerController } from "./ViewerController";
 export const SHAPE_GATE_PX = 6;
 export const SHAPE_CELL_BUDGET = 40_000;
 
-type Attr = { value: ArrayBufferView; size: number };
+type Attr = { value: Float32Array | Uint8Array | Uint16Array | Uint32Array; size: number };
+/** A tile as deck reads it: binary attributes (and the triangle indices), no accessors. */
+type TileData = { length: number; startIndices: Uint32Array; attributes: Record<string, Attr | Uint32Array> };
 interface ShapeCached extends Cached<ShapeTile> {
   from?: unknown; // the per-cell inputs the gathered bytes came from
-  fill?: any;
-  edge?: any;
+  fill?: TileData;
+  edge?: TileData;
 }
 export interface CellColor {
   props: CellColorProps;
@@ -32,9 +36,9 @@ export interface CellColor {
 }
 
 /** The drawing mode a sample gets: "auto" fills cells unless an image is drawn under them. */
-export function shapeMode(setting: CellShapes, imageShown: boolean): "dots" | "filled" | "edges" {
+export function shapeMode(setting: CellShapes, imageShown: boolean): "dots" | "filled" | "outlined" {
   if (setting !== "auto") return setting;
-  return imageShown ? "edges" : "filled";
+  return imageShown ? "outlined" : "filled";
 }
 
 /** Per-vertex colour inputs, packed as the shape layers read them: value, value2, filter (and a spare byte) in one
@@ -85,15 +89,15 @@ export class ShapeManager extends TileManager<ShapeIndex, ShapeTile> {
     view: ViewId,
     L: LayoutResult,
     _s: ViewerState,
-    modeFor: (id: string) => "dots" | "filled" | "edges",
+    modeFor: (id: string) => "dots" | "filled" | "outlined",
     colorFor: (id: string) => CellColor | undefined,
-  ): { complete: Set<string>; layers: any[] } {
+  ): { complete: Set<string>; layers: Layer[] } {
     const c = this.c;
-    const out = { complete: new Set<string>(), layers: [] as any[] };
+    const out = { complete: new Set<string>(), layers: [] as Layer[] };
     const vb = c.viewBbox(view);
     const zoomScale = Math.pow(2, c.viewStates[view].zoom);
     const settled = this.settled(view, vb);
-    type Want = { id: string; mode: "filled" | "edges"; matrix: any; tiles: ShapeTileEntry[] };
+    type Want = { id: string; mode: "filled" | "outlined"; matrix: Matrix4; tiles: ShapeTileEntry[] };
     const wants: Want[] = [];
     let cells = 0;
     for (const [id, p] of L.placements) {
@@ -116,16 +120,16 @@ export class ShapeManager extends TileManager<ShapeIndex, ShapeTile> {
     }
     this.tilesThisBuild += ntiles;
     for (const w of wants) {
-      const { ready, complete } = this.resolve(w.id, w.tiles, settled);
+      const { ready, complete } = this.resolve(w.id, w.tiles, settled) as { ready: ShapeCached[]; complete: boolean };
       const color = colorFor(w.id);
       if (!color) continue;
       if (complete) out.complete.add(w.id);
-      for (const t of ready) out.layers.push(...this.tileLayers(view, w.id, w.mode, w.matrix, t as ShapeCached, color));
+      for (const t of ready) out.layers.push(...this.tileLayers(view, w.id, w.mode, w.matrix, t, color));
     }
     return out;
   }
 
-  private tileLayers(view: ViewId, id: string, mode: "filled" | "edges", matrix: any, t: ShapeCached, color: CellColor) {
+  private tileLayers(view: ViewId, id: string, mode: "filled" | "outlined", matrix: Matrix4, t: ShapeCached, color: CellColor): Layer[] {
     const tile = t.tile;
     if (t.from !== color.inputs) {
       const attrs = gatherCells(color.inputs, tile.vertexRow);
@@ -136,14 +140,14 @@ export class ShapeManager extends TileManager<ShapeIndex, ShapeTile> {
     }
     const common = { ...overlayProps(view), modelMatrix: matrix, ...color.props };
     const tid = `${id}-${t.key}`;
-    const layers: any[] = [];
+    const layers: Layer[] = [];
     if (mode === "filled") {
       layers.push(
-        new ShapeFillLayer({ ...common, id: `shape-fill-${tid}`, data: t.fill, _normalize: false, positionFormat: "XY", opacity: 0.85 } as any),
-        new ShapeEdgeLayer({ ...common, id: `shape-edge-${tid}`, data: t.edge, _pathType: "open", shade: 0.55, getWidth: 1, widthUnits: "pixels", widthMinPixels: 0.75 } as any),
+        new ShapeFillLayer({ ...common, id: `shape-fill-${tid}`, data: t.fill, _normalize: false, positionFormat: "XY", opacity: 0.85 }),
+        new ShapeEdgeLayer({ ...common, id: `shape-edge-${tid}`, data: t.edge, _pathType: "open", shade: 0.55, getWidth: 1, widthUnits: "pixels", widthMinPixels: 0.75 }),
       );
     } else {
-      layers.push(new ShapeEdgeLayer({ ...common, id: `shape-edge-${tid}`, data: t.edge, _pathType: "open", shade: 1, getWidth: 1.5, widthUnits: "pixels", widthMinPixels: 1 } as any));
+      layers.push(new ShapeEdgeLayer({ ...common, id: `shape-edge-${tid}`, data: t.edge, _pathType: "open", shade: 1, getWidth: 1.5, widthUnits: "pixels", widthMinPixels: 1 }));
     }
     return layers;
   }

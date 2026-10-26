@@ -1,6 +1,6 @@
 /**
  * Molecules in the viewer: which tiles each pane needs, whether it may draw them, and the per-gene colours that
- * make molecules follow the colour on screen. Fetching, caching and settling live in TileManager.
+ * colour the selected genes. Fetching, caching and settling live in TileManager.
  *
  * The gate is screen density, not zoom: molecules draw when the molecules that would be visible come to at most
  * MOLECULE_DENSITY per screen pixel of the pane (estimated from the index: a gene's share of the sample times the
@@ -8,6 +8,8 @@
  * in. Colour: the gene on screen draws in the colormap's top colour, a blend's two gene sets in the blend's colours,
  * and with an annotation (or nothing) on screen every molecule draws in grey, the view for judging a segmentation.
  */
+import type { Layer } from "@deck.gl/core";
+import type { Matrix4 } from "@math.gl/core";
 import type { MoleculeIndex, MoleculeTile, MoleculeTileEntry } from "../data/moleculeTiles";
 import { MoleculeLayer } from "../layers/MoleculeLayer";
 import { BLEND_SCHEMES, COLORMAPS, effectiveColormap, hexToRGB } from "../layers/lut";
@@ -48,13 +50,13 @@ export function onScreenColor(s: Pick<ViewerState, "colormap" | "geneMin">): [nu
 }
 
 interface MoleculeCached extends Cached<MoleculeTile> {
-  data?: any;
+  data?: { length: number; attributes: Record<string, { value: Float32Array | Uint8Array | Uint16Array; size: number }> };
 }
 
 /** Which genes draw, and in what colour, for the colour state on screen: the gene on screen in the colormap's top
  *  colour (a blend's sets in its colours), every pinned gene in its pin colour, and under an annotation every other
  *  gene in grey. `shares` gives the fraction of a sample's molecules that would draw, for the density gate. */
-export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "follow" | "all" }): { colors: Uint8Array; shares: (counts: number[]) => number } {
+export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "selected" | "all" }): { colors: Uint8Array; shares: (counts: number[]) => number } {
   const n = genes.length;
   const out = new Uint8Array(Math.max(1, n) * 4);
   const picked = new Set<number>();
@@ -123,14 +125,14 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
   }
 
   /** One pane: the molecule layers to draw and the samples whose dots should fade under them. */
-  pane(view: ViewId, L: LayoutResult, s: ViewerState): { drawn: Set<string>; layers: any[] } {
+  pane(view: ViewId, L: LayoutResult, s: ViewerState): { drawn: Set<string>; layers: Layer[] } {
     const c = this.c;
-    const out = { drawn: new Set<string>(), layers: [] as any[] };
+    const out = { drawn: new Set<string>(), layers: [] as Layer[] };
     if (!s.molecules) return out;
     const vb = c.viewBbox(view);
     const [vw, vh] = c.viewSize(view);
     const settled = this.settled(view, vb);
-    type Want = { id: string; matrix: any; tiles: MoleculeTileEntry[]; index: MoleculeIndex; colors: ReturnType<typeof geneColors> };
+    type Want = { id: string; matrix: Matrix4; tiles: MoleculeTileEntry[]; index: MoleculeIndex; colors: ReturnType<typeof geneColors> };
     const wants: Want[] = [];
     let visible = 0;
     let held = 0;
@@ -176,7 +178,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
             filled: true,
             antialiasing: true,
             opacity: 0.95,
-          } as any),
+          }),
         );
       }
     }

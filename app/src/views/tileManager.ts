@@ -5,7 +5,7 @@
  */
 import { Matrix4 } from "@math.gl/core";
 import { tilesInRect, tileKey, indexByKey, type TileEntry, type TileIndexBase } from "../data/tileIndex";
-import { store, type ViewId } from "../store/store";
+import { store, type ViewerState, type ViewId } from "../store/store";
 import type { ViewerController } from "./ViewerController";
 
 export const SETTLE_MS = 150; // the camera must be still this long before tiles are requested
@@ -82,7 +82,7 @@ export abstract class TileManager<I extends TileIndexBase, T extends { bytes: nu
     }
     if (this.hintKey && this.nextHint !== this.hint) {
       this.hint = this.nextHint;
-      store.getState().set({ [this.hintKey]: this.hint } as any);
+      store.getState().set({ [this.hintKey]: this.hint } as Pick<ViewerState, "shapeHint" | "moleculeHint">);
     }
   }
 

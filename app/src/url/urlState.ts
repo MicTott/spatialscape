@@ -84,7 +84,8 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("gf")) out.groupField = q.get("gf");
   if (q.get("poly") === "0") out.cellShapes = "dots"; // links written before cell shapes had modes
   const cs = q.get("cs");
-  if (cs === "dots" || cs === "filled" || cs === "edges") out.cellShapes = cs;
+  if (cs === "dots" || cs === "filled" || cs === "outlined") out.cellShapes = cs;
+  else if (cs === "edges") out.cellShapes = "outlined"; // the mode's name before 0.4.1
   if (q.get("mol") === "1") out.molecules = true;
   if (q.get("mg")) out.moleculeGenes = q.get("mg")!.split("|").filter(Boolean);
   if (q.get("mc") === "all") out.moleculeColors = "all";
