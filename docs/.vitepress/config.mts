@@ -25,21 +25,48 @@ export default defineConfig({
     sidebar: {
       "/guide/": [
         {
-          text: "Guide",
+          text: "Start",
           items: [
             { text: "Getting started", link: "/guide/getting-started" },
             { text: "In a notebook: show()", link: "/guide/notebooks" },
+          ],
+        },
+        {
+          text: "By platform",
+          items: [
+            { text: "What each family can show", link: "/guide/platforms/" },
+            { text: "Sequencing-based spatial", link: "/guide/platforms/sequencing" },
+            { text: "Imaging-based spatial", link: "/guide/platforms/imaging" },
+            { text: "Single-cell and multiome", link: "/guide/platforms/single-cell" },
+          ],
+        },
+        {
+          text: "Your dataset",
+          items: [
+            { text: "Where your data comes from", link: "/guide/preparing-data" },
             { text: "Writing dataset.yaml", link: "/guide/dataset-yaml" },
-            { text: "Inputs: what the CLI reads", link: "/guide/preparing-data" },
             { text: "Building and validating", link: "/guide/building" },
             { text: "Making changes", link: "/guide/changes" },
             { text: "Using the viewer", link: "/guide/viewer" },
+          ],
+        },
+        {
+          text: "Advanced",
+          collapsed: true,
+          items: [
+            { text: "Genome tracks", link: "/guide/tracks" },
+            { text: "Metadata and comparisons", link: "/guide/comparisons" },
+          ],
+        },
+        {
+          text: "Sharing",
+          items: [
             { text: "The gallery: site.yaml", link: "/guide/registry" },
             { text: "Publish your own site", link: "/guide/publish" },
             { text: "Hosting", link: "/guide/hosting" },
-            { text: "Troubleshooting", link: "/guide/troubleshooting" },
           ],
         },
+        { text: "Troubleshooting", link: "/guide/troubleshooting" },
       ],
       "/reference/": [
         {

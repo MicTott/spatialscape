@@ -120,7 +120,9 @@ command writes next to the yaml it read, and the data it points at can live anyw
    ```
 
 [Writing dataset.yaml](./dataset-yaml) explains the menu and [Making changes](./changes) maps every common
-edit to the line to change.
+edit to the line to change. Your platform's page ([sequencing-based](./platforms/sequencing),
+[imaging-based](./platforms/imaging), [single-cell](./platforms/single-cell)) lists the optional layers (images,
+cell shapes, transcripts), where their files come from and what each costs.
 
 ## Goal 3: publish
 

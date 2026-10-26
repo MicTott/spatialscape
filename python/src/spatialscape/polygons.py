@@ -6,11 +6,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pyarrow.parquet as pq
 
 
 def read_polygon_table(path: Path, id_col: str, x_col: str, y_col: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    t = pq.read_table(path, columns=[id_col, x_col, y_col])
+    """One row per vertex, from Parquet or CSV / TSV (gzipped or not); ids come back as strings, numeric ones included."""
+    from .tables import read_columns, table_columns
+
+    present = table_columns(path)
+    missing = [c for c in (id_col, x_col, y_col) if c not in present]
+    if missing:
+        raise KeyError(f"{path}: column{'s' if len(missing) > 1 else ''} {', '.join(repr(c) for c in missing)} not found; columns are {sorted(present)}")
+    t = read_columns(path, [id_col, x_col, y_col])
     ids = np.asarray(t.column(id_col).to_pylist(), dtype=str)
     x = t.column(x_col).to_numpy(zero_copy_only=False).astype(np.float64)
     y = t.column(y_col).to_numpy(zero_copy_only=False).astype(np.float64)

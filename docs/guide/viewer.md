@@ -93,7 +93,7 @@ pandas Series aligned with your object ([In a notebook](./notebooks)).
 
 ## Compare panel: a test's results next to the tissue
 
-When the dataset carries [comparisons](./dataset-yaml#comparisons-results-of-a-test-next-to-the-sections), the
+When the dataset carries [comparisons](./comparisons#comparisons-results-of-a-test-next-to-the-sections), the
 side panel has a *Compare* section. Choosing one splits the canvas by its groups (unless you had split by
 another key), filters the map to the population the test was fit in when the comparison names one (a chip in
 the panel header says so and clears it), and opens a panel under the maps:
@@ -115,7 +115,7 @@ the filter as they are.
 
 ## Genome panel
 
-An ATAC sample built with `tracks:` ([dataset.yaml](./dataset-yaml#genome-tracks-for-atac-samples)) adds a genome
+An ATAC sample built with `tracks:` ([Genome tracks](./tracks)) adds a genome
 panel under the maps, drawn by the same renderer as the maps: scroll to zoom around the cursor, drag to pan,
 double-click to zoom in, and drag the panel's top edge to resize it. From top to bottom it shows the coordinate
 axis, one accessibility track per visible category of the annotation you last colored by (in the vocabulary's

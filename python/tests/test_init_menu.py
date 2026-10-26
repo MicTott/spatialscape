@@ -192,3 +192,33 @@ def test_init_warns_when_one_file_holds_several_sections(tmp_path):
     assert "# subset: { column: sample_id, values: [Br1] }" in text and "this file holds 3 sections" in text
     r = runner.invoke(app, ["init", str(tmp_path / "src" / "sampleB.h5ad"), "--id", "demo", "-o", str(out)])
     assert r.exit_code == 0 and "holds" not in r.output and "subset:" not in out.read_text()  # one section: no hint
+
+
+def test_init_proposes_the_xenium_layers_found_next_to_the_matrix(tmp_path):
+    import shutil
+
+    from spatialscape.build import build_dataset
+    from spatialscape.config import load_config
+    from spatialscape.synthetic import make_synthetic
+
+    make_synthetic(tmp_path / "src", n_cells=60, n_genes=5)
+    outs = tmp_path / "run1" / "outs"
+    outs.mkdir(parents=True)
+    shutil.copy(tmp_path / "src" / "sampleA.h5ad", outs / "adata.h5ad")
+    shutil.copy(tmp_path / "src" / "sampleA.polygons.parquet", outs / "cell_boundaries.parquet")
+    shutil.copy(tmp_path / "src" / "sampleA.transcripts.parquet", outs / "transcripts.parquet")
+    out = tmp_path / "xen.yaml"
+    r = runner.invoke(app, ["init", str(tmp_path / "*" / "outs" / "adata.h5ad"), "--platform", "xenium", "--id", "xen", "-o", str(out)])
+    assert r.exit_code == 0, r.output
+    assert "layers: cell shapes from cell_boundaries.parquet, transcripts from transcripts.parquet" in r.output
+    text = out.read_text()
+    assert "delete the line to leave them out" in text
+    s = yaml.safe_load(text)["samples"][0]
+    assert s["polygons"] == {"path": "{dir}/cell_boundaries.parquet"} and s["molecules"] == {"path": "{dir}/transcripts.parquet"}
+    m = build_dataset(load_config(out), tmp_path / "b", log=lambda *_: None)
+    assert m.samples[0].id == "xen_run1"  # the run folder names the sample, not `outs`
+    assert m.samples[0].shapes is not None and m.samples[0].shapes.cells > 0 and m.samples[0].molecules is not None
+    # no such files: the keys are offered as comments with the column names to fill in
+    r = runner.invoke(app, ["init", str(tmp_path / "src" / "sampleB.h5ad"), "--platform", "merfish", "--id", "mer", "-o", str(tmp_path / "mer.yaml")])
+    assert r.exit_code == 0, r.output
+    assert "# molecules: { path: transcripts.parquet, feature_column: feature_name" in (tmp_path / "mer.yaml").read_text()

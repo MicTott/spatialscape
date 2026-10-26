@@ -43,4 +43,4 @@ spatialscape outlines amygdala.yaml --sample xen_Br9280 --field domain --smooth-
 ## See also
 
 - [`spatialscape build`](./build)
-- Guide: [Using the viewer: outlines](/guide/viewer#outlines)
+- Guide: [Using the viewer: annotation boundaries](/guide/viewer#annotation-boundaries)

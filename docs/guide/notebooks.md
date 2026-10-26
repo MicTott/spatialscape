@@ -69,7 +69,7 @@ s.add_comparison("Stress vs control, lassoed region", res, pb, groups=["control"
 s                                              # re-display: the Compare section lists it
 ```
 
-`add_comparison` takes data frames or paths and the same keys as a [`comparisons:` entry](./dataset-yaml#comparisons-results-of-a-test-next-to-the-sections)
+`add_comparison` takes data frames or paths and the same keys as a [`comparisons:` entry](./comparisons#comparisons-results-of-a-test-next-to-the-sections)
 (`replicates`, `population`, `split`, `link`, `columns`). It writes the comparison into the session's bundle
 and its manifest without rebuilding the object, so iterating on a test costs nothing; a comparison with the
 same name replaces the previous one. Replicates find their sections through the `meta` keys (a `mouse` id that

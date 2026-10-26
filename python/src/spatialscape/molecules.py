@@ -1,8 +1,10 @@
-"""Molecules (Xenium transcripts) cut into square spatial tiles, so the viewer loads only the tiles in view.
+"""Molecules (transcripts) cut into square spatial tiles, so the viewer loads only the tiles in view.
 
-Input: a long-format table, one row per transcript (10x's transcripts.parquet: feature_name, x_location,
-y_location, qv, cell_id, overlaps_nucleus), read one row group at a time, so a 137 M-row section needs about
-7 bytes per kept row of memory and never the table whole. Rows below `min_qv` and control features are dropped.
+Input: a long-format table, one row per transcript: 10x's transcripts.parquet (feature_name, x_location,
+y_location, qv, cell_id, overlaps_nucleus; the default column names), or any Parquet / CSV / TSV table with the
+columns named in the yaml (MERSCOPE's detected_transcripts.csv, CosMx's tx_file.csv). It is read one row group or
+text block at a time, so a 137 M-row section needs about 7 bytes per kept row of memory and never the table whole.
+Rows below `min_qv` and control features (negative probes, blanks, system controls) are dropped.
 
 Files in the sample folder:
   molecules.json  the index: grid (um per stored unit), tile (um), origin, nx, ny, genes (feature names, the
@@ -32,16 +34,18 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.parquet as pq
 from numcodecs import Zstd
 
 from .images import read_limit_bytes
+from .tables import iter_batches, table_columns
 
 GRID = 1 / 64  # um per stored unit, 10x's own transcript precision
 TILE_SIZES = (512, 256, 128, 64)  # um, largest first; 512 um is 32,768 units, the int16 step range
 TILE_TARGET = 50_000  # molecules in the densest tile
 MOLECULES_RECIPE = 1
-CONTROL_RE = re.compile(r"^(NegControlProbe|NegControlCodeword|UnassignedCodeword|BLANK|Deprecated|Intergenic|Genomic)", re.I)
+# 10x: NegControlProbe, NegControlCodeword, UnassignedCodeword, Deprecated, Intergenic, Genomic; Vizgen: Blank-<n>;
+# NanoString: NegPrb<n>, SystemControl<n>, FalseCode<n>
+CONTROL_RE = re.compile(r"^(NegControlProbe|NegControlCodeword|UnassignedCodeword|BLANK|Deprecated|Intergenic|Genomic|NegPrb|SystemControl|FalseCode)", re.I)
 _ZSTD = Zstd(level=7)
 ROW_BYTES = 7  # gene u16 + x u16 + y u16 + flags u8 per kept row while collecting
 
@@ -133,11 +137,35 @@ def _tile_size(counts: np.ndarray, cell_um: int) -> int:
     return TILE_SIZES[-1]
 
 
+def _assigned(cell: pa.ChunkedArray) -> np.ndarray:
+    """Whether each molecule sits in a cell: a cell id that is not null, not "UNASSIGNED" (10x), not "-1" (Vizgen)
+    and not 0 (NanoString, where 0 means outside every cell)."""
+    if pa.types.is_integer(cell.type) or pa.types.is_floating(cell.type):
+        v = cell.to_numpy(zero_copy_only=False).astype(np.float64)
+        return np.isfinite(v) & (v > 0)
+    s = cell.cast(pa.string())
+    out = pc.invert(pc.or_kleene(pc.is_null(s), pc.is_in(s, pa.array(["UNASSIGNED", "-1", "0", ""]))))
+    return np.asarray(out.to_numpy(zero_copy_only=False), dtype=bool)
+
+
+def _in_nucleus(nuc: pa.ChunkedArray) -> np.ndarray:
+    """Whether each molecule overlaps the nucleus: a number above 0 (10x's overlaps_nucleus), a boolean, or a
+    compartment label (NanoString's CellComp: Nuclear / Cytoplasm / Membrane / 0)."""
+    if pa.types.is_boolean(nuc.type):
+        return np.asarray(nuc.to_numpy(zero_copy_only=False), dtype=bool)
+    if pa.types.is_integer(nuc.type) or pa.types.is_floating(nuc.type):
+        v = nuc.to_numpy(zero_copy_only=False).astype(np.float64)
+        return np.isfinite(v) & (v > 0)
+    s = pc.utf8_lower(nuc.cast(pa.string()))
+    out = pc.is_in(s, pa.array(["nuclear", "nucleus", "true", "1", "yes"]))
+    return np.asarray(pc.fill_null(out, False).to_numpy(zero_copy_only=False), dtype=bool)
+
+
 class _Reader:
     """The table's row groups, mapped into the sample frame, with the quality and control filters applied."""
 
     def __init__(self, path: Path, cols: dict[str, str], min_qv: float, to_frame: Callable[[np.ndarray], np.ndarray]):
-        self.pf = pq.ParquetFile(path)
+        self.path = Path(path)
         self.cols = cols
         self.min_qv = min_qv
         self.to_frame = to_frame
@@ -147,8 +175,7 @@ class _Reader:
     def chunks(self, *, light: bool):
         c = self.cols
         names = [c["x"], c["y"]] + ([c["qv"]] if c.get("qv") else []) + ([] if light else [c["feature"]] + ([c["cell"]] if c.get("cell") else []) + ([c["nucleus"]] if c.get("nucleus") else []))
-        for i in range(self.pf.num_row_groups):
-            t = self.pf.read_row_group(i, columns=names)
+        for t in iter_batches(self.path, names):
             keep = None
             if c.get("qv"):
                 keep = pc.greater_equal(t.column(c["qv"]), self.min_qv)
@@ -180,14 +207,11 @@ class _Reader:
             xy = self.to_frame(np.column_stack([t.column(c["x"]).to_numpy(), t.column(c["y"]).to_numpy()]).astype(np.float64))[ok]
             flags = np.zeros(int(ok.sum()), dtype=np.uint8)
             if c.get("cell"):
-                cell = t.column(c["cell"])
-                assigned = pc.invert(pc.or_kleene(pc.is_null(cell), pc.equal(cell, "UNASSIGNED"))).to_numpy(zero_copy_only=False)
-                flags |= np.asarray(assigned, dtype=bool)[ok].astype(np.uint8)
+                flags |= _assigned(t.column(c["cell"]))[ok].astype(np.uint8)
             if c.get("nucleus"):
-                nuc = t.column(c["nucleus"]).to_numpy(zero_copy_only=False)
-                flags |= (np.asarray(nuc, dtype=np.float64)[ok] > 0).astype(np.uint8) << 1
+                flags |= _in_nucleus(t.column(c["nucleus"]))[ok].astype(np.uint8) << 1
             if len(self.genes) > 65535:
-                raise ValueError(f"more than 65,535 features in {self.pf.schema_arrow}; the molecule format holds gene ids as uint16")
+                raise ValueError(f"more than 65,535 features in {self.path.name}; the molecule format holds gene ids as uint16")
             yield xy, gene[ok].astype(np.uint16), flags
 
 
@@ -209,7 +233,7 @@ def write_molecules(
     out_dir.mkdir(parents=True, exist_ok=True)
     cols = {"feature": "feature_name", "x": "x_location", "y": "y_location", "qv": "qv", "cell": "cell_id", "nucleus": "overlaps_nucleus"}
     cols.update({k: v for k, v in (columns or {}).items() if v})
-    present = set(pq.ParquetFile(path).schema_arrow.names)
+    present = set(table_columns(path))
     for k in ("feature", "x", "y"):
         if cols[k] not in present:
             raise KeyError(f"{path}: column {cols[k]!r} ({k}) not found; columns are {sorted(present)}")

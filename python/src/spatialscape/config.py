@@ -600,6 +600,12 @@ def _render(value: Any, vars_: dict[str, str]) -> Any:
     return value
 
 
+def _sample_folder(p: Path) -> Path:
+    """The folder that names a sample: the file's own, or the one above an `outs` folder (a 10x run layout)."""
+    d = p.parent
+    return d.parent if d.name == "outs" and d.parent.name else d
+
+
 def _template_vars(p: Path, i: int) -> dict[str, str]:
     stem = p.name
     for suf in (".h5ad", ".zarr", ".h5"):
@@ -608,7 +614,7 @@ def _template_vars(p: Path, i: int) -> dict[str, str]:
     return {
         "path": str(p),
         "dir": str(p.parent),
-        "name": p.parent.name if p.is_dir() or p.suffix else p.name,
+        "name": _sample_folder(p).name if p.is_dir() or p.suffix else p.name,
         "stem": stem,
         "i": str(i),
     }

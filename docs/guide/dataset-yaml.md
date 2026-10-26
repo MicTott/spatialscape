@@ -153,166 +153,6 @@ fixes the grid so rows and columns mean something (species by cell class, donor 
 split turns one h5ad that holds several sections into one sample per section; `init` warns when it sees
 such a file and writes the first `subset:` line as a comment.
 
-## Genome tracks for ATAC samples
-
-A sample with a fragment file can carry genome tracks: pseudobulk accessibility (Tn5 insertions per million,
-binned) per category of the fields you name, built once by `build` and streamed by the viewer's genome panel.
-
-```yaml
-  - id: atac
-    platform: snrnaseq
-    kind: embedding
-    path: pbmc.h5ad
-    coords: obsm/X_umap_atac
-    tracks:
-      fragments: atac_fragments.tsv.gz    # Cell Ranger (ARC / ATAC) fragments, coordinate-sorted, bgzipped
-      by: [cell_type]                     # one track per category of each field listed
-      genome: hg38                        # assembly: names the RefSeq gene models and the default chromosome sizes
-      # genes: genes.gtf.gz               # gene models: a GTF, a UCSC genePred table or a BED (default `refseq`)
-      # links: links.bedpe                # optional: peak-gene links
-      # bin: 25, chrom_sizes: sizes.tsv, barcode_column: barcode
-```
-
-Fragment barcodes are matched to the observation names (or to `barcode_column`). Peaks are recognised among the
-sample's features by name (`chr1:9790-10675`, with or without a `peak: ` prefix) and written as a BED track.
-Building tracks needs `pip install "spatialscape[tracks]"` (pyBigWig); streaming a 2 GB fragment file takes a
-few minutes and never decompresses it to disk.
-
-### Several runs in one object
-
-An object pooled from several 10x runs has colliding barcodes (`AAACAGCCAAGGAATC-1` exists in every run), so list
-one fragment file per run and name the obs column that says which run each observation came from:
-
-```yaml
-    tracks:
-      fragments: { Br2743: runs/Br2743/atac_fragments.tsv.gz, Br6423: runs/Br6423/atac_fragments.tsv.gz }
-      sample_column: donor                # obs column holding Br2743 / Br6423 per observation
-      by: [cell_type]
-```
-
-Observations are matched within their run, by `barcode_column` or by their names with the run's prefix or suffix
-removed (`Br2743#AAAC…-1` as ArchR names cells, `Br2743_AAAC…-1`, `AAAC…-1_Br2743`). A category's track sums
-its cells over every run and is then scaled to insertions per million, so donors weigh in by their cell numbers.
-
-`normalize:` sets what each group's track is scaled by: `nfrags` (default) divides by the group's total insertions
-(per million; Signac's `RC`, ArchR's `nFrags`); `tss` divides by its insertions within `tss_window` bp (50) of a gene
-TSS (ArchR's `ReadsInTSS`), which keeps a group with noisier libraries from looking weaker everywhere; `cells` divides
-by its number of nuclei. `bin:` (25 bp) sets the tile size; dense pooled data is better served by `bin: 100`, ArchR's
-default, which also keeps the bigWigs a fraction of the size.
-
-A fragment file may live on another machine: `ssh://host/abs/path/atac_fragments.tsv.gz` is read through
-`ssh host cat …` in one pass while the tracks are counted, so nothing is copied to the building machine (a
-rebuild streams it again). The build asks the same host for the file's size and date to decide whether the
-sample is stale. Your ssh key must be loaded, and the host must allow non-interactive logins; `${VAR}` in the URL is expanded, so a login can stay out of the yaml (`ssh://${CLUSTER_USER}@host/...`).
-
-### Tracks you already have
-
-If another tool exported per-group bigWigs (ArchR `getGroupBW`, Signac `ExportGroupBW`, `bamCoverage` per group),
-copy them in instead of streaming fragments. Name the files by a template with `{label}`, filled with the field's
-category labels (or the raw labels its `aliases` map onto them), or list them label by label:
-
-```yaml
-    tracks:
-      bigwigs:
-        by:
-          cell_type: GroupBigWigs/cell_type/{label}-TileSize-100-normMethod-ReadsInTSS-ArchR.bw
-          # leiden: { "0": bw/cluster0.bw, "1": bw/cluster1.bw }
-        all: GroupBigWigs/all.bw            # optional
-      units: reads in TSS, normalized       # shown on the panel's scale
-      genome: hg38
-```
-
-Categories without a file get no track (the build log says which). The bin size is read from the files, and when
-the genome is not a known assembly the chromosome names and sizes come from the files too.
-
-Gene models come from `genes:`: the reference's own GTF (for 10x data, `genes/genes.gtf.gz` inside the Cell Ranger
-reference, which matches the matrix exactly), a UCSC genePred table such as `refGene.txt.gz`, or a BED (12 columns
-with blocks, or plain spans). Without `genes:`, `refseq` downloads UCSC's RefSeq table for the genome once (about
-8 MB for hg38, kept in `~/.cache/spatialscape`); `none` leaves the gene track out, as does a genome UCSC does not
-know. Transcripts of a gene are collapsed into one model per locus (the union of their exons) and written per
-chromosome, so the viewer loads only the chromosome on screen.
-
-## Sample metadata
-
-Samples can carry metadata keys, one value per sample: the condition, the subject, sex, genotype, a batch.
-The viewer splits the canvas by any such key (one pane per level, see [the viewer guide](./viewer#panes-comparing-groups-side-by-side)),
-the hover shows the values, and comparisons will link replicates to their sections through them.
-
-```yaml
-meta:                                          # optional: display names and level order
-  - { id: condition, name: Condition, levels: [control, stress] }
-  - { id: mouse, name: Mouse }
-
-samples:
-  - glob: "sections/*/adata.h5ad"
-    platform: visium
-    meta: { mouse: "{name}", condition: { column: condition } }
-  - path: spe_mice.rds
-    platform: visium
-    meta: { mouse: "{name}", condition: { column: condition } }
-```
-
-A value is a string (templated per glob match or per R-object sample, like `id`), or `{ column: x }` to read
-it from an obs column that holds one value for the whole sample, which is how most objects carry a
-condition. A column with several values in one sample is an error that names them: split the file with
-`subset:` or expose the column as an annotation under `fields:` instead. The dataset-level `meta:` list is
-optional; keys used only on samples get their id as display name and their levels in order of first use,
-and levels a declaration does not list are appended rather than dropped. A value typed in the yaml applies
-on the next `build` without rebuilding the sample; a value read from a column is fixed when the sample is
-built. `init` lists the columns that are constant within each sample as a commented `# meta:` line.
-
-## Comparisons: results of a test, next to the sections
-
-A dataset can carry differential expression results that were fit upstream, in R or Python, so the viewer
-can put a gene's statistics, the replicate values behind them and the tissue side by side. Nothing
-statistical is computed by `build` or the viewer: the tables are read, their columns recognised, their genes
-matched to the bundle and their replicates linked to sections through the samples' [metadata](#sample-metadata).
-
-```yaml
-comparisons:
-  - id: stress_vs_control
-    name: Stress vs control in D1 MSNs
-    description: "limma-voom on per-mouse pseudobulk, ~ condition + sex. Positive log2FC = higher in stress."
-    results: de/stress_vs_control.csv      # one row per gene: gene, effect, p, padj, and a mean when there is one
-    pseudobulk: de/pseudobulk_d1.csv       # genes x replicates, first column the gene, one column per replicate id
-    replicates: de/mice.csv                # optional: one row per replicate: id, group, subject
-    groups: [control, stress]              # plotting and pane order; the contrast is the last against the first
-    units: log2 CPM                        # axis label of the replicate values
-    population: { field: celltype, value: D1 MSN }   # the cells the test was fit in
-    split: condition                       # the meta key whose levels are the groups (found by matching when left out)
-    link: mouse                            # the meta key that holds replicate ids (the best-matching key when left out)
-```
-
-Files are CSV, TSV or parquet, paths relative to the yaml. Column names are recognised as the common tools
-write them, so a DESeq2, limma, edgeR, Seurat `FindMarkers`, pyDESeq2 or scanpy table needs no mapping:
-
-| Role | Names tried, in order |
-|---|---|
-| gene | `gene`, `genes`, `gene_name`, `symbol`, `feature`, `names`, `gene_id`, an unnamed first column (R row names), or the first column when it holds text and nothing else is named like a gene column |
-| effect | `log2FoldChange`, `logFC`, `avg_log2FC`, `logfoldchanges`, `estimate`, `beta`, `coef` |
-| p | `pvalue`, `p_value`, `P.Value`, `p_val`, `PValue`, `pvals` |
-| padj | `padj`, `adj.P.Val`, `FDR`, `p_val_adj`, `pvals_adj`, `q_value` |
-| mean | `baseMean`, `AveExpr`, `logCPM`, `mean` |
-| replicate id | `id`, `replicate`, `sample`, `sample_id`, `subject`, `donor`, `mouse`, `animal` |
-| group | `group`, `condition`, `treatment`, `genotype`, `diagnosis` |
-| subject | `subject`, `donor`, `mouse`, `animal`, `pair` |
-
-When they miss, `columns: { results: { effect: lfc, padj: q }, replicates: { group: arm } }` names them.
-When a table has several gene columns (an Ensembl id and a symbol), the one that matches the bundle's genes
-best is taken. Genes the sections do not measure stay in the table, marked as not measured.
-
-`replicates:` can be left out when the pseudobulk columns are subject ids the samples' metadata describes:
-the group is then what each replicate's sections carry under the split key. The sheet is needed when
-replicates have no sections (an snRNA-seq-only contrast), for pairing ids that are not a sample key, and
-whenever the grouping cannot be read off the sections. `groups:` can be left out too; it then follows the
-order of appearance, and the build log says so. A replicate links to the samples whose `meta.<link>` equals
-its id, else to the sample with that id; a replicate with no section still plots.
-
-`init` turns a results table given on the command line into a `comparisons:` entry with the columns it
-recognised, the groups from a `<case>_vs_<reference>` file name, and the other keys as comments. A
-comparison is rebuilt only when one of its tables, its settings or the samples change; renaming it or
-changing its description applies without a rebuild.
-
 ## Globs and templates
 
 A `glob:` entry expands to one sample per matching path, sorted. Inside that entry these placeholders are filled per match:
@@ -358,9 +198,11 @@ Two samples that map different obs columns to the **same field id** share one vo
 
 Colors come from the palette file (`{vocabulary: {label: "#hex"}}`, with `palette_key` naming which block to use, comma-separated for fallbacks), then a fixed qualitative palette, then generated hues.
 
-## Reference
+## Beyond the basics
 
-Every key is listed with its type and default in the [dataset.yaml schema](../reference/dataset-schema).
+- [Genome tracks](./tracks) for ATAC and multiome samples.
+- [Metadata and comparisons](./comparisons): sample-level keys the viewer splits by, and differential expression results beside the cells.
+- Every key, with its type and default, in the [dataset.yaml schema](../reference/dataset-schema).
 
 ## One field, several units
 

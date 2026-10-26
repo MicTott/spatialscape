@@ -78,11 +78,11 @@ GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "serve": ("Getting started", "/guide/getting-started"),
     "site init": ("The gallery: site.yaml", "/guide/registry"),
     "site build": ("Publish your own site", "/guide/publish"),
-    "inspect": ("Inputs: what the CLI reads", "/guide/preparing-data"),
+    "inspect": ("Where your data comes from", "/guide/preparing-data"),
     "validate": ("Hosting", "/guide/hosting"),
-    "outlines": ("Using the viewer: outlines", "/guide/viewer#outlines"),
+    "outlines": ("Using the viewer: annotation boundaries", "/guide/viewer#annotation-boundaries"),
     "thumbnails": ("The gallery: site.yaml", "/guide/registry"),
-    "synth": ("Getting started", "/guide/getting-started#try-it-in-two-minutes"),
+    "synth": ("Getting started", "/guide/getting-started#try-the-full-path-in-two-minutes"),
 }
 
 

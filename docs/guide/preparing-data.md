@@ -1,4 +1,4 @@
-# Inputs: what the CLI reads
+# Where your data comes from
 
 Usually nothing needs preparing: point `init` at what you have, then read the `assumed for` block it prints
 (platform, coordinate units, the layer drawn) and fix whatever it got wrong in the yaml. The cases that need a
@@ -19,7 +19,7 @@ Many files of one kind go in as a single `glob:` entry (`glob: visium/*/adata.h5
 - **Coordinates**: `obsm/spatial` by default, or any `obsm` key, or two obs columns (`coords: "obs/x,obs/y"`). Units can be pixels or microns; see [scale](#getting-the-scale-right).
 - **Annotations**: obs columns, categorical or numeric. `init` maps the likely ones and lists the rest as comments.
 - **Gene names**: `var_names`, or a var column via `gene_column`. An object indexed by Ensembl ids with a `gene_name` or `symbol` column is named by the symbols on its own, so genes match across samples and are what the search box expects.
-- **Images** (optional): see [images](#images).
+- **Images** (optional): see [images](#images). Shapes, molecules and nuclei: see [the family pages](#layers-beyond-the-matrix).
 
 ## From R
 
@@ -157,36 +157,9 @@ band by band while it is read, so the whole slide is never in memory. A read tha
 the machine's memory (or of a cgroup or SLURM limit) is refused with the size it would need and the way out: set or
 lower `max_size:` on the image.
 
-## Cell boundary polygons
+## Layers beyond the matrix
 
-Polygons can come from two places:
-
-- **A long-format parquet file** such as Xenium Ranger's `cell_boundaries.parquet`: `polygons: { path: cell_boundaries.parquet }` with `cell_id`, `vertex_x`, `vertex_y` columns (names configurable). The build matches `cell_id` to `obs_names`.
-- **An `obsm` array** of shape `(n_obs, n_vertices, 2)` already in the object, as SpatialExperiment exports of Visium HD segmentations often carry: `polygons: { obsm: segmentations }`. An `obsm` key named `segmentations`, `cell_boundaries`, `boundaries` or `polygons` with that shape is picked up automatically when `polygons` is not set.
-
-Vertices must be in the same frame as the coordinates. If the object's coordinates were transposed, mirrored or shifted after segmentation, map the vertices with `affine: [a, b, c, d, e, f]` (`x' = a·x + b·y + c`, `y' = d·x + e·y + f`): a transpose is `[0, 1, 0, 1, 0, 0]`, a mirror across both axes with extents `Xmax`, `Ymax` is `[0, -1, Ymax, -1, 0, Xmax]`. The sample's own `transform:` and micron scaling are applied afterwards, so one setting keeps points, image and polygons together.
-
-The build reports how many cells matched and warns when polygon centroids sit far from their cells, which is the signature of a frame mismatch. A low match rate means the boundary file comes from a different segmentation run than the cells in the object. Rings of cells that are not in the object (removed by QC) are dropped and counted.
-
-The build cuts the shapes into square tiles of up to 1 mm, so the viewer loads only the tiles in view: a 250k-cell
-Xenium section takes about 10 MB (about 44 B per cell) and 2 s to tile. Each ring keeps at most `max_vertices`
-vertices (24 by default, at most 255), stored to 0.1 µm.
-
-## Molecules
-
-Xenium's `transcripts.parquet` (one row per decoded transcript) becomes molecules the viewer draws once zoomed in:
-
-```yaml
-molecules: { path: outs/transcripts.parquet }
-```
-
-The 10x column names are the defaults (`feature_name`, `x_location`, `y_location`, `qv`, `cell_id`,
-`overlaps_nucleus`); rows below `min_qv` (20, 10x's own threshold for the matrix) and control features are dropped
-and counted. Positions share the raw frame of the cell boundaries, so a `polygons.affine` applies to them too. The
-table is read one row group at a time and needs about 7 bytes of memory per kept molecule; a 100 M-molecule section
-tiles in about 40 s into about 340 MB (3.5 B per molecule). Genes not in the expression matrix are kept (they draw in
-grey only) and listed in the build log.
-
-## snRNA-seq and other embeddings
-
-Declare the sample with `kind: embedding` and point `coords` at the UMAP (`obsm/X_umap`). It shares genes, annotations and the renderer with the spatial samples and appears in the embedding view beside the tissue. When its cell type labels use the same names as a spatial annotation, map both to the same field id and they share one vocabulary and one set of colors.
+Cell shapes, molecules, nuclei and embeddings each come from a file the platform writes; which ones, where they
+are and what they cost is on the family pages: [sequencing-based](./platforms/sequencing),
+[imaging-based](./platforms/imaging), [single-cell](./platforms/single-cell). Boundary and transcript tables are
+read as Parquet, CSV or TSV, gzipped or not, with the column names given in the yaml when they are not 10x's.

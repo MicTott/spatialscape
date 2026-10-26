@@ -70,7 +70,7 @@ The `cell_id` values in the boundary file do not match `obs_names`. This happens
 
 ## Warning: polygon centroids sit far from their cells
 
-Ids matched but the vertices are in another frame: the coordinates were transposed, mirrored or cropped after segmentation. Set `polygons.affine` to undo that (see [Inputs: what the CLI reads](./preparing-data#cell-boundary-polygons)). For a crop, the shift is the crop origin in the uncropped frame.
+Ids matched but the vertices are in another frame: the coordinates were transposed, mirrored or cropped after segmentation. Set `polygons.affine` to undo that (see [Inputs: what the CLI reads](./platforms/imaging#the-optional-layers)). For a crop, the shift is the crop origin in the uncropped frame.
 
 ## The hosted viewer cannot open my local bundle
 

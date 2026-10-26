@@ -20,7 +20,7 @@ import pandas as pd
 import yaml
 
 from .comparisons import RESULT_ROLES, gene_candidates, is_table, map_columns, read_table
-from .config import is_r_object
+from .config import _sample_folder, is_r_object
 from .discover import SKIP_COLUMNS, field_id, is_textual
 
 Log = Callable[[str], None]
@@ -28,6 +28,12 @@ Log = Callable[[str], None]
 PLATFORM_LABEL = {"visium": "Visium", "visium_hd": "Visium HD", "xenium": "Xenium", "merfish": "MERFISH", "snrnaseq": "snRNA-seq", "other": "Sample"}
 PLATFORM_PREFIX = {"visium": "vis", "visium_hd": "hd", "xenium": "xen", "merfish": "mer", "snrnaseq": "sn", "other": "smp"}
 GENERIC_STORE_NAMES = {"adata", "data", "sample", "outs", "table", "sdata", "spe", "sce"}
+# tables an imaging platform writes next to its matrix (Xenium Ranger names): the yaml key, what it gives, the cost
+LAYER_FILES = {
+    "cell_boundaries.parquet": ("polygons", "cell shapes", "cell shapes; a nucleus_boundaries.parquet next to it is compared automatically"),
+    "transcripts.parquet": ("molecules", "transcripts", "transcripts, drawn once zoomed in: 170-400 MB per section; delete the line to leave them out"),
+}
+IMAGING_PLATFORMS = {"xenium", "merfish", "other"}
 FIELD_NAMES = {"domain": "Spatial domain", "celltype": "Cell type", "total_counts": "Total counts", "detected_genes": "Detected genes", "mito_percent": "Mito %"}
 MAX_MENU_LEVELS = 60
 DOMAIN_RE = re.compile(r"domain|cluster|bayesspace|precast|banksy|layer|leiden|louvain|^bs_|_k\d+", re.I)
@@ -303,6 +309,7 @@ class EntryMenu:
     sections: tuple[str, list[str]] | None = None  # one file that holds several sections: (column, values)
     n_obs: int | None = None
     meta_candidates: list[tuple[str, str]] = field(default_factory=list)  # obs columns constant within a sample: (column, note)
+    layer_files: dict[str, str] = field(default_factory=dict)  # yaml key -> path template of a layer table found next to the matrix
 
     @property
     def assumed(self) -> list[str]:
@@ -334,6 +341,9 @@ class EntryMenu:
         if self.sections:
             col, vals = self.sections
             out.append(f"sections: {len(vals)} in one file ({col}: {_join(vals, 4)}), drawn as one sample; `subset:` splits them")
+        if self.layer_files:
+            what = {key: name for name, (key, _w, _n) in LAYER_FILES.items()}
+            out.append("layers: " + ", ".join(f"{LAYER_FILES[what[k]][1]} from {what[k]}" for k in self.layer_files))
         if self.meta_candidates:
             out.append("sample metadata: " + ", ".join(c for c, _ in self.meta_candidates[:6]) + (", ..." if len(self.meta_candidates) > 6 else "") + " look constant within each sample; listed as a `# meta:` line to split the view by")
         return out
@@ -462,6 +472,18 @@ def _platform_choice(given: str | None, obs: pd.DataFrame, *, spatial: bool) -> 
     return plat, f"guessed from {why}" if why else "the default; nothing in the columns said otherwise"
 
 
+def layer_files_near(path: Path) -> dict[str, str]:
+    """Boundary and transcript tables in the matrix file's folder or the one above, as `{dir}` templates so a glob
+    entry finds each match's own: yaml key -> path."""
+    d = path if path.is_dir() and not (path / ".zattrs").exists() and not (path / "zarr.json").exists() else path.parent
+    out: dict[str, str] = {}
+    for folder, prefix in ((d, "{dir}"), (d.parent, "{dir}/..")):
+        for name, (key, _what, _note) in LAYER_FILES.items():
+            if key not in out and (folder / name).is_file():
+                out[key] = f"{prefix}/{name}"
+    return out
+
+
 def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Path, log: Log) -> EntryMenu:
     from .readers import peek
 
@@ -471,7 +493,9 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     sections = None
     n_obs = None
     meta_c: list[tuple[str, str]] = []
+    layer_files: dict[str, str] = {}
     if matches:
+        layer_files = layer_files_near(Path(matches[0]))
         pk = peek(Path(matches[0]), table)
         cols = describe_columns(pk.obs)
         layers = list(pk.layers)
@@ -492,14 +516,14 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     # (right for `samples/<sample>.h5ad`). Pick whichever carries the sample name.
     stems = {Path(m).name.split(".")[0].lower() for m in matches}
     var = "{name}" if matches and stems <= GENERIC_STORE_NAMES else "{stem}"
-    names = [Path(m).parent.name if var == "{name}" else Path(m).name.split(".")[0] for m in matches]
+    names = [_sample_folder(Path(m)).name if var == "{name}" else Path(m).name.split(".")[0] for m in matches]
     note = "one sample per match; {name} = parent folder, {stem} = file or store name" + (f"; now {len(matches)}: {_join(names, 4)}" if matches else "; matches nothing yet")
     prefix, label = PLATFORM_PREFIX.get(plat, plat[:3]), PLATFORM_LABEL.get(plat, plat)
     return EntryMenu(
         source=_rel(pattern, base), source_note=note, r_object=False, embedding=embedding, platform=plat,
         id_tpl=f"{prefix}_{var}", name_tpl=f"{var} ({label})", group_tpl="snRNA-seq" if embedding else var,
         menu=suggest_fields(cols, skip={c for c, _ in meta_c}), samples=names, table=table, platform_note=plat_note, layers=layers, sections=sections, n_obs=n_obs,
-        meta_candidates=meta_c,
+        meta_candidates=meta_c, layer_files=layer_files if plat != "snrnaseq" else {},
     )
 
 
@@ -550,6 +574,12 @@ def _entry_lines(e: EntryMenu) -> list[str]:
     L.append(_pad(f"    id: {_ystr(e.id_tpl)}", id_note))
     L.append(f"    name: {_ystr(e.name_tpl)}")
     L.append(f"    group: {_ystr(e.group_tpl)}")
+    notes = {key: note for _name, (key, _what, note) in LAYER_FILES.items()}
+    for key, tpl in e.layer_files.items():
+        L.append(_pad(f"    {key}: {{ path: {_ystr(tpl)} }}", notes[key]))
+    if not e.layer_files and not e.r_object and not e.embedding and e.platform in IMAGING_PLATFORMS:
+        L.append(_pad("    # polygons: { path: cell_boundaries.parquet, id_column: cell_id, x_column: vertex_x, y_column: vertex_y }", "cell shapes from a long table (Parquet, CSV or TSV)"))
+        L.append(_pad("    # molecules: { path: transcripts.parquet, feature_column: feature_name, x_column: x_location, y_column: y_location }", "transcripts; column names per platform in the imaging-based guide"))
     m = e.menu
     if m.mapped:
         L.append(_pad("    fields:", "field id: column. Delete a line to hide an annotation, uncomment one to add it"))
