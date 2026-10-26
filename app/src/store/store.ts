@@ -130,6 +130,7 @@ export interface ViewerState {
   matchScale: boolean; // group panes share one µm/px: zoom one, the others follow in scale
   paneCameras: ViewState[] | null; // cameras of the group panes, pane order (pv in the URL)
   comparison: string | null; // the comparison shown under the maps (cmp in the URL)
+  comparisonLevel: string | null; // its level (a cluster, a cell type) when it has several (cmp=<id>:<level>)
   compareHeight: number; // px; dragged at the panel's top edge, remembered per browser
   compareBox: boolean; // quartile boxes behind the replicate dots, remembered per browser
   selectionSummary: SelectionSummary | null;
@@ -274,6 +275,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   matchScale: DEFAULTS.matchScale,
   paneCameras: null,
   comparison: null,
+  comparisonLevel: null,
   compareHeight: storedCompareHeight(),
   compareBox: storedCompareBox(),
   selectionSummary: null,

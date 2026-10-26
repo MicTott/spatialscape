@@ -195,7 +195,7 @@ def test_show_takes_sample_metadata_and_comparisons_from_the_session(tmp_path, c
     [c] = m["comparisons"]
     assert c["id"] == "stress_vs_control" and c["split"] == "condition" and c["link"] == "mouse" and c["nReplicates"] == 4 and c["hasPseudobulk"]
     doc = json.loads((s.bundle / "comparisons" / "stress_vs_control" / "comparison.json").read_text())
-    assert {r["id"]: r["samples"] for r in doc["replicates"]} == {"m1": ["A"], "m2": ["B"], "m3": ["C"], "m4": ["D"]}  # replicates found their sections through the meta
+    assert {r["id"]: r["samples"] for r in doc["replicates"]["all"]} == {"m1": ["A"], "m2": ["B"], "m3": ["C"], "m4": ["D"]}  # replicates found their sections through the meta
     assert any("re-display the session" in line for line in logs)
     # the same comparison again replaces itself; one given at show() time is added after the build
     s.add_comparison("Stress vs control", res, pb, groups=["control", "stress"], log=logs.append)

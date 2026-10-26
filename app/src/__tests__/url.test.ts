@@ -152,6 +152,11 @@ describe("molecules", () => {
     expect(readUrl().cellShapes).toBe("outlined"); // the mode's name before 0.4.1
     g.window = { location: { search: "?cs=outlined" } };
     expect(readUrl().cellShapes).toBe("outlined");
+    g.window = { location: { search: "?cmp=markers:Astro" } };
+    expect(readUrl().comparison).toBe("markers");
+    expect(readUrl().comparisonLevel).toBe("Astro");
+    expect(new URLSearchParams(serialize({ ...store.getState(), comparison: "markers", comparisonLevel: "Astro" } as ViewerState)).get("cmp")).toBe("markers:Astro");
+    expect(new URLSearchParams(serialize({ ...store.getState(), comparison: "de", comparisonLevel: null } as ViewerState)).get("cmp")).toBe("de");
     g.window = saved;
   });
 });

@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { BLEND_SCHEMES, BLEND_SIZE, blendLUT, colormapCSS, effectiveColormap } from "../layers/lut";
 import { unassignedSamples } from "../views/panes";
 import { store, useViewer } from "../store/store";
+import { activateComparison } from "../compare/activate";
 
 function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[] }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -77,6 +78,15 @@ export function Legend() {
       if (cnt) order.sort((a, b) => cnt[b] - cnt[a]);
       const all = () => store.getState().setHiddenCategories(f.id, []);
       const none = () => store.getState().setHiddenCategories(f.id, v.categories.map((_, i) => i));
+      // marker tables whose levels are this annotation's categories: a way from a category to its markers
+      const markerSets = (manifest.comparisons ?? []).filter((c) => c.kind === "markers" && c.facet?.field === f.id);
+      const markersOf = (c: string) => {
+        for (const cmp of markerSets) {
+          const lv = cmp.levels.find((l) => l.name === c);
+          if (lv) return { cmp, lv };
+        }
+        return null;
+      };
       return (
         <div className="legend">
           <div className="legend-head">
@@ -102,6 +112,19 @@ export function Legend() {
               >
                 <span className="swatch" style={{ background: v.colors[i] }} />
                 <span className="cat-name">{c}</span>
+                {markersOf(c) && (
+                  <button
+                    className="cat-markers"
+                    title={`markers of ${c} (${markersOf(c)!.cmp.name})`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const hit = markersOf(c)!;
+                      void activateComparison(hit.cmp.id, hit.lv.id);
+                    }}
+                  >
+                    markers
+                  </button>
+                )}
                 {cnt && <span className="cat-n">{cnt[i].toLocaleString()}</span>}
               </li>
               );

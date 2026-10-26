@@ -21,7 +21,9 @@ export function CompareSelect() {
       </select>
       <div className="muted small genecount">
         {info
-          ? `${info.groups.join(" vs ")} · ${info.nGenes.toLocaleString()} genes${info.nReplicates ? ` · ${info.nReplicates} replicates` : ""}${info.split ? ` · panes by ${info.split}` : ""}`
+          ? info.kind === "markers"
+            ? `markers · ${info.levels.length} ${info.facet?.field ? "categories" : "clusters"} · ${info.nGenes.toLocaleString()} rows`
+            : `${info.groups.join(" vs ")}${info.levels.length > 1 ? ` · ${info.levels.length} levels` : ""} · ${info.nGenes.toLocaleString()} genes${info.nReplicates ? ` · ${info.nReplicates} replicates` : ""}${info.split ? ` · panes by ${info.split}` : ""}`
           : `${comparisons.length} comparison${comparisons.length === 1 ? "" : "s"} in this dataset`}
       </div>
     </section>

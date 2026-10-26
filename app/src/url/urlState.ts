@@ -117,7 +117,11 @@ export function readUrl(): Partial<ViewerState> {
     }
   }
   if (q.get("ms") === "0") out.matchScale = false;
-  if (q.get("cmp")) out.comparison = q.get("cmp");
+  if (q.get("cmp")) {
+    const [cid, ...rest] = q.get("cmp")!.split(":");
+    out.comparison = cid;
+    if (rest.length) out.comparisonLevel = rest.join(":");
+  }
   return out;
 }
 
@@ -173,7 +177,7 @@ export function serialize(s: ViewerState): string {
     if (s.paneCameras?.length) q.set("pv", s.paneCameras.map((c) => `${c.target[0].toFixed(0)},${c.target[1].toFixed(0)},${c.zoom.toFixed(2)}`).join(";"));
   }
   if (!s.matchScale) q.set("ms", "0");
-  if (s.comparison) q.set("cmp", s.comparison);
+  if (s.comparison) q.set("cmp", s.comparisonLevel ? `${s.comparison}:${s.comparisonLevel}` : s.comparison);
   return q.toString();
 }
 

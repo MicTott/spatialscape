@@ -117,21 +117,27 @@ def make_sample(path: Path, n: int, n_genes: int, seed: int, w: int = 512, h: in
     pq.write_table(pa.table({k: v[order] for k, v in rows.items()}), path.with_suffix(".transcripts.parquet"), row_group_size=5000)
 
 
-def _write_de_tables(out: Path, groups: dict[str, tuple[str, str]], n_genes: int) -> None:
-    """A results table, the per-mouse pseudobulk and a replicate sheet, computed from the sections just written
-    (a t-test on two vs two: an example of the file shapes, not of statistics)."""
+def _bh(p: np.ndarray) -> np.ndarray:
+    p = np.where(np.isfinite(p), p, 1.0)
+    order = np.argsort(p)
+    ranked = p[order] * len(p) / (np.arange(len(p)) + 1)
+    padj = np.empty_like(p)
+    padj[order] = np.minimum.accumulate(ranked[::-1])[::-1].clip(max=1.0)
+    return padj
+
+
+def _log_matrix(a) -> np.ndarray:
+    X = a.X.toarray() if sp.issparse(a.X) else np.asarray(a.X)
+    if X.max() > 30 or np.all(np.rint(X) == X):  # a counts section: bring it onto the log scale the others use
+        X = np.log1p(X / np.maximum(X.sum(1, keepdims=True), 1) * 1e4)
+    return X
+
+
+def _contrast(pb: dict[str, np.ndarray], cond: dict[str, str], genes: list[str], de: Path, stem: str, pb_name: str) -> None:
+    """A results table and the pseudobulk behind it from per-mouse means (a Welch t-test, two vs two: an example of
+    the file shapes, not of statistics)."""
     from scipy import stats
 
-    genes = [f"G{i:03d}" for i in range(n_genes)]
-    pb: dict[str, np.ndarray] = {}
-    cond: dict[str, str] = {}
-    for sid, (condition, mouse) in groups.items():
-        a = ad.read_h5ad(out / f"{sid}.h5ad")
-        X = a.X.toarray() if sp.issparse(a.X) else np.asarray(a.X)
-        if X.max() > 30 or np.all(np.rint(X) == X):  # a counts section: bring it onto the log scale the others use
-            X = np.log1p(X / np.maximum(X.sum(1, keepdims=True), 1) * 1e4)
-        pb[mouse] = np.log2(np.expm1(X).mean(0) + 1)  # mean expression per gene, as log2(mean + 1)
-        cond[mouse] = condition
     mice = list(pb)
     mat = np.stack([pb[m] for m in mice], 1)
     ctl = mat[:, [i for i, m in enumerate(mice) if cond[m] == "control"]]
@@ -139,15 +145,55 @@ def _write_de_tables(out: Path, groups: dict[str, tuple[str, str]], n_genes: int
     effect = strs.mean(1) - ctl.mean(1)
     p = stats.ttest_ind(strs, ctl, axis=1, equal_var=False).pvalue
     p = np.where(np.isfinite(p), p, 1.0)
-    order = np.argsort(p)
-    ranked = p[order] * len(p) / (np.arange(len(p)) + 1)
-    padj = np.empty_like(p)
-    padj[order] = np.minimum.accumulate(ranked[::-1])[::-1].clip(max=1.0)  # Benjamini-Hochberg
+    pd.DataFrame({"gene": genes, "baseMean": mat.mean(1), "log2FoldChange": effect, "pvalue": p, "padj": _bh(p)}).to_csv(de / f"{stem}.csv", index=False)
+    pd.DataFrame(mat, index=pd.Index(genes, name="gene"), columns=mice).to_csv(de / f"{pb_name}.csv")
+
+
+def _write_de_tables(out: Path, groups: dict[str, tuple[str, str]], n_genes: int) -> None:
+    """The tables a study carries, computed from the sections just written: a case/control result with its per-mouse
+    pseudobulk and a replicate sheet; the same contrast once per cluster as one file per level; and a marker table
+    in Seurat's FindAllMarkers shape (one row per cluster and gene)."""
+    from scipy import stats
+
+    genes = [f"G{i:03d}" for i in range(n_genes)]
+    pb: dict[str, np.ndarray] = {}
+    by_cluster: dict[str, dict[str, np.ndarray]] = {}
+    cond: dict[str, str] = {}
+    cells: list[tuple[np.ndarray, np.ndarray]] = []
+    for sid, (condition, mouse) in groups.items():
+        a = ad.read_h5ad(out / f"{sid}.h5ad")
+        X = _log_matrix(a)
+        pb[mouse] = np.log2(np.expm1(X).mean(0) + 1)  # mean expression per gene, as log2(mean + 1)
+        cond[mouse] = condition
+        cl = a.obs["cluster"].astype(str).to_numpy()
+        for lvl in CLUSTERS[:2]:
+            rows = X[cl == lvl]
+            if len(rows):
+                by_cluster.setdefault(lvl, {})[mouse] = np.log2(np.expm1(rows).mean(0) + 1)
+        cells.append((X, cl))
     de = out / "de"
     de.mkdir(exist_ok=True)
-    pd.DataFrame({"gene": genes, "baseMean": mat.mean(1), "log2FoldChange": effect, "pvalue": p, "padj": padj}).to_csv(de / "stress_vs_control.csv", index=False)
-    pd.DataFrame(mat, index=pd.Index(genes, name="gene"), columns=mice).to_csv(de / "pseudobulk.csv")
+    mice = list(pb)
+    _contrast(pb, cond, genes, de, "stress_vs_control", "pseudobulk")
     pd.DataFrame({"mouse": mice, "condition": [cond[m] for m in mice]}).to_csv(de / "mice.csv", index=False)
+    (de / "by_cluster").mkdir(exist_ok=True)
+    for lvl, pbl in by_cluster.items():
+        _contrast(pbl, cond, genes, de / "by_cluster", f"stress_vs_control_{lvl}", f"pb_{lvl}")
+    # markers: every cluster against the rest over all cells, the top genes by effect
+    X = np.concatenate([x for x, _ in cells])
+    cl = np.concatenate([c for _, c in cells])
+    rows = []
+    for lvl in CLUSTERS:
+        inside, outside = X[cl == lvl], X[cl != lvl]
+        if len(inside) < 3 or len(outside) < 3:
+            continue
+        effect = inside.mean(0) - outside.mean(0)
+        pv = np.where(np.isfinite(stats.ttest_ind(inside, outside, axis=0, equal_var=False).pvalue), stats.ttest_ind(inside, outside, axis=0, equal_var=False).pvalue, 1.0)
+        padj = _bh(pv)
+        top = np.argsort(-effect)[:5]
+        for g in top:
+            rows.append({"p_val": pv[g], "avg_log2FC": effect[g], "pct.1": (inside[:, g] > 0).mean(), "pct.2": (outside[:, g] > 0).mean(), "p_val_adj": padj[g], "cluster": lvl, "gene": genes[g]})
+    pd.DataFrame(rows).to_csv(de / "markers.csv", index=False)
 
 
 def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparisons: bool = False) -> Path:
@@ -225,7 +271,25 @@ def make_synthetic(out: Path, n_cells: int = 2000, n_genes: int = 50, comparison
                 "units": "log2 mean+1",
                 "split": "condition",
                 "link": "mouse",
-            }
+            },
+            {
+                "id": "stress_by_cluster",
+                "name": "Stress vs control, per cluster",
+                "description": "The same test fit within each cluster; one file per cluster. Positive effect = higher in stress.",
+                "results": "de/by_cluster/stress_vs_control_{level}.csv",
+                "pseudobulk": "de/by_cluster/pb_{level}.csv",
+                "replicates": "de/mice.csv",
+                "groups": ["control", "stress"],
+                "units": "log2 mean+1",
+                "facet": {"field": "cluster"},
+            },
+            {
+                "id": "markers",
+                "kind": "markers",
+                "name": "Cluster markers",
+                "description": "Welch t-test of each cluster against the rest over all cells, the five genes with the largest difference; Seurat FindAllMarkers columns.",
+                "results": "de/markers.csv",
+            },
         ]
         cfg["description"] = "Four fake tissue sections in two experimental groups (control, stress), two mice each, plus an embedding and a differential expression result."
         cfg["meta"] = [{"id": "condition", "name": "Condition", "levels": ["control", "stress"]}, {"id": "mouse", "name": "Mouse"}]

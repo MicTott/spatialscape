@@ -1,37 +1,56 @@
-/** Choosing a comparison does three things at once: splits the canvas by its groups (unless another split is
- *  pinned), applies its population as the category filter (unless another filter is in the way), and colours the
- *  maps by the table's first gene when the current colour is not one of its genes. Choosing none only closes the panel. */
-import { fieldById } from "../data/manifest";
-import { store, type ViewerState } from "../store/store";
+/** Choosing a comparison (and a level of it) does three things at once: splits the canvas by its groups (unless
+ *  another split is pinned), applies the level's population as the category filter (a contrast fit in one cell
+ *  type; for markers only when the filter is already following the levels), and colours the maps by the table's
+ *  first gene when the current colour is not one of its genes. Choosing none only closes the panel. */
+import { fieldById, type Manifest } from "../data/manifest";
+import { store, type FilterSpec, type ViewerState } from "../store/store";
 import { splitKeys } from "../views/panes";
 import { loadComparison } from "./data";
+import { levelOf, levelPopulation } from "./model";
 
-export async function activateComparison(id: string | null): Promise<void> {
+function categoryFilter(m: Manifest, pop: { field: string; value: string }): FilterSpec | null {
+  const f = fieldById(m, pop.field);
+  if (f?.type !== "categorical") return null;
+  const code = m.vocabularies[f.vocabulary].categories.indexOf(pop.value);
+  return code >= 0 ? { kind: "category", field: f.id, codes: [code] } : null;
+}
+
+function isFilterFor(m: Manifest, filter: FilterSpec | null, pop: { field: string; value: string } | null): boolean {
+  if (!pop || filter?.kind !== "category" || filter.field !== pop.field) return false;
+  const want = categoryFilter(m, pop);
+  return !!want && want.kind === "category" && filter.codes.length === 1 && filter.codes[0] === want.codes[0];
+}
+
+export async function activateComparison(id: string | null, levelId?: string | null): Promise<void> {
   const s = store.getState();
   const m = s.manifest;
   if (!m) return;
   if (!id) {
-    s.set({ comparison: null });
+    s.set({ comparison: null, comparisonLevel: null });
     return;
   }
   const info = m.comparisons?.find((c) => c.id === id);
   if (!info) return;
-  const patch: Partial<ViewerState> = { comparison: id };
-  if (info.split && splitKeys(m).some((k) => k.id === info.split) && (!s.splitBy || s.splitBy.key === info.split)) {
+  const level = levelOf(info, levelId ?? (s.comparison === id ? s.comparisonLevel : null));
+  const markers = info.kind === "markers";
+  const patch: Partial<ViewerState> = { comparison: id, comparisonLevel: level?.id ?? null };
+  if (!markers && info.split && splitKeys(m).some((k) => k.id === info.split) && (!s.splitBy || s.splitBy.key === info.split)) {
     patch.splitBy = { key: info.split, groups: info.groups.slice(0, 3), fractions: s.splitBy?.key === info.split ? s.splitBy.fractions : null };
   }
-  if (info.population) {
-    const f = fieldById(m, info.population.field);
-    if (f?.type === "categorical") {
-      const code = m.vocabularies[f.vocabulary].categories.indexOf(info.population.value);
-      if (code >= 0 && (!s.filter || s.filter.kind === "category")) patch.filter = { kind: "category", field: f.id, codes: [code] };
-    }
-  }
+  const pop = levelPopulation(info, level);
+  const previous = activePopulation(s);
+  if (pop) {
+    const f = categoryFilter(m, pop);
+    // a contrast fit in a population filters the map to it; markers keep the whole map unless the filter was
+    // already following the levels (the "only this cluster" toggle), in which case it moves to the new level
+    const follow = markers ? isFilterFor(m, s.filter, previous) : !s.filter || s.filter.kind === "category";
+    if (f && follow) patch.filter = f;
+  } else if (markers && isFilterFor(m, s.filter, previous)) patch.filter = null;
   s.set(patch);
-  if (!s.datasetUrl) return;
-  const data = await loadComparison(s.datasetUrl, info);
+  if (!s.datasetUrl || !level) return;
+  const data = await loadComparison(s.datasetUrl, info, level.id);
   const cur = store.getState();
-  if (cur.comparison !== id) return; // changed again while loading
+  if (cur.comparison !== id || cur.comparisonLevel !== level.id) return; // changed again while loading
   const gene = cur.color?.kind === "gene" ? cur.color.gene : null;
   if (!gene || !data.geneIndex.has(gene)) {
     const first = data.results.genes.find((_, i) => !data.unmeasured.has(i));
@@ -39,12 +58,23 @@ export async function activateComparison(id: string | null): Promise<void> {
   }
 }
 
+/** The population the active comparison level stands for, if any. */
+export function activePopulation(s: ViewerState): { field: string; value: string } | null {
+  const info = s.manifest?.comparisons?.find((c) => c.id === s.comparison);
+  if (!info) return null;
+  return levelPopulation(info, levelOf(info, s.comparisonLevel));
+}
+
 /** The population filter a comparison applied, if it is still the active filter. */
 export function populationFilterActive(s: ViewerState): { field: string; value: string } | null {
-  const info = s.manifest?.comparisons?.find((c) => c.id === s.comparison);
-  if (!info?.population || !s.manifest || s.filter?.kind !== "category" || s.filter.field !== info.population.field) return null;
-  const f = fieldById(s.manifest, info.population.field);
-  if (!f || f.type !== "categorical") return null;
-  const code = s.manifest.vocabularies[f.vocabulary].categories.indexOf(info.population.value);
-  return s.filter.codes.length === 1 && s.filter.codes[0] === code ? info.population : null;
+  const pop = activePopulation(s);
+  return s.manifest && pop && isFilterFor(s.manifest, s.filter, pop) ? pop : null;
+}
+
+/** Markers: filter the map to the level's cells, or back to every cell. */
+export function toggleLevelFilter(): void {
+  const s = store.getState();
+  const pop = activePopulation(s);
+  if (!s.manifest || !pop) return;
+  s.setFilter(isFilterFor(s.manifest, s.filter, pop) ? null : categoryFilter(s.manifest, pop));
 }

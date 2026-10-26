@@ -158,28 +158,44 @@ def validate_local(root: Path) -> list[str]:
         d = root / c.path
         try:
             doc = json.loads((d / "comparison.json").read_text())
-            res = json.loads((d / "results.json").read_text())
-            n = len(res["genes"])
-            if n != c.nGenes:
-                _problem(p, f"comparison {c.id}: results.json has {n} genes, manifest says {c.nGenes}")
-            for key in ("effect", "p", "padj", "mean"):
-                if res.get(key) is not None and len(res[key]) != n:
-                    _problem(p, f"comparison {c.id}: results.json {key} length != genes")
-            if any(i < 0 or i >= n for i in res.get("unmeasured", [])):
-                _problem(p, f"comparison {c.id}: unmeasured indices out of range")
-            reps = doc.get("replicates", [])
-            if len(reps) != c.nReplicates:
-                _problem(p, f"comparison {c.id}: {len(reps)} replicates listed, manifest says {c.nReplicates}")
-            for r in reps:
-                if r.get("group") not in c.groups:
-                    _problem(p, f"comparison {c.id}: replicate {r.get('id')} has group {r.get('group')!r} not in {c.groups}")
-                for sid in r.get("samples", []):
-                    if sid not in sample_ids:
-                        _problem(p, f"comparison {c.id}: replicate {r.get('id')} links to unknown sample {sid!r}")
-            if c.hasPseudobulk:
-                pb = zarr.open_array(str(d / "pseudobulk.zarr"), mode="r")
-                if tuple(pb.shape) != (c.nGenes, c.nReplicates):
-                    _problem(p, f"comparison {c.id}: pseudobulk shape {pb.shape} != ({c.nGenes}, {c.nReplicates})")
+            if not c.levels:
+                _problem(p, f"comparison {c.id}: no levels")
+            if sum(lv.nGenes for lv in c.levels) != c.nGenes:
+                _problem(p, f"comparison {c.id}: level gene counts do not add up to {c.nGenes}")
+            all_reps: set[str] = set()
+            for lv in c.levels:
+                ld = d / lv.path
+                res = json.loads((ld / "results.json").read_text())
+                n = len(res["genes"])
+                if n != lv.nGenes:
+                    _problem(p, f"comparison {c.id}: level {lv.id}: results.json has {n} genes, manifest says {lv.nGenes}")
+                for key in ("effect", "p", "padj", "mean", "pct_in", "pct_out", "score"):
+                    if res.get(key) is not None and len(res[key]) != n:
+                        _problem(p, f"comparison {c.id}: level {lv.id}: results.json {key} length != genes")
+                if c.hasEffect and res.get("effect") is None:
+                    _problem(p, f"comparison {c.id}: level {lv.id}: no effect column")
+                if any(i < 0 or i >= n for i in res.get("unmeasured", [])):
+                    _problem(p, f"comparison {c.id}: level {lv.id}: unmeasured indices out of range")
+                reps = (doc.get("replicates") or {}).get(lv.id, [])
+                if len(reps) != lv.nReplicates:
+                    _problem(p, f"comparison {c.id}: level {lv.id}: {len(reps)} replicates listed, manifest says {lv.nReplicates}")
+                for r in reps:
+                    all_reps.add(str(r.get("id")))
+                    if c.kind == "contrast" and r.get("group") not in c.groups:
+                        _problem(p, f"comparison {c.id}: replicate {r.get('id')} has group {r.get('group')!r} not in {c.groups}")
+                    for sid in r.get("samples", []):
+                        if sid not in sample_ids:
+                            _problem(p, f"comparison {c.id}: replicate {r.get('id')} links to unknown sample {sid!r}")
+                if lv.hasPseudobulk:
+                    pb = zarr.open_array(str(ld / "pseudobulk.zarr"), mode="r")
+                    if tuple(pb.shape) != (lv.nGenes, lv.nReplicates):
+                        _problem(p, f"comparison {c.id}: level {lv.id}: pseudobulk shape {pb.shape} != ({lv.nGenes}, {lv.nReplicates})")
+                if lv.population and lv.population.field not in {f.id for f in m.fields}:
+                    _problem(p, f"comparison {c.id}: level {lv.id}: population field {lv.population.field!r} unknown")
+            if len(all_reps) != c.nReplicates:
+                _problem(p, f"comparison {c.id}: {len(all_reps)} distinct replicates, manifest says {c.nReplicates}")
+            if c.kind == "contrast" and not c.groups:
+                _problem(p, f"comparison {c.id}: a contrast without groups")
             if c.split and c.split not in {k.id for k in m.meta}:
                 _problem(p, f"comparison {c.id}: split key {c.split!r} is not in manifest.meta")
         except Exception as e:

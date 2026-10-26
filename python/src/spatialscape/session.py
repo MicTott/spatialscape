@@ -314,12 +314,16 @@ class Session:
         split: str | None = None,
         link: str | None = None,
         columns: dict | None = None,
+        kind: str = "contrast",
+        facet: dict | str | None = None,
         log: Log = print,
     ) -> Session:
         """Put the results of a test you ran next to the sections: `results` (one row per gene), `pseudobulk`
         (genes x replicates) and `replicates` (id, group, subject) as data frames or paths, with the same keys as a
-        `comparisons:` entry in a dataset yaml. Written into this session's bundle and its manifest; re-display the
-        session (or reload the viewer) to see the Compare section. Returns the session, so calls chain."""
+        `comparisons:` entry in a dataset yaml. `kind="markers"` takes a marker table (one row per cluster and gene);
+        `facet` names the column whose levels are separate contrasts (a string, or `{"column": ..., "field": ...}`).
+        Written into this session's bundle and its manifest; re-display the session (or reload the viewer) to see
+        the Compare section. Returns the session, so calls chain."""
         from .build import gene_union, read_manifest
         from .comparisons import write_comparison
         from .config import ComparisonSpec
@@ -340,8 +344,12 @@ class Session:
             df.to_csv(p, index=not isinstance(df.index, pd.RangeIndex))  # a gene index (limma, Seurat) is kept as the first column
             return p
 
+        if isinstance(facet, str):
+            facet = {"column": facet}
         spec = ComparisonSpec(
             id=cid,
+            kind=kind,
+            facet=facet,
             name=name,
             description=description,
             results=table(results, "results"),
@@ -357,11 +365,33 @@ class Session:
         manifest = read_manifest(self.bundle)
         if manifest is None:
             raise FileNotFoundError(f"{self.bundle} has no manifest.json")
-        info = write_comparison(self.bundle, spec, manifest.samples, manifest.meta, gene_union(self.bundle, manifest.samples), log=log)
+        cats = {f.id: list(manifest.vocabularies[f.vocabulary].categories) for f in manifest.fields if f.type == "categorical"}
+        info = write_comparison(self.bundle, spec, manifest.samples, manifest.meta, gene_union(self.bundle, manifest.samples), log=log, fields=cats)
         manifest.comparisons = [c for c in manifest.comparisons if c.id != cid] + [info]
         (self.bundle / "manifest.json").write_text(manifest.model_dump_json(indent=1, exclude_none=True))
-        log(f"comparison {cid}: {info.nGenes:,} genes, {info.nReplicates} replicates; re-display the session to see it")
+        log(f"comparison {cid}: {info.nGenes:,} rows over {len(info.levels)} level{'s' if len(info.levels) != 1 else ''}, {info.nReplicates} replicates; re-display the session to see it")
         return self
+
+    def add_markers(self, markers, *, key: str = "rank_genes_groups", name: str = "Markers", field: str | None = None, id: str | None = None, description: str | None = None, log: Log = print) -> Session:
+        """Marker genes next to the cells: an AnnData after `sc.tl.rank_genes_groups` (read from `uns[key]`), or a
+        data frame / file in Seurat FindAllMarkers, scanpy, presto or scran shape (one row per cluster and gene, or
+        just cluster and gene). `field` names the annotation the clusters are categories of; it is found on its own
+        when the names match."""
+        table = markers
+        if hasattr(markers, "uns"):
+            r = markers.uns[key]
+            groups = list(r["names"].dtype.names)
+            parts = []
+            for g in groups:
+                part = {"group": g, "names": [str(x) for x in r["names"][g]]}
+                for col in ("scores", "logfoldchanges", "pvals", "pvals_adj", "pct_nz_group", "pct_nz_reference"):
+                    if col in r.dtype.names if hasattr(r, "dtype") else col in r:
+                        part[col] = np.asarray(r[col][g], dtype=float)
+                parts.append(pd.DataFrame(part))
+            table = pd.concat(parts, ignore_index=True)
+            if field is None and "params" in r and isinstance(r["params"], dict) and r["params"].get("groupby"):
+                field = str(r["params"]["groupby"])
+        return self.add_comparison(name, table, id=id, description=description, kind="markers", facet={"field": field} if field else None, log=log)
 
     def load_regions(self, path) -> int:
         """Hand a saved drawing to the session; the viewer picks it up when it (re)opens this dataset. Returns the

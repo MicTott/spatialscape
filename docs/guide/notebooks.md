@@ -70,7 +70,16 @@ s                                              # re-display: the Compare section
 ```
 
 `add_comparison` takes data frames or paths and the same keys as a [`comparisons:` entry](./comparisons#comparisons-results-of-a-test-next-to-the-sections)
-(`replicates`, `population`, `split`, `link`, `columns`). It writes the comparison into the session's bundle
+(`replicates`, `population`, `split`, `link`, `columns`, `kind`, `facet`). Marker genes have a shortcut:
+
+```python
+sc.tl.rank_genes_groups(adata, "cell_type", method="wilcoxon")
+s.add_markers(adata)                           # reads uns["rank_genes_groups"]; the clusters link to the cell_type annotation
+s.add_markers(find_all_markers_df, name="Seurat markers", field="cell_type")   # or any marker table as a data frame
+```
+
+Each cluster becomes a level of one *markers* comparison: pick a cluster, click a gene, see it on every section,
+and *only &lt;cluster&gt;* keeps the cluster alone on the map. It writes the comparison into the session's bundle
 and its manifest without rebuilding the object, so iterating on a test costs nothing; a comparison with the
 same name replaces the previous one. Replicates find their sections through the `meta` keys (a `mouse` id that
 matches a section's `meta.mouse`), the split key follows from the groups, and the panel does the rest:

@@ -360,11 +360,18 @@ class ComparisonMenu:
     n_rows: int
     groups: list[str] | None  # from a `<case>_vs_<reference>` file name
     other_columns: list[str]
+    kind: str = "contrast"  # markers: every level of the facet column against the rest
+    facet: str | None = None  # the column whose levels are separate contrasts
+    n_levels: int = 0
 
     @property
     def assumed(self) -> list[str]:
         taken = ", ".join(f"{role} <- {col}" for role, col in self.columns.items())
-        out = [f"comparison {self.id}: {taken}; {self.n_rows:,} rows"]
+        out = [f"{'markers' if self.kind == 'markers' else 'comparison'} {self.id}: {taken}{'' if 'effect' in self.columns else '; a ranked list, kept in file order'}; {self.n_rows:,} rows"]
+        if self.facet:
+            out.append(f"levels: {self.n_levels} of {self.facet!r}" + (", each against the rest" if self.kind == "markers" else ", one contrast each"))
+        if self.kind == "markers":
+            return out
         out.append(f"groups: {', '.join(self.groups)} (from the file name; the contrast is the last against the first)" if self.groups else "groups: not in the file name; set `groups:` or give a replicate sheet")
         out.append("replicate values: none yet; add `pseudobulk:` (genes x replicates) for the dots per mouse or donor")
         return out
@@ -374,27 +381,42 @@ VS_RE = re.compile(r"(?i)(?:^|[^a-z0-9])([a-z0-9]+)[_.-]?vs[_.-]?([a-z0-9]+)(?:$
 
 
 def _table_entry(path: Path, base: Path, log: Log) -> ComparisonMenu:
+    from .comparisons import detect_facet
+
     df = read_table(path)
     cols = map_columns(df, RESULT_ROLES, {}, what=str(path.name))
     cands = gene_candidates(df, cols)
-    if not cands or "effect" not in cols or ("p" not in cols and "padj" not in cols):
-        raise ValueError(f"{path.name} does not look like a results table: it needs a gene column, an effect column (log2FoldChange, logFC, avg_log2FC, ...) and a p-value column (pvalue, padj, FDR, ...); columns: {', '.join(map(str, df.columns))}")
-    cols["gene"] = cands[0]
-    taken = {role: cols[role] for role in ("gene", "effect", "p", "padj", "mean") if role in cols}
     stem = path.name.rsplit(".", 1)[0]
+    facet = detect_facet(df, cands[0], None, markers="marker" in stem.lower()) if cands else None
+    stats = "effect" in cols and ("p" in cols or "padj" in cols)
+    if not cands or (not stats and facet is None):
+        raise ValueError(f"{path.name} does not look like a results table: it needs a gene column, an effect column (log2FoldChange, logFC, avg_log2FC, ...) and a p-value column (pvalue, padj, FDR, ...), or a cluster column next to the genes for a marker list; columns: {', '.join(map(str, df.columns))}")
+    cols["gene"] = cands[0]
+    kind = "markers" if facet is not None and (not stats or "marker" in stem.lower()) else "contrast"
+    taken = {role: cols[role] for role in ("gene", "effect", "p", "padj", "mean", "pct_in", "pct_out") if role in cols and cols[role] != facet}
     cid = re.sub(r"[^A-Za-z0-9_.-]+", "_", stem).strip("_").lower() or "comparison"
     m = VS_RE.search(stem)
-    groups = [m.group(2), m.group(1)] if m else None  # stress_vs_control -> [control, stress]
-    name = f"{m.group(1).capitalize()} vs {m.group(2)}" if m else stem.replace("_", " ")
-    log(f"{path.name}: {len(df):,} rows; " + ", ".join(f"{r} <- {c}" for r, c in taken.items()))
-    return ComparisonMenu(source=_rel(path, base), id=cid, name=name, columns=taken, n_rows=len(df), groups=groups, other_columns=[str(c) for c in df.columns if str(c) not in taken.values()])
+    groups = [m.group(2), m.group(1)] if m and kind == "contrast" else None  # stress_vs_control -> [control, stress]
+    name = f"{m.group(1).capitalize()} vs {m.group(2)}" if m and kind == "contrast" else stem.replace("_", " ")
+    n_levels = int(df[facet].nunique()) if facet else 0
+    log(f"{path.name}: {len(df):,} rows; " + ", ".join(f"{r} <- {c}" for r, c in taken.items()) + ("" if stats else "; a ranked list, kept in file order") + (f"; {n_levels} levels of {facet!r}" if facet else ""))
+    return ComparisonMenu(source=_rel(path, base), id=cid, name=name, columns=taken, n_rows=len(df), groups=groups, other_columns=[str(c) for c in df.columns if str(c) not in taken.values() and str(c) != facet], kind=kind, facet=facet, n_levels=n_levels)
 
 
 def _comparison_lines(c: ComparisonMenu) -> list[str]:
     L: list[str] = []
     L.append(f"  - id: {_ystr(c.id)}")
+    if c.kind == "markers":
+        L.append(_pad("    kind: markers", "each level against the rest; no replicates, no split"))
     L.append(f"    name: {_ystr(c.name)}")
-    L.append(_pad(f"    results: {_ystr(c.source)}", f"{c.n_rows:,} rows; " + ", ".join(f"{r} <- {col}" for r, col in c.columns.items())))
+    L.append(_pad(f"    results: {_ystr(c.source)}", f"{c.n_rows:,} rows; " + (", ".join(f"{r} <- {col}" for r, col in c.columns.items()) or "a ranked list, kept in file order")))
+    if c.facet:
+        L.append(_pad(f"    facet: {{ column: {_ystr(c.facet)} }}", f"{c.n_levels} levels, one contrast each; add `field: <annotation>` when its categories are not matched on their own"))
+    if c.kind == "markers":
+        L.append(_pad('    # description: "Wilcoxon, each cluster against the rest"', "shown verbatim in the panel"))
+        if c.other_columns:
+            L.append(f"    # other columns in the table: {_join(c.other_columns, 6)}")
+        return L
     if c.groups:
         L.append(_pad(f"    groups: [{', '.join(_ystr(g) for g in c.groups)}]", "from the file name; the contrast is the last against the first"))
     else:

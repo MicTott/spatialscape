@@ -1,12 +1,13 @@
-/** The Compare panel under the maps: the results table of the chosen comparison on the left (click a gene to colour
- *  the maps by it, ↑/↓ to step), the replicate values of the current gene on the right (one dot per mouse or donor,
- *  a median line, a box on request, lines between paired subjects; click a dot to focus its section), and the
- *  table's numbers for that gene with the comparison's description. The top edge drags to resize. */
+/** The Compare panel under the maps: the results table of the chosen comparison (and level) on the left (click a gene
+ *  to colour the maps by it, ↑/↓ to step), on the right the replicate values of the current gene when the comparison
+ *  has them (one dot per mouse or donor, a median line, a box on request, lines between paired subjects; click a dot
+ *  to focus its section), else the table's numbers for that gene. A markers comparison lists the clusters as levels,
+ *  each against the rest. The top edge drags to resize. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer } from "../store/store";
-import { activateComparison, populationFilterActive } from "./activate";
+import { activateComparison, populationFilterActive, toggleLevelFilter } from "./activate";
 import { loadComparison } from "./data";
-import { arrange, countSignificant, fmtEffect, fmtMean, fmtP, groupColors, groupValues, jitter, pairs, rows, ticks, type ComparisonData, type Direction, type Row, type SortKey } from "./model";
+import { arrange, countSignificant, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, pairs, rows, ticks, type ComparisonData, type Direction, type Row, type SortKey } from "./model";
 
 const ROW_H = 22;
 const clampHeight = (h: number) => Math.max(180, Math.min(Math.max(180, window.innerHeight - 220), Math.round(h)));
@@ -15,6 +16,7 @@ export function ComparePanel() {
   const manifest = useViewer((s) => s.manifest);
   const datasetUrl = useViewer((s) => s.datasetUrl);
   const id = useViewer((s) => s.comparison);
+  const levelId = useViewer((s) => s.comparisonLevel);
   const color = useViewer((s) => s.color);
   const sidebarOpen = useViewer((s) => s.sidebarOpen);
   const height = useViewer((s) => s.compareHeight);
@@ -23,6 +25,7 @@ export function ComparePanel() {
   const genomeHeight = useViewer((s) => s.genomeHeight);
   const population = useViewer(populationFilterActive);
   const info = manifest?.comparisons?.find((c) => c.id === id) ?? null;
+  const level = info ? levelOf(info, levelId) : null;
   const [data, setData] = useState<ComparisonData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("padj");
@@ -33,15 +36,15 @@ export function ComparePanel() {
   useEffect(() => {
     setData(null);
     setError(null);
-    if (!info || !datasetUrl) return;
+    if (!info || !level || !datasetUrl) return;
     let cancelled = false;
-    loadComparison(datasetUrl, info)
+    loadComparison(datasetUrl, info, level.id)
       .then((d) => !cancelled && setData(d))
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
     };
-  }, [info, datasetUrl]);
+  }, [info, level, datasetUrl]);
 
   const all = useMemo(() => (data ? rows(data) : []), [data]);
   const shown = useMemo(() => arrange(all, sort, desc, dir, query), [all, sort, desc, dir, query]);
@@ -93,7 +96,10 @@ export function ComparePanel() {
     }
   };
 
-  if (!manifest || !info) return null;
+  if (!manifest || !info || !level) return null;
+  const markers = info.kind === "markers";
+  const hasEffect = info.hasEffect !== false;
+  const hasP = info.hasPadj || info.hasP;
   const sig = countSignificant(all);
   const head = (key: SortKey, label: string, title: string) => (
     <button
@@ -103,7 +109,7 @@ export function ComparePanel() {
         if (sort === key) setDesc((d) => !d);
         else {
           setSort(key);
-          setDesc(key === "effect" || key === "mean");
+          setDesc(key === "effect" || key === "mean" || key === "pct");
         }
       }}
     >
@@ -111,7 +117,11 @@ export function ComparePanel() {
       {sort === key ? (desc ? " ▾" : " ▴") : ""}
     </button>
   );
+  const columns = `minmax(0, 1fr)${hasEffect ? " 88px" : ""}${hasP ? " 72px" : ""}${info.hasMean ? " 64px" : ""}${info.hasPct ? " 84px" : ""}`;
   const bottom = 26 + (genomeOn ? genomeHeight : 0);
+  const hasPlot = data ? data.replicates.length > 0 && data.pseudobulk != null : info.hasPseudobulk;
+  const against = markers ? "rest" : info.groups[0];
+  const forGroup = markers ? level.name : info.groups[info.groups.length - 1];
   return (
     <div className={`compare${sidebarOpen ? " with-sidebar" : ""}`} style={{ height, bottom }}>
       <div className="c-handle" onPointerDown={onHandleDown} title="drag to resize" />
@@ -123,20 +133,37 @@ export function ComparePanel() {
             </option>
           ))}
         </select>
+        {info.levels.length > 1 && (
+          <select className="c-level" value={level.id} onChange={(e) => void activateComparison(info.id, e.target.value)} title={markers ? "which cluster's markers" : `which ${info.facet?.field ?? "level"} the contrast was fit in`}>
+            {info.levels.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        )}
         <input className="c-search" placeholder="find a gene…" value={query} onChange={(e) => setQuery(e.target.value)} spellCheck={false} />
-        <span className="tabs c-dir" title="direction of the effect: the last group against the first">
-          {(["all", "up", "down"] as Direction[]).map((d) => (
-            <button key={d} className={dir === d ? "on" : ""} onClick={() => setDir(d)}>
-              {d === "all" ? "all" : d === "up" ? `↑ ${info.groups[info.groups.length - 1]}` : `↓ ${info.groups[0]}`}
-            </button>
-          ))}
-        </span>
+        {hasEffect && (
+          <span className="tabs c-dir" title={markers ? "direction of the effect: the cluster against the rest" : "direction of the effect: the last group against the first"}>
+            {(["all", "up", "down"] as Direction[]).map((d) => (
+              <button key={d} className={dir === d ? "on" : ""} onClick={() => setDir(d)}>
+                {d === "all" ? "all" : d === "up" ? `↑ ${forGroup}` : `↓ ${against}`}
+              </button>
+            ))}
+          </span>
+        )}
         <span className="muted c-count">
-          {all.length.toLocaleString()} genes · {sig.toLocaleString()} at {info.hasPadj ? "padj" : "p"} &lt; 0.05
-          {info.nUnmatched ? ` · ${info.nUnmatched.toLocaleString()} not in this dataset` : ""}
+          {markers ? `${level.name} vs rest · ` : ""}
+          {all.length.toLocaleString()} genes{hasP ? ` · ${sig.toLocaleString()} at ${info.hasPadj ? "padj" : "p"} < 0.05` : ""}
+          {level.nUnmatched ? ` · ${level.nUnmatched.toLocaleString()} not in this dataset` : ""}
           {query || dir !== "all" ? ` · ${shown.length.toLocaleString()} listed` : ""}
         </span>
-        {population && (
+        {markers && level.population && (
+          <button className={`c-sort${population ? " on" : ""}`} onClick={toggleLevelFilter} title={population ? "show every cell again" : `filter the map to the cells of ${level.name}`}>
+            only {level.name}
+          </button>
+        )}
+        {!markers && population && (
           <span className="chip pop" title={`the comparison was fit in these cells; the map is filtered to them (field ${population.field})`}>
             map filtered to {population.value}
             <button onClick={() => store.getState().setFilter(null)} title="clear the filter">
@@ -145,7 +172,7 @@ export function ComparePanel() {
           </span>
         )}
         <span className="right">
-          {info.hasPseudobulk && (
+          {hasPlot && (
             <button className={`c-sort${box ? " on" : ""}`} onClick={toggleBox} title="draw the quartiles behind the dots">
               box
             </button>
@@ -156,19 +183,26 @@ export function ComparePanel() {
         </span>
       </div>
       <div className="c-body">
-        <div className="c-table">
-          <div className="c-row c-thead">
-            {head("gene", "gene", "sort by name")}
-            {head("effect", "effect", "sort by the size of the effect")}
-            {head("padj", info.hasPadj ? "padj" : "p", "sort by adjusted p-value")}
+        <div className={`c-table${hasPlot ? "" : " wide"}`}>
+          <div className="c-row c-thead" style={{ gridTemplateColumns: columns }}>
+            {head("gene", hasEffect ? "gene" : "gene (rank)", "sort by name")}
+            {hasEffect && head("effect", "effect", "sort by the size of the effect")}
+            {hasP && head("padj", info.hasPadj ? "padj" : "p", "sort by adjusted p-value")}
             {info.hasMean && head("mean", "mean", "sort by mean expression")}
+            {info.hasPct && head("pct", "% in / out", "share of cells expressing the gene inside the cluster and outside it")}
           </div>
           {error && <div className="muted small c-note">could not load the comparison: {error}</div>}
           {!data && !error && <div className="muted small c-note">loading…</div>}
-          {data && <GeneTable rows={shown} gene={gene} hasMean={info.hasMean} />}
+          {data && <GeneTable rows={shown} gene={gene} columns={columns} hasEffect={hasEffect} hasP={hasP} hasMean={info.hasMean} hasPct={!!info.hasPct} />}
         </div>
         <div className="c-plot">
-          {data && geneRow != null ? <ReplicatePlot data={data} geneRow={geneRow} gene={gene!} box={box} /> : data ? <div className="muted c-note">pick a gene in the table, or colour the maps by one of its genes</div> : null}
+          {data && geneRow != null && hasPlot ? (
+            <ReplicatePlot data={data} geneRow={geneRow} gene={gene!} box={box} />
+          ) : data && geneRow != null ? (
+            <GeneNote data={data} geneRow={geneRow} gene={gene!} markers={markers} />
+          ) : data ? (
+            <div className="muted c-note">pick a gene in the table, or colour the maps by one of its genes</div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -176,7 +210,7 @@ export function ComparePanel() {
 }
 
 /** A windowed list: only the rows in view are in the page. */
-function GeneTable({ rows: list, gene, hasMean }: { rows: Row[]; gene: string | null; hasMean: boolean }) {
+function GeneTable({ rows: list, gene, columns, hasEffect, hasP, hasMean, hasPct }: { rows: Row[]; gene: string | null; columns: string; hasEffect: boolean; hasP: boolean; hasMean: boolean; hasPct: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [h, setH] = useState(300);
@@ -197,7 +231,7 @@ function GeneTable({ rows: list, gene, hasMean }: { rows: Row[]; gene: string | 
     const y = k * ROW_H;
     if (y < el.scrollTop || y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = Math.max(0, y - el.clientHeight / 2);
   }, [gene, list]);
-  const maxAbs = useMemo(() => list.reduce((m, r) => Math.max(m, Math.abs(r.effect)), 0) || 1, [list]);
+  const maxAbs = useMemo(() => list.reduce((m, r) => Math.max(m, Math.abs(r.effect ?? 0)), 0) || 1, [list]);
   const first = Math.max(0, Math.floor(top / ROW_H) - 8);
   const last = Math.min(list.length, Math.ceil((top + h) / ROW_H) + 8);
   return (
@@ -205,27 +239,68 @@ function GeneTable({ rows: list, gene, hasMean }: { rows: Row[]; gene: string | 
       <div style={{ height: list.length * ROW_H, position: "relative" }}>
         {list.slice(first, last).map((r, k) => {
           const i = first + k;
-          const pct = Math.min(100, (100 * Math.abs(r.effect)) / maxAbs);
+          const pct = Math.min(100, (100 * Math.abs(r.effect ?? 0)) / maxAbs);
           return (
             <div
               key={r.gene}
               className={`c-row${r.gene === gene ? " on" : ""}${r.measured ? "" : " off"}`}
-              style={{ top: i * ROW_H }}
+              style={{ top: i * ROW_H, gridTemplateColumns: columns }}
               title={r.measured ? "colour the maps by this gene" : "no section measures this gene"}
               onClick={() => r.measured && store.getState().setColor({ kind: "gene", gene: r.gene })}
             >
-              <span className="c-gene">{r.gene}</span>
-              <span className={`c-effect ${r.effect >= 0 ? "up" : "down"}`}>
-                <i style={{ width: `${pct}%` }} />
-                {fmtEffect(r.effect)}
+              <span className="c-gene">
+                {!hasEffect && <span className="c-rank">{r.i + 1}</span>}
+                {r.gene}
               </span>
-              <span className="c-p">{fmtP(r.padj ?? r.p)}</span>
+              {hasEffect && (
+                <span className={`c-effect ${(r.effect ?? 0) >= 0 ? "up" : "down"}`}>
+                  <i style={{ width: `${pct}%` }} />
+                  {r.effect == null ? "—" : fmtEffect(r.effect)}
+                </span>
+              )}
+              {hasP && <span className="c-p">{fmtP(r.padj ?? r.p)}</span>}
               {hasMean && <span className="c-mean">{fmtMean(r.mean)}</span>}
+              {hasPct && (
+                <span className="c-pct">
+                  {fmtPct(r.pctIn)} / {fmtPct(r.pctOut)}
+                </span>
+              )}
             </div>
           );
         })}
       </div>
       {!list.length && <div className="muted small c-note">no gene matches</div>}
+    </div>
+  );
+}
+
+function geneStats(data: ComparisonData, geneRow: number): string[] {
+  const r = data.results;
+  return [
+    r.effect ? `effect ${fmtEffect(r.effect[geneRow])}` : null,
+    r.p ? `p ${fmtP(r.p[geneRow])}` : null,
+    r.padj ? `padj ${fmtP(r.padj[geneRow])}` : null,
+    r.mean ? `mean ${fmtMean(r.mean[geneRow])}` : null,
+    r.pct_in || r.pct_out ? `in ${fmtPct(r.pct_in?.[geneRow] ?? null)}% · out ${fmtPct(r.pct_out?.[geneRow] ?? null)}%` : null,
+    r.score ? `score ${fmtMean(r.score[geneRow])}` : null,
+  ].filter(Boolean) as string[];
+}
+
+/** The right side when there are no replicate values: the table's numbers for the gene and the comparison's description. */
+function GeneNote({ data, geneRow, gene, markers }: { data: ComparisonData; geneRow: number; gene: string; markers: boolean }) {
+  const stats = geneStats(data, geneRow);
+  const unmeasured = data.unmeasured.has(geneRow);
+  return (
+    <div className="c-plotwrap c-genenote">
+      <div className="c-title">
+        {gene}
+        {markers ? <span className="muted"> · {data.level.name} vs rest</span> : null}
+        {!stats.length ? <span className="muted"> · rank {geneRow + 1} of {data.results.genes.length}</span> : null}
+        {unmeasured ? <span className="warn"> · not measured by any section</span> : null}
+      </div>
+      {stats.length > 0 && <div className="c-stats">{stats.join(" · ")}</div>}
+      <div className="muted small">{markers ? `the gene is on every pane; Cells → gene by annotation shows it across the clusters, and "only ${data.level.name}" keeps the cluster alone` : "no replicate values in this comparison; add `pseudobulk:` for a dot per replicate"}</div>
+      {data.info.description && <div className="muted c-desc">{data.info.description}</div>}
     </div>
   );
 }
@@ -246,13 +321,7 @@ function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; gen
   const groups = useMemo(() => groupValues(data, geneRow), [data, geneRow]);
   const colors = useMemo(() => groupColors(manifest, data.info), [manifest, data.info]);
   const paired = useMemo(() => pairs(groups), [groups]);
-  const r = data.results;
-  const stats = [
-    `effect ${fmtEffect(r.effect[geneRow])}`,
-    r.p ? `p ${fmtP(r.p[geneRow])}` : null,
-    r.padj ? `padj ${fmtP(r.padj[geneRow])}` : null,
-    r.mean ? `mean ${fmtMean(r.mean[geneRow])}` : null,
-  ].filter(Boolean) as string[];
+  const stats = geneStats(data, geneRow);
   const [W, H] = size;
   const footer = 44;
   const pad = { l: 46, r: 12, t: 26, b: 28 };
@@ -279,8 +348,8 @@ function ReplicatePlot({ data, geneRow, gene, box }: { data: ComparisonData; gen
       <svg width={W} height={Math.max(100, H - footer)}>
         <text x={pad.l} y={14} className="c-title">
           {gene}
+          {data.level.name !== "all" ? <tspan className="muted"> · {data.level.name}</tspan> : null}
           {data.info.units ? <tspan className="muted"> · {data.info.units}</tspan> : null}
-          {!data.info.hasPseudobulk ? <tspan className="muted"> · no replicate values in this comparison</tspan> : null}
           {unmeasured ? <tspan className="warn"> · not measured by any section</tspan> : null}
         </text>
         {ticks(lo, hi).map((t) => (

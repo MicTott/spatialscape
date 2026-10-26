@@ -58,22 +58,39 @@ export interface MetaKey {
   levels: string[]; // declared order first, then values in sample order
 }
 /** A differential expression result stored under comparisons/<id>/ (results.json, pseudobulk.zarr, comparison.json). */
+export interface LevelInfo {
+  id: string; // folder under the comparison
+  name: string; // the level's label ("all" for a comparison without a facet)
+  path: string; // levels/<id>
+  nGenes: number;
+  nSignificant: number;
+  nUnmatched: number;
+  nReplicates: number;
+  hasPseudobulk: boolean;
+  population?: { field: string; value: string } | null; // the level as a category of the facet field
+}
 export interface ComparisonInfo {
   id: string;
+  kind?: "contrast" | "markers"; // markers: every level against the rest, no replicates, no split
   name: string;
   description?: string | null;
   path: string;
-  groups: string[]; // pane and plotting order; the contrast is the last against the first
+  groups: string[]; // pane and plotting order; the contrast is the last against the first (empty for markers)
   units?: string | null;
   population?: { field: string; value: string } | null;
   split?: string | null; // sample meta key whose levels are the groups
   link?: string | null;
+  facet?: { column: string; field?: string | null } | null;
+  levels: LevelInfo[];
   nGenes: number;
   nReplicates: number;
   nUnmatched: number;
+  hasEffect?: boolean; // false for a ranked list without statistics
   hasP: boolean;
   hasPadj: boolean;
   hasMean: boolean;
+  hasPct?: boolean;
+  hasScore?: boolean;
   hasPseudobulk: boolean;
 }
 export interface Sample {

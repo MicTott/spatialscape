@@ -3,16 +3,19 @@
  * for, the replicate values of one gene arranged by group, box statistics, pairing and formatting. Nothing here
  * computes a statistic the table did not already hold: values are drawn as imported.
  */
-import type { ComparisonInfo, Manifest } from "../data/manifest";
+import type { ComparisonInfo, LevelInfo, Manifest } from "../data/manifest";
 import { fieldById } from "../data/manifest";
 import { REGION_COLORS } from "../store/store";
 
 export interface ResultsDoc {
   genes: string[];
-  effect: number[];
+  effect: number[] | null; // null for a ranked list without statistics
   p: (number | null)[] | null;
   padj: (number | null)[] | null;
   mean: (number | null)[] | null;
+  pct_in?: (number | null)[] | null;
+  pct_out?: (number | null)[] | null;
+  score?: (number | null)[] | null;
   unmeasured: number[];
 }
 export interface Replicate {
@@ -22,28 +25,33 @@ export interface Replicate {
   samples: string[];
 }
 export interface ComparisonDoc extends ComparisonInfo {
-  replicates: Replicate[];
+  replicates: Record<string, Replicate[]>; // per level id
   columns: Record<string, string>;
   sources?: Record<string, string>;
 }
+/** One level of a comparison, loaded: its table, and its replicate values when it has them. */
 export interface ComparisonData {
   info: ComparisonDoc;
+  level: LevelInfo;
   results: ResultsDoc;
   geneIndex: Map<string, number>; // gene -> row in the results
   unmeasured: Set<number>;
-  pseudobulk: Float32Array | null; // row-major (nGenes, nReplicates), replicate order = info.replicates
+  replicates: Replicate[];
+  pseudobulk: Float32Array | null; // row-major (nGenes, nReplicates), replicate order = replicates
 }
 
-export type SortKey = "padj" | "effect" | "mean" | "gene";
+export type SortKey = "padj" | "effect" | "mean" | "pct" | "gene";
 export type Direction = "all" | "up" | "down";
 
 export interface Row {
-  i: number; // index in the results
+  i: number; // index in the results: the table's rank
   gene: string;
-  effect: number;
+  effect: number | null;
   p: number | null;
   padj: number | null;
   mean: number | null;
+  pctIn: number | null;
+  pctOut: number | null;
   measured: boolean;
 }
 
@@ -52,10 +60,12 @@ export function rows(data: ComparisonData): Row[] {
   return r.genes.map((gene, i) => ({
     i,
     gene,
-    effect: r.effect[i],
+    effect: r.effect ? r.effect[i] : null,
     p: r.p ? r.p[i] : null,
     padj: r.padj ? r.padj[i] : null,
     mean: r.mean ? r.mean[i] : null,
+    pctIn: r.pct_in ? r.pct_in[i] : null,
+    pctOut: r.pct_out ? r.pct_out[i] : null,
     measured: !data.unmeasured.has(i),
   }));
 }
@@ -65,9 +75,9 @@ export function arrange(all: Row[], sort: SortKey, descending: boolean, dir: Dir
   const q = query.trim().toLowerCase();
   let out = all;
   if (q) out = out.filter((r) => r.gene.toLowerCase().includes(q));
-  if (dir === "up") out = out.filter((r) => r.effect > 0);
-  else if (dir === "down") out = out.filter((r) => r.effect < 0);
-  const key = (r: Row): number | string | null => (sort === "gene" ? r.gene : sort === "effect" ? Math.abs(r.effect) : sort === "mean" ? r.mean : (r.padj ?? r.p));
+  if (dir === "up") out = out.filter((r) => r.effect != null && r.effect > 0);
+  else if (dir === "down") out = out.filter((r) => r.effect != null && r.effect < 0);
+  const key = (r: Row): number | string | null => (sort === "gene" ? r.gene : sort === "effect" ? (r.effect == null ? null : Math.abs(r.effect)) : sort === "mean" ? r.mean : sort === "pct" ? r.pctIn : (r.padj ?? r.p));
   const sign = descending ? -1 : 1;
   return [...out].sort((a, b) => {
     const ka = key(a);
@@ -133,12 +143,12 @@ function quantile(sorted: number[], q: number): number {
 
 /** The gene's replicate values per group, in the comparison's group order; replicates with no value are left out. */
 export function groupValues(data: ComparisonData, geneRow: number): GroupValues[] {
-  const { info, pseudobulk } = data;
-  const n = info.replicates.length;
+  const { info, pseudobulk, replicates } = data;
+  const n = replicates.length;
   return info.groups.map((group) => {
     const values: { rep: Replicate; value: number }[] = [];
     if (pseudobulk) {
-      info.replicates.forEach((rep, j) => {
+      replicates.forEach((rep, j) => {
         const v = pseudobulk[geneRow * n + j];
         if (rep.group === group && Number.isFinite(v)) values.push({ rep, value: v });
       });
@@ -176,4 +186,20 @@ export function groupColors(m: Manifest, info: ComparisonInfo): string[] {
     if (info.groups.every((g) => v.categories.includes(g))) return info.groups.map((g) => v.colors[v.categories.indexOf(g)]);
   }
   return info.groups.map((_, i) => REGION_COLORS[i % REGION_COLORS.length]);
+}
+
+export function fmtPct(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const pct = v <= 1 ? v * 100 : v; // Seurat writes fractions, presto percentages
+  return pct >= 10 ? pct.toFixed(0) : pct.toFixed(1);
+}
+
+/** The level a comparison shows: the one asked for, else its first. */
+export function levelOf(info: ComparisonInfo, id: string | null | undefined): LevelInfo | null {
+  return info.levels.find((l) => l.id === id) ?? info.levels[0] ?? null;
+}
+
+/** The population a level stands for: its own (a facet level that is a category), else the comparison's. */
+export function levelPopulation(info: ComparisonInfo, level: LevelInfo | null): { field: string; value: string } | null {
+  return level?.population ?? info.population ?? null;
 }

@@ -190,10 +190,30 @@ class PopulationInfo(_Model):
     value: str
 
 
+class FacetInfo(_Model):
+    column: str  # the results column whose levels the comparison is split by ("{level}" when one file per level)
+    field: str | None = None  # the categorical field whose categories the levels are, when they match one
+
+
+class LevelInfo(_Model):
+    """One level of a comparison: a cluster's markers, one cell type's contrast; `levels/<id>/` under the comparison."""
+
+    id: str  # folder name
+    name: str  # the level's label in the table ("all" for a comparison without a facet)
+    path: str  # levels/<id>, relative to the comparison
+    nGenes: int
+    nSignificant: int  # padj (or p) below 0.05
+    nUnmatched: int
+    nReplicates: int = 0
+    hasPseudobulk: bool = False
+    population: PopulationInfo | None = None  # the level as a category of the facet field, for the map filter
+
+
 class ComparisonInfo(_Model):
     """A differential expression result stored under comparisons/<id>/ (see comparisons.py for the files)."""
 
     id: str
+    kind: Literal["contrast", "markers"] = "contrast"
     name: str
     description: str | None = None
     path: str  # comparisons/<id>, relative to the bundle
@@ -202,12 +222,17 @@ class ComparisonInfo(_Model):
     population: PopulationInfo | None = None
     split: str | None = None  # sample meta key whose levels are the groups
     link: str | None = None  # sample meta key that holds the replicate ids
-    nGenes: int
-    nReplicates: int
+    facet: FacetInfo | None = None
+    levels: list[LevelInfo] = Field(default_factory=list)  # one for a plain comparison, one per facet level otherwise
+    nGenes: int  # rows over every level
+    nReplicates: int  # distinct replicate ids over every level
     nUnmatched: int  # genes of the table that no sample measures
+    hasEffect: bool = True  # false for a ranked list (cluster, gene) without statistics
     hasP: bool = True
     hasPadj: bool = True
     hasMean: bool = False
+    hasPct: bool = False  # pct_in / pct_out (Seurat pct.1 / pct.2, scanpy pct_nz_group / pct_nz_reference)
+    hasScore: bool = False
     hasPseudobulk: bool = False
 
 

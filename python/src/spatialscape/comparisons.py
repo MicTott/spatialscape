@@ -11,6 +11,7 @@ and the result stored in a form the viewer reads in one request per table.
 """
 from __future__ import annotations
 
+import glob
 import hashlib
 import json
 import math
@@ -24,11 +25,13 @@ import pandas as pd
 
 from .config import ComparisonSpec, DatasetConfig
 from .fingerprint import _stat, read_sidecar
-from .manifest import ComparisonInfo, MetaKey, PopulationInfo, Sample
+from .manifest import ComparisonInfo, FacetInfo, LevelInfo, MetaKey, PopulationInfo, Sample
 
 Log = Callable[[str], None]
 
-COMPARISONS_RECIPE = 1
+COMPARISONS_RECIPE = 2  # 2: every comparison is one or more levels under levels/<id>/
+LEVEL_TOKEN = "{level}"
+MAX_LEVELS = 500
 TABLE_SUFFIXES = (".csv", ".tsv", ".txt", ".parquet")
 PSEUDOBULK_CHUNK = 1024
 
@@ -36,11 +39,18 @@ PSEUDOBULK_CHUNK = 1024
 # DESeq2 / limma / edgeR / Seurat FindMarkers / pyDESeq2 / scanpy rank_genes_groups.
 RESULT_ROLES: dict[str, list[str]] = {
     "gene": ["gene", "genes", "gene_name", "symbol", "gene_symbol", "feature", "features", "names", "gene_id", "gene_ids", "ensembl_id", "ensembl"],
-    "effect": ["log2FoldChange", "logFC", "avg_log2FC", "log2fc", "log2_fold_change", "logfoldchanges", "estimate", "beta", "coef", "effect"],
-    "p": ["pvalue", "p_value", "P.Value", "p_val", "PValue", "pvals", "pval", "p"],
+    "effect": ["log2FoldChange", "logFC", "avg_log2FC", "log2fc", "log2_fold_change", "logfoldchanges", "summary.logFC", "mean_logFC", "estimate", "beta", "coef", "effect"],
+    "p": ["pvalue", "p_value", "P.Value", "p.value", "p_val", "PValue", "pvals", "pval", "p"],
     "padj": ["padj", "adj.P.Val", "FDR", "p_val_adj", "pvals_adj", "q_value", "qvalue", "fdr", "p_adj", "adj_p", "qval"],
-    "mean": ["baseMean", "AveExpr", "logCPM", "base_mean", "avg_expr", "mean_expression", "mean"],
+    "mean": ["baseMean", "AveExpr", "logCPM", "base_mean", "avg_expr", "mean_expression", "avgExpr", "mean"],
+    "pct_in": ["pct.1", "pct_in", "pct_nz_group", "pct.in", "pct_group", "pct_1"],
+    "pct_out": ["pct.2", "pct_out", "pct_nz_reference", "pct.out", "pct_reference", "pct_2"],
+    "score": ["scores", "score", "statistic", "auc", "stat", "t", "z", "Top"],
 }
+# Columns whose levels split a table into one contrast each. The strong names are taken as a facet whenever they
+# are present; the weak ones only when gene names repeat (a plain DESeq2 table may carry a constant `contrast`).
+FACET_STRONG = ["cluster", "clusters", "celltype", "cell_type", "cell type", "population", "domain"]
+FACET_WEAK = ["group", "contrast", "comparison", "level", "ident"]
 REPLICATE_ROLES: dict[str, list[str]] = {
     "id": ["id", "replicate", "sample", "sample_id", "sample_name", "subject", "donor", "mouse", "animal", "name"],
     "group": ["group", "condition", "treatment", "genotype", "diagnosis", "dx", "contrast", "arm"],
@@ -115,58 +125,161 @@ def bh_sorted_order(res: pd.DataFrame) -> np.ndarray:
     return np.lexsort(key)
 
 
+def level_paths(path: Path | str | None) -> dict[str, Path] | None:
+    """A `{level}` template expanded against the files present: level -> path, sorted; None for a plain path."""
+    if path is None or LEVEL_TOKEN not in str(path):
+        return None
+    head, tail = str(path).split(LEVEL_TOKEN, 1)
+    out: dict[str, Path] = {}
+    for m in sorted(glob.glob(glob.escape(head) + "*" + glob.escape(tail))):
+        if m.startswith(head) and m.endswith(tail) and len(m) > len(head) + len(tail):
+            out[m[len(head) : len(m) - len(tail)]] = Path(m)
+    return out
+
+
+def source_paths(spec: ComparisonSpec) -> list[Path]:
+    """Every file a comparison reads, templates expanded."""
+    out: list[Path] = []
+    for p in (spec.results, spec.pseudobulk, spec.replicates):
+        if p is None:
+            continue
+        lp = level_paths(p)
+        out.extend(lp.values() if lp is not None else [Path(p)])
+    return out
+
+
+def detect_facet(df: pd.DataFrame, gene_col: str, given: str | None, *, markers: bool) -> str | None:
+    """The column whose levels split the table, if any: the one named in the yaml, else a recognised name."""
+    if given:
+        if given not in df.columns:
+            raise KeyError(f"facet column {given!r} is not in the table; columns: {', '.join(map(str, df.columns))}")
+        return given
+    repeats = bool(df[gene_col].duplicated().any())
+    for n in FACET_STRONG + FACET_WEAK:
+        c = find_column(df, [n])
+        if c is None or c == gene_col:
+            continue
+        k = int(df[c].nunique(dropna=True))
+        if not (1 <= k <= MAX_LEVELS):
+            continue
+        if markers or n in FACET_STRONG or repeats:
+            return c
+    return None
+
+
+def slug(level: str) -> str:
+    s = re.sub(r"[^A-Za-z0-9_.-]+", "_", level).strip("_.")
+    return s or "all"
+
+
 @dataclass
 class LoadedComparison:
-    results: pd.DataFrame  # columns gene, effect, [p], [padj], [mean]; one row per gene
-    columns: dict[str, str]  # role -> source column
-    pseudobulk: pd.DataFrame | None  # index: gene; columns: replicate ids
+    results: pd.DataFrame  # columns gene, [effect], [p], [padj], [mean], [pct_in], [pct_out], [score], level; sorted within level
+    levels: list[str]  # level labels in table order ("" for a comparison without a facet)
+    columns: dict[str, str]  # role -> source column ("facet" -> the facet column, or "{level}")
+    pseudobulk: dict[str, pd.DataFrame] | None  # per level (the same frame for every level when one file was given)
     replicates: pd.DataFrame | None  # columns id, group, [subject]
     notes: list[str] = field(default_factory=list)
 
 
+def _read_pseudobulk(path: Path) -> pd.DataFrame:
+    raw = read_table(path)
+    gcol = find_column(raw, RESULT_ROLES["gene"]) or str(raw.columns[0])
+    pb = raw.set_index(raw[gcol].astype(str).str.strip()).drop(columns=[gcol])
+    pb = pb.apply(pd.to_numeric, errors="coerce")
+    pb = pb[~pb.index.duplicated()]
+    pb.columns = [str(c) for c in pb.columns]
+    return pb
+
+
 def load_tables(spec: ComparisonSpec, union: set[str] | None = None) -> LoadedComparison:
-    """Read the three tables and recognise their columns. With the bundle's gene `union`, the gene column that
-    matches it best wins among the candidates (a symbol column over an Ensembl id column, say)."""
+    """Read the tables and recognise their columns. With the bundle's gene `union`, the gene column that matches it
+    best wins among the candidates (a symbol column over an Ensembl id column, say). A `{level}` template reads one
+    file per level; a facet column splits one file into levels; a markers table must have one or the other."""
     notes: list[str] = []
-    df = read_table(spec.results)
+    markers = spec.kind == "markers"
+    lp = level_paths(spec.results)
+    if lp is not None:
+        if not lp:
+            raise ValueError(f"comparison {spec.id}: {spec.results} matches no file")
+        frames = []
+        for lvl, path in lp.items():
+            f = read_table(path)
+            f["__level__"] = lvl
+            frames.append(f)
+        df = pd.concat(frames, ignore_index=True)
+        facet_col: str | None = "__level__"
+        source = Path(str(spec.results)).name
+    else:
+        df = read_table(spec.results)
+        facet_col = None
+        source = spec.results.name
     if df.empty:
-        raise ValueError(f"comparison {spec.id}: {spec.results} is empty")
+        raise ValueError(f"comparison {spec.id}: {source} is empty")
     cols = map_columns(df, RESULT_ROLES, spec.columns.results, what=f"comparison {spec.id} results")
     cands = gene_candidates(df, cols)
     if not cands:
-        raise ValueError(f"comparison {spec.id}: no gene column in {spec.results.name}; name it with `columns: {{ results: {{ gene: <column> }} }}`")
+        raise ValueError(f"comparison {spec.id}: no gene column in {source}; name it with `columns: {{ results: {{ gene: <column> }} }}`")
     if "gene" not in spec.columns.results and union is not None and len(cands) > 1:
         scored = sorted(cands, key=lambda c: -df[c].astype(str).isin(union).sum())
         if scored[0] != cands[0]:
             notes.append(f"gene names from {scored[0]!r} ({int(df[scored[0]].astype(str).isin(union).sum()):,} match the bundle; {cands[0]!r} matches {int(df[cands[0]].astype(str).isin(union).sum()):,})")
         cands = scored
     cols["gene"] = cands[0]
-    if "effect" not in cols:
-        raise ValueError(f"comparison {spec.id}: no effect column (log2FoldChange, logFC, avg_log2FC, ...) in {spec.results.name}; name it with `columns: {{ results: {{ effect: <column> }} }}`")
-    if "p" not in cols and "padj" not in cols:
-        raise ValueError(f"comparison {spec.id}: no p-value column (pvalue, P.Value, p_val, padj, FDR, ...) in {spec.results.name}; name one with `columns: {{ results: {{ padj: <column> }} }}`")
-    res = pd.DataFrame({"gene": df[cols["gene"]].astype(str).str.strip(), "effect": pd.to_numeric(df[cols["effect"]], errors="coerce")})
-    for role in ("p", "padj", "mean"):
+    if facet_col is None:
+        try:
+            facet_col = detect_facet(df, cols["gene"], spec.facet.column if spec.facet else None, markers=markers)
+        except KeyError as e:
+            raise KeyError(f"comparison {spec.id}: {e}") from None
+    if markers and facet_col is None:
+        raise ValueError(f"comparison {spec.id}: a markers table needs a column that says which cluster each gene marks (cluster, celltype, group, ...); name it with `facet: {{ column: <column> }}`")
+    if not markers and "effect" not in cols:
+        raise ValueError(f"comparison {spec.id}: no effect column (log2FoldChange, logFC, avg_log2FC, ...) in {source}; name it with `columns: {{ results: {{ effect: <column> }} }}`")
+    if not markers and "p" not in cols and "padj" not in cols:
+        raise ValueError(f"comparison {spec.id}: no p-value column (pvalue, P.Value, p_val, padj, FDR, ...) in {source}; name one with `columns: {{ results: {{ padj: <column> }} }}`")
+    if facet_col is not None:
+        cols["facet"] = LEVEL_TOKEN if facet_col == "__level__" else facet_col
+        if facet_col in cols.values() and facet_col != cols["facet"]:
+            pass
+        for role in [r for r, c in cols.items() if c == facet_col and r not in ("facet",)]:
+            del cols[role]  # a facet column named `group` is not a score
+    res = pd.DataFrame({"gene": df[cols["gene"]].astype(str).str.strip()})
+    for role in ("effect", "p", "padj", "mean", "pct_in", "pct_out", "score"):
         if role in cols:
             res[role] = pd.to_numeric(df[cols[role]], errors="coerce")
-    res = res[(res["gene"] != "") & (res["gene"] != "nan") & res["effect"].notna()]
-    dup = res["gene"].duplicated()
+    res["level"] = df[facet_col].astype(str).str.strip() if facet_col is not None else ""
+    res = res[(res["gene"] != "") & (res["gene"] != "nan")]
+    if "effect" in res:
+        res = res[res["effect"].notna()]
+    dup = res.duplicated(["level", "gene"])
     if dup.any():
-        notes.append(f"{int(dup.sum()):,} repeated gene names in {spec.results.name}: the first row of each is kept")
+        notes.append(f"{int(dup.sum()):,} repeated gene names in {source}: the first row of each is kept")
         res = res[~dup]
-    res = res.iloc[bh_sorted_order(res)].reset_index(drop=True)
+    levels = list(dict.fromkeys(res["level"].tolist()))
+    if len(levels) > MAX_LEVELS:
+        raise ValueError(f"comparison {spec.id}: {len(levels)} levels of {cols['facet']!r}; is that the facet column? name it with `facet: {{ column: <column> }}`")
+    parts = []
+    for lvl in levels:
+        part = res[res["level"] == lvl]
+        if "effect" in part:
+            part = part.iloc[bh_sorted_order(part)]  # else a ranked list: the file's own order
+        parts.append(part)
+    res = pd.concat(parts).reset_index(drop=True)
 
-    pb = None
+    pb: dict[str, pd.DataFrame] | None = None
     if spec.pseudobulk is not None:
-        raw = read_table(spec.pseudobulk)
-        gcol = find_column(raw, RESULT_ROLES["gene"]) or str(raw.columns[0])
-        pb = raw.set_index(raw[gcol].astype(str).str.strip()).drop(columns=[gcol])
-        pb = pb.apply(pd.to_numeric, errors="coerce")
-        pb = pb[~pb.index.duplicated()]
-        pb.columns = [str(c) for c in pb.columns]
-        missing = int((~res["gene"].isin(pb.index)).sum())
+        plp = level_paths(spec.pseudobulk)
+        if plp is not None:
+            pb = {lvl: _read_pseudobulk(path) for lvl, path in plp.items()}
+            without = [lvl for lvl in levels if lvl not in pb]
+            if without:
+                notes.append(f"no pseudobulk file for level{'s' if len(without) != 1 else ''} {', '.join(without[:4])}{', ...' if len(without) > 4 else ''}: their dots are blank")
+        else:
+            one = _read_pseudobulk(spec.pseudobulk)
+            pb = dict.fromkeys(levels, one)
+        missing = sum(int((~res.loc[res["level"] == lvl, "gene"].isin(frame.index)).sum()) for lvl, frame in pb.items())
         if missing:
-            notes.append(f"{missing:,} genes of the results have no row in {spec.pseudobulk.name}: their replicate values are blank")
+            notes.append(f"{missing:,} genes of the results have no row in the pseudobulk table{'s' if plp else ''}: their replicate values are blank")
 
     reps = None
     if spec.replicates is not None:
@@ -180,7 +293,7 @@ def load_tables(spec: ComparisonSpec, union: set[str] | None = None) -> LoadedCo
         reps["subject"] = raw[rcols["subject"]].astype(str).str.strip() if "subject" in rcols and rcols["subject"] != rcols["id"] else reps["id"]
         reps = reps[~reps["id"].duplicated()].reset_index(drop=True)
         cols.update({f"replicate_{k}": v for k, v in rcols.items()})
-    return LoadedComparison(results=res, columns=cols, pseudobulk=pb, replicates=reps, notes=notes)
+    return LoadedComparison(results=res, levels=levels, columns=cols, pseudobulk=pb, replicates=reps, notes=notes)
 
 
 def find_split_key(groups: list[str], meta: list[MetaKey]) -> str | None:
@@ -210,6 +323,30 @@ def link_replicates(rep_ids: list[str], samples: list[Sample], link: str | None,
     return key, out
 
 
+def infer_facet_field(levels: list[str], fields: dict[str, list[str]] | None, given: str | None) -> str | None:
+    """The categorical field whose categories the levels are: the one named, else the best match when at least half
+    of the levels are among its categories."""
+    if given:
+        if fields is not None and given not in fields:
+            raise ValueError(f"`facet.field: {given}` is not a categorical field of the dataset (known: {', '.join(sorted(fields)) or 'none'})")
+        return given
+    if not fields or not levels:
+        return None
+    best = max(fields, key=lambda f: sum(1 for lvl in levels if lvl in fields[f]))
+    hits = sum(1 for lvl in levels if lvl in fields[best])
+    return best if hits * 2 >= len(levels) else None
+
+
+@dataclass
+class ResolvedLevel:
+    id: str  # folder name
+    name: str  # the level's label ("all" without a facet)
+    results: pd.DataFrame
+    replicates: list[dict]  # {id, group, subject, samples}
+    pseudobulk: pd.DataFrame | None
+    population: PopulationInfo | None
+
+
 @dataclass
 class ResolvedComparison:
     spec: ComparisonSpec
@@ -217,48 +354,90 @@ class ResolvedComparison:
     groups: list[str]
     split: str | None
     link: str | None
-    replicates: list[dict]  # {id, group, subject, samples}
+    facet_field: str | None
+    levels: list[ResolvedLevel]
     notes: list[str]
 
+    @property
+    def replicates(self) -> list[dict]:
+        """The first level's replicate rows (every level's, for a comparison without a facet)."""
+        return self.levels[0].replicates if self.levels else []
 
-def resolve_comparison(spec: ComparisonSpec, loaded: LoadedComparison, samples: list[Sample], meta: list[MetaKey]) -> ResolvedComparison:
-    """Settle groups, the split key, the replicate rows and their sections from the tables and the samples' metadata."""
-    notes = list(loaded.notes)
-    spatial = [s for s in samples if s.kind != "embedding"]
-    rep_ids: list[str] = list(loaded.replicates["id"]) if loaded.replicates is not None else (list(loaded.pseudobulk.columns) if loaded.pseudobulk is not None else [])
-    link, linked = link_replicates(rep_ids, spatial, spec.link, meta)
-    if spec.link and link is None and rep_ids:
-        raise ValueError(f"comparison {spec.id}: no sample has a `meta.{spec.link}` equal to a replicate id ({', '.join(rep_ids[:5])}{', ...' if len(rep_ids) > 5 else ''})")
+
+def _replicate_rows(spec: ComparisonSpec, loaded: LoadedComparison, rep_ids: list[str], linked: dict[str, list[str]], link: str | None, spatial: list[Sample], meta: list[MetaKey]) -> list[dict]:
     rows: list[dict] = []
     if loaded.replicates is not None:
-        for _, r in loaded.replicates.iterrows():
+        sheet = loaded.replicates[loaded.replicates["id"].isin(rep_ids)] if rep_ids else loaded.replicates
+        for _, r in sheet.iterrows():
             rows.append({"id": r["id"], "group": r["group"], "subject": r["subject"], "samples": linked.get(r["id"], [])})
-    elif rep_ids:
-        # no sheet: the group is what the linked sections say under the split key
-        split_guess = spec.split or (find_split_key(spec.groups, meta) if spec.groups else None)
-        if split_guess is None and meta:
-            # the key under which linked sections take the fewest distinct values per replicate, most across them
-            split_guess = next((k.id for k in meta if k.id != link and len(k.levels) >= 2), None)
-        for r in rep_ids:
-            vals = sorted({s.meta.get(split_guess, "") for s in spatial if s.id in linked.get(r, []) and split_guess} - {""})
-            if len(vals) != 1:
-                raise ValueError(
-                    f"comparison {spec.id}: cannot tell which group replicate {r!r} belongs to "
-                    + (f"(its sections carry {len(vals)} values of {split_guess!r})" if vals else "(no section is linked to it)")
-                    + "; give a `replicates:` sheet with id and group columns"
-                )
-            rows.append({"id": r, "group": vals[0], "subject": r, "samples": linked[r]})
+        return rows
+    if not rep_ids:
+        return rows
+    # no sheet: the group is what the linked sections say under the split key
+    split_guess = spec.split or (find_split_key(spec.groups, meta) if spec.groups else None)
+    if split_guess is None and meta:
+        split_guess = next((k.id for k in meta if k.id != link and len(k.levels) >= 2), None)
+    for r in rep_ids:
+        vals = sorted({s.meta.get(split_guess, "") for s in spatial if s.id in linked.get(r, []) and split_guess} - {""})
+        if len(vals) != 1:
+            raise ValueError(
+                f"comparison {spec.id}: cannot tell which group replicate {r!r} belongs to "
+                + (f"(its sections carry {len(vals)} values of {split_guess!r})" if vals else "(no section is linked to it)")
+                + "; give a `replicates:` sheet with id and group columns"
+            )
+        rows.append({"id": r, "group": vals[0], "subject": r, "samples": linked[r]})
+    return rows
+
+
+def resolve_comparison(spec: ComparisonSpec, loaded: LoadedComparison, samples: list[Sample], meta: list[MetaKey], fields: dict[str, list[str]] | None = None) -> ResolvedComparison:
+    """Settle groups, the split key, the replicate rows and their sections per level from the tables and the samples'
+    metadata; `fields` (categorical field id -> categories) links facet levels to an annotation."""
+    notes = list(loaded.notes)
+    markers = spec.kind == "markers"
+    spatial = [s for s in samples if s.kind != "embedding"]
+    faceted = "facet" in loaded.columns
+    facet_field = infer_facet_field(loaded.levels, fields, spec.facet.field if spec.facet else None) if faceted else None
+    if faceted and spec.facet and spec.facet.field is None and facet_field:
+        notes.append(f"levels of {loaded.columns['facet']!r} are categories of {facet_field!r}: the map can be filtered to each")
+    all_ids: list[str] = []
+    if not markers:
+        for lvl in loaded.levels:
+            ids = list(loaded.replicates["id"]) if loaded.replicates is not None else (list(loaded.pseudobulk[lvl].columns) if loaded.pseudobulk and lvl in loaded.pseudobulk else [])
+            all_ids.extend(i for i in ids if i not in all_ids)
+    link, linked = link_replicates(all_ids, spatial, spec.link, meta)
+    if spec.link and link is None and all_ids:
+        raise ValueError(f"comparison {spec.id}: no sample has a `meta.{spec.link}` equal to a replicate id ({', '.join(all_ids[:5])}{', ...' if len(all_ids) > 5 else ''})")
+    used: set[str] = set()
+    levels: list[ResolvedLevel] = []
+    seen_groups: list[str] = []
+    for lvl in loaded.levels:
+        sid = slug(lvl)
+        while sid in used:
+            sid += "_"
+        used.add(sid)
+        part = loaded.results[loaded.results["level"] == lvl].drop(columns=["level"]).reset_index(drop=True)
+        pb = loaded.pseudobulk.get(lvl) if loaded.pseudobulk else None
+        rows: list[dict] = []
+        if not markers:
+            ids = list(loaded.replicates["id"]) if loaded.replicates is not None else (list(pb.columns) if pb is not None else [])
+            rows = _replicate_rows(spec, loaded, ids, linked, link, spatial, meta)
+            for r in rows:
+                if r["group"] not in seen_groups:
+                    seen_groups.append(r["group"])
+        pop = PopulationInfo(field=facet_field, value=lvl) if facet_field and fields and lvl in fields.get(facet_field, []) else None
+        levels.append(ResolvedLevel(id=sid, name=lvl or "all", results=part, replicates=rows, pseudobulk=pb, population=pop))
+    if markers:
+        unlinked_levels = [lv.name for lv in levels if facet_field and lv.population is None]
+        if facet_field and unlinked_levels:
+            notes.append(f"{len(unlinked_levels)} level{'s' if len(unlinked_levels) != 1 else ''} not among the categories of {facet_field!r} ({', '.join(unlinked_levels[:4])}{', ...' if len(unlinked_levels) > 4 else ''}): no map filter for them")
+        return ResolvedComparison(spec=spec, loaded=loaded, groups=[], split=None, link=None, facet_field=facet_field, levels=levels, notes=notes)
     groups = list(spec.groups or [])
-    seen: list[str] = []
-    for r in rows:
-        if r["group"] not in seen:
-            seen.append(r["group"])
     if not groups:
-        groups = seen
+        groups = seen_groups
         if groups:
             notes.append(f"groups in order of appearance: {', '.join(groups)}; set `groups:` to choose the order (the contrast is the last against the first)")
     else:
-        extra = [g for g in seen if g not in groups]
+        extra = [g for g in seen_groups if g not in groups]
         if extra:
             raise ValueError(f"comparison {spec.id}: replicate group{'s' if len(extra) != 1 else ''} {', '.join(extra)} not in `groups: {groups}`")
     if not groups:
@@ -266,15 +445,15 @@ def resolve_comparison(spec: ComparisonSpec, loaded: LoadedComparison, samples: 
     split = spec.split or find_split_key(groups, meta)
     if spec.split and spec.split not in {k.id for k in meta}:
         raise ValueError(f"comparison {spec.id}: `split: {spec.split}` is not a sample meta key (known: {', '.join(k.id for k in meta) or 'none'})")
-    unlinked = [r["id"] for r in rows if not r["samples"]]
-    if rows and unlinked:
-        notes.append(f"{len(unlinked)} of {len(rows)} replicates have no section to focus ({', '.join(unlinked[:4])}{', ...' if len(unlinked) > 4 else ''})")
-    return ResolvedComparison(spec=spec, loaded=loaded, groups=groups, split=split, link=link, replicates=rows, notes=notes)
+    unlinked = sorted({r["id"] for lv in levels for r in lv.replicates if not r["samples"]})
+    if all_ids and unlinked:
+        notes.append(f"{len(unlinked)} of {len(all_ids)} replicates have no section to focus ({', '.join(unlinked[:4])}{', ...' if len(unlinked) > 4 else ''})")
+    return ResolvedComparison(spec=spec, loaded=loaded, groups=groups, split=split, link=link, facet_field=facet_field, levels=levels, notes=notes)
 
 
 # ---------------------------------------------------------------- fingerprint and plan
 def comparison_fingerprint(spec: ComparisonSpec, cfg: DatasetConfig, samples_sig: dict[str, str]) -> dict:
-    inputs = {str(p): _stat(p) for p in (spec.results, spec.pseudobulk, spec.replicates) if p is not None}
+    inputs = {str(p): _stat(p) for p in source_paths(spec)}
     fp = {
         "recipe": COMPARISONS_RECIPE,
         "spec": spec.model_dump(mode="json", exclude={"name", "description", "units"}),
@@ -334,10 +513,38 @@ def _json_floats(a: pd.Series | None) -> list | None:
     return [None if (isinstance(v, float) and math.isnan(v)) else float(v) for v in a.to_numpy(dtype=float)]
 
 
-def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], meta: list[MetaKey], union: set[str], log: Log = print) -> ComparisonInfo:
-    """Read, resolve and write one comparison; returns its manifest entry."""
+def _write_level(d: Path, lv: ResolvedLevel, union: set[str]) -> LevelInfo:
+    d.mkdir(parents=True)
+    res = lv.results
+    genes = res["gene"].tolist()
+    measured = res["gene"].isin(union).to_numpy()
+    unmeasured = [int(i) for i in np.flatnonzero(~measured)]
+    doc = {"genes": genes, "unmeasured": unmeasured}
+    for role in ("effect", "p", "padj", "mean", "pct_in", "pct_out", "score"):
+        doc[role] = _json_floats(res[role]) if role in res else None
+    (d / "results.json").write_text(json.dumps(doc, separators=(",", ":")))
+    n_rep = len(lv.replicates)
+    has_pb = lv.pseudobulk is not None and n_rep > 0
+    if has_pb:
+        import zarr
+        from zarr.codecs import BloscCodec
+
+        ids = [r["id"] for r in lv.replicates]
+        mat = lv.pseudobulk.reindex(index=genes, columns=ids).to_numpy(dtype=np.float32)
+        arr = zarr.create_array(
+            store=str(d / "pseudobulk.zarr"), shape=mat.shape, chunks=(min(PSEUDOBULK_CHUNK, max(1, mat.shape[0])), max(1, mat.shape[1])), dtype="float32", compressors=[BloscCodec(cname="zstd", clevel=5)], fill_value=float("nan")
+        )
+        arr[:] = mat
+    key = "padj" if "padj" in res else "p" if "p" in res else None
+    sig = int((res[key] < 0.05).sum()) if key else 0
+    return LevelInfo(id=lv.id, name=lv.name, path=f"levels/{lv.id}", nGenes=len(genes), nSignificant=sig, nUnmatched=len(unmeasured), nReplicates=n_rep, hasPseudobulk=has_pb, population=lv.population)
+
+
+def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], meta: list[MetaKey], union: set[str], log: Log = print, fields: dict[str, list[str]] | None = None) -> ComparisonInfo:
+    """Read, resolve and write one comparison; returns its manifest entry. `fields` maps every categorical field to
+    its categories, so a facet's levels can be linked to an annotation."""
     loaded = load_tables(spec, union)
-    rc = resolve_comparison(spec, loaded, samples, meta)
+    rc = resolve_comparison(spec, loaded, samples, meta, fields)
     res = loaded.results
     d = Path(out) / "comparisons" / spec.id
     tmp = d.with_name(d.name + ".tmp")
@@ -346,31 +553,12 @@ def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], met
 
         shutil.rmtree(tmp)
     tmp.mkdir(parents=True)
-    genes = res["gene"].tolist()
-    measured = res["gene"].isin(union).to_numpy()
-    unmeasured = [int(i) for i in np.flatnonzero(~measured)]
-    doc = {
-        "genes": genes,
-        "effect": _json_floats(res["effect"]),
-        "p": _json_floats(res["p"]) if "p" in res else None,
-        "padj": _json_floats(res["padj"]) if "padj" in res else None,
-        "mean": _json_floats(res["mean"]) if "mean" in res else None,
-        "unmeasured": unmeasured,
-    }
-    (tmp / "results.json").write_text(json.dumps(doc, separators=(",", ":")))
-    n_rep = len(rc.replicates)
-    if loaded.pseudobulk is not None and n_rep:
-        import zarr
-        from zarr.codecs import BloscCodec
-
-        ids = [r["id"] for r in rc.replicates]
-        mat = loaded.pseudobulk.reindex(index=genes, columns=ids).to_numpy(dtype=np.float32)
-        arr = zarr.create_array(
-            store=str(tmp / "pseudobulk.zarr"), shape=mat.shape, chunks=(min(PSEUDOBULK_CHUNK, max(1, mat.shape[0])), max(1, mat.shape[1])), dtype="float32", compressors=[BloscCodec(cname="zstd", clevel=5)], fill_value=float("nan")
-        )
-        arr[:] = mat
+    level_infos = [_write_level(tmp / "levels" / lv.id, lv, union) for lv in rc.levels]
+    rep_ids = {r["id"] for lv in rc.levels for r in lv.replicates}
+    faceted = "facet" in loaded.columns
     info = ComparisonInfo(
         id=spec.id,
+        kind=spec.kind,
         name=spec.name or spec.id.replace("_", " "),
         description=spec.description,
         path=f"comparisons/{spec.id}",
@@ -379,22 +567,27 @@ def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], met
         population=PopulationInfo(field=spec.population.field, value=spec.population.value) if spec.population else None,
         split=rc.split,
         link=rc.link,
-        nGenes=len(genes),
-        nReplicates=n_rep,
-        nUnmatched=len(unmeasured),
+        facet=FacetInfo(column=loaded.columns["facet"], field=rc.facet_field) if faceted else None,
+        levels=level_infos,
+        nGenes=sum(lv.nGenes for lv in level_infos),
+        nReplicates=len(rep_ids),
+        nUnmatched=sum(lv.nUnmatched for lv in level_infos),
+        hasEffect="effect" in res,
         hasP="p" in res,
         hasPadj="padj" in res,
         hasMean="mean" in res,
-        hasPseudobulk=loaded.pseudobulk is not None and n_rep > 0,
+        hasPct="pct_in" in res or "pct_out" in res,
+        hasScore="score" in res,
+        hasPseudobulk=any(lv.hasPseudobulk for lv in level_infos),
     )
     (tmp / "comparison.json").write_text(
         json.dumps(
             {
                 **info.model_dump(mode="json"),
-                "replicates": rc.replicates,
+                "replicates": {lv.id: lv.replicates for lv in rc.levels},
                 "columns": loaded.columns,
-                "sources": {k: str(getattr(spec, k).name) for k in ("results", "pseudobulk", "replicates") if getattr(spec, k) is not None},
-                "n": {"genes": len(genes), "matched": int(measured.sum()), "unmatched": len(unmeasured)},
+                "sources": {k: str(Path(str(getattr(spec, k))).name) for k in ("results", "pseudobulk", "replicates") if getattr(spec, k) is not None},
+                "n": {"genes": info.nGenes, "matched": info.nGenes - info.nUnmatched, "unmatched": info.nUnmatched},
             },
             indent=1,
         )
@@ -404,7 +597,11 @@ def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], met
 
         shutil.rmtree(d)
     tmp.rename(d)
-    log(f"[comparison {spec.id}] {len(genes):,} genes ({len(unmeasured):,} not in the bundle), {n_rep} replicates in {len(rc.groups)} groups" + (f", split by {rc.split}" if rc.split else ""))
+    what = f"{len(level_infos)} levels of {loaded.columns['facet']!r}, " if faceted else ""
+    if spec.kind == "markers":
+        log(f"[comparison {spec.id}] markers: {what}{info.nGenes:,} rows ({info.nUnmatched:,} genes not in the bundle)" + (f", levels linked to {rc.facet_field!r}" if rc.facet_field else ""))
+    else:
+        log(f"[comparison {spec.id}] {what}{info.nGenes:,} genes ({info.nUnmatched:,} not in the bundle), {info.nReplicates} replicates in {len(rc.groups)} groups" + (f", split by {rc.split}" if rc.split else ""))
     for n in rc.notes:
         log(f"[comparison {spec.id}] {n}")
     return info

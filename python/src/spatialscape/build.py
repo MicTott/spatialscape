@@ -906,10 +906,11 @@ def build_dataset(
     if plan.comparisons:
         union = gene_union(out, samples)
         mkeys = meta_keys(cfg, samples)
+        cats = {fid: list(vocab.vocabs[vocab.vocab_id(fid)]["categories"]) for fid, f in vocab.fields.items() if f.type == "categorical"}
         for a in plan.comparisons:
             info = None if a.build else read_info(out, a.spec.id)
             if info is None:  # to build, or a folder that lost its description
-                info = write_comparison(out, a.spec, samples, mkeys, union, log=log)
+                info = write_comparison(out, a.spec, samples, mkeys, union, log=log, fields=cats)
                 built.append((out / "comparisons" / a.spec.id, a.fingerprint))
             else:
                 info = info.model_copy(

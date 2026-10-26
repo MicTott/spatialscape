@@ -280,7 +280,7 @@ class PopulationSpec(_Model):
     value: str
 
 
-RESULT_ROLE_NAMES = ("gene", "effect", "p", "padj", "mean")
+RESULT_ROLE_NAMES = ("gene", "effect", "p", "padj", "mean", "pct_in", "pct_out", "score")
 REPLICATE_ROLE_NAMES = ("id", "group", "subject")
 
 
@@ -301,16 +301,31 @@ class ComparisonColumns(_Model):
         return self
 
 
+class FacetSpec(_Model):
+    """A column of the results table whose levels are separate contrasts: the cluster a marker gene marks, the cell
+    type a per-population test was fit in. `field` links the levels to a categorical annotation's categories (found
+    on its own when the names match), so the viewer can filter the map to a level."""
+
+    column: str | None = None  # found on its own: cluster, celltype, cell_type, population, domain, group, contrast, level
+    field: str | None = None
+
+
 class ComparisonSpec(_Model):
     """A differential expression result fit upstream, shown next to the sections: a results table (one row per
     gene), the per-replicate values it was fit on (genes x replicates), and, when the samples' metadata cannot
     supply them, a replicate sheet (id, group, subject). The viewer links each replicate to the sections whose
-    `meta.<link>` equals its id and splits the canvas by `split`, the key whose levels are the `groups`."""
+    `meta.<link>` equals its id and splits the canvas by `split`, the key whose levels are the `groups`.
+
+    `kind: markers` is a marker table (Seurat FindAllMarkers, scanpy rank_genes_groups, scran findMarkers, or a
+    plain ranked list of cluster and gene): every level of its facet column against the rest, no replicates. A
+    `{level}` in `results` or `pseudobulk` names one file per level instead of a facet column."""
 
     id: str
+    kind: Literal["contrast", "markers"] = "contrast"
     name: str | None = None
     description: str | None = None  # the model and the direction of the contrast, shown verbatim
     results: Path
+    facet: FacetSpec | None = None
     pseudobulk: Path | None = None
     replicates: Path | None = None
     groups: list[str] | None = None  # plotting and pane order; the contrast is the last against the first

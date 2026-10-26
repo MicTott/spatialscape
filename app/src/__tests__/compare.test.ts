@@ -11,11 +11,22 @@ const data: ComparisonData = (() => {
     { id: "m4", group: "stress", subject: "s3", samples: ["d", "e"] },
   ];
   const pseudobulk = new Float32Array([1, 2, 3, 4, 1, 1, 1, 1, 0, 0, NaN, 0, 5, 5, 5, 5]);
-  const info = { id: "x", name: "x", path: "comparisons/x", groups: ["control", "stress"], nGenes: 4, nReplicates: 4, nUnmatched: 1, hasP: true, hasPadj: true, hasMean: true, hasPseudobulk: true, replicates, columns: {} };
-  return { info, results, geneIndex: new Map(genes.map((g, i) => [g, i])), unmeasured: new Set([3]), pseudobulk };
+  const level = { id: "all", name: "all", path: "levels/all", nGenes: 4, nSignificant: 2, nUnmatched: 1, nReplicates: 4, hasPseudobulk: true };
+  const info = { id: "x", name: "x", path: "comparisons/x", groups: ["control", "stress"], levels: [level], nGenes: 4, nReplicates: 4, nUnmatched: 1, hasP: true, hasPadj: true, hasMean: true, hasPseudobulk: true, replicates: { all: replicates }, columns: {} };
+  return { info, level, results, geneIndex: new Map(genes.map((g, i) => [g, i])), unmeasured: new Set([3]), replicates, pseudobulk };
 })();
 
 describe("compare model", () => {
+  it("keeps a ranked list in its own order and hides direction and effect sorting", () => {
+    const genes = ["Z", "Y", "X"];
+    const list: ComparisonData = { ...data, results: { genes, effect: null, p: null, padj: null, mean: null, unmeasured: [] }, geneIndex: new Map(genes.map((g, i) => [g, i])), unmeasured: new Set(), replicates: [], pseudobulk: null };
+    const all = rows(list);
+    expect(all.map((r) => [r.gene, r.effect, r.pctIn])).toEqual([["Z", null, null], ["Y", null, null], ["X", null, null]]);
+    expect(arrange(all, "padj", false, "all", "").map((r) => r.gene)).toEqual(["Z", "Y", "X"]); // nothing to sort by: the rank stays
+    expect(arrange(all, "effect", true, "up", "").map((r) => r.gene)).toEqual([]); // a direction needs an effect
+    expect(countSignificant(all)).toBe(0);
+  });
+
   it("arranges rows by the asked key with missing values last, and filters by direction and text", () => {
     const all = rows(data);
     expect(all.map((r) => r.measured)).toEqual([true, true, true, false]);

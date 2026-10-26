@@ -83,3 +83,46 @@ its id, else to the sample with that id; a replicate with no section still plots
 recognised, the groups from a `<case>_vs_<reference>` file name, and the other keys as comments. A
 comparison is rebuilt only when one of its tables, its settings or the samples change; renaming it or
 changing its description applies without a rebuild.
+
+## Marker genes
+
+A marker table is a comparison of `kind: markers`: every cluster against the rest, one level per cluster, no
+replicates and no split. Seurat `FindAllMarkers`, scanpy `rank_genes_groups` (as `sc.get.rank_genes_groups_df(adata, None)`),
+presto `wilcoxauc` and scran `findMarkers` (as a data frame with a `group` column) are read as written, and so is
+a plain ranked list with just a cluster and a gene column, as supplementary tables often are:
+
+```yaml
+comparisons:
+  - id: markers
+    kind: markers
+    name: Cluster markers
+    results: markers.csv                      # cluster column found on its own; else facet: { column: <name> }
+    description: "Wilcoxon, each cluster against the rest, Seurat FindAllMarkers"
+```
+
+The cluster column is found by name (`cluster`, `celltype`, `cell_type`, `population`, `domain`, `group`, ...);
+`pct.1` / `pct.2` (or `pct_nz_group` / `pct_nz_reference`, `pct_in` / `pct_out`) become a *% in / out* column.
+When the clusters are the categories of an annotation in the dataset, the levels are linked to it on their own
+(`facet: { field: celltype }` names it), which gives the viewer two things: a **markers** button on each legend row
+that opens that cluster's table, and an *only &lt;cluster&gt;* toggle in the panel that filters the map to the cluster. A
+ranked list without statistics keeps the file's order as the rank. `init markers.csv` recognises both shapes.
+
+## One contrast per population
+
+The same case/control test fit once per cell type (or domain, or cluster) is one comparison with a **facet**: a
+column of the results table whose levels are separate contrasts, or one file per level named with `{level}`:
+
+```yaml
+comparisons:
+  - id: stress_by_celltype
+    name: Stress vs control, per cell type
+    results: de/stress_vs_control_{level}.csv     # or one table with a celltype column
+    pseudobulk: de/pseudobulk_{level}.csv         # per level too, or one table shared by every level
+    replicates: de/mice.csv
+    groups: [control, stress]
+    facet: { field: celltype }                    # the levels are categories of `celltype`
+```
+
+Each level is stored and loaded on its own, so a 30-cluster table costs one request per cluster shown. Choosing a
+level in the panel filters the map to that population (as `population:` does for a single contrast) and splits
+the canvas by the groups. A level whose name is not a category of the field gets no filter; the build log lists them.

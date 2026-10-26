@@ -122,13 +122,17 @@ One folder per `comparisons:` entry, next to `samples/`:
 
 ```
 comparisons/<id>/
-  comparison.json     the manifest entry plus replicates: [{id, group, subject, samples: [sample ids]}],
-                      the columns taken from each table, the source file names and the match counts
-  results.json        {genes, effect, p, padj, mean, unmeasured}: column arrays in one order, rows sorted by
-                      padj then p then |effect|; p / padj / mean are null when the table lacks them;
-                      unmeasured lists the row indices of genes no sample measures
-  pseudobulk.zarr     float32 (nGenes, nReplicates) in results order, zstd, chunked by 1024 genes;
-                      only when a pseudobulk table was given
+  comparison.json     the manifest entry (kind, groups, facet, levels[]) plus replicates per level:
+                      {<level id>: [{id, group, subject, samples: [sample ids]}]}, the columns taken from each
+                      table, the source file names and the match counts
+  levels/<level>/     one folder per level: "all" for a comparison without a facet, else one per cluster or
+                      cell type (the level's label made file-safe)
+    results.json      {genes, effect, p, padj, mean, pct_in, pct_out, score, unmeasured}: column arrays in one
+                      order, rows sorted by padj then p then |effect| (a ranked list without statistics keeps
+                      its file order); arrays the table lacks are null; unmeasured lists the row indices of
+                      genes no sample measures
+    pseudobulk.zarr   float32 (nGenes, nReplicates) in results order, zstd, chunked by 1024 genes; only when
+                      a pseudobulk table was given for the level
   build.json          fingerprint of the tables and settings (the incremental rule)
 ```
 

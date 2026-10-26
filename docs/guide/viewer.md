@@ -108,6 +108,13 @@ the panel header says so and clears it), and opens a panel under the maps:
   and its sections; clicking it focuses its first section in the right pane. Under the plot: the table's
   numbers for that gene and the comparison's description, verbatim.
 
+A comparison with several **levels** (one contrast per cell type, or a marker table with one level per cluster)
+adds a second select for the level; `cmp=<id>:<level>` in the URL. For a **markers** comparison the header reads
+"Astro vs rest", the table carries *% in / out* when the tool wrote it, the map is not filtered (the question is
+whether the gene is specific, which the whole tissue answers) and *only Astro* filters it to the cluster on
+request; each legend row of the matching annotation shows a *markers* button on hover that opens that cluster's
+table. Without replicate values the right side shows the table's numbers for the gene instead of dots.
+
 Nothing in the panel is computed by the viewer: the effects, p-values and replicate values are the ones the
 tables held, and the dots are the values you fitted, not a re-aggregation of the 8-bit expression the maps are
 drawn from. The chosen comparison travels in the URL as `cmp`; closing the panel with × leaves the split and
