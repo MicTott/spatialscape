@@ -5,7 +5,8 @@ import { SelectionPanel } from "./SelectionPanel";
 import { RegionsPanel } from "./RegionsPanel";
 import { Legend } from "./Legend";
 import { SampleStrip } from "./SampleStrip";
-import { CompareSelect } from "../compare/CompareSelect";
+import { CompareGroup, comparisonSummary } from "../compare/CompareGroup";
+import { activateComparison, reopenComparison } from "../compare/activate";
 import { Group } from "./Group";
 import { ColorPanel, FilterPanel } from "./ColorPanel";
 import { CellRows } from "./CellRows";
@@ -91,8 +92,17 @@ function Groups({ genes }: { genes: string[] }) {
   const layoutMode = useViewer((s) => s.layoutMode);
   const splitBy = useViewer((s) => s.splitBy);
   const focus = useViewer((s) => s.focus);
+  const comparison = useViewer((s) => s.comparison);
+  const comparisonLevel = useViewer((s) => s.comparisonLevel);
   const set = store.getState().set;
   const hasImages = manifest.samples.some((s) => s.images.length);
+  const comparisons = manifest.comparisons ?? [];
+  const activeComparison = comparisons.find((c) => c.id === comparison);
+  const comparisonText = activeComparison
+    ? [activeComparison.name, activeComparison.levels.length > 1 ? (activeComparison.levels.find((l) => l.id === comparisonLevel) ?? activeComparison.levels[0]).name : null].filter(Boolean).join(" · ")
+    : comparisons.length === 1
+      ? comparisonSummary(comparisons[0])
+      : `${comparisons.length} available`;
   const hasMolecules = manifest.samples.some((s) => s.molecules);
   const channelRows = channelSummary(manifest);
   const fieldName = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
@@ -126,12 +136,16 @@ function Groups({ genes }: { genes: string[] }) {
           <MoleculeGenes genes={genes} />
         </Group>
       )}
+      {comparisons.length > 0 && (
+        <Group id="comparisons" title="Comparisons" summary={comparisonText} on={!!activeComparison} onToggle={(v) => (v ? reopenComparison() : void activateComparison(null))}>
+          <CompareGroup />
+        </Group>
+      )}
       <Group id="selections" title="Selections" summary={selectionSummary}>
         <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
         <RegionsPanel />
       </Group>
       <Group id="samples" title="Samples" summary={sampleSummary}>
-        <CompareSelect />
         <SampleStrip />
       </Group>
     </>

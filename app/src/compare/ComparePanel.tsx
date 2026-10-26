@@ -177,7 +177,7 @@ export function ComparePanel() {
               box
             </button>
           )}
-          <button className="c-close" onClick={() => void activateComparison(null)} title="close the comparison (the split and the filter stay)">
+          <button className="c-close" onClick={() => void activateComparison(null)} title="close the panel (the split and the filter stay); the Comparisons group reopens it">
             ×
           </button>
         </span>

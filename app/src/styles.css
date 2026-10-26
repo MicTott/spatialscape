@@ -407,3 +407,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .compare-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 2px 4px 2px 0; }
 .compare-table th:first-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .compare-table td { padding: 2px 4px 2px 0; font-variant-numeric: tabular-nums; }
+
+/* the Comparisons group: one row per comparison, the active one highlighted with its level select */
+.cmp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cmp-row { border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.cmp-row.on { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.cmp-row .cmp-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; background: none; border: none; color: var(--fg); text-align: left; padding: 5px 8px; cursor: pointer; border-radius: 6px; }
+.cmp-row .cmp-pick:hover { background: var(--panel2); }
+.cmp-row .cmp-name { font-weight: 600; font-size: 12px; }
+.cmp-row select { margin: 2px 8px 6px; width: calc(100% - 16px); }
+.cmp-row .cmp-desc { padding: 0 8px 6px; }

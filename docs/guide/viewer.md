@@ -94,7 +94,7 @@ pandas Series aligned with your object ([In a notebook](./notebooks)).
 ## Compare panel: a test's results next to the tissue
 
 When the dataset carries [comparisons](./comparisons#comparisons-results-of-a-test-next-to-the-sections), the
-side panel has a *Compare* section. Choosing one splits the canvas by its groups (unless you had split by
+side panel has a *Comparisons* group, one row per comparison. Choosing one splits the canvas by its groups (unless you had split by
 another key), filters the map to the population the test was fit in when the comparison names one (a chip in
 the panel header says so and clears it), and opens a panel under the maps:
 
@@ -160,6 +160,8 @@ open at once, and what is open is remembered per browser:
 - **Cells**: colour by (gene, cell type weights, blend, annotation), the legend, expression by annotation, the
   filter, and *Drawing*: how cells draw once zoomed in (dots, filled, outlined), annotation boundaries, cluster labels.
 - **Transcripts**: its switch in the bar, selected genes or all genes, the pinned genes, the point size.
+- **Comparisons** (when the dataset carries any): its switch in the bar opens or closes the panel under the maps;
+  one row per comparison, the active one with its level (a cluster, a cell type).
 - **Selections**: the lasso's selection and your drawn regions.
 - **Samples**: comparisons, the grid or strip layout, focus and the list of sections.
 

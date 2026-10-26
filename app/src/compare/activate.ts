@@ -21,16 +21,20 @@ function isFilterFor(m: Manifest, filter: FilterSpec | null, pop: { field: strin
   return !!want && want.kind === "category" && filter.codes.length === 1 && filter.codes[0] === want.codes[0];
 }
 
+let last: string | null = null; // the comparison closed most recently, so the group's switch can reopen it
+
 export async function activateComparison(id: string | null, levelId?: string | null): Promise<void> {
   const s = store.getState();
   const m = s.manifest;
   if (!m) return;
   if (!id) {
+    last = s.comparison ?? last;
     s.set({ comparison: null, comparisonLevel: null });
     return;
   }
   const info = m.comparisons?.find((c) => c.id === id);
   if (!info) return;
+  last = id;
   const level = levelOf(info, levelId ?? (s.comparison === id ? s.comparisonLevel : null));
   const markers = info.kind === "markers";
   const patch: Partial<ViewerState> = { comparison: id, comparisonLevel: level?.id ?? null };
@@ -56,6 +60,13 @@ export async function activateComparison(id: string | null, levelId?: string | n
     const first = data.results.genes.find((_, i) => !data.unmeasured.has(i));
     if (first) cur.setColor({ kind: "gene", gene: first });
   }
+}
+
+/** The group's switch: reopen the comparison closed last, else the dataset's first. */
+export function reopenComparison(): void {
+  const m = store.getState().manifest;
+  const id = (m?.comparisons?.some((c) => c.id === last) ? last : null) ?? m?.comparisons?.[0]?.id ?? null;
+  if (id) void activateComparison(id);
 }
 
 /** The population the active comparison level stands for, if any. */
