@@ -8,7 +8,8 @@
  *  The top edge drags to resize. Nothing statistical is computed here: the matrix is what the tables held. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fieldById } from "../data/manifest";
-import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer, type GroupStats } from "../store/store";
+import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer, type GroupRow, type GroupStats } from "../store/store";
+import type { LevelInfo } from "../data/manifest";
 import { activateComparison, populationFilterActive, toggleLevelFilter } from "./activate";
 import { loadComparison, loadMatrix } from "./data";
 import { arrangeMatrix, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow } from "./model";
@@ -136,6 +137,8 @@ export function ComparePanel() {
   const markers = info.kind === "markers";
   const facetField = info.facet?.field ? fieldById(manifest, info.facet.field) : undefined;
   const vocab = facetField?.type === "categorical" ? manifest.vocabularies[facetField.vocabulary] : null;
+  // a level's category: the one it was linked to (through the field's aliases: AI -> IA), else its own name
+  const catOf = (l: LevelInfo) => l.population?.value ?? l.name;
   const swatch = (name: string): string | undefined => {
     const k = vocab ? vocab.categories.indexOf(name) : -1;
     return k >= 0 ? vocab!.colors[k] : undefined;
@@ -157,9 +160,9 @@ export function ComparePanel() {
     .join(" · ");
   const single = info.levels.length === 1;
   const focusLabel = single ? (markers ? level.name : info.groups.join(" vs ")) : level.name;
-  const focusColor = swatch(level.name);
+  const focusColor = swatch(catOf(level));
   const levelRow = levelData && gene ? (levelData.geneIndex.get(gene) ?? null) : null;
-  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel });
+  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel, levelGenes: level.nGenes });
   return (
     <div className={`compare${sidebarOpen ? " with-sidebar" : ""}`} style={{ height, bottom }}>
       <div className="c-handle" onPointerDown={onHandleDown} title="drag to resize" />
@@ -187,7 +190,7 @@ export function ComparePanel() {
         <div className="c-matrix">
           {error && <div className="muted small c-note">could not load the comparison: {error}</div>}
           {!matrix && !error && <div className="muted small c-note">loading…</div>}
-          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(l.name))} single={single ? focusLabel : null} />}
+          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(catOf(l)))} single={single ? focusLabel : null} />}
         </div>
         <div className="c-dist">
           <div className="d-head">
@@ -227,7 +230,7 @@ export function ComparePanel() {
             {hasDots && levelData && levelRow != null ? (
               <ReplicatePlot data={levelData} geneRow={levelRow} box={box} />
             ) : hasViolins && vocab ? (
-              <Violins stats={groupStats!} vocab={vocab} focus={level.name} order={info.levels.map((l) => l.name)} />
+              <Violins stats={groupStats!} vocab={vocab} focus={catOf(level)} order={info.levels.map((l) => catOf(l))} gene={gene!} />
             ) : (
               <div className="muted small c-note">{!matrix ? "" : !gene ? "pick a gene in the table" : vocab ? "computing the distributions…" : "no replicate values in this comparison; add `pseudobulk:` for a dot per replicate"}</div>
             )}
@@ -247,8 +250,8 @@ export function ComparePanel() {
 }
 
 /** The footer under the plot: the table's numbers for the gene in the focused level. */
-function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col: number; levelData: ComparisonData | null; levelRow: number | null; markers: boolean; levelName: string }): { parts: string[]; title: string } {
-  const { matrix, geneRow, col, levelData, levelRow, markers, levelName } = a;
+function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col: number; levelData: ComparisonData | null; levelRow: number | null; markers: boolean; levelName: string; levelGenes: number }): { parts: string[]; title: string } {
+  const { matrix, geneRow, col, levelData, levelRow, markers, levelName, levelGenes } = a;
   if (!matrix || geneRow == null) return { parts: [], title: "" };
   const k = matrix.levels.length;
   const at = (name: string): number | null => {
@@ -270,7 +273,7 @@ function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col:
     if (m != null) parts.push(`mean ${fmtMean(m)}`);
   }
   const rank = at("rank");
-  if (!parts.length && rank != null) parts.push(`rank ${rank} of ${matrix.genes.length} in ${levelName}`);
+  if (!parts.length && rank != null) parts.push(`rank ${rank} of ${levelGenes} in ${levelName}`);
   if (col < 0) return { parts: [], title: "" };
   return { parts, title: `${matrix.genes[geneRow]} in ${levelName}` };
 }
@@ -372,9 +375,11 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
   );
 }
 
-/** The gene's expression per category as violins, from the histograms the dot plot already computes; the focused
- *  level in full colour, the rest dimmed; a tick at each median. Labels thin out when the categories crowd. */
-function Violins({ stats, vocab, focus, order }: { stats: GroupStats; vocab: { categories: string[]; colors: string[] }; focus: string; order: string[] }) {
+/** The gene's expression per category as violins, from the histograms the dot plot already computes: the
+ *  comparison's levels in its order, then every other category pooled into one "other" violin, so a 48-category
+ *  annotation does not crowd the plot; the focused level in full colour, the rest dimmed; a tick at each median.
+ *  Labels turn when the slots narrow and go when they are too narrow to read. */
+function Violins({ stats, vocab, focus, order, gene }: { stats: GroupStats; vocab: { categories: string[]; colors: string[] }; focus: string; order: string[]; gene: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<[number, number]>([320, 200]);
   useEffect(() => {
@@ -385,19 +390,19 @@ function Violins({ stats, vocab, focus, order }: { stats: GroupStats; vocab: { c
     setSize([el.clientWidth, el.clientHeight]);
     return () => ro.disconnect();
   }, []);
-  // the comparison's levels first, in its order, then any other category with cells
   const rows = useMemo(() => {
     const byName = new Map(stats.rows.map((r) => [vocab.categories[r.code], r]));
     const seen = new Set<string>();
-    const out = [];
+    const out: { name: string; color: string; row: GroupRow }[] = [];
     for (const name of order) {
       const r = byName.get(name);
-      if (r) {
-        out.push(r);
+      if (r && !seen.has(name)) {
+        out.push({ name, color: vocab.colors[r.code], row: r });
         seen.add(name);
       }
     }
-    for (const r of stats.rows) if (!seen.has(vocab.categories[r.code])) out.push(r);
+    const others = stats.rows.filter((r) => !seen.has(vocab.categories[r.code]));
+    if (others.length) out.push({ name: others.length === 1 ? vocab.categories[others[0].code] : "other", color: others.length === 1 ? vocab.colors[others[0].code] : "#8b949e", row: pool(others, stats) });
     return out;
   }, [stats, vocab, order]);
   const [W, H] = size;
@@ -410,7 +415,9 @@ function Violins({ stats, vocab, focus, order }: { stats: GroupStats; vocab: { c
   const y = (v: number) => pad.t + ph - ((v - vmin) / (vmax - vmin)) * ph;
   const bw = (vmax - vmin) / bins;
   const x0 = pad.l + (pw - slot * rows.length) / 2;
-  const crowded = slot < 44;
+  const turned = slot < 44; // labels turn 40 degrees
+  const bare = slot < 18; // only the focused label
+  const focusMissing = !rows.some((r) => r.name === focus); // no cell of the focused level has the gene on screen
   const path = (hist: number[], cx: number) => {
     const peak = Math.max(1, ...hist);
     const left: string[] = [];
@@ -437,26 +444,52 @@ function Violins({ stats, vocab, focus, order }: { stats: GroupStats; vocab: { c
             </text>
           </g>
         ))}
-        {rows.map((r, k) => {
-          const name = vocab.categories[r.code];
+        {rows.map(({ name, color, row: r }, k) => {
           const cx = x0 + slot * (k + 0.5);
           const on = name === focus;
+          const label = name.length > 11 && slot < 72 && !turned ? name.slice(0, 10) + "…" : name;
+          const ly = pad.t + ph + (turned ? 10 : 16);
           return (
-            <g key={r.code}>
+            <g key={name}>
               <title>{`${name} · ${r.n.toLocaleString()} cells · median ${fmtMean(r.median)} · ${(100 * r.frac).toFixed(0)}% expressing`}</title>
-              <path d={path(r.hist, cx)} className={`violin${on ? "" : " dim"}`} style={{ fill: vocab.colors[r.code] }} />
+              <path d={path(r.hist, cx)} className={`violin${on ? "" : " dim"}`} style={{ fill: color }} />
               <line x1={cx - half * 0.55} x2={cx + half * 0.55} y1={y(r.median)} y2={y(r.median)} className="v-median" opacity={on ? 1 : 0.6} />
-              {(on || !crowded) && (
-                <text x={cx} y={pad.t + ph + 16} className={`c-group${on ? " on" : ""}`} style={{ fill: on ? vocab.colors[r.code] : undefined }}>
-                  {name.length > 11 && slot < 72 ? name.slice(0, 10) + "…" : name}
+              {(on || !bare) && (
+                <text x={cx} y={ly} className={`c-group${on ? " on" : ""}${turned ? " turned" : ""}`} style={{ fill: on ? color : undefined }} transform={turned ? `rotate(-40 ${cx} ${ly})` : undefined}>
+                  {label}
                 </text>
               )}
             </g>
           );
         })}
       </svg>
+      {focusMissing && <div className="d-missing">no {focus} cell on screen measures {gene}: the sections that carry {focus} do not include it</div>}
     </div>
   );
+}
+
+/** Several categories as one: histograms summed, quartiles read off the sum, mean and fraction weighted by cells. */
+function pool(rows: GroupRow[], stats: GroupStats): GroupRow {
+  const hist = new Array<number>(stats.bins).fill(0);
+  let n = 0;
+  let sum = 0;
+  let pos = 0;
+  for (const r of rows) {
+    r.hist.forEach((v, b) => (hist[b] += v));
+    n += r.n;
+    sum += r.mean * r.n;
+    pos += r.frac * r.n;
+  }
+  const width = (stats.vmax - stats.vmin) / stats.bins;
+  const quantile = (q: number) => {
+    let acc = 0;
+    for (let b = 0; b < hist.length; b++) {
+      acc += hist[b];
+      if (acc >= q * n) return stats.vmin + (b + 0.5) * width;
+    }
+    return stats.vmax;
+  };
+  return { code: -1, n, mean: n ? sum / n : 0, frac: n ? pos / n : 0, perSample: {}, hist, median: quantile(0.5), q1: quantile(0.25), q3: quantile(0.75) };
 }
 
 /** One dot per replicate for the gene, by group; a median line, a box on request, lines between paired subjects. */

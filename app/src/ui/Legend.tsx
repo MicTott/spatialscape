@@ -82,7 +82,7 @@ export function Legend() {
       const markerSets = (manifest.comparisons ?? []).filter((c) => c.kind === "markers" && c.facet?.field === f.id);
       const markersOf = (c: string) => {
         for (const cmp of markerSets) {
-          const lv = cmp.levels.find((l) => l.name === c);
+          const lv = cmp.levels.find((l) => (l.population?.value ?? l.name) === c);
           if (lv) return { cmp, lv };
         }
         return null;

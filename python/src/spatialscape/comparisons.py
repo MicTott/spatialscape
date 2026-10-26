@@ -323,18 +323,27 @@ def link_replicates(rep_ids: list[str], samples: list[Sample], link: str | None,
     return key, out
 
 
-def infer_facet_field(levels: list[str], fields: dict[str, list[str]] | None, given: str | None) -> str | None:
-    """The categorical field whose categories the levels are: the one named, else the best match when at least half
-    of the levels are among its categories."""
+def canonical(level: str, field: str, fields: dict[str, list[str]], aliases: dict[str, dict[str, str]] | None) -> str | None:
+    """The category a level stands for: itself, or what the field's aliases map it to; None when it is neither."""
+    cats = fields.get(field, [])
+    if level in cats:
+        return level
+    alt = (aliases or {}).get(field, {}).get(level)
+    return alt if alt in cats else None
+
+
+def infer_facet_field(levels: list[str], fields: dict[str, list[str]] | None, given: str | None, aliases: dict[str, dict[str, str]] | None = None) -> str | None:
+    """The categorical field whose categories the levels are (through the field's aliases too): the one named, else
+    the best match when at least half of the levels are among its categories."""
     if given:
         if fields is not None and given not in fields:
             raise ValueError(f"`facet.field: {given}` is not a categorical field of the dataset (known: {', '.join(sorted(fields)) or 'none'})")
         return given
     if not fields or not levels:
         return None
-    best = max(fields, key=lambda f: sum(1 for lvl in levels if lvl in fields[f]))
-    hits = sum(1 for lvl in levels if lvl in fields[best])
-    return best if hits * 2 >= len(levels) else None
+    hits = {f: sum(1 for lvl in levels if canonical(lvl, f, fields, aliases) is not None) for f in fields}
+    best = max(hits, key=lambda f: hits[f])
+    return best if hits[best] * 2 >= len(levels) else None
 
 
 @dataclass
@@ -389,14 +398,15 @@ def _replicate_rows(spec: ComparisonSpec, loaded: LoadedComparison, rep_ids: lis
     return rows
 
 
-def resolve_comparison(spec: ComparisonSpec, loaded: LoadedComparison, samples: list[Sample], meta: list[MetaKey], fields: dict[str, list[str]] | None = None) -> ResolvedComparison:
+def resolve_comparison(spec: ComparisonSpec, loaded: LoadedComparison, samples: list[Sample], meta: list[MetaKey], fields: dict[str, list[str]] | None = None, aliases: dict[str, dict[str, str]] | None = None) -> ResolvedComparison:
     """Settle groups, the split key, the replicate rows and their sections per level from the tables and the samples'
-    metadata; `fields` (categorical field id -> categories) links facet levels to an annotation."""
+    metadata; `fields` (categorical field id -> categories) and `aliases` (field id -> {label: category}) link
+    facet levels to an annotation."""
     notes = list(loaded.notes)
     markers = spec.kind == "markers"
     spatial = [s for s in samples if s.kind != "embedding"]
     faceted = "facet" in loaded.columns
-    facet_field = infer_facet_field(loaded.levels, fields, spec.facet.field if spec.facet else None) if faceted else None
+    facet_field = infer_facet_field(loaded.levels, fields, spec.facet.field if spec.facet else None, aliases) if faceted else None
     if faceted and spec.facet and spec.facet.field is None and facet_field:
         notes.append(f"levels of {loaded.columns['facet']!r} are categories of {facet_field!r}: the map can be filtered to each")
     all_ids: list[str] = []
@@ -424,7 +434,8 @@ def resolve_comparison(spec: ComparisonSpec, loaded: LoadedComparison, samples: 
             for r in rows:
                 if r["group"] not in seen_groups:
                     seen_groups.append(r["group"])
-        pop = PopulationInfo(field=facet_field, value=lvl) if facet_field and fields and lvl in fields.get(facet_field, []) else None
+        cat = canonical(lvl, facet_field, fields, aliases) if facet_field and fields else None
+        pop = PopulationInfo(field=facet_field, value=cat) if cat is not None else None
         levels.append(ResolvedLevel(id=sid, name=lvl or "all", results=part, replicates=rows, pseudobulk=pb, population=pop))
     if markers:
         unlinked_levels = [lv.name for lv in levels if facet_field and lv.population is None]
@@ -575,11 +586,11 @@ def _write_matrix(d: Path, levels: list[ResolvedLevel], union: set[str]) -> dict
     return {"genes": n, "stats": sorted(stats)}
 
 
-def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], meta: list[MetaKey], union: set[str], log: Log = print, fields: dict[str, list[str]] | None = None) -> ComparisonInfo:
+def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], meta: list[MetaKey], union: set[str], log: Log = print, fields: dict[str, list[str]] | None = None, aliases: dict[str, dict[str, str]] | None = None) -> ComparisonInfo:
     """Read, resolve and write one comparison; returns its manifest entry. `fields` maps every categorical field to
-    its categories, so a facet's levels can be linked to an annotation."""
+    its categories and `aliases` to its label aliases, so a facet's levels can be linked to an annotation."""
     loaded = load_tables(spec, union)
-    rc = resolve_comparison(spec, loaded, samples, meta, fields)
+    rc = resolve_comparison(spec, loaded, samples, meta, fields, aliases)
     res = loaded.results
     d = Path(out) / "comparisons" / spec.id
     tmp = d.with_name(d.name + ".tmp")

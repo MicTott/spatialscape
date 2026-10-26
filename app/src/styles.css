@@ -397,6 +397,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .compare .d-plot { flex: 1; min-height: 0; position: relative; }
 .compare .d-plotwrap { position: absolute; inset: 0; }
 .compare .d-plotwrap svg { display: block; }
+.compare .d-missing { position: absolute; left: 50px; right: 12px; top: 40%; text-align: center; color: var(--muted); font-size: 11px; pointer-events: none; }
 .compare .d-foot { height: 28px; display: flex; align-items: center; padding: 0 14px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--border); flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .compare .d-foot b { color: var(--fg); font-weight: 600; }
 /* plot pieces shared by the violins and the dots */
@@ -405,6 +406,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .compare .c-tick { fill: var(--muted); font-size: 10px; text-anchor: end; font-variant-numeric: tabular-nums; }
 .compare .c-group { font-size: 11px; text-anchor: middle; fill: var(--muted); }
 .compare .c-group.on { font-weight: 600; }
+.compare .c-group.turned { text-anchor: end; font-size: 10px; }
 .compare .c-group .muted { fill: var(--muted); font-weight: normal; }
 .compare .violin { stroke: none; }
 .compare .violin.dim { opacity: 0.38; }

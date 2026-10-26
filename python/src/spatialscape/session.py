@@ -366,7 +366,8 @@ class Session:
         if manifest is None:
             raise FileNotFoundError(f"{self.bundle} has no manifest.json")
         cats = {f.id: list(manifest.vocabularies[f.vocabulary].categories) for f in manifest.fields if f.type == "categorical"}
-        info = write_comparison(self.bundle, spec, manifest.samples, manifest.meta, gene_union(self.bundle, manifest.samples), log=log, fields=cats)
+        als = {f.id: dict(manifest.vocabularies[f.vocabulary].aliases or {}) for f in manifest.fields if f.type == "categorical"}
+        info = write_comparison(self.bundle, spec, manifest.samples, manifest.meta, gene_union(self.bundle, manifest.samples), log=log, fields=cats, aliases=als)
         manifest.comparisons = [c for c in manifest.comparisons if c.id != cid] + [info]
         (self.bundle / "manifest.json").write_text(manifest.model_dump_json(indent=1, exclude_none=True))
         log(f"comparison {cid}: {info.nGenes:,} rows over {len(info.levels)} level{'s' if len(info.levels) != 1 else ''}, {info.nReplicates} replicates; re-display the session to see it")

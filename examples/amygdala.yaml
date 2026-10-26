@@ -136,3 +136,20 @@ samples:
     platform: snrnaseq
     path: amygdala-src/yu_sce.h5ad
     fields: { celltype_yu: celltype_yu, broad: broad_yu, total_counts: total_counts, detected_genes: n_genes, mito_percent: pct_mt }
+
+# Marker tables from the manuscript's supplement (copied into amygdala-src/de/). Both are read as written: Data 2
+# is a ranked list (cluster, gene) of the Visium spatial domains, whose names are the `domain` categories ("AI"
+# through the field's alias); Data 5 is scran findMarkers output for the three ITC subtypes of the Yu et al. labels.
+comparisons:
+  - id: domain_markers
+    kind: markers
+    name: Spatial domain markers
+    description: "Marker genes per spatial domain of the Visium semi-supervised clustering, 100 per domain in rank order; Supplementary Data 2 of the manuscript (no statistics in the table)."
+    results: amygdala-src/de/Supplementary_Data_2_marker_genes.csv
+    facet: { field: domain }
+  - id: itc_markers
+    kind: markers
+    name: ITC subtype markers
+    description: "scran findMarkers among the three intercalated-cell subtypes of the Yu et al. snRNA-seq labels: summary log2 fold change and BH-adjusted p; Supplementary Data 5 of the manuscript."
+    results: amygdala-src/de/Supplementary_Data_5_ITC_markers.csv
+    facet: { field: celltype_yu }

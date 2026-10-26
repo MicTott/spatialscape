@@ -275,3 +275,21 @@ def test_init_recognises_marker_tables(experiment, tmp_path):
     pd.DataFrame({"cluster": ["BM", "AI"], "gene": ["G005", "G002"]}).to_csv(lst, index=False)
     r = runner.invoke(app, ["init", str(src / "*.h5ad"), str(lst), "--platform", "visium", "--id", "m2", "-o", str(tmp_path / "m2.yaml")])
     assert r.exit_code == 0 and "a ranked list" in r.output and "kind: markers" in (tmp_path / "m2.yaml").read_text(), r.output
+
+
+def test_facet_levels_link_through_the_fields_aliases(tmp_path):
+    """The paper's 'AI' domain is the bundle's 'IA' through the vocabulary alias: the level keeps its name, its
+    population is the category, and the field is still inferred when most levels match only through aliases."""
+    p = tmp_path / "markers.csv"
+    pd.DataFrame({"cluster": ["AI", "AI", "BL", "BL", "Nowhere"], "gene": ["G1", "G2", "G3", "G4", "G5"]}).to_csv(p, index=False)
+    spec = ComparisonSpec(id="m", kind="markers", results=p)
+    fields = {"domain": ["IA", "BL", "CeA"], "celltype": ["Astro"]}
+    aliases = {"domain": {"AI": "IA"}}
+    rc = resolve_comparison(spec, load_tables(spec), [], [], fields, aliases)
+    assert rc.facet_field == "domain"
+    assert [(lv.name, lv.population.value if lv.population else None) for lv in rc.levels] == [("AI", "IA"), ("BL", "BL"), ("Nowhere", None)]
+    assert any("1 level not among the categories of 'domain' (Nowhere)" in n for n in rc.notes)
+    without = resolve_comparison(spec, load_tables(spec), [], [], fields, None)
+    assert without.facet_field is None  # no alias: only BL matches, under half of the levels
+    named = resolve_comparison(ComparisonSpec(id="m", kind="markers", results=p, facet={"field": "domain"}), load_tables(spec), [], [], fields, None)
+    assert named.facet_field == "domain" and [lv.population.value if lv.population else None for lv in named.levels] == [None, "BL", None]
