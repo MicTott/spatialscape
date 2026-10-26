@@ -125,6 +125,10 @@ comparisons/<id>/
   comparison.json     the manifest entry (kind, groups, facet, levels[]) plus replicates per level:
                       {<level id>: [{id, group, subject, samples: [sample ids]}]}, the columns taken from each
                       table, the source file names and the match counts
+  matrix.json         {genes, levels, stats, unmeasured}: the row order of matrix.zarr (every gene of every
+                      level once), the level ids in column order, which statistics are present
+  matrix.zarr/<stat>  float32 (genes, levels) per statistic (effect, padj, p, pct_in, pct_out, rank), NaN where
+                      a level's table has no row for the gene; the panel's matrix is one fetch per statistic
   levels/<level>/     one folder per level: "all" for a comparison without a facet, else one per cluster or
                       cell type (the level's label made file-safe)
     results.json      {genes, effect, p, padj, mean, pct_in, pct_out, score, unmeasured}: column arrays in one

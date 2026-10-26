@@ -218,6 +218,12 @@ def test_marker_table_becomes_one_level_per_cluster(experiment):
         res = json.loads((r.out / c.path / lv.path / "results.json").read_text())
         assert len(res["genes"]) == lv.nGenes == 5 and len(res["pct_in"]) == 5 and res["effect"][0] >= res["effect"][-1]  # sorted: the strongest first
     assert c.nGenes == sum(lv.nGenes for lv in c.levels)
+    mx = json.loads((r.out / c.path / "matrix.json").read_text())
+    assert mx["levels"] == [lv.id for lv in c.levels] and len(mx["genes"]) == c.nMatrixGenes and set(mx["stats"]) >= {"effect", "padj", "pct_in", "rank"}
+    eff = zarr.open_array(str(r.out / c.path / "matrix.zarr" / "effect"), mode="r")[:]
+    rank = zarr.open_array(str(r.out / c.path / "matrix.zarr" / "rank"), mode="r")[:]
+    assert eff.shape == (c.nMatrixGenes, len(c.levels)) and np.isnan(eff).sum() > 0  # a filtered marker table: blanks where a gene is not among a cluster's markers
+    assert np.nanmin(rank) == 1 and np.nanmax(rank) == 5 and (np.isnan(rank) == np.isnan(eff)).all()
     doc = json.loads((r.out / c.path / "comparison.json").read_text())
     assert doc["columns"]["facet"] == "cluster" and doc["columns"]["pct_in"] == "pct.1" and doc["replicates"] == {lv.id: [] for lv in c.levels}
 

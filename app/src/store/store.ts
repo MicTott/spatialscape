@@ -37,12 +37,19 @@ export interface GroupRow {
   mean: number;
   frac: number;
   perSample: Record<string, { n: number; mean: number; frac: number }>;
+  hist: number[]; // cells per expression bin over [vmin, vmax] (GroupStats.bins of them): the violin
+  median: number;
+  q1: number;
+  q3: number;
 }
 export interface GroupStats {
   gene: string;
   field: string;
   rows: GroupRow[];
   maxMean: number;
+  vmin: number; // the expression range the histograms span, shared by every category
+  vmax: number;
+  bins: number;
 }
 export interface SelectionSummary {
   version: number;

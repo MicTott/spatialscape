@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrange, countSignificant, fmtEffect, fmtP, groupValues, jitter, pairs, rows, ticks, type ComparisonData } from "../compare/model";
+import { arrange, arrangeMatrix, cellDetail, countSignificant, fmtEffect, fmtP, groupValues, jitter, matrixRows, matrixStat, pairs, rows, ticks, type ComparisonData, type MatrixData } from "../compare/model";
 
 const data: ComparisonData = (() => {
   const genes = ["A", "B", "C", "D"];
@@ -63,5 +63,33 @@ describe("compare model", () => {
     expect(a).toBe(jitter("m1"));
     expect(a).not.toBe(jitter("m2"));
     for (const id of ["m1", "m2", "donor Br2743", ""]) expect(Math.abs(jitter(id))).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("compare matrix", () => {
+  const genes = ["A", "B", "C"];
+  const m: MatrixData = {
+    info: data.info,
+    genes,
+    levels: ["Astro", "Oligo"],
+    stats: { effect: new Float32Array([2, NaN, -1, 0.5, NaN, 3]), padj: new Float32Array([0.01, NaN, 0.2, 0.04, NaN, 0.001]), rank: new Float32Array([1, NaN, 2, 2, NaN, 1]) },
+    unmeasured: new Set([2]),
+    geneIndex: new Map(genes.map((g, i) => [g, i])),
+  };
+  it("sorts by one level with blanks last, either way, and narrows by text", () => {
+    const all = matrixRows(m);
+    expect(matrixStat(m)).toBe("effect");
+    expect(arrangeMatrix(m, all, "effect", 0, true, "").map((r) => r.gene)).toEqual(["A", "B", "C"]); // Astro: 2, -1, blank
+    expect(arrangeMatrix(m, all, "effect", 0, false, "").map((r) => r.gene)).toEqual(["B", "A", "C"]);
+    expect(arrangeMatrix(m, all, "effect", 1, true, "").map((r) => r.gene)).toEqual(["C", "B", "A"]); // Oligo: 3, 0.5, blank
+    expect(arrangeMatrix(m, all, "effect", 1, true, "c").map((r) => r.gene)).toEqual(["C"]);
+    expect(all.map((r) => r.measured)).toEqual([true, true, false]);
+  });
+  it("describes a cell with what the table held", () => {
+    expect(cellDetail(m, 0, 0)).toBe("effect +2.00 · padj 0.01 · rank 1");
+    expect(cellDetail(m, 0, 1)).toBe(""); // A has no row in Oligo
+    const list: MatrixData = { ...m, stats: { rank: m.stats.rank } };
+    expect(matrixStat(list)).toBe("rank");
+    expect(arrangeMatrix(list, matrixRows(list), "rank", 1, false, "").map((r) => r.gene)).toEqual(["C", "B", "A"]); // rank ascending: 1, 2, blank
   });
 });

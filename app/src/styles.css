@@ -417,3 +417,23 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cmp-row .cmp-name { font-weight: 600; font-size: 12px; }
 .cmp-row select { margin: 2px 8px 6px; width: calc(100% - 16px); }
 .cmp-row .cmp-desc { padding: 0 8px 6px; }
+
+/* the matrix: genes x levels, the effect tinted by sign and size */
+.compare { --c-up: #e8744a; --c-down: #4a8fe8; }
+.compare .c-matrix { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); position: relative; }
+.compare .m-scroll { overflow: auto; }
+.compare .m-head { position: sticky; top: 0; z-index: 2; background: var(--panel); display: grid; align-items: center; height: 26px; border-bottom: 1px solid var(--border); font-size: 11px; }
+.compare .m-head button { background: none; border: none; color: var(--muted); font: inherit; font-size: 11px; text-align: right; padding: 0 8px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; }
+.compare .m-head button:hover { color: var(--fg); }
+.compare .m-head button.on { color: var(--fg); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+.compare .m-head .m-gene { font-weight: 400; }
+.compare .m-row { position: absolute; left: 0; height: 22px; display: grid; align-items: center; font-size: 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.compare .m-row:hover { background: var(--panel2); }
+.compare .m-row.on { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); box-shadow: inset 2px 0 0 var(--accent); }
+.compare .m-row.off { color: var(--muted); cursor: default; }
+.compare .m-gene { font-weight: 600; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare .m-cell { text-align: right; padding: 0 6px; height: 18px; line-height: 18px; margin: 0 3px; border-radius: 3px; }
+.compare .c-plot.right { flex: 0 0 40%; max-width: 560px; min-width: 260px; }
+.compare .violins .violin { stroke: none; }
+.compare .violins .dim { opacity: 0.4; }
+.compare .violins .v-median { stroke: var(--fg); stroke-width: 1.5; }

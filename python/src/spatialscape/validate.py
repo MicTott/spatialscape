@@ -194,6 +194,13 @@ def validate_local(root: Path) -> list[str]:
                     _problem(p, f"comparison {c.id}: level {lv.id}: population field {lv.population.field!r} unknown")
             if len(all_reps) != c.nReplicates:
                 _problem(p, f"comparison {c.id}: {len(all_reps)} distinct replicates, manifest says {c.nReplicates}")
+            mx = json.loads((d / "matrix.json").read_text())
+            if len(mx["genes"]) != c.nMatrixGenes or mx["levels"] != [lv.id for lv in c.levels]:
+                _problem(p, f"comparison {c.id}: matrix.json does not match the manifest's genes or levels")
+            for role in mx["stats"]:
+                arr = zarr.open_array(str(d / "matrix.zarr" / role), mode="r")
+                if tuple(arr.shape) != (c.nMatrixGenes, len(c.levels)):
+                    _problem(p, f"comparison {c.id}: matrix {role} shape {arr.shape} != ({c.nMatrixGenes}, {len(c.levels)})")
             if c.kind == "contrast" and not c.groups:
                 _problem(p, f"comparison {c.id}: a contrast without groups")
             if c.split and c.split not in {k.id for k in m.meta}:

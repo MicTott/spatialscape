@@ -2,10 +2,18 @@
  *  results.json and pseudobulk array as it is shown. */
 import * as zarr from "zarrita";
 import type { ComparisonInfo, LevelInfo } from "../data/manifest";
-import { levelOf, type ComparisonData, type ComparisonDoc, type ResultsDoc } from "./model";
+import { levelOf, type ComparisonData, type ComparisonDoc, type MatrixData, type ResultsDoc } from "./model";
 
 const docs = new Map<string, Promise<ComparisonDoc>>();
 const levels = new Map<string, Promise<ComparisonData>>();
+const matrices = new Map<string, Promise<MatrixData>>();
+
+interface MatrixDoc {
+  genes: string[];
+  levels: string[];
+  stats: string[];
+  unmeasured: number[];
+}
 
 async function json<T>(url: string): Promise<T> {
   const r = await fetch(url);
@@ -54,7 +62,34 @@ export function loadComparison(datasetUrl: string, info: ComparisonInfo, levelId
   return p;
 }
 
+/** genes x levels of every statistic the comparison has: matrix.json for the order, one float32 array per statistic. */
+export function loadMatrix(datasetUrl: string, info: ComparisonInfo): Promise<MatrixData> {
+  const b = base(datasetUrl, info);
+  let p = matrices.get(b);
+  if (!p) {
+    p = (async () => {
+      const doc = await json<MatrixDoc>(`${b}/matrix.json`);
+      const root = zarr.root(new zarr.FetchStore(`${b}/matrix.zarr`));
+      const stats: Record<string, Float32Array> = {};
+      await Promise.all(
+        doc.stats.map(async (name) => {
+          const arr = await zarr.open.v3(root.resolve(name), { kind: "array" });
+          const chunk = await zarr.get(arr as zarr.Array<"float32", zarr.FetchStore>);
+          stats[name] = new Float32Array(chunk.data as Float32Array);
+        }),
+      );
+      const geneIndex = new Map<string, number>();
+      doc.genes.forEach((g, i) => geneIndex.set(g, i));
+      return { info, genes: doc.genes, levels: doc.levels, stats, unmeasured: new Set(doc.unmeasured ?? []), geneIndex };
+    })();
+    matrices.set(b, p);
+    p.catch(() => matrices.delete(b));
+  }
+  return p;
+}
+
 export function forgetComparisons() {
   docs.clear();
   levels.clear();
+  matrices.clear();
 }

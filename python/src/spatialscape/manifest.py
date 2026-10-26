@@ -234,6 +234,7 @@ class ComparisonInfo(_Model):
     hasPct: bool = False  # pct_in / pct_out (Seurat pct.1 / pct.2, scanpy pct_nz_group / pct_nz_reference)
     hasScore: bool = False
     hasPseudobulk: bool = False
+    nMatrixGenes: int = 0  # distinct genes over every level: the rows of matrix.zarr
 
 
 class Manifest(_Model):

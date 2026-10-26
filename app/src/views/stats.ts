@@ -53,7 +53,8 @@ export class Stats {
     s.set({ filterHistogram: bins, visibleCount: visible });
   }
 
-  /** Mean / fraction-expressing of the colored gene (or blend channel A) per category, over visible samples. */
+  /** Mean, fraction expressing and the distribution (a histogram over the shared value range, with quartiles)
+   *  of the colored gene (or blend channel A) per category, over visible samples. */
   updateGroupStats() {
     const c = this.c;
     const s = store.getState();
@@ -66,10 +67,11 @@ export class Stats {
     if (!f || f.type !== "categorical") return;
     const n = c.manifest.vocabularies[f.vocabulary].categories.length;
     const hidden = c.hiddenSampleSet(s);
-    const sum = new Float64Array(n);
-    const cnt = new Float64Array(n);
-    const pos = new Float64Array(n);
-    const per: Record<string, { sum: Float64Array; cnt: Float64Array; pos: Float64Array }> = {};
+    const BINS = 24;
+    // the samples that carry the gene and the field, and the value range they share (gmax differs per sample)
+    const parts: { id: string; g: ArrayLike<number>; cat: ArrayLike<number>; gmin: number; gmax: number }[] = [];
+    let vmin = Infinity;
+    let vmax = -Infinity;
     for (const sd of c.cache.samples.values()) {
       if (hidden.has(sd.id)) continue;
       const cat = sd.cat.get(f.id);
@@ -78,7 +80,19 @@ export class Stats {
       const gmax = score ? 1 : c.geneGmax.get(`${sd.id}:${genes[0]}`);
       const gmin = score ? 0 : (c.geneGmin.get(`${sd.id}:${genes[0]}`) ?? 0);
       if (!g || !cat || gmax === undefined) continue;
-      const p = (per[sd.id] = { sum: new Float64Array(n), cnt: new Float64Array(n), pos: new Float64Array(n) });
+      parts.push({ id: sd.id, g, cat, gmin, gmax });
+      vmin = Math.min(vmin, gmin);
+      vmax = Math.max(vmax, gmax);
+    }
+    if (!(vmax > vmin)) vmax = vmin + 1;
+    const sum = new Float64Array(n);
+    const cnt = new Float64Array(n);
+    const pos = new Float64Array(n);
+    const hist = new Float64Array(n * BINS);
+    const per: Record<string, { sum: Float64Array; cnt: Float64Array; pos: Float64Array }> = {};
+    const bk = BINS / (vmax - vmin);
+    for (const { id, g, cat, gmin, gmax } of parts) {
+      const p = (per[id] = { sum: new Float64Array(n), cnt: new Float64Array(n), pos: new Float64Array(n) });
       const k = (gmax - gmin) / 255;
       for (let i = 0; i < g.length; i++) {
         const cc = cat[i];
@@ -92,19 +106,35 @@ export class Stats {
           pos[cc]++;
           p.pos[cc]++;
         }
+        let b = Math.floor((v - vmin) * bk);
+        if (b >= BINS) b = BINS - 1;
+        else if (b < 0) b = 0;
+        hist[cc * BINS + b]++;
       }
     }
     const rows = [];
     let maxMean = 0;
+    const width = (vmax - vmin) / BINS;
     for (let code = 0; code < n; code++) {
       if (!cnt[code]) continue;
       const mean = sum[code] / cnt[code];
       maxMean = Math.max(maxMean, mean);
       const perSample: Record<string, { n: number; mean: number; frac: number }> = {};
       for (const [sid, p] of Object.entries(per)) if (p.cnt[code]) perSample[sid] = { n: p.cnt[code], mean: p.sum[code] / p.cnt[code], frac: p.pos[code] / p.cnt[code] };
-      rows.push({ code, n: cnt[code], mean, frac: pos[code] / cnt[code], perSample });
+      const h = Array.from(hist.subarray(code * BINS, (code + 1) * BINS));
+      const quantile = (q: number) => {
+        // the bin the q-th cell falls in, read at its centre: as fine as the 8-bit values allow
+        const target = q * cnt[code];
+        let acc = 0;
+        for (let b = 0; b < BINS; b++) {
+          acc += h[b];
+          if (acc >= target) return vmin + (b + 0.5) * width;
+        }
+        return vmax;
+      };
+      rows.push({ code, n: cnt[code], mean, frac: pos[code] / cnt[code], perSample, hist: h, median: quantile(0.5), q1: quantile(0.25), q3: quantile(0.75) });
     }
     rows.sort((a, b) => b.mean - a.mean);
-    s.set({ groupStats: { gene: s.color?.kind === "blend" ? "set A" : genes[0], field: f.id, rows, maxMean } });
+    s.set({ groupStats: { gene: s.color?.kind === "blend" ? "set A" : genes[0], field: f.id, rows, maxMean, vmin, vmax, bins: BINS } });
   }
 }

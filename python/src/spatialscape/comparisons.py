@@ -29,7 +29,7 @@ from .manifest import ComparisonInfo, FacetInfo, LevelInfo, MetaKey, PopulationI
 
 Log = Callable[[str], None]
 
-COMPARISONS_RECIPE = 2  # 2: every comparison is one or more levels under levels/<id>/
+COMPARISONS_RECIPE = 3  # 2: every comparison is one or more levels under levels/<id>/; 3: + matrix.zarr (genes x levels)
 LEVEL_TOKEN = "{level}"
 MAX_LEVELS = 500
 TABLE_SUFFIXES = (".csv", ".tsv", ".txt", ".parquet")
@@ -540,6 +540,41 @@ def _write_level(d: Path, lv: ResolvedLevel, union: set[str]) -> LevelInfo:
     return LevelInfo(id=lv.id, name=lv.name, path=f"levels/{lv.id}", nGenes=len(genes), nSignificant=sig, nUnmatched=len(unmeasured), nReplicates=n_rep, hasPseudobulk=has_pb, population=lv.population)
 
 
+def _write_matrix(d: Path, levels: list[ResolvedLevel], union: set[str]) -> dict:
+    """genes x levels of the statistics, for the table that shows every level at once: matrix.json (the gene
+    order, each gene's first level and whether a sample measures it) and matrix.zarr with one float32 array per
+    statistic present (effect, padj, pct_in; rank always: 1-based position in the level's table), NaN where a
+    level's table has no row for the gene."""
+    import zarr
+    from zarr.codecs import BloscCodec
+
+    genes: list[str] = []
+    index: dict[str, int] = {}
+    for lv in levels:
+        for g in lv.results["gene"]:
+            if g not in index:
+                index[g] = len(genes)
+                genes.append(g)
+    n, k = len(genes), len(levels)
+    stats = {"rank": np.full((n, k), np.nan, dtype=np.float32)}
+    for role in ("effect", "padj", "p", "pct_in", "pct_out"):
+        if any(role in lv.results for lv in levels):
+            stats[role] = np.full((n, k), np.nan, dtype=np.float32)
+    for j, lv in enumerate(levels):
+        rows = np.fromiter((index[g] for g in lv.results["gene"]), dtype=np.int64, count=len(lv.results))
+        stats["rank"][rows, j] = np.arange(1, len(rows) + 1, dtype=np.float32)
+        for role, arr in stats.items():
+            if role != "rank" and role in lv.results:
+                arr[rows, j] = lv.results[role].to_numpy(dtype=np.float32)
+    group = zarr.create_group(store=str(d / "matrix.zarr"))
+    for role, arr in stats.items():
+        za = group.create_array(name=role, shape=arr.shape, chunks=(min(4096, max(1, n)), max(1, k)), dtype="float32", compressors=[BloscCodec(cname="zstd", clevel=5)], fill_value=float("nan"))
+        za[:] = arr
+    unmeasured = [i for i, g in enumerate(genes) if g not in union]
+    (d / "matrix.json").write_text(json.dumps({"genes": genes, "levels": [lv.id for lv in levels], "stats": sorted(stats), "unmeasured": unmeasured}, separators=(",", ":")))
+    return {"genes": n, "stats": sorted(stats)}
+
+
 def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], meta: list[MetaKey], union: set[str], log: Log = print, fields: dict[str, list[str]] | None = None) -> ComparisonInfo:
     """Read, resolve and write one comparison; returns its manifest entry. `fields` maps every categorical field to
     its categories, so a facet's levels can be linked to an annotation."""
@@ -554,6 +589,7 @@ def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], met
         shutil.rmtree(tmp)
     tmp.mkdir(parents=True)
     level_infos = [_write_level(tmp / "levels" / lv.id, lv, union) for lv in rc.levels]
+    matrix = _write_matrix(tmp, rc.levels, union)
     rep_ids = {r["id"] for lv in rc.levels for r in lv.replicates}
     faceted = "facet" in loaded.columns
     info = ComparisonInfo(
@@ -579,6 +615,7 @@ def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], met
         hasPct="pct_in" in res or "pct_out" in res,
         hasScore="score" in res,
         hasPseudobulk=any(lv.hasPseudobulk for lv in level_infos),
+        nMatrixGenes=matrix["genes"],
     )
     (tmp / "comparison.json").write_text(
         json.dumps(

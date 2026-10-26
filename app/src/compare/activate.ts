@@ -41,15 +41,17 @@ export async function activateComparison(id: string | null, levelId?: string | n
   if (!markers && info.split && splitKeys(m).some((k) => k.id === info.split) && (!s.splitBy || s.splitBy.key === info.split)) {
     patch.splitBy = { key: info.split, groups: info.groups.slice(0, 3), fractions: s.splitBy?.key === info.split ? s.splitBy.fractions : null };
   }
+  const opening = s.comparison !== id;
   const pop = levelPopulation(info, level);
   const previous = activePopulation(s);
   if (pop) {
     const f = categoryFilter(m, pop);
-    // a contrast fit in a population filters the map to it; markers keep the whole map unless the filter was
-    // already following the levels (the "only this cluster" toggle), in which case it moves to the new level
-    const follow = markers ? isFilterFor(m, s.filter, previous) : !s.filter || s.filter.kind === "category";
+    // opening a contrast fit in a population filters the map to it; focusing another level afterwards, or a
+    // markers level, moves the filter only when it was already following the levels (the "only" toggle)
+    const follow = isFilterFor(m, s.filter, previous) || (opening && !markers && (!s.filter || s.filter.kind === "category"));
     if (f && follow) patch.filter = f;
-  } else if (markers && isFilterFor(m, s.filter, previous)) patch.filter = null;
+  } else if (isFilterFor(m, s.filter, previous)) patch.filter = null;
+  if (info.facet?.field && s.groupField !== info.facet.field) patch.groupField = info.facet.field; // the dot plot and the violins read the same field
   s.set(patch);
   if (!s.datasetUrl || !level) return;
   const data = await loadComparison(s.datasetUrl, info, level.id);

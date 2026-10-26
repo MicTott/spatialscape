@@ -98,22 +98,26 @@ side panel has a *Comparisons* group, one row per comparison. Choosing one split
 another key), filters the map to the population the test was fit in when the comparison names one (a chip in
 the panel header says so and clears it), and opens a panel under the maps:
 
-- **The table**, left: one row per gene with its effect, adjusted p-value and mean, sorted by padj. Click a
-  column head to sort by it (again to flip), the direction buttons to keep only genes higher in the last or
-  the first group, the box to find a gene. Clicking a row colours every pane by that gene; `↑` and `↓` step
-  through the table as sorted. Genes no section measures stay listed, greyed, with a count in the header.
-- **The replicates**, right: one dot per mouse or donor for the gene on screen, in the comparison's group
-  order and colours, with a median line per group, quartile boxes on request (*box*), and a line joining a
-  subject that appears in several groups (a paired design). Hovering a dot names the replicate, its value
-  and its sections; clicking it focuses its first section in the right pane. Under the plot: the table's
-  numbers for that gene and the comparison's description, verbatim.
+- **The matrix**, left: one row per gene, one column per level (every cluster of a marker table, every cell
+  type a contrast was fit in, or the one column of a plain two-group result), each cell the log2 fold change
+  tinted by sign and size (hover for padj, % in / out and rank; blank where a filtered table has no row).
+  Click a column head to focus that level and sort by it (again to flip), the box to find a gene. Clicking a
+  row colours every pane by that gene; `↑` and `↓` step through the table as sorted. Genes no section
+  measures stay listed, greyed, with a count in the header.
+- **The distribution**, right, for the gene on screen. When the levels are an annotation's categories (a
+  marker table, a per-cell-type contrast): **violins** of the gene's expression per category, drawn from the
+  same per-cell values the maps use, the focused level in full colour with a tick at each median. When the
+  comparison carries pseudobulk values: one dot per mouse or donor in the comparison's group order and
+  colours, a median line per group, quartile boxes on request (*box*), and a line joining a subject that
+  appears in several groups (a paired design); hovering a dot names the replicate, its value and its
+  sections, clicking it focuses its first section. Under the plot: the table's numbers for that gene in the
+  focused level and the comparison's description, verbatim.
 
-A comparison with several **levels** (one contrast per cell type, or a marker table with one level per cluster)
-adds a second select for the level; `cmp=<id>:<level>` in the URL. For a **markers** comparison the header reads
-"Astro vs rest", the table carries *% in / out* when the tool wrote it, the map is not filtered (the question is
-whether the gene is specific, which the whole tissue answers) and *only Astro* filters it to the cluster on
-request; each legend row of the matching annotation shows a *markers* button on hover that opens that cluster's
-table. Without replicate values the right side shows the table's numbers for the gene instead of dots.
+The focused level travels as `cmp=<id>:<level>` in the URL. For a **markers** comparison the map is not filtered
+(the question is whether the gene is specific, which the whole tissue answers); *only Astro* filters it to the
+focused cluster on request and follows the focus; each legend row of the matching annotation shows a *markers*
+button on hover that opens the table focused on that cluster. The violins and the *expression by annotation* dot
+plot in the Cells group read the same field, so the two agree.
 
 Nothing in the panel is computed by the viewer: the effects, p-values and replicate values are the ones the
 tables held, and the dots are the values you fitted, not a re-aggregation of the 8-bit expression the maps are

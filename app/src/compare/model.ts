@@ -40,6 +40,69 @@ export interface ComparisonData {
   pseudobulk: Float32Array | null; // row-major (nGenes, nReplicates), replicate order = replicates
 }
 
+/** genes x levels of one statistic each: the table that shows every cluster or level at once. */
+export interface MatrixData {
+  info: ComparisonInfo;
+  genes: string[];
+  levels: string[]; // level ids, column order
+  stats: Record<string, Float32Array>; // row-major (genes, levels); NaN where a level's table has no row for the gene
+  unmeasured: Set<number>;
+  geneIndex: Map<string, number>;
+}
+export interface MatrixRow {
+  i: number;
+  gene: string;
+  measured: boolean;
+}
+/** The statistic the matrix is read by: the effect when the tables have one, else the rank in each level. */
+export const matrixStat = (m: MatrixData): "effect" | "rank" => (m.stats.effect ? "effect" : "rank");
+
+export function matrixRows(m: MatrixData): MatrixRow[] {
+  return m.genes.map((gene, i) => ({ i, gene, measured: !m.unmeasured.has(i) }));
+}
+
+/** Rows ordered by one level's statistic (a missing value sorts last), narrowed by a search. */
+export function arrangeMatrix(m: MatrixData, rows: MatrixRow[], stat: string, level: number, descending: boolean, query: string): MatrixRow[] {
+  const q = query.trim().toLowerCase();
+  const out = q ? rows.filter((r) => r.gene.toLowerCase().includes(q)) : rows;
+  const a = m.stats[stat];
+  const k = m.levels.length;
+  if (!a || level < 0 || level >= k) return out;
+  const sign = descending ? -1 : 1;
+  return [...out].sort((x, y) => {
+    const vx = a[x.i * k + level];
+    const vy = a[y.i * k + level];
+    const nx = Number.isNaN(vx);
+    const ny = Number.isNaN(vy);
+    if (nx && ny) return x.i - y.i;
+    if (nx) return 1;
+    if (ny) return -1;
+    if (vx === vy) return x.i - y.i;
+    return vx < vy ? -sign : sign;
+  });
+}
+
+/** What a cell holds besides the number shown: padj, % in / out, rank. */
+export function cellDetail(m: MatrixData, i: number, j: number): string {
+  const k = m.levels.length;
+  const at = (name: string) => m.stats[name]?.[i * k + j];
+  const parts: string[] = [];
+  const eff = at("effect");
+  if (eff != null && !Number.isNaN(eff)) parts.push(`effect ${fmtEffect(eff)}`);
+  const padj = at("padj");
+  if (padj != null && !Number.isNaN(padj)) parts.push(`padj ${fmtP(padj)}`);
+  else {
+    const p = at("p");
+    if (p != null && !Number.isNaN(p)) parts.push(`p ${fmtP(p)}`);
+  }
+  const pin = at("pct_in");
+  const pout = at("pct_out");
+  if ((pin != null && !Number.isNaN(pin)) || (pout != null && !Number.isNaN(pout))) parts.push(`in ${fmtPct(pin ?? null)}% / out ${fmtPct(pout ?? null)}%`);
+  const rank = at("rank");
+  if (rank != null && !Number.isNaN(rank)) parts.push(`rank ${rank}`);
+  return parts.join(" · ");
+}
+
 export type SortKey = "padj" | "effect" | "mean" | "pct" | "gene";
 export type Direction = "all" | "up" | "down";
 
