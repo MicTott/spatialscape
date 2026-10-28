@@ -20,9 +20,9 @@ app = typer.Typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        from importlib.metadata import version
+        from . import __version__
 
-        typer.echo(f"spatialscape {version('spatialscape')}")
+        typer.echo(f"spatialscape {__version__}")  # the package's own number: an editable install's metadata can lag behind
         raise typer.Exit()
 
 
