@@ -81,3 +81,22 @@ def test_write_expression_layout(tmp_path):
     assert ((col > 0) == (dense > 0)).all()
     assert col.max() == 255
     assert np.allclose(g["gmax"][:], M[:, res.keep].max(axis=0).toarray().ravel())
+
+
+def test_csr_and_csc_inputs_write_the_same_bundle(tmp_path):
+    """A CSR matrix is gathered by masking its column index, a CSC one by slicing; the bytes must agree, with the
+    LOD shuffle, signed features and an all-zero gene in the mix."""
+    rng = np.random.default_rng(5)
+    M = sp.random(300, 50, density=0.2, random_state=6, format="csr", dtype=np.float32)
+    M.data[:] = rng.uniform(-2, 3, M.nnz)
+    M[:, 11] = 0
+    M.eliminate_zeros()
+    order = rng.permutation(300)
+    a = write_expression(M.tocsr(), tmp_path / "csr", shard_genes=16, order=order, keep_f16=True)
+    b = write_expression(M.tocsc(), tmp_path / "csc", shard_genes=16, order=order, keep_f16=True)
+    assert (a.keep == b.keep).all() and np.array_equal(a.gmax, b.gmax) and np.array_equal(a.gmin, b.gmin)
+    ga = zarr.open_group(str(tmp_path / "csr" / "expr.zarr"), mode="r")
+    gb = zarr.open_group(str(tmp_path / "csc" / "expr.zarr"), mode="r")
+    assert np.array_equal(ga["u8"][:], gb["u8"][:])
+    assert np.array_equal(ga["f16"][:], gb["f16"][:])
+    assert ga["u8"].shape == (49, 300)

@@ -24,8 +24,8 @@ class ExprResult:
 
 
 def get_matrix(adata: ad.AnnData, layer: str) -> sp.csr_matrix | sp.csc_matrix:
-    """The (n_obs, n_vars) matrix as float32, CSR or CSC as stored: h5ad files hold CSC, and the writer wants CSC,
-    so converting to CSR here only to convert back cost a full pass over the data twice."""
+    """The (n_obs, n_vars) matrix as float32, CSR or CSC as stored. The writer gathers gene blocks from either form,
+    so nothing is converted here: a CSR matrix of several billion values would need a second copy of itself."""
     M = adata.X if layer == "X" else adata.layers[layer]
     if sp.issparse(M):
         M = M.tocsc() if M.format not in ("csr", "csc") else M
@@ -146,6 +146,23 @@ def column_ranges(Mc: sp.csc_matrix) -> tuple[np.ndarray, np.ndarray]:
     return gmin, gmax
 
 
+def column_ranges_csr(M: sp.csr_matrix) -> tuple[np.ndarray, np.ndarray]:
+    """`column_ranges` for a CSR matrix: one pass over the stored values with ufunc.at, no CSC copy."""
+    n_obs, n_vars = M.shape
+    nnz_col = np.bincount(M.indices, minlength=n_vars)
+    gmax = np.full(n_vars, -np.inf, dtype=np.float32)
+    gmin = np.full(n_vars, np.inf, dtype=np.float32)
+    np.maximum.at(gmax, M.indices, M.data)
+    np.minimum.at(gmin, M.indices, M.data)
+    has = nnz_col > 0
+    gmax[~has] = 0
+    gmin[~has] = 0
+    sparse_cols = nnz_col < n_obs  # an implicit zero takes part in the range
+    gmax = np.where(sparse_cols, np.maximum(gmax, 0), gmax).astype(np.float32)
+    gmin = np.where(sparse_cols, np.minimum(gmin, 0), gmin).astype(np.float32)
+    return gmin, gmax
+
+
 def column_moments(Mc: sp.csc_matrix) -> tuple[np.ndarray, np.ndarray]:
     """Per-column (mean, variance) of a CSC matrix over all rows, implicit zeros included, in one pass over the data
     and in any index order (scipy's `.mean()` sorts and deduplicates the matrix first)."""
@@ -209,9 +226,12 @@ def write_expression(
     """M is (n_obs, n_vars) normalized, CSR or CSC. Writes out_dir/expr.zarr/{u8,gmax[,f16]}. With `order` (a
     permutation), row i of the written array is observation order[i]: the LOD shuffle is applied while scattering
     the stored values, so the matrix itself is never permuted (a copy with unsorted indices that every later
-    reduction would sort again)."""
+    reduction would sort again). A CSC matrix gives each gene block as a slice of its arrays; a CSR matrix (what a
+    large h5ad usually holds) is kept as it is and each block's values are found by masking the column index, so
+    the matrix is never copied: a 1.5 M-cell, 32k-gene panel with 7 billion values builds in its own 60 GB."""
     n_obs, n_vars = M.shape
-    Mc = M.tocsc()
+    csr = sp.issparse(M) and M.format == "csr"
+    Mc = M if csr else M.tocsc()
     if Mc.nnz and not Mc.has_canonical_format:
         Mc = Mc.copy()  # duplicate entries must sum, as in a dense view; canonicalise a copy, never the caller's matrix
         Mc.sum_duplicates()
@@ -225,12 +245,12 @@ def write_expression(
     gmax_all = np.zeros(n_vars, dtype=np.float32)
     gmin_all = np.zeros(n_vars, dtype=np.float32)
     if Mc.nnz:
-        if not np.all(np.isfinite(Mc.data)):
-            bad = np.unique(Mc.indices[~np.isfinite(Mc.data)]) if hasattr(Mc, "indices") else []
-            cols = np.repeat(np.arange(n_vars), np.diff(Mc.indptr))[~np.isfinite(Mc.data)] if hasattr(Mc, "indptr") else bad
+        finite = np.isfinite(Mc.data)
+        if not finite.all():
+            cols = Mc.indices[~finite] if csr else np.repeat(np.arange(n_vars), np.diff(Mc.indptr))[~finite]
             names = ", ".join(str(c) for c in np.unique(cols)[:5])
             raise ValueError(f"expression has NaN or infinite values (feature columns {names}{'...' if len(np.unique(cols)) > 5 else ''}); fix or drop those features before building")
-        gmin_all, gmax_all = column_ranges(Mc)
+        gmin_all, gmax_all = column_ranges_csr(Mc) if csr else column_ranges(Mc)
     lo_all, hi_all = feature_ranges(gmin_all, gmax_all)
     keep = hi_all > 0  # all-zero features are dropped
     gmax = hi_all[keep]
@@ -257,36 +277,51 @@ def write_expression(
     # That is one pass over the nnz values instead of six over a dense n_genes x n_obs float32 block, and the
     # kept columns are gathered per block straight out of the input, so the matrix is never copied or sliced.
     kept = np.flatnonzero(keep)  # input column of each kept gene
-    nnz_col = np.diff(Mc.indptr)
-    kcum = np.zeros(G + 1, dtype=np.int64)  # stored values before each kept gene
-    np.cumsum(nnz_col[kept], out=kcum[1:])
+    if csr:
+        kept_index = np.full(n_vars, -1, dtype=np.int64)  # input column -> kept gene index
+        kept_index[kept] = np.arange(G)
+    else:
+        nnz_col = np.diff(Mc.indptr)
+        kcum = np.zeros(G + 1, dtype=np.int64)  # stored values before each kept gene
+        np.cumsum(nnz_col[kept], out=kcum[1:])
     zero_code = quantize_values(np.zeros(G, dtype=np.float32), gmin, gmax)
+
+    def scatter(q, h, g0, pos, g):
+        """Quantize the stored values at `pos` (kept-gene index `g` each) into the block arrays."""
+        rows = np.searchsorted(Mc.indptr, pos, side="right") - 1 if csr else Mc.indices[pos]
+        if inv is not None:
+            rows = inv[rows]
+        flat = (g - g0) * n_obs + rows
+        vals = Mc.data[pos]
+        q.reshape(-1)[flat] = quantize_values(vals, gmin[g], gmax[g])
+        if h is not None:
+            h.reshape(-1)[flat] = vals.astype(np.float16)
+
     for g0 in range(0, G, S):
         g1 = min(G, g0 + S)
         q = np.empty((g1 - g0, n_obs), dtype=np.uint8)
         q[:] = zero_code[g0:g1, None]
         h = np.zeros((g1 - g0, n_obs), dtype=np.float16) if keep_f16 else None
-        b0 = g0
-        while b0 < g1:
-            # whole genes holding about ENTRY_BLOCK stored values (at least one gene)
-            target = min(int(kcum[b0]) + ENTRY_BLOCK, int(kcum[-1]))
-            b1 = max(b0 + 1, min(g1, int(np.searchsorted(kcum, target, side="right")) - 1))
-            n_vals = int(kcum[b1] - kcum[b0])
-            if n_vals:
-                lengths = nnz_col[kept[b0:b1]]
-                starts = Mc.indptr[kept[b0:b1]].astype(np.int64)
-                # position in Mc.data of every stored value of the block, column segments back to back
-                pos = np.arange(n_vals, dtype=np.int64) + np.repeat(starts - (np.cumsum(lengths) - lengths), lengths)
-                g = np.repeat(np.arange(b0, b1, dtype=np.int64), lengths)  # kept-gene index per stored value
-                rows = Mc.indices[pos]
-                if inv is not None:
-                    rows = inv[rows]
-                flat = (g - g0) * n_obs + rows
-                vals = Mc.data[pos]
-                q.reshape(-1)[flat] = quantize_values(vals, gmin[g], gmax[g])
-                if h is not None:
-                    h.reshape(-1)[flat] = vals.astype(np.float16)
-            b0 = b1
+        if csr:
+            # every stored value whose column is one of the block's kept genes (dropped genes have none)
+            lo_c, hi_c = int(kept[g0]), int(kept[g1 - 1])
+            pos = np.flatnonzero((Mc.indices >= lo_c) & (Mc.indices <= hi_c))
+            if pos.size:
+                scatter(q, h, g0, pos, kept_index[Mc.indices[pos]])
+        else:
+            b0 = g0
+            while b0 < g1:
+                # whole genes holding about ENTRY_BLOCK stored values (at least one gene)
+                target = min(int(kcum[b0]) + ENTRY_BLOCK, int(kcum[-1]))
+                b1 = max(b0 + 1, min(g1, int(np.searchsorted(kcum, target, side="right")) - 1))
+                n_vals = int(kcum[b1] - kcum[b0])
+                if n_vals:
+                    lengths = nnz_col[kept[b0:b1]]
+                    starts = Mc.indptr[kept[b0:b1]].astype(np.int64)
+                    # position in Mc.data of every stored value of the block, column segments back to back
+                    pos = np.arange(n_vals, dtype=np.int64) + np.repeat(starts - (np.cumsum(lengths) - lengths), lengths)
+                    scatter(q, h, g0, pos, np.repeat(np.arange(b0, b1, dtype=np.int64), lengths))
+                b0 = b1
         writer.write(g0, q)
         if f16 is not None:
             f16[g0:g1, :] = h

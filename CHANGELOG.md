@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Large matrices build in their own memory.** A CSR matrix (what a big h5ad holds) is no longer copied to CSC before writing expression: each gene block's values are found by masking the column index, so a 1.5 M-nuclei, 32k-gene panel with 7 billion stored values builds in about 60 GB instead of 120.
 - `tracks.genome: mm10` (or `mm39`) carries the mouse chromosome sizes like `hg38` does; a mouse ATAC sample no longer needs `chrom_sizes:`.
 
 ## 0.5.0 (2026-10-29)
