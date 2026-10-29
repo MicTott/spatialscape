@@ -13,7 +13,7 @@ binned) per category of the fields you name, built once by `build` and streamed 
     tracks:
       fragments: atac_fragments.tsv.gz    # Cell Ranger (ARC / ATAC) fragments, coordinate-sorted, bgzipped
       by: [cell_type]                     # one track per category of each field listed
-      genome: hg38                        # assembly: names the RefSeq gene models and the default chromosome sizes
+      genome: hg38                        # assembly: names the RefSeq gene models and the chromosome sizes (hg38, mm10, mm39 built in)
       # genes: genes.gtf.gz               # gene models: a GTF, a UCSC genePred table or a BED (default `refseq`)
       # links: links.bedpe                # optional: peak-gene links
       # bin: 25, chrom_sizes: sizes.tsv, barcode_column: barcode

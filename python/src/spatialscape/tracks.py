@@ -52,7 +52,22 @@ GRCH38 = {
     "chr16": 90338345, "chr17": 83257441, "chr18": 80373285, "chr19": 58617616, "chr20": 64444167,
     "chr21": 46709983, "chr22": 50818468, "chrX": 156040895, "chrY": 57227415, "chrM": 16569,
 }
-GENOME_SIZES = {"hg38": GRCH38, "GRCh38": GRCH38}
+# GRCm38 (mm10) and GRCm39 (mm39) primary chromosomes, as named in the 10x and UCSC references
+GRCM38 = {
+    "chr1": 195471971, "chr2": 182113224, "chr3": 160039680, "chr4": 156508116, "chr5": 151834684,
+    "chr6": 149736546, "chr7": 145441459, "chr8": 129401213, "chr9": 124595110, "chr10": 130694993,
+    "chr11": 122082543, "chr12": 120129022, "chr13": 120421639, "chr14": 124902244, "chr15": 104043685,
+    "chr16": 98207768, "chr17": 94987271, "chr18": 90702639, "chr19": 61431566, "chrX": 171031299,
+    "chrY": 91744698, "chrM": 16299,
+}
+GRCM39 = {
+    "chr1": 195154279, "chr2": 181755017, "chr3": 159745316, "chr4": 156860686, "chr5": 151758149,
+    "chr6": 149588044, "chr7": 144995196, "chr8": 130127694, "chr9": 124359700, "chr10": 130530862,
+    "chr11": 121973369, "chr12": 120092757, "chr13": 120883175, "chr14": 125139656, "chr15": 104073951,
+    "chr16": 98008968, "chr17": 95294699, "chr18": 90720763, "chr19": 61420004, "chrX": 169476592,
+    "chrY": 91455967, "chrM": 16299,
+}
+GENOME_SIZES = {"hg38": GRCH38, "GRCh38": GRCH38, "mm10": GRCM38, "GRCm38": GRCM38, "mm39": GRCM39, "GRCm39": GRCM39}
 
 Hits = tuple[np.ndarray, np.ndarray]  # (bin indices, counts) of the non-zero bins of one chromosome
 

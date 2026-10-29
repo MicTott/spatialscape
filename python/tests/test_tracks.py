@@ -269,3 +269,12 @@ def test_fragments_stream_over_ssh_with_nothing_stored(tmp_path, monkeypatch):
     cfg_path.write_text(yaml.safe_dump(doc))
     with pytest.raises(ValueError, match="over ssh failed"):
         build_dataset(load_config(cfg_path), tmp_path / "bundle2", log=quiet)
+
+
+def test_mouse_genomes_have_sizes():
+    from spatialscape.config import TracksSpec
+    from spatialscape.tracks import chrom_sizes
+
+    for genome in ("mm10", "GRCm38", "mm39"):
+        sizes = chrom_sizes(TracksSpec(fragments="x.tsv.gz", by=["cluster"], genome=genome))
+        assert sizes["chr1"] > 195_000_000 and "chrM" in sizes
