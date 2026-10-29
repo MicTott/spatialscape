@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `tracks.genome: mm10` (or `mm39`) carries the mouse chromosome sizes like `hg38` does; a mouse ATAC sample no longer needs `chrom_sizes:`.
+
 ## 0.5.0 (2026-10-29)
 
 - `spatialscape --version` prints the package's own version; an editable install used to show the metadata of whatever was first installed.
