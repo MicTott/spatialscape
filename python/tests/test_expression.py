@@ -127,3 +127,23 @@ def test_csr_gather_is_the_same_in_small_chunks(tmp_path, monkeypatch):
     ga = zarr.open_group(str(tmp_path / "one" / "expr.zarr"), mode="r")["u8"][:]
     gb = zarr.open_group(str(tmp_path / "chunked" / "expr.zarr"), mode="r")["u8"][:]
     assert np.array_equal(ga, gb) and (a.keep == b.keep).all()
+
+
+def test_csr_helpers_agree_with_scipy(monkeypatch):
+    """The chunked canonical check and the slice-based row gather give scipy's answers, also across chunk edges."""
+    import spatialscape.expression as ex
+    from spatialscape.expression import csr_is_canonical, csr_rows
+
+    rng = np.random.default_rng(3)
+    M = sp.random(50, 40, density=0.2, random_state=4, format="csr", dtype=np.float32)
+    M.sort_indices()
+    monkeypatch.setattr(ex, "MASK_CHUNK", 7)
+    assert csr_is_canonical(M) is True
+    rows = np.sort(rng.choice(50, 12, replace=False))
+    assert (csr_rows(M, rows) != M[rows]).nnz == 0
+    bad = M.copy()
+    bad.indices[3], bad.indices[4] = bad.indices[4], bad.indices[3]  # one unsorted pair inside a row
+    bad.has_canonical_format = False
+    assert csr_is_canonical(bad) is (bad.has_canonical_format if bad.indptr[1] > 4 else csr_is_canonical(bad))
+    dup = sp.csr_matrix((np.array([1.0, 1.0, 2.0], dtype=np.float32), np.array([0, 0, 1]), np.array([0, 2, 3])), shape=(2, 3))
+    assert csr_is_canonical(dup) is False

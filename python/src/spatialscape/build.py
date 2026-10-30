@@ -21,7 +21,7 @@ from .comparisons import ComparisonAction, plan_comparisons, read_info, samples_
 from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
 from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, auto_segmentations, infer_field_spec
-from .expression import column_moments, detect_lognorm, get_matrix, log1p_cp10k, write_expression
+from .expression import column_moments, csr_rows, detect_lognorm, get_matrix, log1p_cp10k, write_expression
 from .fingerprint import read_sidecar, resolve_auto_images, sample_fingerprint, why_stale, write_sidecar
 from .geometry import default_point_radius, microns_per_unit, transform_points
 from .images import (
@@ -127,8 +127,11 @@ def most_variable_gene(M, keep: np.ndarray, genes: list[str], *, seed: int = 0, 
     n = M.shape[0]
     rows = np.sort(np.random.default_rng(seed).choice(n, size=max_rows, replace=False)) if n > max_rows else None
     if sp.issparse(M):
-        sub = (M[rows] if rows is not None else M).tocsc()
-        _mean, var = column_moments(sub)
+        if rows is not None:
+            sub = csr_rows(M, rows) if M.format == "csr" else M[rows]  # numpy slices for CSR: scipy's indexing recasts a huge index
+        else:
+            sub = M
+        _mean, var = column_moments(sub.tocsc())
     else:
         sub = np.asarray(M, dtype=np.float64)
         var = (sub[rows] if rows is not None else sub).var(axis=0)

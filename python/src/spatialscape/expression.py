@@ -159,6 +159,32 @@ def _positions_in_columns(indices: np.ndarray, lo: int, hi: int) -> np.ndarray:
     return np.concatenate(parts) if parts else np.zeros(0, dtype=np.int64)
 
 
+def csr_is_canonical(M: sp.csr_matrix) -> bool:
+    """Whether every row's column indices are strictly increasing (sorted, no duplicates), checked a chunk at a time.
+    scipy's `has_canonical_format` hands the index arrays to its C routines, which recast an int32 column index to
+    the row pointer's int64 first: on a 7-billion-entry matrix that is a 59 GB temporary."""
+    idx, indptr = M.indices, M.indptr
+    starts = indptr[1:-1]  # positions where a new row begins: the step across them may go down
+    for s in range(0, len(idx) - 1, MASK_CHUNK):
+        e = min(len(idx) - 1, s + MASK_CHUNK)
+        down = np.flatnonzero(idx[s + 1 : e + 1] <= idx[s:e]) + s + 1  # positions whose index is not above the previous
+        if down.size:
+            at_row_start = np.isin(down, starts[np.searchsorted(starts, s + 1) : np.searchsorted(starts, e, side="right")])
+            if not at_row_start.all():
+                return False
+    return True
+
+
+def csr_rows(M: sp.csr_matrix, rows: np.ndarray) -> sp.csr_matrix:
+    """The given rows of a CSR matrix as a new small CSR matrix, gathered with numpy slices: `M[rows]` goes through
+    scipy's indexing routines, which recast the whole column index to int64 for a matrix with an int64 row pointer."""
+    starts, ends = M.indptr[rows], M.indptr[rows + 1]
+    data = np.concatenate([M.data[a:b] for a, b in zip(starts, ends, strict=True)]) if len(rows) else M.data[:0]
+    indices = np.concatenate([M.indices[a:b] for a, b in zip(starts, ends, strict=True)]) if len(rows) else M.indices[:0]
+    indptr = np.concatenate([[0], np.cumsum(ends - starts)])
+    return sp.csr_matrix((data, indices, indptr), shape=(len(rows), M.shape[1]))
+
+
 def _all_finite(data: np.ndarray) -> bool:
     return all(np.isfinite(data[s : s + MASK_CHUNK]).all() for s in range(0, len(data), MASK_CHUNK))
 
@@ -254,7 +280,7 @@ def write_expression(
     n_obs, n_vars = M.shape
     csr = sp.issparse(M) and M.format == "csr"
     Mc = M if csr else M.tocsc()
-    if Mc.nnz and not Mc.has_canonical_format:
+    if Mc.nnz and not (csr_is_canonical(Mc) if csr else Mc.has_canonical_format):
         Mc = Mc.copy()  # duplicate entries must sum, as in a dense view; canonicalise a copy, never the caller's matrix
         Mc.sum_duplicates()
     inv = None
