@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { decodeMoleculeTile } from "../data/moleculeTiles";
 import { geneColors, pinColor } from "../views/molecules";
 import { hexToRGB } from "../layers/lut";
+import { GENE_TEX_WIDTH, geneTextureData, geneTextureRows } from "../layers/MoleculeLayer";
 
 const dir = fileURLToPath(new URL("./fixtures/molecules/", import.meta.url));
 const frame = new Uint8Array(readFileSync(dir + "tile.bin"));
@@ -63,5 +64,23 @@ describe("molecule tiles written by the Python build", () => {
     expect(al.shares(counts)).toBe(1);
     expect(pinColor(7)).toMatch(/^#[0-9a-f]{6}$/);
     expect(pinColor(7)).not.toBe(pinColor(8));
+  });
+});
+
+describe("gene colour texture", () => {
+  it("lays a whole-transcriptome panel out in rows that fit the GPU", () => {
+    const n = 18028;
+    const colors = new Uint8Array(n * 4).map((_, i) => i % 251);
+    const rows = geneTextureRows(n);
+    expect(rows).toBe(Math.ceil(n / GENE_TEX_WIDTH));
+    expect(GENE_TEX_WIDTH).toBeLessThanOrEqual(4096); // below every WebGL2 max texture size
+    const data = geneTextureData(colors);
+    expect(data.length).toBe(GENE_TEX_WIDTH * rows * 4);
+    // gene g is texel (g mod width, g div width), the same arithmetic as the shader
+    const g = 17_777;
+    const texel = ((g % GENE_TEX_WIDTH) + Math.floor(g / GENE_TEX_WIDTH) * GENE_TEX_WIDTH) * 4;
+    expect(Array.from(data.subarray(texel, texel + 4))).toEqual(Array.from(colors.subarray(g * 4, g * 4 + 4)));
+    expect(geneTextureRows(1)).toBe(1);
+    expect(geneTextureData(new Uint8Array([1, 2, 3, 4])).length).toBe(GENE_TEX_WIDTH * 4);
   });
 });

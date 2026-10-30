@@ -12,15 +12,33 @@ export interface MoleculeLayerExtraProps {
 }
 export type MoleculeLayerProps = ScatterplotLayerProps<unknown> & MoleculeLayerExtraProps;
 
+// The per-gene colours sit in a texture GENE_TEX_WIDTH wide and as many rows as the genes need: a whole-transcriptome
+// panel (18,000 genes and more) is wider than the largest texture many GPUs allow (16,384 px, 8,192 on some), and a
+// texture that cannot be made samples black.
+export const GENE_TEX_WIDTH = 1024;
+
+export function geneTextureRows(genes: number): number {
+  return Math.max(1, Math.ceil(genes / GENE_TEX_WIDTH));
+}
+
+/** `colors` (genes * 4 RGBA) padded to fill GENE_TEX_WIDTH * rows texels. */
+export function geneTextureData(colors: Uint8Array): Uint8Array {
+  const rows = geneTextureRows(colors.length / 4);
+  const out = new Uint8Array(GENE_TEX_WIDTH * rows * 4);
+  out.set(colors.subarray(0, out.length));
+  return out;
+}
+
 const moleculeModule = {
   name: "molecule",
   vs: /* glsl */ `
 uniform moleculeUniforms {
-  float geneCount;
+  float texWidth;
+  float texRows;
   float dimAlpha;
 } molecule;
 `,
-  uniformTypes: { geneCount: "f32", dimAlpha: "f32" },
+  uniformTypes: { texWidth: "f32", texRows: "f32", dimAlpha: "f32" },
 } as const;
 
 const defaultProps = {
@@ -35,7 +53,7 @@ export class MoleculeLayer extends ScatterplotLayer<unknown, MoleculeLayerExtraP
   static layerName = "MoleculeLayer";
   static defaultProps = defaultProps as any;
 
-  declare state: ScatterplotLayer["state"] & { geneTex?: Texture; geneCount: number; geneColors?: Uint8Array };
+  declare state: ScatterplotLayer["state"] & { geneTex?: Texture; texRows: number; geneColors?: Uint8Array };
 
   getShaders() {
     const shaders = super.getShaders();
@@ -52,7 +70,9 @@ uniform sampler2D geneTexture;
         "vs:#main-end": /* glsl */ `
 {
   float code = floor(instanceGene * 65535.0 + 0.5);
-  vec4 gc = texture(geneTexture, vec2((code + 0.5) / molecule.geneCount, 0.5));
+  float row = floor(code / molecule.texWidth);
+  float col = code - row * molecule.texWidth;
+  vec4 gc = texture(geneTexture, vec2((col + 0.5) / molecule.texWidth, (row + 0.5) / molecule.texRows));
   float assigned = step(0.5, mod(floor(instanceFlags * 255.0 + 0.5), 2.0));
   vFillColor = vec4(gc.rgb, gc.a * layer.opacity * mix(molecule.dimAlpha, 1.0, assigned));
   if (gc.a < 0.01) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
@@ -68,7 +88,7 @@ uniform sampler2D geneTexture;
       instanceGene: { size: 1, type: "unorm16", accessor: "getGene", defaultValue: 0 },
       instanceFlags: { size: 1, type: "unorm8", accessor: "getFlags", defaultValue: 0 },
     } as any);
-    this.setState({ geneCount: 1 });
+    this.setState({ texRows: 1 });
   }
 
   updateState(params: any) {
@@ -77,9 +97,9 @@ uniform sampler2D geneTexture;
     if (props.geneColors !== this.state.geneColors || !this.state.geneTex) {
       this.state.geneTex?.destroy();
       const gc: Uint8Array = props.geneColors ?? new Uint8Array([200, 200, 200, 255]);
-      const n = Math.max(1, gc.length / 4);
-      this.state.geneTex = makeTexture(this.context.device, gc, n);
-      this.setState({ geneCount: n, geneColors: props.geneColors });
+      const rows = geneTextureRows(gc.length / 4);
+      this.state.geneTex = makeTexture(this.context.device, geneTextureData(gc), GENE_TEX_WIDTH, rows);
+      this.setState({ texRows: rows, geneColors: props.geneColors });
     }
   }
 
@@ -91,17 +111,17 @@ uniform sampler2D geneTexture;
   draw(params: any) {
     const model = (this.state as any).model;
     if (!model) return;
-    model.shaderInputs.setProps({ molecule: { geneCount: this.state.geneCount, dimAlpha: this.props.dimAlpha ?? 0.45 } });
+    model.shaderInputs.setProps({ molecule: { texWidth: GENE_TEX_WIDTH, texRows: this.state.texRows, dimAlpha: this.props.dimAlpha ?? 0.45 } });
     model.setBindings({ geneTexture: this.state.geneTex });
     super.draw(params);
   }
 }
 
-function makeTexture(device: Device, data: Uint8Array, width: number): Texture {
+function makeTexture(device: Device, data: Uint8Array, width: number, height: number): Texture {
   return device.createTexture({
     data,
     width,
-    height: 1,
+    height,
     format: "rgba8unorm",
     sampler: { minFilter: "nearest", magFilter: "nearest", addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge" },
   });
