@@ -497,3 +497,30 @@ button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]
 .platformbar .canvas-tool:hover { background: #3b3f46; color: #fff; }
 .platformbar .canvas-tool[aria-pressed="true"]:hover { background: #80d9ff; color: #06141b; }
 .platformbar .canvas-tools + .split-ctl { border-left: 0; margin-left: 0; padding-left: 2px; }
+
+/* Readability: increase interface text without changing the data canvas or pane layout. */
+:root { font-size: 15px; }
+.sidebar header h1 { font-size: 18px; }
+.sidebar header p { font-size: 14px; line-height: 1.4; }
+.sidebar .group-title { font-size: 15px; }
+.sidebar .group-summary, .sidebar .small, .sidebar .cat-n { font-size: 13px; }
+.sidebar .group-body section h2, .sidebar .tabs button { font-size: 14px; }
+.sidebar .legend-head { font-size: 15px; }
+.sidebar .legend-actions button { font-size: 12px; padding: 2px 7px; }
+.sidebar .s-meta, .sidebar .ramp-labels, .sidebar .comp-head, .sidebar .blend-x, .sidebar .blend-y { font-size: 13px; }
+.sidebar .chip, .sidebar .comp-row, .sidebar .dp-row, .sidebar .heat table { font-size: 13px; }
+.sidebar .dp-head, .sidebar .dp-dot { font-size: 12px; }
+.topnav { font-size: 14px; }
+.topnav .brand { font-size: 16px; }
+.topnav select, .platformbar button, .platformbar select { font-size: 14px; }
+.platformbar .split-ctl .muted, .platformbar button .n { font-size: 13px; }
+.platformbar { max-width: calc(100% - 340px); overflow-x: auto; scrollbar-width: thin; }
+.platformbar .split-ctl, .platformbar .canvas-tools { flex-shrink: 0; white-space: nowrap; }
+.pointsize .cap, .pointsize small, .scalebar span, .statusbar { font-size: 13px; }
+.tooltip { font-size: 14px; }
+.tt-sample, .tt-id { font-size: 12px; }
+.genome .g-head, .genome .g-head select, .genome .g-head .genesearch input { font-size: 13px; }
+.compare .c-title, .compare .d-gene { font-size: 14px; }
+.compare .c-sub, .compare .c-search, .compare .m-head button, .compare .m-row, .compare .d-toggle { font-size: 13px; }
+.compare .d-foot, .compare .c-axis, .compare .c-group, .compare .c-tip { font-size: 12px; }
+@media (max-width: 700px) { .platformbar { max-width: calc(100% - 24px); } }
