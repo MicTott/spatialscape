@@ -16,6 +16,7 @@ import posixpath
 import re
 import threading
 import time
+import urllib.parse
 import webbrowser
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -88,10 +89,22 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def _post_allowed(self) -> bool:
+        """State-changing requests come from the viewer this server serves (same origin, or no Origin at all from a
+        notebook kernel) or from another local page; any other web page is refused, whatever the CORS headers say."""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        host = urllib.parse.urlsplit(origin).hostname or ""
+        return host in ("localhost", "127.0.0.1", "::1") or origin.split("://", 1)[-1] == (self.headers.get("Host") or "")
+
     def do_POST(self):
         route = self.path.split("?", 1)[0]
         if not (self.session and route in ("/_api/selection", "/_api/regions")):
             self.send_error(405)
+            return
+        if not self._post_allowed():
+            self.send_error(403, "session requests are accepted from the local viewer only")
             return
         try:
             n = int(self.headers.get("Content-Length") or 0)
@@ -102,10 +115,20 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         except (ValueError, TypeError):
             self.send_error(400)
             return
+        store = type(self)._selections if route == "/_api/selection" else type(self)._regions
+        version = int(doc.get("version", 0) or 0)
+        viewer = str(doc.get("viewer") or "")
+        held = store.get(key)
+        # the newest post from the same viewer wins, whatever order the requests arrived in; a new viewer (another
+        # page load, which starts counting at zero again) replaces the old one
+        if held and held.get("viewer") == viewer and version < int(held.get("version", 0)):
+            self.send_response(204)
+            self.end_headers()
+            return
         if route == "/_api/selection":
-            type(self)._selections[key] = {"version": doc.get("version", 0), "samples": doc.get("samples") or {}, "time": time.time()}
+            store[key] = {"version": version, "viewer": viewer, "samples": doc.get("samples") or {}, "time": time.time()}
         else:
-            type(self)._regions[key] = {"version": doc.get("version", 0), "groups": doc.get("groups") or [], "codes": doc.get("codes") or {}, "time": time.time()}
+            store[key] = {"version": version, "viewer": viewer, "groups": doc.get("groups") or [], "codes": doc.get("codes") or {}, "time": time.time()}
         self.send_response(204)
         self.end_headers()
 

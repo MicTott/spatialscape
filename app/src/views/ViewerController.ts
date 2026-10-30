@@ -517,9 +517,17 @@ export class ViewerController {
   }
 
   // ---------------------------------------------------------------- diagnostics
+  /** Set when a gene's data arrived: the next completed frame ends the gene-switch measurement (`lastGeneFrameMs`). */
+  geneFrameStart = 0;
+
   private afterRender() {
     const now = performance.now();
     this.frameTimes.push(now);
+    if (this.geneFrameStart) {
+      const t = store.getState().timings;
+      store.getState().set({ timings: { ...t, lastGeneFrameMs: now - this.geneFrameStart } });
+      this.geneFrameStart = 0;
+    }
     while (this.frameTimes.length && now - this.frameTimes[0] > 1000) this.frameTimes.shift();
     if (this.frameTimes.length % 10 === 0) {
       const fps = this.frameTimes.length;

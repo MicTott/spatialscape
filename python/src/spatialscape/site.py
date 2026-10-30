@@ -116,18 +116,41 @@ def _viewer(app_dir: Path | None) -> Path:
     return app_dir
 
 
+def _swap_in(tmp: Path, dest: Path) -> None:
+    """`tmp` takes `dest`'s place; whatever was at `dest` goes afterwards."""
+    old = dest.with_name(f".{dest.name}.replaced")
+    if old.is_symlink() or old.is_file():
+        old.unlink()
+    elif old.exists():
+        shutil.rmtree(old)
+    had = dest.is_symlink() or dest.exists()
+    if had:
+        os.rename(dest, old)
+    os.rename(tmp, dest)
+    if had:
+        if old.is_symlink() or old.is_file():
+            old.unlink()
+        else:
+            shutil.rmtree(old)
+
+
 def _place(bundle: Path, dest: Path, link: bool, log: Log) -> None:
+    """Put the bundle at `dest` as a link or a copy. A copy is made beside the destination and swapped in whole, so a
+    site that is being served keeps its old bundle until the new one is complete."""
     if dest.resolve() == bundle.resolve():
         return
-    if dest.is_symlink() or dest.is_file():
-        dest.unlink()
-    elif dest.exists():
-        shutil.rmtree(dest)
+    tmp = dest.with_name(f".{dest.name}.placing")
+    if tmp.is_symlink() or tmp.is_file():
+        tmp.unlink()
+    elif tmp.exists():
+        shutil.rmtree(tmp)
     if link:
-        os.symlink(bundle.resolve(), dest, target_is_directory=True)
+        os.symlink(bundle.resolve(), tmp, target_is_directory=True)
     else:
         # the per-sample build.json fingerprints and the config path hold paths from the building machine
-        shutil.copytree(bundle, dest, ignore=shutil.ignore_patterns("build.json"))
+        shutil.copytree(bundle, tmp, ignore=shutil.ignore_patterns("build.json"))
+    _swap_in(tmp, dest)
+    if not link:
         info = dest / "build-info.json"
         if info.exists():
             try:

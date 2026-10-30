@@ -12,7 +12,7 @@ import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer, type GroupRow, t
 import type { LevelInfo } from "../data/manifest";
 import { activateComparison, populationFilterActive, toggleLevelFilter } from "./activate";
 import { loadComparison, loadMatrix } from "./data";
-import { arrangeMatrix, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow } from "./model";
+import { arrangeMatrix, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow, contrastLabel, effectLabel } from "./model";
 
 const ROW_H = 27;
 const HEAD_H = 34;
@@ -151,7 +151,7 @@ export function ComparePanel() {
     else void activateComparison(info.id, lv);
   };
   const subtitle = [
-    markers ? `each ${facetField ? facetField.name.toLowerCase() : "cluster"} against the rest` : info.groups.join(" vs ") + (info.levels.length > 1 && facetField ? ` within each ${facetField.name.toLowerCase()}` : ""),
+    markers ? `each ${facetField ? facetField.name.toLowerCase() : "cluster"} against the rest` : contrastLabel(info) + (info.levels.length > 1 && facetField ? ` within each ${facetField.name.toLowerCase()}` : ""),
     !markers && info.nReplicates ? `${info.nReplicates} replicates` : null,
     matrix ? `${matrix.genes.length.toLocaleString()} genes` : null,
     info.nUnmatched ? `${info.nUnmatched.toLocaleString()} not in this dataset` : null,
@@ -159,10 +159,10 @@ export function ComparePanel() {
     .filter(Boolean)
     .join(" · ");
   const single = info.levels.length === 1;
-  const focusLabel = single ? (markers ? level.name : info.groups.join(" vs ")) : level.name;
+  const focusLabel = single ? (markers ? level.name : contrastLabel(info)) : level.name;
   const focusColor = swatch(catOf(level));
   const levelRow = levelData && gene ? (levelData.geneIndex.get(gene) ?? null) : null;
-  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel, levelGenes: level.nGenes });
+  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel, levelGenes: level.nGenes, effect: effectLabel(info) });
   return (
     <div className={`compare${sidebarOpen ? " with-sidebar" : ""}`} style={{ height, bottom }}>
       <div className="c-handle" onPointerDown={onHandleDown} title="drag to resize" />
@@ -190,7 +190,7 @@ export function ComparePanel() {
         <div className="c-matrix">
           {error && <div className="muted small c-note">could not load the comparison: {error}</div>}
           {!matrix && !error && <div className="muted small c-note">loading…</div>}
-          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(catOf(l)))} single={single ? focusLabel : null} />}
+          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(catOf(l)))} single={single ? focusLabel : null} effect={effectLabel(info)} />}
         </div>
         <div className="c-dist">
           <div className="d-head">
@@ -250,8 +250,8 @@ export function ComparePanel() {
 }
 
 /** The footer under the plot: the table's numbers for the gene in the focused level. */
-function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col: number; levelData: ComparisonData | null; levelRow: number | null; markers: boolean; levelName: string; levelGenes: number }): { parts: string[]; title: string } {
-  const { matrix, geneRow, col, levelData, levelRow, markers, levelName, levelGenes } = a;
+function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col: number; levelData: ComparisonData | null; levelRow: number | null; markers: boolean; levelName: string; levelGenes: number; effect: string }): { parts: string[]; title: string } {
+  const { matrix, geneRow, col, levelData, levelRow, markers, levelName, levelGenes, effect } = a;
   if (!matrix || geneRow == null) return { parts: [], title: "" };
   const k = matrix.levels.length;
   const at = (name: string): number | null => {
@@ -260,7 +260,7 @@ function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col:
   };
   const parts: string[] = [];
   const eff = at("effect");
-  if (eff != null) parts.push(`log2FC ${fmtEffect(eff)}`);
+  if (eff != null) parts.push(`${effect} ${fmtEffect(eff)}`);
   const padj = at("padj");
   const p = at("p");
   if (padj != null) parts.push(`padj ${fmtP(padj)}`);
@@ -279,7 +279,7 @@ function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col:
 }
 
 /** genes x levels, windowed by rows, scrolling both ways; the gene column stays put, the focused column is lit. */
-function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, labels, colors, single }: { matrix: MatrixData; rows: MatrixRow[]; stat: "effect" | "rank"; gene: string | null; focus: string; desc: boolean; onFocus: (level: string) => void; labels: string[]; colors: (string | undefined)[]; single: string | null }) {
+function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, labels, colors, single, effect }: { matrix: MatrixData; rows: MatrixRow[]; stat: "effect" | "rank"; gene: string | null; focus: string; desc: boolean; onFocus: (level: string) => void; labels: string[]; colors: (string | undefined)[]; single: string | null; effect: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [h, setH] = useState(300);
@@ -322,7 +322,7 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
     const at = (name: string) => matrix.stats[name]?.[i * k + j];
     const bits: string[] = [];
     const eff = at("effect");
-    if (eff != null && !Number.isNaN(eff)) bits.push(`log2FC ${fmtEffect(eff)}`);
+    if (eff != null && !Number.isNaN(eff)) bits.push(`${effect} ${fmtEffect(eff)}`);
     const padj = at("padj");
     if (padj != null && !Number.isNaN(padj)) bits.push(`padj ${fmtP(padj)}`);
     const pin = at("pct_in");
@@ -336,7 +336,7 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
     <div className="m-scroll" ref={ref} onScroll={(e) => setTop((e.target as HTMLDivElement).scrollTop)}>
       {focusCol >= 0 && k > 1 && <div className="m-colbg" style={{ left: GENE_W + focusCol * COL_W, height: Math.max(HEAD_H + list.length * ROW_H, h) }} />}
       <div className="m-head" style={{ gridTemplateColumns: columns, width }}>
-        <span className="m-gene">{stat === "effect" ? "Gene · log2FC" : "Gene · rank"}</span>
+        <span className="m-gene">{stat === "effect" ? `Gene · ${effect}` : "Gene · rank"}</span>
         {matrix.levels.map((lv, j) => (
           <button key={lv} className={lv === focus ? "on" : ""} onClick={() => onFocus(lv)} title={single ? `${single}: click to flip the order` : `${labels[j]}: click to sort by it and focus it`}>
             {colors[j] && <i style={{ background: colors[j] }} />}

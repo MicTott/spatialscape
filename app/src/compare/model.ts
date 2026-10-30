@@ -251,10 +251,23 @@ export function groupColors(m: Manifest, info: ComparisonInfo): string[] {
   return info.groups.map((_, i) => REGION_COLORS[i % REGION_COLORS.length]);
 }
 
+/** pct_in / pct_out are stored as fractions (the build decides per column what the tool wrote); shown as percent. */
 export function fmtPct(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
-  const pct = v <= 1 ? v * 100 : v; // Seurat writes fractions, presto percentages
+  const pct = v * 100;
   return pct >= 10 ? pct.toFixed(0) : pct.toFixed(1);
+}
+
+/** "stress vs control": the direction a positive effect means (the build writes it; older bundles: last group against the first). */
+export function contrastLabel(info: Pick<ComparisonInfo, "groups" | "contrast">): string {
+  if (info.contrast) return info.contrast;
+  const g = info.groups;
+  return g.length >= 2 ? `${g[g.length - 1]} vs ${g[0]}` : g.join(" vs ");
+}
+
+/** What the effect column measures: log2FC, or the column's own name for a regression coefficient and the like. */
+export function effectLabel(info: Pick<ComparisonInfo, "effect"> | null | undefined): string {
+  return info?.effect || "log2FC";
 }
 
 /** The level a comparison shows: the one asked for, else its first. */

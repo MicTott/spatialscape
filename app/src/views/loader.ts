@@ -160,6 +160,7 @@ export class Loader {
       });
       if (this.geneSwitchStart) {
         store.getState().set({ timings: { ...store.getState().timings, lastGeneMs: performance.now() - this.geneSwitchStart } });
+        c.geneFrameStart = this.geneSwitchStart; // the first frame drawn after this completes the measurement
         this.geneSwitchStart = 0;
       }
     }

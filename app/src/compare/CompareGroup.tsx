@@ -1,3 +1,4 @@
+import { contrastLabel } from "./model";
 /** The Comparisons group of the side panel: one radio row per comparison the dataset carries, each named as the
  *  yaml names it with what it is underneath (the annotation a marker table clusters, the condition a contrast
  *  compares, how many replicates); the group's switch opens and closes the panel under the maps. */
@@ -7,7 +8,7 @@ import type { ComparisonInfo, Manifest } from "../data/manifest";
 
 export function comparisonSummary(info: ComparisonInfo): string {
   if (info.kind === "markers") return `${info.levels.length} ${info.facet?.field ? "categories" : "clusters"} · markers`;
-  return [info.groups.join(" vs "), info.levels.length > 1 ? `${info.levels.length} levels` : null, info.nReplicates ? `${info.nReplicates} replicates` : null].filter(Boolean).join(" · ");
+  return [contrastLabel(info), info.levels.length > 1 ? `${info.levels.length} levels` : null, info.nReplicates ? `${info.nReplicates} replicates` : null].filter(Boolean).join(" · ");
 }
 
 /** What the comparison is about, in the dataset's own words. */
@@ -16,7 +17,7 @@ export function comparisonLine(m: Manifest, info: ComparisonInfo): string {
   const facet = fieldName(info.facet?.field);
   if (info.kind === "markers") return `${info.levels.length} ${facet ? facet.toLowerCase() : "cluster"}${info.levels.length === 1 ? "" : "s"}, each against the rest`;
   const split = info.split ? (m.meta?.find((k) => k.id === info.split)?.name ?? info.split) : null;
-  return [split ? (facet ? `${split} within each ${facet.toLowerCase()}` : split) : info.groups.join(" vs "), info.nReplicates ? `${info.nReplicates} replicates` : null, info.hasPseudobulk ? "pseudobulk" : null].filter(Boolean).join(" · ");
+  return [split ? (facet ? `${split} within each ${facet.toLowerCase()}` : split) : contrastLabel(info), info.nReplicates ? `${info.nReplicates} replicates` : null, info.hasPseudobulk ? "pseudobulk" : null].filter(Boolean).join(" · ");
 }
 
 export function CompareGroup() {

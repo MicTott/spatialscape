@@ -137,7 +137,7 @@ export class LayerBuilder {
     const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
     const lut = this.lut(s.color?.kind === "blend" ? `blend:${s.color.scheme}` : effectiveColormap(s.colormap, signed));
     const catColors = baseMode === 1 && colorField ? this.palette(colorField.id, s.hiddenCategories[colorField.id] ?? []) : this.palette("__none", []);
-    const sharedFilter = c.visibility.sharedFilterMax(s);
+    const sharedFilter = c.visibility.sharedFilterRange(s);
 
     for (const pane of c.panes) {
       const view = pane.id;

@@ -47,7 +47,7 @@ comparisons:
     results: de/stress_vs_control.csv      # one row per gene: gene, effect, p, padj, and a mean when there is one
     pseudobulk: de/pseudobulk_d1.csv       # genes x replicates, first column the gene, one column per replicate id
     replicates: de/mice.csv                # optional: one row per replicate: id, group, subject
-    groups: [control, stress]              # plotting and pane order; the contrast is the last against the first
+    groups: [control, stress]              # plotting and pane order; the contrast is the last against the first (shown as "stress vs control")
     units: log2 CPM                        # axis label of the replicate values
     population: { field: celltype, value: D1 MSN }   # the cells the test was fit in
     split: condition                       # the meta key whose levels are the groups (found by matching when left out)
@@ -60,7 +60,7 @@ write them, so a DESeq2, limma, edgeR, Seurat `FindMarkers`, pyDESeq2 or scanpy 
 | Role | Names tried, in order |
 |---|---|
 | gene | `gene`, `genes`, `gene_name`, `symbol`, `feature`, `names`, `gene_id`, an unnamed first column (R row names), or the first column when it holds text and nothing else is named like a gene column |
-| effect | `log2FoldChange`, `logFC`, `avg_log2FC`, `logfoldchanges`, `estimate`, `beta`, `coef` |
+| effect | `log2FoldChange`, `logFC`, `avg_log2FC`, `logfoldchanges`, `estimate`, `beta`, `coef` (the fold-change names are labelled *log2FC* in the panel; any other column is labelled by its own name, since an estimate or a coefficient is not a fold change) |
 | p | `pvalue`, `p_value`, `P.Value`, `p_val`, `PValue`, `pvals` |
 | padj | `padj`, `adj.P.Val`, `FDR`, `p_val_adj`, `pvals_adj`, `q_value` |
 | mean | `baseMean`, `AveExpr`, `logCPM`, `mean` |
@@ -101,7 +101,9 @@ comparisons:
 ```
 
 The cluster column is found by name (`cluster`, `celltype`, `cell_type`, `population`, `domain`, `group`, ...);
-`pct.1` / `pct.2` (or `pct_nz_group` / `pct_nz_reference`, `pct_in` / `pct_out`) become a *% in / out* column.
+`pct.1` / `pct.2` (or `pct_nz_group` / `pct_nz_reference`, `pct_in` / `pct_out`) become a *% in / out* column. Whether a
+column holds fractions (Seurat, scanpy) or percentages (presto) is decided once for the whole column, by its name and
+failing that by its range, never value by value; the build's notes say which reading it took.
 When the clusters are the categories of an annotation in the dataset, the levels are linked to it on their own
 (`facet: { field: celltype }` names it), which gives the viewer two things: a **markers** button on each legend row
 that opens that cluster's table, and an *only &lt;cluster&gt;* toggle in the panel that filters the map to the cluster. A

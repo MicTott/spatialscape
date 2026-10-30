@@ -22,7 +22,11 @@ export function StatusBar() {
       {errs > 0 && <span className="warn">{errs} failed</span>}
       {pending > 0 && <span className="pending">fetching {pending}…</span>}
       {(shapeHint || moleculeHint) && <span className="muted">{[shapeHint, moleculeHint].filter(Boolean).join(" · ")}</span>}
-      {debug && timings.lastGeneMs != null && <span title="time from gene selection to all samples colored">gene switch {timings.lastGeneMs.toFixed(0)} ms</span>}
+      {debug && timings.lastGeneMs != null && (
+        <span title="gene switch: time until every section's column was here (data), and until the first frame drawn with it (frame)">
+          gene switch {timings.lastGeneMs.toFixed(0)} ms data{timings.lastGeneFrameMs != null && ` · ${timings.lastGeneFrameMs.toFixed(0)} ms frame`}
+        </span>
+      )}
       {debug && <span>{timings.fps} fps</span>}
       <span className="grow" />
       <span className="muted">{focusName ? `focus: ${focusName} · Esc = all` : "dbl-click a sample to focus · ←/→ step · f = fit"}</span>

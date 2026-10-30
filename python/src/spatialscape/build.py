@@ -431,6 +431,26 @@ def staging_dir(final: Path) -> Path:
     return final.parent / f".{final.name}.building"
 
 
+def previous_dir(final: Path) -> Path:
+    """Where the sample that `final` replaced waits until the whole build has succeeded."""
+    return final.parent / f".{final.name}.previous"
+
+
+def _settle_previous(samples_dir: Path, *, restore: bool) -> None:
+    """After a build: with `restore`, every replaced sample goes back (the run failed); otherwise the replaced
+    samples are deleted (the run succeeded, the manifest names the new ones). Also run first thing, for the leavings
+    of a run that died: a `.previous` beside a sample with no sidecar means that replacement never became current."""
+    for prev in list(samples_dir.glob(".*.previous")):
+        final = samples_dir / prev.name[1 : -len(".previous")]
+        back = restore or not (final / "build.json").exists()
+        if back:
+            if final.exists():
+                shutil.rmtree(final)
+            prev.rename(final)
+        else:
+            shutil.rmtree(prev, ignore_errors=True)
+
+
 def build_sample(
     spec: SampleSpec,
     cfg: DatasetConfig,
@@ -575,8 +595,13 @@ def build_sample(
     molecules_info = _write_sample_molecules(spec, out_dir, frame, genes, sharded=sharded, log=log)
     images = _write_images(spec, out_dir, frame, xy, bbox, discovered=discovered, log=log)
 
+    # the previous sample steps aside (kept until the whole build has succeeded, see build_dataset) and the new one
+    # takes its place in one rename
     if final_dir.exists():
-        shutil.rmtree(final_dir)
+        prev = previous_dir(final_dir)
+        if prev.exists():
+            shutil.rmtree(prev)
+        final_dir.rename(prev)
     out_dir.rename(final_dir)
     return Sample(
         id=spec.id,
@@ -891,8 +916,16 @@ def build_dataset(
     (out / "samples").mkdir(parents=True, exist_ok=True)
     for stale in (out / "samples").glob(".*.building"):  # left by a run that died mid-sample
         shutil.rmtree(stale, ignore_errors=True)
+    _settle_previous(out / "samples", restore=False)
     plan = plan or plan_build(cfg, out, sharded=sharded, force=force)
-    vocab = _registry_for(cfg, plan.existing, plan.reused)
+    try:
+        return _build_dataset(cfg, out, plan, vocab=_registry_for(cfg, plan.existing, plan.reused), sharded=sharded, log=log)
+    except BaseException:
+        _settle_previous(out / "samples", restore=True)  # the old samples come back; the old manifest never left
+        raise
+
+
+def _build_dataset(cfg: DatasetConfig, out: Path, plan: BuildPlan, *, vocab: VocabRegistry, sharded: bool, log: Log) -> Manifest:
     by_id = {s.id: s for s in plan.existing.samples} if plan.existing else {}
     samples: list[Sample] = []
     built: list[tuple[Path, dict]] = []
@@ -945,6 +978,7 @@ def build_dataset(
     # time) and the old manifest intact, instead of a sample that decodes against the wrong categories.
     for d, fp in built:
         write_sidecar(d, fp)
+    _settle_previous(out / "samples", restore=False)  # the replaced samples are no longer needed
     return manifest
 
 

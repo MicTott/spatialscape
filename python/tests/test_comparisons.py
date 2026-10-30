@@ -293,3 +293,34 @@ def test_facet_levels_link_through_the_fields_aliases(tmp_path):
     assert without.facet_field is None  # no alias: only BL matches, under half of the levels
     named = resolve_comparison(ComparisonSpec(id="m", kind="markers", results=p, facet={"field": "domain"}), load_tables(spec), [], [], fields, None)
     assert named.facet_field == "domain" and [lv.population.value if lv.population else None for lv in named.levels] == [None, "BL", None]
+
+
+def test_percentages_are_decided_per_column_not_per_value():
+    import pandas as pd
+
+    from spatialscape.comparisons import as_fraction, effect_label
+
+    notes: list[str] = []
+    presto = pd.Series([0.0, 0.5, 1.0, 2.0, 100.0])
+    assert as_fraction(presto, "pct_in", notes).tolist() == [0.0, 0.005, 0.01, 0.02, 1.0]
+    seurat = pd.Series([0.0, 0.5, 1.0])
+    assert as_fraction(seurat, "pct.1", notes).tolist() == [0.0, 0.5, 1.0]
+    low = pd.Series([0.2, 0.5, 0.9])  # presto percentages that all happen to be under 1 %
+    assert as_fraction(low, "pct_in", notes).tolist() == pytest.approx([0.002, 0.005, 0.009])
+    assert as_fraction(pd.Series([3.0, 40.0]), "pct_expr", notes).tolist() == pytest.approx([0.03, 0.4])
+    assert effect_label("avg_log2FC") == "log2FC" and effect_label("logFC") == "log2FC" and effect_label("estimate") == "estimate"
+
+
+def test_comparison_json_states_the_contrast_direction_and_effect(tmp_path):
+    import json
+
+    from spatialscape.build import build_bundle
+    from spatialscape.config import load_config
+    from spatialscape.synthetic import make_synthetic
+
+    cfg = make_synthetic(tmp_path / "src", comparisons=True)  # a control-vs-stress contrast with replicates, a faceted one and a markers table
+    r = build_bundle(load_config(cfg), log=lambda *_: None)
+    docs = [json.loads(p.read_text()) for p in (r.out / "comparisons").glob("*/comparison.json")]
+    assert docs and all(d["effect"] == "log2FC" for d in docs)
+    for d in docs:  # a contrast with named groups states its direction; one without (or a markers table) states none
+        assert d["contrast"] == (f"{d['groups'][-1]} vs {d['groups'][0]}" if len(d["groups"]) >= 2 else None)

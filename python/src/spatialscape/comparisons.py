@@ -29,7 +29,7 @@ from .manifest import ComparisonInfo, FacetInfo, LevelInfo, MetaKey, PopulationI
 
 Log = Callable[[str], None]
 
-COMPARISONS_RECIPE = 3  # 2: every comparison is one or more levels under levels/<id>/; 3: + matrix.zarr (genes x levels)
+COMPARISONS_RECIPE = 4  # 2: levels under levels/<id>/; 3: + matrix.zarr (genes x levels); 4: pct_in/pct_out stored as fractions, contrast and effect label in comparison.json
 LEVEL_TOKEN = "{level}"
 MAX_LEVELS = 500
 TABLE_SUFFIXES = (".csv", ".tsv", ".txt", ".parquet")
@@ -123,6 +123,38 @@ def bh_sorted_order(res: pd.DataFrame) -> np.ndarray:
     eff = -np.abs(res["effect"].to_numpy(dtype=float))
     key = [np.nan_to_num(eff, nan=0.0), np.where(np.isnan(p), np.inf, p), np.where(np.isnan(padj), np.inf, padj)]
     return np.lexsort(key)
+
+
+PERCENT_COLUMNS = {"pct_in", "pct_out", "pct.in", "pct.out", "pct_group", "pct_reference"}  # presto: 0..100
+FRACTION_COLUMNS = {"pct.1", "pct.2", "pct_1", "pct_2", "pct_nz_group", "pct_nz_reference"}  # Seurat, scanpy: 0..1
+LOG2FC_COLUMNS = {"log2FoldChange", "logFC", "avg_log2FC", "log2fc", "log2_fold_change", "logfoldchanges", "summary.logFC", "mean_logFC"}
+
+
+def as_fraction(values: pd.Series, column: str, notes: list[str]) -> pd.Series:
+    """pct_in / pct_out as fractions (0..1), decided once for the whole column: by the tool's convention when the
+    column name is a known one, else by the column's range. Never value by value: presto's 0.5 means 0.5 % and
+    Seurat's 0.5 means 50 %, and a table where every gene is under 1 % must not flip to fractions row by row."""
+    top = float(values.max(skipna=True)) if values.notna().any() else 0.0
+    if column in PERCENT_COLUMNS:
+        return values / 100.0
+    if column in FRACTION_COLUMNS:
+        if top > 1.0:
+            notes.append(f"{column!r} holds values above 1: read as percentages, not the fractions its name suggests")
+            return values / 100.0
+        return values
+    if top > 1.0:
+        notes.append(f"{column!r}: values above 1, read as percentages")
+        return values / 100.0
+    notes.append(f"{column!r}: no value above 1, read as fractions (divide by 100 yourself if they are percentages)")
+    return values
+
+
+def effect_label(column: str | None) -> str:
+    """What the effect column measures, for the viewer's labels: log2FC for the fold-change columns the tools write,
+    the column's own name for anything else (estimate, beta, coef: not a fold change)."""
+    if column is None or column in LOG2FC_COLUMNS or column.lower() in {"log2fc", "logfc"}:
+        return "log2FC"
+    return column
 
 
 def level_paths(path: Path | str | None) -> dict[str, Path] | None:
@@ -247,6 +279,9 @@ def load_tables(spec: ComparisonSpec, union: set[str] | None = None) -> LoadedCo
     for role in ("effect", "p", "padj", "mean", "pct_in", "pct_out", "score"):
         if role in cols:
             res[role] = pd.to_numeric(df[cols[role]], errors="coerce")
+    for role in ("pct_in", "pct_out"):
+        if role in res:
+            res[role] = as_fraction(res[role], cols[role], notes)
     res["level"] = df[facet_col].astype(str).str.strip() if facet_col is not None else ""
     res = res[(res["gene"] != "") & (res["gene"] != "nan")]
     if "effect" in res:
@@ -610,6 +645,8 @@ def write_comparison(out: Path, spec: ComparisonSpec, samples: list[Sample], met
         description=spec.description,
         path=f"comparisons/{spec.id}",
         groups=rc.groups,
+        contrast=f"{rc.groups[-1]} vs {rc.groups[0]}" if len(rc.groups) >= 2 else None,
+        effect=effect_label(loaded.columns.get("effect")),
         units=spec.units,
         population=PopulationInfo(field=spec.population.field, value=spec.population.value) if spec.population else None,
         split=rc.split,

@@ -182,7 +182,7 @@ export interface ViewerState {
   recentGenes: string[]; // last genes picked in the search box (not in the URL)
   debug: boolean; // ?debug=1: show timings in the status bar
   help: boolean; // keyboard shortcut overlay
-  timings: { lastGeneMs: number | null; fps: number };
+  timings: { lastGeneMs: number | null; lastGeneFrameMs: number | null; fps: number }; // gene switch: data ready, first frame drawn with it
 
   set: (p: Partial<ViewerState>) => void;
   togglePlatform: (platform: string, all: string[]) => void;
@@ -307,7 +307,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   recentGenes: [],
   debug: false,
   help: false,
-  timings: { lastGeneMs: null, fps: 0 },
+  timings: { lastGeneMs: null, lastGeneFrameMs: null, fps: 0 },
 
   set: (p) => set(p),
   togglePlatform: (platform, all) => {

@@ -204,3 +204,38 @@ def test_show_takes_sample_metadata_and_comparisons_from_the_session(tmp_path, c
     assert s2.key == s.key and {c["id"] for c in json.loads((s2.bundle / "manifest.json").read_text())["comparisons"]} == {"stress_vs_control", "again"}
     _post(s.api, s.key, {"C": [0, 1]})
     assert len(s.selection()) == 2  # selections still map after comparisons were added
+
+
+def test_fingerprint_sees_the_columns_of_sparse_values():
+    import anndata as ad
+    import numpy as np
+    import scipy.sparse as sp
+
+    from spatialscape.session import _hash_adata
+
+    data, indptr = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32), np.array([0, 2, 4])
+    a = ad.AnnData(sp.csr_matrix((data, np.array([0, 1, 0, 1]), indptr), shape=(2, 2)))
+    b = ad.AnnData(sp.csr_matrix((data.copy(), np.array([1, 0, 1, 0]), indptr.copy()), shape=(2, 2)))
+    assert _hash_adata(a, {}, obs_columns=[], obsm_key=None, layer="X") != _hash_adata(b, {}, obs_columns=[], obsm_key=None, layer="X")
+
+
+def test_a_live_owner_keeps_its_lock_however_old(tmp_path):
+    import os
+    import sys
+    import time
+
+    import pytest
+
+    from spatialscape.session import _build_lock
+
+    if sys.platform == "win32":
+        pytest.skip("liveness is not asked on Windows")
+    out = tmp_path / "bundle"
+    out.mkdir()
+    lock = out.with_name(out.name + ".lock")
+    lock.write_text(str(os.getpid()))  # a live owner: this process
+    old = time.time() - 10_000
+    os.utime(lock, (old, old))
+    with pytest.raises(TimeoutError), _build_lock(out, lambda *_: None, timeout=0.3):
+        pass
+    assert lock.exists() and lock.read_text() == str(os.getpid())

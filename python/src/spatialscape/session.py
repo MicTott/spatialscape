@@ -58,8 +58,10 @@ def _hash_bytes(h, x) -> None:
 
 
 def _hash_adata(adata, params: dict, *, obs_columns: list[str], obsm_key: str | None, layer: str) -> str:
-    """A digest of the data that matters for the viewer: names, the used obs columns, coordinates and a strided
-    sample of the matrix. Cheap enough to run on every call; strict enough that an edited object rebuilds."""
+    """A digest of the data that matters for the viewer: names, the used obs columns, coordinates, and the matrix
+    through its index pointer and a strided sample of its values and column indices (about 200,000 of each). Cheap
+    enough to run on every call; an edit that touches only unsampled values is the one case it misses, which is
+    what `show(..., rebuild=True)` is for."""
     h = hashlib.sha1()
     _hash_bytes(h, json.dumps(params, sort_keys=True, default=str))
     _hash_bytes(h, adata.shape)
@@ -78,10 +80,15 @@ def _hash_adata(adata, params: dict, *, obs_columns: list[str], obsm_key: str | 
         return h.hexdigest()[:16]
     X = adata.X if layer == "X" else adata.layers[layer]
     if hasattr(X, "nnz") and hasattr(X, "data"):
-        _hash_bytes(h, X.nnz)
-        _hash_bytes(h, np.asarray(X.data[:: max(1, X.nnz // 200_000)]))
+        # a strided sample of the stored values AND the columns they sit in (the same values in other columns are
+        # other data), plus the whole index pointer; sampled, so `show(..., rebuild=True)` exists for the rest
+        step = max(1, X.nnz // 200_000)
+        _hash_bytes(h, f"{getattr(X, 'format', '')}:{X.nnz}:{X.dtype}")
+        _hash_bytes(h, np.asarray(X.data[::step]))
+        if hasattr(X, "indices"):
+            _hash_bytes(h, np.asarray(X.indices[::step]))
         if hasattr(X, "indptr"):
-            _hash_bytes(h, np.asarray(X.indptr[:: max(1, len(X.indptr) // 50_000)]))
+            _hash_bytes(h, np.asarray(X.indptr))
     else:  # dense (or array-like): a strided sample of rows, never the whole matrix
         step = max(1, adata.n_obs // 500)
         arr = np.asarray(X[::step])
@@ -201,7 +208,9 @@ def _build_lock(out: Path, log: Log, *, timeout: float = 7200) -> Iterator[bool]
                 age = time.time() - lock.stat().st_mtime
             except (OSError, ValueError):
                 pid, age = 0, 0.0
-            if (pid and not _alive(pid)) or age > timeout:
+            # a lock is stale when its owner is gone; on Windows, where liveness cannot be asked, when it is old.
+            # A slow build on a live process keeps its lock however long it takes.
+            if (pid and not _alive(pid)) or (sys.platform == "win32" and age > timeout):
                 claim = lock.with_name(f"{lock.name}.stale{os.getpid()}")
                 try:
                     os.replace(lock, claim)  # atomic: only one waiter wins the stale lock, the others see it gone and retry
@@ -407,9 +416,10 @@ class Session:
             pass
         return sum(len(g.get("polygons") or []) for g in groups)
 
-    def regions(self) -> pd.Series | dict[str, str]:
-        """The region each cell was drawn into (the Regions panel of the viewer), as a pandas Series indexed by obs
-        names (None outside every region) for an in-memory object, or {id: region} for data shown from a path."""
+    def regions(self) -> pd.Series:
+        """The region each cell was drawn into (the Regions panel of the viewer): a pandas Series named "region".
+        For an in-memory object it is indexed by obs names (None outside every region); for data shown from a path
+        it holds the cells inside a region, indexed by (sample id, cell id), since two samples may share barcodes."""
         doc = self.raw_regions()
         names = [g["name"] for g in doc.get("groups") or []]
         per_sample = {sid: np.frombuffer(base64.b64decode(b64), dtype="<u2") for sid, b64 in (doc.get("codes") or {}).items()}
@@ -424,13 +434,15 @@ class Session:
                 rows = self.rows[sid][self._orders[sid][hit]]
                 out.iloc[rows] = [names[c] for c in codes[hit]]
             return out
-        result: dict[str, str] = {}
+        keys: list[tuple[str, str]] = []
+        vals: list[str] = []
         for sid, codes in per_sample.items():
             if sid not in self._ids:
                 self._ids[sid] = self._ids_of(sid)
             for i in np.flatnonzero(codes < len(names)):
-                result[str(self._ids[sid][i])] = names[codes[i]]
-        return result
+                keys.append((sid, str(self._ids[sid][i])))
+                vals.append(names[codes[i]])
+        return pd.Series(vals, index=pd.MultiIndex.from_tuples(keys, names=["sample", "cell_id"]) if keys else pd.MultiIndex.from_arrays([[], []], names=["sample", "cell_id"]), name="region", dtype=object)
 
     def selection(self, *, as_mask: bool = False):
         """The cells inside the last lasso. For an in-memory object: their obs names (a pandas Index you can index
@@ -485,6 +497,7 @@ def show(
     meta: dict[str, str] | None = None,
     comparisons: list[dict] | None = None,
     verbose: bool = False,
+    rebuild: bool = False,
     log: Log = print,
 ) -> Session:
     """Show an object in the viewer and return a Session (displays inline in notebooks; `.url` elsewhere).
@@ -497,6 +510,8 @@ def show(
     the canvas by these keys and comparisons link their replicates through them. comparisons: results of tests
     you ran, each a dict with the arguments of Session.add_comparison(), added once the object is built.
     regions: a drawing saved by save_regions() or the viewer's *save* button, restored when the viewer opens.
+    rebuild: build again even when the object looks unchanged. The check that skips a rebuild hashes the names,
+    the used columns, the coordinates and a sample of the matrix; an edit it cannot see is what this is for.
     """
     from .build import build_dataset
 
@@ -518,6 +533,8 @@ def show(
         cfg, rows = _config_for_adata(adata, key="pending", name=name, coords=coords, platform=platform, sample=sample, fields=fields, color=color, layer=layer, normalized=normalized, meta=meta)
         used_cols = sorted({c for c in [sample, color] if c} | set((meta or {}).values()) | {c for sp in cfg.samples for c in (list(map(str, adata.obs.columns)) if sp.fields == "auto" else sp.fields.values())})
         key = _hash_adata(adata, params, obs_columns=used_cols, obsm_key=coords[5:] if coords.startswith("obsm/") else None, layer=layer)
+        if rebuild:
+            key = f"{key}-{int(time.time())}"  # a fresh folder: nothing of the earlier build is reused
         cfg.id = key
         for sp in cfg.samples:
             sp.path = Path(f"memory:{key}")

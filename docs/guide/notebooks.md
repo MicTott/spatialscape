@@ -46,6 +46,7 @@ Drawn regions (the Regions panel: named groups of lassos across sections) come b
 
 ```python
 adata.obs["region"] = s.regions()    # a Series aligned with adata.obs: the group name, or None
+                                     # (for data shown from a path: the cells inside a region, indexed by (sample, cell id))
 s.save_regions("amygdala-regions.json")   # the drawing itself (the viewer's *save* button writes the same file)
 ```
 
@@ -84,6 +85,11 @@ and its manifest without rebuilding the object, so iterating on a test costs not
 same name replaces the previous one. Replicates find their sections through the `meta` keys (a `mouse` id that
 matches a section's `meta.mouse`), the split key follows from the groups, and the panel does the rest:
 click a gene in the table, see its dots per mouse and the gene on every section side by side.
+
+Whether the object changed since the last `show()` is decided from a fingerprint: the names, the columns in use, the
+coordinates, and the matrix through its index pointer and a sample of its values and column indices. An edit that
+touches only values outside that sample is the one thing it cannot see; `show(adata, rebuild=True)` builds again
+regardless.
 
 ## From R
 

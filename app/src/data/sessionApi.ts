@@ -18,6 +18,23 @@ function datasetKey(datasetUrl: string): string {
 }
 
 let lastPosted = "";
+/** One id per page load: the session server keeps the newest version from the same viewer and lets a new viewer start over. */
+const viewerId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/** POST with one retry; false when the server did not take it (the caller may try again later). */
+async function post(url: string, body: unknown): Promise<boolean> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.ok) return true;
+    } catch {
+      // network error: retried once below
+    }
+    await new Promise((res) => setTimeout(res, 400));
+  }
+  console.warn(`spatialscape: the session did not take ${url}`);
+  return false;
+}
 
 /** Region membership for a Python session: group names and colours plus per-sample codes (Uint16, base64). */
 export interface RegionsDoc {
@@ -47,8 +64,8 @@ export async function postRegions(datasetUrl: string | null, version: number, gr
     for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     return btoa(s);
   };
-  const body = { dataset: datasetKey(datasetUrl), version, groups, codes: Object.fromEntries([...codes].map(([id, u]) => [id, enc(u)])) };
-  await fetch(`${api}/regions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => undefined);
+  const body = { dataset: datasetKey(datasetUrl), version, viewer: viewerId, groups, codes: Object.fromEntries([...codes].map(([id, u]) => [id, enc(u)])) };
+  await post(`${api}/regions`, body);
 }
 
 /** Post the selection once per version (the summary is recomputed as arrays arrive; the cells do not change). */
@@ -57,7 +74,6 @@ export async function postSelection(datasetUrl: string | null, version: number, 
   if (!api || !datasetUrl) return;
   const stamp = `${datasetUrl}|${version}|${samples ? "sel" : "none"}`;
   if (stamp === lastPosted) return;
-  lastPosted = stamp;
-  const body = { dataset: datasetKey(datasetUrl), version, samples: Object.fromEntries([...(samples ?? new Map())].map(([id, idx]) => [id, Array.from(idx)])) };
-  await fetch(`${api}/selection`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => undefined);
+  const body = { dataset: datasetKey(datasetUrl), version, viewer: viewerId, samples: Object.fromEntries([...(samples ?? new Map())].map(([id, idx]) => [id, Array.from(idx)])) };
+  if (await post(`${api}/selection`, body)) lastPosted = stamp; // a failed post is not remembered as done: the next summary posts again
 }

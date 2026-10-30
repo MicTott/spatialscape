@@ -30,7 +30,7 @@ export class Stats {
     const counts = new Array<number>(n).fill(0);
     const s = store.getState();
     const hidden = c.hiddenSampleSet(s);
-    const shared = c.visibility.sharedFilterMax(s);
+    const shared = c.visibility.sharedFilterRange(s);
     for (const sd of c.cache.samples.values()) {
       if (hidden.has(sd.id)) continue;
       const codes = sd.cat.get(field);
@@ -51,7 +51,7 @@ export class Stats {
     const unmeasured = { cells: 0, samples: 0 };
     const c = this.c;
     const hiddenSamples = c.hiddenSampleSet(s);
-    const shared = c.visibility.sharedFilterMax(s);
+    const shared = c.visibility.sharedFilterRange(s);
     for (const sd of c.cache.samples.values()) {
       if (hiddenSamples.has(sd.id)) continue;
       const fs = c.visibility.filterState(sd, s, shared);
@@ -63,17 +63,18 @@ export class Stats {
       if (fs.state !== "ok") continue;
       // the histogram is in the units the slider is set in; the legend's hidden categories and hidden zeros decide the rest
       const hidden = hiddenSetOf(s);
+      const gene = s.hideZeros && s.color?.kind === "gene" ? s.color.gene : null;
       const other = cellTest({
         hidden,
         cat: hidden && s.color?.kind === "field" ? sd.cat.get(s.color.field) : undefined,
         filter: { state: "none" },
-        zeros: s.hideZeros && s.color?.kind === "gene" ? c.cache.getGeneSync(sd.id, s.color.gene)?.value : undefined,
+        zeros: gene ? c.cache.getGeneSync(sd.id, gene)?.value : undefined,
+        isZero: gene ? (c.visibility.zeroTest(sd, gene) ?? undefined) : undefined,
       });
       const arr = fs.values;
-      const toUnit = 255 / fs.scale;
       evaluated += arr.length;
       for (let i = 0; i < arr.length; i++) {
-        bins[Math.min(63, (arr[i] * toUnit) >> 2)]++;
+        bins[Math.max(0, Math.min(63, Math.floor(fs.unit(arr[i])) >> 2))]++;
         if (arr[i] >= fs.lo && arr[i] <= fs.hi && (!other || other(i))) visible++;
       }
     }
@@ -118,7 +119,7 @@ export class Stats {
     const hist = new Float64Array(n * BINS);
     const per: Record<string, { sum: Float64Array; cnt: Float64Array; pos: Float64Array }> = {};
     const bk = BINS / (vmax - vmin);
-    const shared = c.visibility.sharedFilterMax(s);
+    const shared = c.visibility.sharedFilterRange(s);
     const signed = parts.some((p) => p.gmin < 0); // a score that takes negative values has no "expressing" fraction
     for (const { id, g, cat, gmin, gmax } of parts) {
       const p = (per[id] = { sum: new Float64Array(n), cnt: new Float64Array(n), pos: new Float64Array(n) });

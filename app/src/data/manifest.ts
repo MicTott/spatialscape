@@ -76,6 +76,8 @@ export interface ComparisonInfo {
   description?: string | null;
   path: string;
   groups: string[]; // pane and plotting order; the contrast is the last against the first (empty for markers)
+  contrast?: string | null; // "<last group> vs <first group>", written by the build
+  effect?: string; // what the effect column measures: log2FC, or the column's name (estimate, beta, ...)
   units?: string | null;
   population?: { field: string; value: string } | null;
   split?: string | null; // sample meta key whose levels are the groups

@@ -258,3 +258,35 @@ def test_server_keeps_connections_open_for_chunk_bursts(bundle):
         conn.close()
     finally:
         httpd.shutdown()
+
+
+def test_session_posts_come_from_the_local_viewer_and_the_newest_wins(bundle, fake_app):
+    import json
+    import threading
+    import urllib.error
+    import urllib.request
+
+    from spatialscape.serve import make_server
+
+    srv = make_server(bundle.parent, port=0, app_dir=fake_app, session=True)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+
+    def post(doc, origin=None):
+        req = urllib.request.Request(f"{base}/_api/selection", data=json.dumps(doc).encode(), headers={"Content-Type": "application/json", **({"Origin": origin} if origin else {})}, method="POST")
+        try:
+            return urllib.request.urlopen(req).status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    try:
+        assert post({"dataset": "d", "version": 2, "viewer": "v1", "samples": {"a": [1]}}) == 204
+        assert post({"dataset": "d", "version": 1, "viewer": "v1", "samples": {"a": [9]}}) == 204  # late, older: kept out
+        held = json.loads(urllib.request.urlopen(f"{base}/_api/selection?d=d").read())
+        assert held["version"] == 2 and held["samples"] == {"a": [1]}
+        assert post({"dataset": "d", "version": 0, "viewer": "v2", "samples": {}}) == 204  # a new page load starts over
+        assert json.loads(urllib.request.urlopen(f"{base}/_api/selection?d=d").read())["version"] == 0
+        assert post({"dataset": "d", "version": 5, "viewer": "v2", "samples": {}}, origin="https://evil.example") == 403
+        assert post({"dataset": "d", "version": 5, "viewer": "v2", "samples": {}}, origin=base) == 204
+    finally:
+        srv.shutdown()

@@ -70,7 +70,7 @@ export class Selection {
     const samples = new Map<string, Uint32Array>();
     const highlight = new Map<string, Float32Array>();
     const s = store.getState();
-    const shared = c.visibility.sharedFilterMax(s);
+    const shared = c.visibility.sharedFilterRange(s);
     for (const [id, p] of L.placements) {
       if (!intersects(p.worldBbox, pb)) continue;
       const sd = c.cache.samples.get(id);

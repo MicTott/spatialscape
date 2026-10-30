@@ -124,8 +124,10 @@ const api = {
       try {
         const gminArr = await zarr.open.v3(exprRoot.resolve("gmin"), { kind: "array" });
         gmin = new Float32Array((await zarr.get(gminArr as zarr.Array<"float32", zarr.FetchStore>)).data as Float32Array);
-      } catch {
-        // bundles built before signed features existed: every feature starts at 0
+      } catch (e) {
+        // only a bundle built before signed features existed has no gmin array; anything else (a failed request, a
+        // damaged array) must not pass as "every feature starts at 0"
+        if (!(e instanceof zarr.NotFoundError)) throw e;
       }
       const h: Handles = {
         base,

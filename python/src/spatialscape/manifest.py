@@ -218,6 +218,8 @@ class ComparisonInfo(_Model):
     description: str | None = None
     path: str  # comparisons/<id>, relative to the bundle
     groups: list[str]  # pane and plotting order; the contrast is the last against the first
+    contrast: str | None = None  # "<last group> vs <first group>": the direction a positive effect means
+    effect: str = "log2FC"  # what the effect column measures: log2FC, or the column's name (estimate, beta, ...)
     units: str | None = None  # axis label of the replicate values
     population: PopulationInfo | None = None
     split: str | None = None  # sample meta key whose levels are the groups
