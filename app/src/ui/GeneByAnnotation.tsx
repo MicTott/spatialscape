@@ -64,8 +64,14 @@ export function GeneByAnnotation() {
                 <em>{r.mean.toFixed(2)}</em>
               </span>
               <span className="dp-dot" title={`${r.n.toLocaleString()} cells`}>
-                <i style={{ width: 4 + 10 * r.frac, height: 4 + 10 * r.frac }} />
-                {(100 * r.frac).toFixed(0)}
+                {Number.isFinite(r.frac) ? (
+                  <>
+                    <i style={{ width: 4 + 10 * r.frac, height: 4 + 10 * r.frac }} />
+                    {(100 * r.frac).toFixed(0)}
+                  </>
+                ) : (
+                  <span className="muted">–</span>
+                )}
               </span>
             </div>
           ))}
@@ -102,7 +108,7 @@ export function GeneByAnnotation() {
                     const c = r.perSample[sid];
                     const t = c && stats.maxMean ? c.mean / stats.maxMean : 0;
                     return (
-                      <td key={sid} style={{ background: c ? `rgba(64,196,255,${0.08 + 0.85 * t})` : "transparent" }} title={c ? `${c.mean.toFixed(2)} · ${(100 * c.frac).toFixed(0)}% of ${c.n.toLocaleString()}` : "no cells"}>
+                      <td key={sid} style={{ background: c ? `rgba(64,196,255,${0.08 + 0.85 * t})` : "transparent" }} title={c ? `${c.mean.toFixed(2)}${Number.isFinite(c.frac) ? ` · ${(100 * c.frac).toFixed(0)}%` : ""} of ${c.n.toLocaleString()}` : "no cells"}>
                         {c ? c.mean.toFixed(1) : ""}
                       </td>
                     );

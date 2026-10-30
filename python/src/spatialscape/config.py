@@ -343,12 +343,29 @@ class ComparisonSpec(_Model):
         return v
 
 
+def check_path_id(v: str, what: str) -> str:
+    """An id that becomes a folder name (dataset, sample, comparison): one path component, nothing that could
+    step out of the bundle. Display names are free; ids are not."""
+    if not isinstance(v, str) or not v.strip():
+        raise ValueError(f"{what}: the id is empty")
+    if v in (".", "..") or "/" in v or "\\" in v or "\0" in v or v.startswith("~"):
+        raise ValueError(f"{what} {v!r}: an id is one folder name; it cannot hold a path separator or be `.` / `..`")
+    if v.startswith("."):
+        raise ValueError(f"{what} {v!r}: an id cannot start with a dot (dot-folders are the build's own staging areas)")
+    return v
+
+
 class SampleSpec(_Model):
     """One sample. In dataset.yaml an entry may instead carry `glob:` and templated strings
     ("{name}", "{stem}", "{dir}", "{i}") that expand into one SampleSpec per match; `platforms.<platform>`
     and `defaults` blocks fill in keys the entry omits."""
 
     id: str
+
+    @field_validator("id")
+    @classmethod
+    def _path_id(cls, v: str) -> str:
+        return check_path_id(v, "sample id")
     name: str | None = None
     platform: Platform
     kind: SampleKind = "spatial"
@@ -481,6 +498,11 @@ class DatasetConfig(_Model):
     """Top-level dataset.yaml. `samples` are expanded (globs, templates, defaults) by `load_config`."""
 
     id: str
+
+    @field_validator("id")
+    @classmethod
+    def _path_id(cls, v: str) -> str:
+        return check_path_id(v, "dataset id")
     name: str
     description: str | None = None
     default_gene: str | None = None

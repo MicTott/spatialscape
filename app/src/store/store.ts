@@ -173,7 +173,9 @@ export interface ViewerState {
   hover: HoverInfo | null;
   categoryCounts: Record<string, number[]>;
   filterHistogram: number[] | null;
-  visibleCount: number | null;
+  visibleCount: number | null; // cells shown (drawn samples, after the filter, hidden categories and hidden zeros)
+  filterEvaluated: number | null; // cells of drawn samples the filter was applied to
+  filterUnmeasured: { cells: number; samples: number } | null; // cells of drawn samples without the filter's gene or field
   geneMax: number; // max gmax of current gene across loaded samples (legend labels)
   geneMin: number; // min gmin across loaded samples: 0, or negative for signed features (module scores, motif deviations)
   scalePerSample: boolean; // gene colors: each sample stretched to its own max instead of one shared scale
@@ -297,6 +299,8 @@ export const store = createStore<ViewerState>((set, get) => ({
   categoryCounts: {},
   filterHistogram: null,
   visibleCount: null,
+  filterEvaluated: null,
+  filterUnmeasured: null,
   geneMax: 0,
   geneMin: 0,
   scalePerSample: false,

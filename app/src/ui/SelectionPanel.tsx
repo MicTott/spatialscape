@@ -39,12 +39,14 @@ export function SelectionPanel({ controller }: { controller: () => ViewerControl
                 <b>{sum.gene.mean.toFixed(2)}</b> <span className="muted">vs {sum.gene.meanAll.toFixed(2)} overall</span>
               </td>
             </tr>
-            <tr>
-              <td>expressing</td>
-              <td>
-                <b>{(100 * sum.gene.frac).toFixed(0)}%</b> <span className="muted">vs {(100 * sum.gene.fracAll).toFixed(0)}%</span>
-              </td>
-            </tr>
+            {Number.isFinite(sum.gene.frac) && (
+              <tr>
+                <td>expressing</td>
+                <td>
+                  <b>{(100 * sum.gene.frac).toFixed(0)}%</b> <span className="muted">vs {(100 * sum.gene.fracAll).toFixed(0)}%</span>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}

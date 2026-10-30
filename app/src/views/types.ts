@@ -26,3 +26,8 @@ export function sameChannel(a: FilterSpec, b: FilterSpec) {
 }
 
 export const fmtValue = (v: number) => (Math.abs(v) >= 1000 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2));
+
+/** One CSV line: a field with a comma, quote or line break is quoted, quotes doubled. */
+export function csvLine(fields: (string | number)[]): string {
+  return fields.map((f) => (/[",\r\n]/.test(String(f)) ? `"${String(f).replace(/"/g, '""')}"` : String(f))).join(",");
+}

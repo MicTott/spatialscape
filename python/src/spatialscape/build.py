@@ -426,6 +426,11 @@ def _write_images(
     return images
 
 
+def staging_dir(final: Path) -> Path:
+    """Where a sample is built before it replaces `final`: a dot-folder next to it (never listed by the manifest)."""
+    return final.parent / f".{final.name}.building"
+
+
 def build_sample(
     spec: SampleSpec,
     cfg: DatasetConfig,
@@ -457,6 +462,10 @@ def build_sample(
             if col not in adata.obs:
                 raise KeyError(f"sample {spec.id}: obs column {col!r} (field {fid}) not found")
             vocab.declare(infer_field_spec(fid, adata, col))
+    # Built in a staging folder beside the destination and moved into place at the end, so a failure anywhere below
+    # leaves the previous sample (and the manifest that points at it) exactly as it was.
+    final_dir = out_dir
+    out_dir = staging_dir(final_dir)
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
@@ -566,6 +575,9 @@ def build_sample(
     molecules_info = _write_sample_molecules(spec, out_dir, frame, genes, sharded=sharded, log=log)
     images = _write_images(spec, out_dir, frame, xy, bbox, discovered=discovered, log=log)
 
+    if final_dir.exists():
+        shutil.rmtree(final_dir)
+    out_dir.rename(final_dir)
     return Sample(
         id=spec.id,
         name=spec.name or spec.id,
@@ -877,6 +889,8 @@ def build_dataset(
     samples the yaml no longer lists, and rewrite the dataset-level files."""
     out = Path(out)
     (out / "samples").mkdir(parents=True, exist_ok=True)
+    for stale in (out / "samples").glob(".*.building"):  # left by a run that died mid-sample
+        shutil.rmtree(stale, ignore_errors=True)
     plan = plan or plan_build(cfg, out, sharded=sharded, force=force)
     vocab = _registry_for(cfg, plan.existing, plan.reused)
     by_id = {s.id: s for s in plan.existing.samples} if plan.existing else {}

@@ -48,6 +48,15 @@ Samples that don't carry the selected feature are drawn in grey ("not measured")
 
 Independent of coloring: keep cells whose gene expression or continuous value falls in a range (with a live histogram), or cells in chosen categories of an annotation. The map, counts and dot plot all respect it. The URL carries it as `fl=`.
 
+What a filter and the numbers around it count: a cell is *shown* when its section is on screen, its category is not
+hidden in the legend, it passes the filter, and (with *hide zeros* on) it expresses the gene on screen. Hover and the
+lasso see only shown cells, so a selection never contains a cell you could not see. The legend counts cells of each
+category among the sections on screen that pass the filter (a category you hid keeps its count); the dot plot and the
+filter panel's *shown* line use the same population. A gene filter is set on one scale across sections, the largest
+per-section maximum, like the colour scale, so the same expression value passes everywhere; with *scale each sample
+to its own max* it is per section. A section that does not measure the filter's gene or annotation shows no cells
+while the filter is on, and the panel says how many cells that hides.
+
 ## Expression by annotation
 
 When coloring by a gene, this panel shows mean expression and percent expressing per category of any annotation across the visible samples, with a per-sample heatmap toggle. Clicking a row filters the map to that category; several rows combine.

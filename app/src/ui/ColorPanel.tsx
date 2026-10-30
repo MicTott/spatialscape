@@ -175,6 +175,9 @@ export function FilterPanel({ genes }: { genes: string[] }) {
   const filter = useViewer((s) => s.filter);
   const hist = useViewer((s) => s.filterHistogram);
   const visible = useViewer((s) => s.visibleCount);
+  const evaluated = useViewer((s) => s.filterEvaluated);
+  const unmeasured = useViewer((s) => s.filterUnmeasured);
+  const perSample = useViewer((s) => s.scalePerSample);
   const colorGene = useViewer((s) => (s.color?.kind === "gene" ? s.color.gene : null));
   const total = manifest.samples.reduce((a, s) => a + s.nObs, 0);
   const contFields = manifest.fields.filter((f) => f.type === "continuous");
@@ -229,8 +232,10 @@ export function FilterPanel({ genes }: { genes: string[] }) {
           {hist && <Histogram bins={hist} range={filter.range} />}
           <RangeSlider value={filter.range} onChange={(r) => setF({ ...filter, range: r })} label="keep" />
           {visible != null && (
-            <div className="muted small">
-              {visible.toLocaleString()} of {total.toLocaleString()} cells pass
+            <div className="muted small" title="Cells of the sections on screen that pass the filter and are not hidden in the legend">
+              {visible.toLocaleString()} of {(evaluated ?? total).toLocaleString()} cells shown
+              {unmeasured && ` · ${unmeasured.cells.toLocaleString()} cells in ${unmeasured.samples} section${unmeasured.samples === 1 ? "" : "s"} not measured, hidden`}
+              {filter.kind === "gene" && !perSample && " · one scale for every section"}
             </div>
           )}
         </>

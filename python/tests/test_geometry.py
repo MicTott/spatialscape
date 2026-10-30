@@ -31,3 +31,22 @@ def test_microns_error_names_the_platform_shortcuts():
     sinput = SampleInput(adata=ad.AnnData(np.zeros((3, 1), dtype=np.float32)), coords=np.zeros((3, 2)), gene_names=np.array(["G"]))
     with pytest.raises(ValueError, match=r"`platform: xenium` / `merfish`.*already_microns: true.*Visium HD"):
         microns_per_unit(spec, sinput)
+
+
+def test_spot_spacing_rule_is_visium_only():
+    """`spot_nn_spacing_level0_px` in uns gives the scale for a Visium array; a Visium HD object carrying the same key
+    must not get the 100 um rule (its neighbour spacing is the bin pitch, not 100 um)."""
+    import anndata as ad
+    import pytest
+
+    from spatialscape.config import MicronsSpec, SampleSpec
+    from spatialscape.geometry import microns_per_unit
+    from spatialscape.readers import SampleInput
+
+    def sinput():
+        return SampleInput(adata=ad.AnnData(np.zeros((3, 1), dtype=np.float32)), coords=np.zeros((3, 2)), gene_names=np.array(["G"]), uns={"spot_nn_spacing_level0_px": 200.0})
+
+    assert microns_per_unit(SampleSpec(id="v", platform="visium", path="x.h5ad", microns=MicronsSpec()), sinput()) == 0.5
+    assert microns_per_unit(SampleSpec(id="o", platform="other", path="x.h5ad", microns=MicronsSpec()), sinput()) == 0.5  # an object shown from a notebook
+    with pytest.raises(ValueError, match="Visium HD"):
+        microns_per_unit(SampleSpec(id="hd", platform="visium_hd", path="x.h5ad", microns=MicronsSpec()), sinput())

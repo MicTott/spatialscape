@@ -24,6 +24,7 @@ import { Loader } from "./loader";
 import { computePanes, paneInfo, paneRects, STACK_BELOW, unassignedSamples, type Pane } from "./panes";
 import { Selection } from "./selection";
 import { Stats } from "./stats";
+import { Visibility } from "./visibility";
 import { composePNG } from "./exportPng";
 import { sameChannel } from "./types";
 
@@ -45,6 +46,7 @@ export class ViewerController {
   readonly loader = new Loader(this);
   readonly layersBuilder = new LayerBuilder(this);
   readonly stats = new Stats(this);
+  readonly visibility = new Visibility(this);
   readonly selection = new Selection(this);
   readonly blend = new Blend(this);
   readonly interaction: Interaction;
@@ -297,6 +299,7 @@ export class ViewerController {
       s.moleculeSize !== prev.moleculeSize ||
       s.overlay !== prev.overlay
     ) {
+      if (s.hideZeros !== prev.hideZeros || s.hiddenCategories !== prev.hiddenCategories || s.scalePerSample !== prev.scalePerSample) this.stats.updateFilterHistogram();
       this.requestLayers();
     }
   }

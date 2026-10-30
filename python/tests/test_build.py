@@ -213,3 +213,45 @@ def test_shared_slide_images_are_masked_to_each_sections_cells(tmp_path):
     cfg_path.write_text(yaml.safe_dump(doc))
     m = build_dataset(load_config(cfg_path), tmp_path / "b", log=lambda *_: None)
     assert m.samples[0].images and m.samples[0].images[0].size[0] > 0
+
+
+def test_ids_that_could_escape_the_bundle_are_refused():
+    import pytest
+
+    from spatialscape.config import SampleSpec, check_path_id
+
+    for bad in ["../other", "a/b", "..", ".", "", ".hidden", "~x"]:
+        with pytest.raises(ValueError):
+            check_path_id(bad, "sample id")
+        with pytest.raises(ValueError):
+            SampleSpec(id=bad, path="x.h5ad")
+    assert check_path_id("Br2743_visium", "sample id") == "Br2743_visium"
+
+
+def test_a_failed_rebuild_keeps_the_previous_sample(tmp_path, monkeypatch):
+    """The sample is built in a staging folder and moved into place at the end, so an error mid-build (here the
+    expression writer) leaves the old files and the old manifest untouched, and no staging folder behind the next run."""
+
+    from spatialscape import build as b
+    from spatialscape.build import build_bundle
+    from spatialscape.config import load_config
+    from spatialscape.synthetic import make_synthetic
+
+    cfg_path = make_synthetic(tmp_path / "src", n_cells=120, n_genes=6)
+    r1 = build_bundle(load_config(cfg_path), log=lambda *_: None)
+    sample_dir = r1.out / "samples" / "sampleA"
+    before = sorted(p.relative_to(sample_dir).as_posix() for p in sample_dir.rglob("*") if p.is_file())
+    manifest_before = (r1.out / "manifest.json").read_text()
+
+    def boom(*a, **k):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(b, "write_expression", boom)
+    with pytest.raises(RuntimeError):
+        build_bundle(load_config(cfg_path), force=True, log=lambda *_: None)
+    after = sorted(p.relative_to(sample_dir).as_posix() for p in sample_dir.rglob("*") if p.is_file())
+    assert after == before and (r1.out / "manifest.json").read_text() == manifest_before
+    assert (r1.out / "samples" / ".sampleA.building").exists()  # the staging folder of the failed run ...
+    monkeypatch.undo()
+    r3 = build_bundle(load_config(cfg_path), log=lambda *_: None)
+    assert r3.problems == [] and not list((r1.out / "samples").glob(".*.building"))  # ... is cleared by the next run

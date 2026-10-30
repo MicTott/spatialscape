@@ -231,3 +231,15 @@ def test_overrides_apply_to_the_samples_of_an_r_object(tmp_path):
     p = _yaml(tmp_path, [{"path": str(FIX / "tiny_spe.rds"), "platform": "visium", "overrides": {"C": {"images": []}}}])
     with pytest.raises(ValueError, match="overrides name no sample: C"):
         build_bundle(load_config(p), log=quiet)
+
+
+def test_sample_names_that_sanitize_alike_are_refused():
+    import pytest
+
+    from spatialscape.convert import _folder_names
+
+    assert _folder_names(["A B", "C"]) == {"A B": "A_B", "C": "C"}
+    with pytest.raises(ValueError, match="both become the folder"):
+        _folder_names(["A B", "A/B"])
+    with pytest.raises(ValueError):
+        _folder_names([".."])

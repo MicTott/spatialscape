@@ -100,7 +100,8 @@ export class Interaction {
     const r = Math.max(smp.pointRadius * pointScaleFor(s.pointScale, hit.view, c.kindOf(hit.view)), 6 / scale);
     const [vw, vh] = c.viewSize(hit.view);
     const drawn = drawCount(sd.nObs, p.worldBbox, c.viewStates[hit.view].zoom, [vw, vh]); // rows past this are not on screen
-    const hits = sd.index.within(lx, ly, r).filter((h) => h < drawn);
+    const shown = c.visibility.mask(sd, s); // never a cell the filter or the legend hides
+    const hits = sd.index.within(lx, ly, r).filter((h) => h < drawn && (!shown || shown(h)));
     if (!hits.length) {
       if (s.hover) s.set({ hover: null });
       return;

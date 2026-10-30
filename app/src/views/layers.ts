@@ -12,7 +12,7 @@ import { drawCount, intersects } from "./lod";
 import { MoleculeManager } from "./molecules";
 import { OverlayManager } from "./overlay";
 import { ShapeManager, shapeMode, type CellColor } from "./shapes";
-import { filterRange, overlayProps, type SampleLayerInputs } from "./types";
+import { overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
 
 interface Centroid {
@@ -137,6 +137,7 @@ export class LayerBuilder {
     const signed = s.color?.kind === "gene" && s.geneMin < 0; // module scores, motif deviations: zero sits mid-range
     const lut = this.lut(s.color?.kind === "blend" ? `blend:${s.color.scheme}` : effectiveColormap(s.colormap, signed));
     const catColors = baseMode === 1 && colorField ? this.palette(colorField.id, s.hiddenCategories[colorField.id] ?? []) : this.palette("__none", []);
+    const sharedFilter = c.visibility.sharedFilterMax(s);
 
     for (const pane of c.panes) {
       const view = pane.id;
@@ -159,7 +160,9 @@ export class LayerBuilder {
           const g = c.geneGmax.get(`${id}:${s.color.gene}`);
           if (g !== undefined) valueScale = g / s.geneMax;
         }
-        const filterOn = !!s.filter && !!inputs.filter;
+        const fs = c.visibility.filterState(sd, s, sharedFilter);
+        // "ok": the sample's bytes against thresholds in its own units; "unmeasured": a range no byte can meet
+        const filterOn = fs.state === "ok" || fs.state === "unmeasured";
         return {
           inputs,
           props: {
@@ -170,8 +173,8 @@ export class LayerBuilder {
             valueScale,
             valueCenter: signed ? 0.5 : 0,
             filterOn,
-            filterMin: s.filter ? filterRange(s.filter)[0] : 0,
-            filterMax: s.filter ? filterRange(s.filter)[1] : 1,
+            filterMin: fs.state === "ok" ? fs.lo / 255 : 2,
+            filterMax: fs.state === "ok" ? fs.hi / 255 : 3,
             lut,
             catColors,
           },

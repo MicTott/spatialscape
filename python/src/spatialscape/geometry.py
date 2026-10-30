@@ -62,6 +62,7 @@ def microns_per_unit(spec: SampleSpec, sinput: SampleInput) -> float:
         return 1.0
     uns = sinput.uns
     if "spot_nn_spacing_level0_px" in uns:
+        _no_spot_rule_for_hd(spec, {})  # the 100 um rule is Visium geometry: on HD bins it would be off by the bin pitch / 100 um
         return VISIUM_SPOT_SPACING_UM / _scalar(uns["spot_nn_spacing_level0_px"])
     spatial = uns.get("spatial")
     if isinstance(spatial, dict):

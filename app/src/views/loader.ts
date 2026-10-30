@@ -134,16 +134,26 @@ export class Loader {
   private afterChannelsLoaded() {
     const c = this.c;
     const s = store.getState();
-    const genes = s.color?.kind === "gene" ? [s.color.gene] : s.color?.kind === "blend" ? [...s.color.a, ...s.color.b] : [];
+    const colorGenes = s.color?.kind === "gene" ? [s.color.gene] : s.color?.kind === "blend" ? [...s.color.a, ...s.color.b] : [];
+    const genes = s.filter?.kind === "gene" && !colorGenes.includes(s.filter.gene) ? [...colorGenes, s.filter.gene] : colorGenes;
     if (genes.length) {
       const ids = [...c.cache.samples.keys()];
+      const gen = c.generation;
+      const color = s.color;
       Promise.all(genes.flatMap((g) => ids.map((id) => c.cache.geneRange(id, g).then((r) => [id, g, r] as const)))).then((rows) => {
+        if (gen !== c.generation) return; // the dataset or the channels changed while these were in flight
         for (const [id, g, [lo, hi]] of rows) {
           c.geneGmax.set(`${id}:${g}`, hi);
           c.geneGmin.set(`${id}:${g}`, lo);
         }
-        if (s.color?.kind === "gene") store.getState().set({ geneMax: Math.max(0, ...rows.map((r) => r[2][1])), geneMin: Math.min(0, ...rows.map((r) => r[2][0])) });
+        const now = store.getState();
+        if (color?.kind === "gene" && now.color === color) {
+          const own = rows.filter((r) => r[1] === color.gene);
+          now.set({ geneMax: Math.max(0, ...own.map((r) => r[2][1])), geneMin: Math.min(0, ...own.map((r) => r[2][0])) });
+        }
         c.blend.invalidate();
+        if (now.color?.kind === "field") c.stats.updateCategoryCounts(now.color.field);
+        c.stats.updateFilterHistogram();
         c.stats.updateGroupStats();
         c.selection.updateSummary();
         c.requestLayers();
@@ -154,6 +164,7 @@ export class Loader {
       }
     }
     if (s.filter) c.stats.updateFilterHistogram();
+    if (s.color?.kind === "field") c.stats.updateCategoryCounts(s.color.field); // the legend counts cells that pass the filter
     c.stats.updateGroupStats();
     c.selection.updateSummary();
     c.requestLayers();

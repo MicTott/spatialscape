@@ -7,7 +7,7 @@ import { pointInPolygon } from "./geometry";
 import type { LayoutResult } from "./layout";
 import { pointScaleFor } from "./panes";
 import { intersects } from "./lod";
-import { overlayProps } from "./types";
+import { csvLine, overlayProps } from "./types";
 import type { ViewerController } from "./ViewerController";
 
 export interface SelectionState {
@@ -69,17 +69,20 @@ export class Selection {
     const pb: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
     const samples = new Map<string, Uint32Array>();
     const highlight = new Map<string, Float32Array>();
+    const s = store.getState();
+    const shared = c.visibility.sharedFilterMax(s);
     for (const [id, p] of L.placements) {
       if (!intersects(p.worldBbox, pb)) continue;
       const sd = c.cache.samples.get(id);
       if (!sd?.index) continue;
+      const shown = c.visibility.mask(sd, s, {}, shared); // a lasso takes what is on screen: not filtered-out or hidden cells
       const inv = new Matrix4(p.modelMatrix).invert();
       const local = polygon.map((pt) => inv.transformAsPoint([pt[0], pt[1], 0]).slice(0, 2) as [number, number]);
       const lx = local.map((q) => q[0]);
       const ly = local.map((q) => q[1]);
       const cand = sd.index.range(Math.min(...lx), Math.min(...ly), Math.max(...lx), Math.max(...ly));
       const sel: number[] = [];
-      for (const i of cand) if (pointInPolygon(sd.xy[i * 2], sd.xy[i * 2 + 1], local)) sel.push(i);
+      for (const i of cand) if ((!shown || shown(i)) && pointInPolygon(sd.xy[i * 2], sd.xy[i * 2 + 1], local)) sel.push(i);
       if (!sel.length) continue;
       samples.set(id, Uint32Array.from(sel));
       const hl = new Float32Array(sel.length * 2);
@@ -124,6 +127,7 @@ export class Selection {
     let aSum = 0;
     let aN = 0;
     let aPos = 0;
+    let signed = false;
     const gene = s.color?.kind === "gene" ? s.color.gene : null;
     for (const [id, idx] of sel.samples) {
       const sd = c.cache.samples.get(id)!;
@@ -147,10 +151,11 @@ export class Selection {
         const gmin = c.geneGmin.get(`${id}:${gene}`) ?? 0;
         if (g && gmax !== undefined) {
           const k = (gmax - gmin) / 255;
+          if (gmin < 0) signed = true; // a score with negative values has no "expressing" fraction
           for (const i of idx) {
             gSum += gmin + g[i] * k;
             gN++;
-            if (g[i] > 0) gPos++;
+            if (g[i] > 0) gPos++; // byte 0 is exactly zero for a non-negative feature
           }
           for (let i = 0; i < g.length; i++) {
             aSum += gmin + g[i] * k;
@@ -169,7 +174,7 @@ export class Selection {
         total,
         perSample,
         fields,
-        gene: gene && gN ? { name: c.interaction.featureLabel(gene), mean: gSum / gN, frac: gPos / gN, meanAll: aN ? aSum / aN : 0, fracAll: aN ? aPos / aN : 0 } : null,
+        gene: gene && gN ? { name: c.interaction.featureLabel(gene), mean: gSum / gN, frac: signed ? NaN : gPos / gN, meanAll: aN ? aSum / aN : 0, fracAll: signed || !aN ? NaN : aPos / aN } : null,
       },
     });
     void postSelection(s.datasetUrl, this.version, sel.samples); // a Python session reads this back as rows of the object
@@ -180,10 +185,10 @@ export class Selection {
     const c = this.c;
     const sel = this.current;
     if (!sel) return;
-    const lines = ["sample,cell_id"];
+    const lines = [csvLine(["sample", "cell_id", "row"])]; // row: the cell's position in the bundle, for when it has no id
     for (const [id, idx] of sel.samples) {
       const smp = c.samplesById.get(id)!;
-      for (const i of idx) lines.push(`${id},${(await c.cache.getId(id, i, smp.idBlock)) ?? i}`);
+      for (const i of idx) lines.push(csvLine([id, (await c.cache.getId(id, i, smp.idBlock)) ?? "", i]));
     }
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");

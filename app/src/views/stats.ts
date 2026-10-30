@@ -1,9 +1,15 @@
 /** Derived numbers shown in the sidebar: category counts, filter histogram, gene-by-annotation table. */
 import type { BinaryAttr, SampleData } from "../data/cache";
 import { fieldById } from "../data/manifest";
-import { store, type FilterSpec } from "../store/store";
+import { store, type FilterSpec, type ViewerState } from "../store/store";
 import type { ViewerController } from "./ViewerController";
 import { filterRange } from "./types";
+import { cellTest } from "./visibility";
+
+function hiddenSetOf(s: ViewerState): Set<number> | undefined {
+  const codes = s.color?.kind === "field" ? s.hiddenCategories[s.color.field] : undefined;
+  return codes?.length ? new Set(codes) : undefined;
+}
 
 export class Stats {
   constructor(private c: ViewerController) {}
@@ -22,12 +28,16 @@ export class Stats {
     if (!f || f.type !== "categorical") return;
     const n = c.manifest!.vocabularies[f.vocabulary].categories.length;
     const counts = new Array<number>(n).fill(0);
-    const hidden = c.hiddenSampleSet(store.getState());
+    const s = store.getState();
+    const hidden = c.hiddenSampleSet(s);
+    const shared = c.visibility.sharedFilterMax(s);
     for (const sd of c.cache.samples.values()) {
       if (hidden.has(sd.id)) continue;
       const codes = sd.cat.get(field);
       if (!codes) continue;
-      for (let i = 0; i < codes.length; i++) if (codes[i] < n) counts[codes[i]]++;
+      // the population: cells of drawn samples that pass the filter (a hidden category still shows its count)
+      const keep = c.visibility.mask(sd, s, { categories: false, zeros: false }, shared);
+      for (let i = 0; i < codes.length; i++) if (codes[i] < n && (!keep || keep(i))) counts[codes[i]]++;
     }
     store.getState().set({ categoryCounts: { ...store.getState().categoryCounts, [field]: counts } });
   }
@@ -37,20 +47,37 @@ export class Stats {
     if (!s.filter) return;
     const bins = new Array<number>(64).fill(0);
     let visible = 0;
-    const range = filterRange(s.filter);
-    const hiddenSamples = this.c.hiddenSampleSet(s);
-    for (const sd of this.c.cache.samples.values()) {
+    let evaluated = 0;
+    const unmeasured = { cells: 0, samples: 0 };
+    const c = this.c;
+    const hiddenSamples = c.hiddenSampleSet(s);
+    const shared = c.visibility.sharedFilterMax(s);
+    for (const sd of c.cache.samples.values()) {
       if (hiddenSamples.has(sd.id)) continue;
-      const arr = this.filterAttr(sd, s.filter)?.value;
-      if (!arr) continue;
-      const lo = range[0] * 255;
-      const hi = range[1] * 255;
+      const fs = c.visibility.filterState(sd, s, shared);
+      if (fs.state === "unmeasured") {
+        unmeasured.cells += sd.nObs;
+        unmeasured.samples++;
+        continue;
+      }
+      if (fs.state !== "ok") continue;
+      // the histogram is in the units the slider is set in; the legend's hidden categories and hidden zeros decide the rest
+      const hidden = hiddenSetOf(s);
+      const other = cellTest({
+        hidden,
+        cat: hidden && s.color?.kind === "field" ? sd.cat.get(s.color.field) : undefined,
+        filter: { state: "none" },
+        zeros: s.hideZeros && s.color?.kind === "gene" ? c.cache.getGeneSync(sd.id, s.color.gene)?.value : undefined,
+      });
+      const arr = fs.values;
+      const toUnit = 255 / fs.scale;
+      evaluated += arr.length;
       for (let i = 0; i < arr.length; i++) {
-        bins[arr[i] >> 2]++;
-        if (arr[i] >= lo && arr[i] <= hi) visible++;
+        bins[Math.min(63, (arr[i] * toUnit) >> 2)]++;
+        if (arr[i] >= fs.lo && arr[i] <= fs.hi && (!other || other(i))) visible++;
       }
     }
-    s.set({ filterHistogram: bins, visibleCount: visible });
+    s.set({ filterHistogram: bins, visibleCount: visible, filterEvaluated: evaluated, filterUnmeasured: unmeasured.cells ? unmeasured : null });
   }
 
   /** Mean, fraction expressing and the distribution (a histogram over the shared value range, with quartiles)
@@ -91,18 +118,22 @@ export class Stats {
     const hist = new Float64Array(n * BINS);
     const per: Record<string, { sum: Float64Array; cnt: Float64Array; pos: Float64Array }> = {};
     const bk = BINS / (vmax - vmin);
+    const shared = c.visibility.sharedFilterMax(s);
+    const signed = parts.some((p) => p.gmin < 0); // a score that takes negative values has no "expressing" fraction
     for (const { id, g, cat, gmin, gmax } of parts) {
       const p = (per[id] = { sum: new Float64Array(n), cnt: new Float64Array(n), pos: new Float64Array(n) });
       const k = (gmax - gmin) / 255;
+      const keep = c.visibility.mask(c.cache.samples.get(id)!, s, { categories: false, zeros: false }, shared);
       for (let i = 0; i < g.length; i++) {
         const cc = cat[i];
-        if (cc >= n) continue;
+        if (cc >= n || (keep && !keep(i))) continue;
         const v = gmin + g[i] * k;
         sum[cc] += v;
         cnt[cc]++;
         p.sum[cc] += v;
         p.cnt[cc]++;
-        if (v > 0) {
+        if (!signed && g[i] > 0) {
+          // byte 0 is exactly zero for a non-negative feature (a positive value never quantizes to 0)
           pos[cc]++;
           p.pos[cc]++;
         }
@@ -120,7 +151,7 @@ export class Stats {
       const mean = sum[code] / cnt[code];
       maxMean = Math.max(maxMean, mean);
       const perSample: Record<string, { n: number; mean: number; frac: number }> = {};
-      for (const [sid, p] of Object.entries(per)) if (p.cnt[code]) perSample[sid] = { n: p.cnt[code], mean: p.sum[code] / p.cnt[code], frac: p.pos[code] / p.cnt[code] };
+      for (const [sid, p] of Object.entries(per)) if (p.cnt[code]) perSample[sid] = { n: p.cnt[code], mean: p.sum[code] / p.cnt[code], frac: signed ? NaN : p.pos[code] / p.cnt[code] };
       const h = Array.from(hist.subarray(code * BINS, (code + 1) * BINS));
       const quantile = (q: number) => {
         // the bin the q-th cell falls in, read at its centre: as fine as the 8-bit values allow
@@ -132,7 +163,7 @@ export class Stats {
         }
         return vmax;
       };
-      rows.push({ code, n: cnt[code], mean, frac: pos[code] / cnt[code], perSample, hist: h, median: quantile(0.5), q1: quantile(0.25), q3: quantile(0.75) });
+      rows.push({ code, n: cnt[code], mean, frac: signed ? NaN : pos[code] / cnt[code], perSample, hist: h, median: quantile(0.5), q1: quantile(0.25), q3: quantile(0.75) });
     }
     rows.sort((a, b) => b.mean - a.mean);
     s.set({ groupStats: { gene: s.color?.kind === "blend" ? "set A" : genes[0], field: f.id, rows, maxMean, vmin, vmax, bins: BINS } });

@@ -80,6 +80,20 @@ def _safe(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name))
 
 
+def _folder_names(names: list[str]) -> dict[str, str]:
+    """name -> folder name, refusing two names that sanitize to the same folder (`A B` and `A/B`), or to `.` / `..`."""
+    folders: dict[str, str] = {}
+    for n in names:
+        f = _safe(n)
+        if f in (".", "..", ""):
+            raise ValueError(f"sample name {n!r} cannot be a folder; set `sample_col:` to a column with usable names")
+        clash = next((m for m, g in folders.items() if g == f), None)
+        if clash is not None:
+            raise ValueError(f"sample names {clash!r} and {n!r} both become the folder {f!r}; rename one or set `sample_col:` to a column that tells them apart")
+        folders[n] = f
+    return folders
+
+
 def cache_key(entry: RObjectEntry) -> str:
     """Identity of a conversion: the file (path, size, mtime) and the settings that change its output."""
     st = entry.path.stat()
@@ -149,9 +163,10 @@ def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, lo
         raise KeyError(f"sample column {sample_col!r} not in colData; available: {', '.join(x.obs.columns)}")
     sample_values = x.obs[sample_col].astype(str).to_numpy()
     names: list[str] = []
+    folders = _folder_names(list(pd.unique(sample_values)))
     for s in pd.unique(sample_values):
         rows = np.flatnonzero(sample_values == s)
-        d = out / _safe(s)
+        d = out / folders[s]
         (d / "spatial").mkdir(parents=True, exist_ok=True)
         a = _anndata(x, assay, rows)
         coords = x.spatial[rows]

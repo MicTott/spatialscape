@@ -17,6 +17,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .config import check_path_id
 from .registry import build_registry, bundle_entry, find_bundles, packaged_app_dir, placeholder_entry
 
 Log = Callable[[str], None]
@@ -185,7 +186,7 @@ def build_site_from_config(site_yaml: Path, out: Path | None = None, *, link: bo
             bundle = d.bundle
             if not (bundle / "manifest.json").exists():
                 raise FileNotFoundError(f"{bundle}: no manifest.json here (not a built bundle)")
-        bid = json.loads((bundle / "manifest.json").read_text()).get("id") or bundle.name
+        bid = check_path_id(json.loads((bundle / "manifest.json").read_text()).get("id") or bundle.name, f"{bundle}: manifest id")
         if site.data_url:
             url = f"{site.data_url.rstrip('/')}/{bid}"
         else:
@@ -225,7 +226,7 @@ def build_site(out: Path, bundles: list[Path], *, data_url: str | None = None, l
     log(f"viewer -> {out}")
     if data_url is None:
         for b in expanded:
-            bid = json.loads((b / "manifest.json").read_text()).get("id") or b.name
+            bid = check_path_id(json.loads((b / "manifest.json").read_text()).get("id") or b.name, f"{b}: manifest id")
             _place(b, out / bid, link, log)
     doc = build_registry(expanded, url_for=(lambda b, bid: f"{data_url.rstrip('/')}/{bid}") if data_url else (lambda b, bid: bid))
     reg = out / "datasets.json"
