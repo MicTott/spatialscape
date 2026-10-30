@@ -433,3 +433,59 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cmp-row.on .cmp-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
 .cmp-row .cmp-name { font-weight: 600; font-size: 12px; }
 .cmp-row .cmp-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+
+/* Viewer polish: preserve the existing layout and rendering while refining its controls. */
+@font-face { font-family: "Source Sans 3"; src: url("./assets/fonts/source-sans-regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Source Sans 3"; src: url("./assets/fonts/source-sans-semibold.ttf") format("truetype"); font-weight: 600 800; font-display: swap; }
+:root { --bg: #0e1116; --panel: #191b1f; --panel2: #282b31; --fg: #eef0f3; --muted: #a7adb6; --border: #3b3f46; font-family: "Source Sans 3", "Trebuchet MS", sans-serif; font-size: 14px; }
+button { transition: background-color .14s, border-color .14s, color .14s; }
+button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid #80d7fb; outline-offset: 2px; }
+.sidebar { background: #191b1f; border-left-color: #303238; backdrop-filter: none; }
+.sidebar-inner { padding: 15px 15px 24px; }
+.sidebar header h1 { font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+.sidebar header p { font-size: 13px; line-height: 1.35; color: #afb4bd; margin-bottom: 10px; }
+.sidebar .collapse { top: 11px; width: 25px; height: 32px; left: -25px; border-color: #46494f; border-radius: 8px 0 0 8px; color: #c1c6cd; }
+.sidebar .collapse:hover { background: #34373e; color: #fff; }
+.sidebar .group { border-color: #383b41; }
+.sidebar .group-head { min-height: 43px; padding: 8px 7px; gap: 9px; border-radius: 7px; }
+.sidebar .group-head:hover { background: #2a2d32; }
+.sidebar .group-title { font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.sidebar .group-summary { font-size: 12px; color: #a9afb7; }
+.sidebar .group-head .chev { width: 15px; height: 16px; display: grid; place-items: center; flex: none; color: #b2b8c1; }
+.sidebar .group-head .chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .14s; }
+.sidebar .group.open .chev svg { transform: rotate(90deg); }
+.sidebar .group-switch { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; flex: none; margin-top: 0; margin-bottom: 0; border: 1px solid #797f88; border-radius: 4px; background: #2b2e34; cursor: pointer; }
+.sidebar .group-switch:checked { border-color: #40c4ff; background: #40c4ff; }
+.sidebar .group-switch:checked::after { content: ""; display: block; width: 7px; height: 4px; border: solid #0b1921; border-width: 0 0 2px 2px; transform: translate(4px, 3px) rotate(-45deg); }
+.sidebar .group-body { padding: 0 4px 12px 15px; }
+.sidebar .group-body section { padding: 9px 0; }
+.sidebar .group-body section + section { border-top: 1px solid #34373d; }
+.sidebar .group-body section h2 { color: #d3d7dd; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; margin: 0 0 8px; }
+.sidebar .tabs { gap: 5px; margin-bottom: 9px; }
+.sidebar .tabs button, .sidebar .legend-actions button { border-radius: 7px; }
+.sidebar .tabs button { font-size: 13px; padding: 6px 10px; border-color: #454951; background: #292c32; }
+.sidebar .tabs button:hover { background: #3a3e46; color: #fff; }
+.sidebar .tabs button.on { color: #06141b; border-color: #40c4ff; background: #40c4ff; }
+.sidebar select, .sidebar .genesearch input, .sidebar .grouplist input { padding: 7px 9px; border-color: #494d54; border-radius: 7px; background: #282b31; }
+.sidebar .legend { padding-top: 10px; }
+.sidebar .legend-head { margin-bottom: 8px; font-size: 14px; }
+.sidebar .cats li { padding: 4px 4px; border-radius: 6px; }
+.sidebar .cat-n, .sidebar .small { font-size: 12px; }
+.sidebar .swatch { border-radius: 4px; }
+.topnav { background: #191b1f; border-color: #303238; }
+.topnav .brand { font-size: 15px; }
+.topnav select { border-radius: 7px; font-size: 13px; }
+.platformbar { border-radius: 9px; padding: 5px; background: rgba(25, 27, 31, .96); border-color: #41454c; backdrop-filter: none; }
+.platformbar button { padding: 5px 10px; border-radius: 7px; font-size: 13px; color: #b8bec6; }
+.platformbar button:hover { color: #fff; background: #35383e; }
+.platformbar button.on { background: #33363c; color: #fff; border-color: #4a4e56; }
+.platformbar button.tool.on { background: #40c4ff; color: #06141b; }
+.platformbar .split-ctl { border-color: #44474e; }
+.platformbar .split-ctl .muted { font-size: 12px; }
+.platformbar select { font-size: 13px; border-radius: 7px; }
+.map > .pointsize { border-radius: 8px; background: rgba(25, 27, 31, .95); border-color: #44474e; backdrop-filter: none; padding: 6px 9px; }
+.pointsize .cap { text-transform: none; letter-spacing: 0; font-size: 12px; color: #c6ccd3; }
+.pointsize small { font-size: 11px; }
+.statusbar { background: #191b1f; border-color: #303238; font-size: 12px; }
+.tooltip { background: #24262b; border-color: #4a4d54; border-radius: 8px; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { button, .sidebar .group-head .chev svg { transition: none; } }

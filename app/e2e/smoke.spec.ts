@@ -64,3 +64,24 @@ test("loads the synthetic bundle, switches genes fast, filters without network",
   expect(Math.abs(vs.target[1] - vs.center[1])).toBeLessThan(1);
   expect(errors, errors.join("\n")).toEqual([]);
 });
+
+test("polished group controls preserve independent visibility and expansion", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  const cells = page.locator(".group").filter({ has: page.locator(".group-title", { hasText: "Cells" }) });
+  const header = cells.locator(".group-head");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("checkbox", { name: "Hide cells" }).click();
+  expect((await page.evaluate(() => (window as any).__sscape.getState())).showCells).toBe(false);
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  const showCells = page.getByRole("checkbox", { name: "Show cells" });
+  await showCells.focus();
+  await showCells.press("Space");
+  expect((await page.evaluate(() => (window as any).__sscape.getState())).showCells).toBe(true);
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  const samples = page.locator(".group").filter({ has: page.locator(".group-title", { hasText: "Samples" }) });
+  await samples.locator(".group-head").click();
+  await expect(samples.locator(".group-head")).toHaveAttribute("aria-expanded", "true");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+});
