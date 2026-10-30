@@ -306,8 +306,11 @@ def write_expression(
             # every stored value whose column is one of the block's kept genes (dropped genes have none)
             lo_c, hi_c = int(kept[g0]), int(kept[g1 - 1])
             pos = np.flatnonzero((Mc.indices >= lo_c) & (Mc.indices <= hi_c))
+            g = kept_index[Mc.indices[pos]]
+            if (g < 0).any():  # explicitly stored zeros of a dropped gene sit inside the block's column span
+                pos, g = pos[g >= 0], g[g >= 0]
             if pos.size:
-                scatter(q, h, g0, pos, kept_index[Mc.indices[pos]])
+                scatter(q, h, g0, pos, g)
         else:
             b0 = g0
             while b0 < g1:

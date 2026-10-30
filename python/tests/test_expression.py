@@ -100,3 +100,15 @@ def test_csr_and_csc_inputs_write_the_same_bundle(tmp_path):
     assert np.array_equal(ga["u8"][:], gb["u8"][:])
     assert np.array_equal(ga["f16"][:], gb["f16"][:])
     assert ga["u8"].shape == (49, 300)
+
+
+def test_csr_explicit_zero_in_a_dropped_gene(tmp_path):
+    """A sparse matrix may store a zero explicitly; a gene whose only stored value is such a zero is dropped, and the
+    row-major gather must leave that entry alone instead of scattering it under a kept gene."""
+    M = sp.csr_matrix((np.array([1, 1, 1, 0, 1, 1], dtype=np.float32), np.array([0, 1, 2, 3, 4, 5]), np.array([0, 6, 6])), shape=(2, 6))
+    res = write_expression(M, tmp_path / "csr", shard_genes=2)
+    ref = write_expression(M.tocsc(), tmp_path / "csc", shard_genes=2)
+    assert res.keep.tolist() == [True, True, True, False, True, True] and (res.keep == ref.keep).all()
+    a = zarr.open_group(str(tmp_path / "csr" / "expr.zarr"), mode="r")["u8"][:]
+    b = zarr.open_group(str(tmp_path / "csc" / "expr.zarr"), mode="r")["u8"][:]
+    assert np.array_equal(a, b) and a.shape == (5, 2) and a[:, 0].tolist() == [255] * 5 and a[:, 1].tolist() == [0] * 5
