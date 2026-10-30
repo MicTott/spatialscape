@@ -524,3 +524,15 @@ button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]
 .compare .c-sub, .compare .c-search, .compare .m-head button, .compare .m-row, .compare .d-toggle { font-size: 13px; }
 .compare .d-foot, .compare .c-axis, .compare .c-group, .compare .c-tip { font-size: 12px; }
 @media (max-width: 700px) { .platformbar { max-width: calc(100% - 24px); } }
+/* Give annotation categories a readable, interactive list without overpowering their colors. */
+.sidebar .annotation-legend { background: #222429; border: 1px solid #383b42; border-radius: 9px; padding: 10px; margin: 8px 0 4px; }
+.sidebar .annotation-legend .legend-head { margin-bottom: 7px; }
+.sidebar .annotation-legend .cats { max-height: 280px; }
+.sidebar .annotation-legend .cats li { min-height: 31px; padding: 5px 6px; border-radius: 6px; }
+.sidebar .annotation-legend .cats li + li { border-top: 1px solid #303238; }
+.sidebar .annotation-legend .cats li:hover, .sidebar .annotation-legend .cats li:focus-visible { background: #30333a; }
+.sidebar .annotation-legend .cats li.off { opacity: .5; }
+.sidebar .annotation-legend .swatch { width: 14px; height: 14px; border-radius: 4px; }
+.sidebar .annotation-legend .notmeasured { padding: 9px 5px 1px; line-height: 1.3; }
+.color-display-controls { margin: 5px 0 12px; }
+.color-display-controls .scaling-note, .labels-hint { margin: 6px 0 0; line-height: 1.35; }

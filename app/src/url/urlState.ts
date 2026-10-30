@@ -69,7 +69,9 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
   if (q.get("s")) out.focus = q.get("s");
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
+  // Old saved views omitted sps for shared scaling. Dataset-only links use the new per-sample default.
   if (q.get("sps") === "1") out.scalePerSample = true;
+  else if (q.get("sps") === "0" || (!q.has("sps") && (c?.kind === "gene" || c?.kind === "blend" || f?.kind === "gene"))) out.scalePerSample = false;
   if (q.get("debug") === "1") out.debug = true;
   if (q.get("ps") || q.get("pse") || q.get("psg")) {
     const ps: Record<string, number> = { spatial: num(q.get("ps"), 1), embedding: num(q.get("pse"), 1) };
@@ -157,7 +159,8 @@ export function serialize(s: ViewerState): string {
   if (s.hiddenChannels.length) q.set("hc", s.hiddenChannels.join("|"));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);
   if (s.hiddenSamples.length) q.set("hs", s.hiddenSamples.join(","));
-  if (s.scalePerSample) q.set("sps", "1");
+  // Always write the choice, including the new default, so future changes cannot alter a saved view.
+  q.set("sps", s.scalePerSample ? "1" : "0");
   if (s.debug) q.set("debug", "1");
   if (s.pointScale.spatial !== 1) q.set("ps", s.pointScale.spatial.toFixed(2));
   if (s.pointScale.embedding !== 1) q.set("pse", s.pointScale.embedding.toFixed(2));

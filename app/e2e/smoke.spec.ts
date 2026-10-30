@@ -111,3 +111,42 @@ test("canvas controls and labels support the full-view workflow", async ({ page 
     });
   }), { timeout: 5000 }).toBe(true);
 });
+
+test("gene controls follow the color scale and scaling survives a shared link", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await page.getByRole("button", { name: "Gene", exact: true }).click();
+  const scale = page.getByRole("checkbox", { name: "scale each sample to its own max" });
+  await expect(scale).toBeChecked();
+  const ordered = await page.evaluate(() => {
+    const ramp = document.querySelector(".legend .ramp")!;
+    const controls = document.querySelector(".color-display-controls")!;
+    return !!(ramp.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  expect(ordered).toBe(true);
+  await scale.uncheck();
+  await expect.poll(() => new URL(page.url()).searchParams.get("sps")).toBe("0");
+  await page.reload();
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await expect(page.getByRole("checkbox", { name: "scale each sample to its own max" })).not.toBeChecked();
+});
+
+test("embedding label toggle immediately redraws labels and categories respond to keyboard", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  const hasLabels = () => page.evaluate(() => (window as any).__sscape.controller.deck.props.layers.flat(Infinity).some((l: any) => l?.id === "cluster-labels-embedding"));
+  await expect.poll(hasLabels).toBe(true);
+  const labels = page.getByRole("checkbox", { name: /Embedding labels/ });
+  await labels.uncheck();
+  await expect.poll(hasLabels).toBe(false);
+  await labels.check();
+  await expect.poll(hasLabels).toBe(true);
+  const firstCategory = page.locator(".annotation-legend .cats li").first();
+  await expect(firstCategory).toHaveAttribute("aria-pressed", "true");
+  await firstCategory.focus();
+  await firstCategory.press("Space");
+  await expect(firstCategory).toHaveAttribute("aria-pressed", "false");
+});

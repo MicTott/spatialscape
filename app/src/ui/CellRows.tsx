@@ -12,6 +12,8 @@ export function CellRows() {
   const clusterLabels = useViewer((s) => s.clusterLabels);
   const overlay = useViewer((s) => s.overlay);
   const focus = useViewer((s) => s.focus);
+  const color = useViewer((s) => s.color);
+  const panes = useViewer((s) => s.panes);
   const set = store.getState().set;
   const hasShapes = manifest.samples.some((s) => s.shapes || s.polygons);
   // the other segmentations of these sections, by id, with their names
@@ -20,6 +22,13 @@ export function CellRows() {
   const [lastOverlay, setLastOverlay] = useState<string | null>(null);
   const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
   if (!hasShapes && !hasEmbedding && !segs.size) return null;
+  const categorical = color?.kind === "field" && manifest.fields.some((f) => f.id === color.field && f.type === "categorical");
+  const measuredInEmbedding = color?.kind === "field" && manifest.samples.some((s) => s.kind === "embedding" && s.fields.includes(color.field));
+  const labelsHint = !panes.some((p) => p.kind === "embedding")
+    ? "Open a single-cell view to display cluster labels."
+    : !categorical ? "Choose a categorical annotation to display cluster labels."
+    : !measuredInEmbedding ? "This annotation is not measured in the single-cell view."
+    : "Cluster names appear on the single-cell view when there is room.";
   // the comparison table: the focused section, or every section with another segmentation summed
   const compared = manifest.samples.filter((s) => s.segmentations?.length && (!focus || s.id === focus));
   const row = (name: string, pick: (s: (typeof manifest.samples)[number]) => { cells: number; medianArea?: number | null } | undefined) => {
@@ -91,7 +100,12 @@ export function CellRows() {
           </table>
         </LayerRow>
       )}
-      {hasEmbedding && <LayerRow name="Labels" on={clusterLabels} onToggle={(v) => set({ clusterLabels: v })} summary="cluster names in the embedding" />}
+      {hasEmbedding && (
+        <>
+          <LayerRow name="Embedding labels" on={clusterLabels} onToggle={(v) => set({ clusterLabels: v })} summary="cluster names" />
+          {clusterLabels && <div className="muted small labels-hint">{labelsHint}</div>}
+        </>
+      )}
     </section>
   );
 }

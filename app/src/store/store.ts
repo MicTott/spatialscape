@@ -300,7 +300,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   filterUnmeasured: null,
   geneMax: 0,
   geneMin: 0,
-  scalePerSample: false,
+  scalePerSample: true,
   recentGenes: [],
   debug: false,
   help: false,

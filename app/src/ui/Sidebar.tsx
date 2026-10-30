@@ -8,7 +8,7 @@ import { SampleStrip } from "./SampleStrip";
 import { CompareGroup, comparisonSummary } from "../compare/CompareGroup";
 import { activateComparison, reopenComparison } from "../compare/activate";
 import { Group } from "./Group";
-import { ColorPanel, FilterPanel } from "./ColorPanel";
+import { ColorPanel, ColorDisplayControls, FilterPanel } from "./ColorPanel";
 import { CellRows } from "./CellRows";
 import { MoleculeGenes } from "./MoleculeGenes";
 import { ImageChannels, channelSummary } from "./ImageChannels";
@@ -128,6 +128,7 @@ function Groups({ genes }: { genes: string[] }) {
       <Group id="cells" title="Cells" summary={showCells ? colorSummary : "off"} on={showCells} onToggle={(v) => set({ showCells: v })} defaultOpen>
         <ColorPanel genes={genes} />
         <Legend />
+        <ColorDisplayControls />
         <GeneByAnnotation />
         <FilterPanel genes={genes} />
         <CellRows />
