@@ -111,7 +111,6 @@ export interface Sample {
   hasF16: boolean;
   fields: string[];
   images: SampleImage[];
-  outlines?: string[];
   polygons?: { path: string; cells: number; vertices: number; scale: number } | null; // bundles built before shape tiles
   shapes?: { path: string; cells: number; vertices: number; tile: number; tiles: number; bytes: number; medianArea?: number | null } | null;
   segmentations?: { id: string; name: string; path: string; cells: number; vertices: number; tile: number; tiles: number; bytes: number; medianArea?: number | null }[];
@@ -144,14 +143,6 @@ export interface FeatureGroup {
 export interface FeatureList {
   genes: string[];
   groups: { id: string; name: string; units?: string | null; features: { id: string; label: string }[] }[];
-}
-export interface OutlinePath {
-  c: number;
-  p: [number, number][];
-}
-export interface OutlineData {
-  bin: number;
-  paths: OutlinePath[];
 }
 export interface Manifest {
   formatVersion: 1;

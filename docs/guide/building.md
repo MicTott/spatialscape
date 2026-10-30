@@ -17,8 +17,7 @@ sample that did not change takes none.
 4. **Observations**: shuffle rows once with a fixed seed (the viewer draws a prefix of the shuffled rows at low zoom), write positions, categorical codes against the dataset vocabularies, numeric columns, and the cell ids in blocks.
 5. **Polygons** (if configured): match `cell_id` to the object, pack vertices as centroid deltas.
 6. **Images**: convert to an OME-Zarr pyramid with the same flip/rotation as the points, record pixel size and offset in microns. A pyramidal source (OME-Zarr, pyramidal or OME-TIFF) is read at the level `max_size` asks for and downsampled in strips, so a full-resolution scan is never decoded whole.
-7. **Outlines**: for every categorical field on spatial samples, trace region boundaries (rasterize, majority-smooth over 150 µm, remove features under 300 µm, marching squares, simplify).
-8. **Fingerprint**: write `build.json` into the sample folder (what the next build compares against).
+7. **Fingerprint**: write `build.json` into the sample folder (what the next build compares against).
 
 Then the dataset-level files: `manifest.json`, `genes.json`, `features.json`, `thumbnail.png`, and `thumbnail.png` per sample.
 
@@ -58,7 +57,6 @@ change. When every sample is rebuilt, vocabularies start fresh in the declared o
 
 | Task | Command |
 |---|---|
-| Re-trace outlines with different smoothing | `spatialscape outlines dlpfc.yaml --smooth-um 100 --min-feature-um 200` |
 | Re-render thumbnails around another section | set `thumbnail_sample` and `build`, or `spatialscape thumbnails bundles/dlpfc --hero vis_Br8325` |
 
 ## Validation
@@ -81,6 +79,5 @@ Against a URL, `validate` also fetches the manifest and one expression chunk wit
 | Visium, 30k spots × 36k genes | 90 to 100 MB (90% zeros compress well) |
 | snRNA-seq, 15k nuclei × 34k genes | about 110 MB |
 | Visium lowres H&E OME-Zarr | 1 to 3 MB |
-| Outlines, all fields | 0.1 to 1.5 MB |
 
 The first page view of a dataset downloads positions (8 bytes per cell), the default annotation (2 bytes per cell) and one gene (1 byte per cell). Everything else loads on demand.

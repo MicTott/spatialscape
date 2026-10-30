@@ -56,7 +56,7 @@ interface MoleculeCached extends Cached<MoleculeTile> {
 /** Which genes draw, and in what colour, for the colour state on screen: the gene on screen in the colormap's top
  *  colour (a blend's sets in its colours), every pinned gene in its pin colour, and under an annotation every other
  *  gene in grey. `shares` gives the fraction of a sample's molecules that would draw, for the density gate. */
-export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "selected" | "all" }): { colors: Uint8Array; shares: (counts: number[]) => number } {
+export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "selected" | "all"; moleculePinColors?: Record<string, string> }): { colors: Uint8Array; shares: (counts: number[]) => number } {
   const n = genes.length;
   const out = new Uint8Array(Math.max(1, n) * 4);
   const picked = new Set<number>();
@@ -91,7 +91,7 @@ export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colo
   }
   (s.moleculeGenes ?? []).forEach((g, k) => {
     const i = genes.indexOf(g);
-    if (i >= 0) paint(i, hexToRGB(pinColor(k)));
+    if (i >= 0) paint(i, hexToRGB(s.moleculePinColors?.[g] ?? pinColor(k)));
   });
   if (all) return { colors: out, shares: () => 1 };
   const idx = [...picked];
@@ -111,7 +111,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
   }
 
   private colorsFor(genes: string[], s: ViewerState) {
-    const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0, s.moleculeGenes, s.moleculeColors]);
+    const key = JSON.stringify([s.color, s.colormap, s.geneMin < 0, s.moleculeGenes, s.moleculeColors, s.moleculePinColors]);
     const hit = this.colorCache.get(genes);
     if (hit && hit.key === key) return hit.value; // the same array identity keeps every tile layer's texture
     const value = geneColors(genes, s);

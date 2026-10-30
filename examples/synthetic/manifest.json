@@ -71,6 +71,7 @@
    "platform": "visium",
    "kind": "spatial",
    "group": "donor1",
+   "meta": {},
    "nObs": 2000,
    "nGenes": 50,
    "bbox": [
@@ -94,7 +95,8 @@
    "expr": {
     "kind": "u8",
     "sharded": true,
-    "shardGenes": 512
+    "shardGenes": 512,
+    "normalized": "lognorm"
    },
    "hasF16": false,
    "fields": [
@@ -109,25 +111,26 @@
      "kind": "rgb",
      "pixelSize": 10.0,
      "translate": [
-      -213.70609913160592,
-      -170.48936318106897
+      -143.70609913160592,
+      -140.48936318106897
      ],
      "size": [
-      384,
-      512
+      380,
+      492
      ],
      "defaultOpacity": 1.0
     }
    ],
-   "outlines": [
-    "cluster"
-   ],
-   "polygons": {
-    "path": "polygons",
+   "shapes": {
+    "path": "shapes",
     "cells": 2000,
     "vertices": 12000,
-    "scale": 0.1
+    "tile": 1024,
+    "tiles": 21,
+    "bytes": 35322,
+    "medianArea": 2724.95
    },
+   "segmentations": [],
    "idBlock": 65536,
    "suggestedGene": "G049"
   },
@@ -137,6 +140,7 @@
    "platform": "visium",
    "kind": "spatial",
    "group": "donor2",
+   "meta": {},
    "nObs": 2800,
    "nGenes": 50,
    "bbox": [
@@ -160,7 +164,8 @@
    "expr": {
     "kind": "u8",
     "sharded": true,
-    "shardGenes": 512
+    "shardGenes": 512,
+    "normalized": "log1p_cp10k"
    },
    "hasF16": false,
    "fields": [
@@ -175,25 +180,26 @@
      "kind": "rgb",
      "pixelSize": 10.0,
      "translate": [
-      -150.42766070469767,
-      -210.94160254950907
+      -140.42766070469767,
+      -140.94160254950907
      ],
      "size": [
-      512,
-      384
+      495,
+      381
      ],
      "defaultOpacity": 1.0
     }
    ],
-   "outlines": [
-    "cluster"
-   ],
-   "polygons": {
-    "path": "polygons",
+   "shapes": {
+    "path": "shapes",
     "cells": 2800,
     "vertices": 16800,
-    "scale": 0.1
+    "tile": 1024,
+    "tiles": 19,
+    "bytes": 49010,
+    "medianArea": 2709.85
    },
+   "segmentations": [],
    "idBlock": 65536,
    "suggestedGene": "G049"
   },
@@ -203,6 +209,7 @@
    "platform": "snrnaseq",
    "kind": "embedding",
    "group": "donor1",
+   "meta": {},
    "nObs": 2000,
    "nGenes": 50,
    "bbox": [
@@ -226,7 +233,8 @@
    "expr": {
     "kind": "u8",
     "sharded": true,
-    "shardGenes": 512
+    "shardGenes": 512,
+    "normalized": "lognorm"
    },
    "hasF16": false,
    "fields": [
@@ -234,9 +242,11 @@
     "total_counts"
    ],
    "images": [],
-   "outlines": [],
+   "segmentations": [],
    "idBlock": 65536,
    "suggestedGene": "G049"
   }
- ]
+ ],
+ "meta": [],
+ "comparisons": []
 }

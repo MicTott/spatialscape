@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 FORMAT_VERSION = 1
 
@@ -168,7 +168,6 @@ class Sample(_Model):
     hasF16: bool = False
     fields: list[str] = Field(default_factory=list)
     images: list[SampleImage] = Field(default_factory=list)
-    outlines: list[str] = Field(default_factory=list)  # categorical field ids with outlines/<field>.json
     polygons: PolygonInfo | None = None  # legacy, see PolygonInfo
     shapes: ShapesInfo | None = None
     molecules: MoleculesInfo | None = None
@@ -176,6 +175,14 @@ class Sample(_Model):
     idBlock: int = 65536
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
     tracks: TracksInfo | None = None  # genome tracks (ATAC samples)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_outlines(cls, data):
+        """Bundles built before 0.5.1 listed traced annotation boundaries here; the key is ignored and the folders go on the next build."""
+        if isinstance(data, dict) and "outlines" in data:
+            data = {k: v for k, v in data.items() if k != "outlines"}
+        return data
 
 
 class FeatureGroup(_Model):

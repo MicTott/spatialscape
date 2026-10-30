@@ -26,8 +26,8 @@ features:
     title: Instant gene switching
     details: Expression is stored one byte per cell per gene in sharded Zarr, so a gene is a single range request and a cached switch is a GPU upload.
   - icon: 🎨
-    title: Color, filter, outline
-    details: Color by gene, two blended gene sets, or any annotation. Filter independently. Keep spatial-domain outlines on top of anything.
+    title: Color, filter, blend
+    details: Color by gene, two blended gene sets, or any annotation. Filter independently of the colour, by a gene, a QC range or a category.
   - icon: 🔬
     title: Hover, lasso, compare
     details: Hover reads domain, cell type and expression. Lasso a region for composition, gene statistics and a CSV of cell IDs. A dot plot per annotation doubles as a filter.

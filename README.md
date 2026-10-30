@@ -108,7 +108,7 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 |---|---|
 | Color by gene, by two blended gene sets, by any annotation or by cell type weights | Visium, Visium HD, Xenium, MERFISH and snRNA-seq in one dataset, laid out in microns |
 | Filter independently of color: a gene threshold, a QC range, a category | H&E and fluorescence images as OME-Zarr pyramids under the points |
-| Hover for every annotation; lasso a region for composition, gene statistics and a CSV of cell ids | Spatial-domain outlines traced at build time; cell boundary polygons at high zoom |
+| Hover for every annotation; lasso a region for composition, gene statistics and a CSV of cell ids | Cell boundaries, nucleus boundaries and every transcript at high zoom |
 | A dot plot of the current gene by annotation that doubles as a filter | Dataset-level vocabularies: one label, one code, one color across samples and platforms |
 | A split view with the snRNA-seq embedding, resizable, left or right | Validation of every bundle, locally and over HTTP (CORS and Range checks) |
 | Copy a link to the exact view; export a PNG with legend and scale bar | Incremental builds with a per-sample fingerprint; a conversion cache for R objects |

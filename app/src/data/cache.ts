@@ -6,7 +6,6 @@
 import KDBush from "kdbush";
 import * as Comlink from "comlink";
 import type { DataWorkerAPI } from "./worker";
-import type { OutlineData } from "./manifest";
 import { ByteLRU } from "./lru";
 
 export interface BinaryAttr<T extends ArrayBufferView> {
@@ -53,7 +52,6 @@ export class DataCache {
     this.geneAttrs.clear();
     this.inflight.clear();
     this.polygons.clear();
-    this.outlines.clear();
   }
 
   private dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -219,27 +217,6 @@ export class DataCache {
       this.polygons.set(sampleId, p);
     }
     return undefined;
-  }
-
-  private outlines = new Map<string, OutlineData | Promise<OutlineData>>();
-
-  /** Outline polylines for a sample/field; resolved value is cached, pending fetch returned as a promise. */
-  getOutlines(datasetUrl: string, sampleId: string, field: string): OutlineData | Promise<OutlineData> {
-    const key = `${sampleId}/${field}`;
-    let v = this.outlines.get(key);
-    if (!v) {
-      v = fetch(`${datasetUrl.replace(/\/$/, "")}/samples/${sampleId}/outlines/${field}.json`)
-        .then((r) => {
-          if (!r.ok) throw new Error(`outlines ${r.status}`);
-          return r.json() as Promise<OutlineData>;
-        })
-        .then((d) => {
-          this.outlines.set(key, d);
-          return d;
-        });
-      this.outlines.set(key, v);
-    }
-    return v;
   }
 
   /** 0/1 mask for membership of categorical codes (cached per code set). Requires the categorical array. */

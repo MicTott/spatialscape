@@ -25,7 +25,7 @@ offers *split by*. Choosing a key divides the tissue canvas into one pane per le
 stress on the other, a third pane for a third level; with more levels than panes, each pane's header has a
 select to choose which group it shows. Every pane has its own camera, scale bar and caption ("control · 2
 sections"), and the one the pointer last touched is underlined: `←` `→`, `Esc` and double-click work inside
-it. Colour, filters, the legend, point size, outlines, images, the lasso and regions stay shared, exactly as
+it. Colour, filters, the legend, point size, images, the lasso and regions stay shared, exactly as
 they are between the tissue and the embedding today; hover rows show the section's metadata.
 
 *match scale*, on by default, keeps every pane at the same microns per pixel: zoom in one and the others
@@ -64,10 +64,6 @@ When coloring by a gene, this panel shows mean expression and percent expressing
 ## Hover
 
 The tooltip lists the current gene's value, the filter gene's value if different, every categorical annotation of the cell with its swatch, and the cell id.
-
-## Annotation boundaries
-
-*Annotation boundaries* in the Cells group lists the categorical annotations whose boundaries were traced at build time (every categorical field, by default); pick one to draw its boundaries over whatever you are coloring by, or *none*. The row is absent when the bundle has no outlines. See [Building](./building#what-happens-per-sample).
 
 ## Lasso
 
@@ -170,9 +166,10 @@ The panel is five groups, each a bar that opens its controls; closed bars show a
 open at once, and what is open is remembered per browser:
 
 - **Image**: its switch in the bar, opacity and, for fluorescence, the channel list.
-- **Cells**: colour by (gene, cell type weights, blend, annotation), the legend, expression by annotation, the
-  filter, and *Drawing*: how cells draw once zoomed in (dots, filled, outlined), annotation boundaries, cluster labels.
-- **Transcripts**: its switch in the bar, selected genes or all genes, the pinned genes, the point size.
+- **Cells**: its switch in the bar (off leaves the image and the transcripts alone on the canvas), colour by (gene,
+  cell type weights, blend, annotation), the legend, expression by annotation, the filter, and *Drawing*: how cells
+  draw once zoomed in (dots, filled, outlined), cluster labels.
+- **Transcripts**: its switch in the bar, selected genes or all genes, the pinned genes with their colours, the point size.
 - **Comparisons** (when the dataset carries any): its switch in the bar opens or closes the panel under the maps;
   one row per comparison, the active one with its level (a cluster, a cell type).
 - **Selections**: the lasso's selection and your drawn regions.
@@ -205,8 +202,9 @@ genes, so a few anchors remain visible, and click × to unpin. **All genes** col
 the view for seeing where transcripts of different kinds gather; pins and the gene on screen keep their colours on
 top of it (`mc=all` in the URL). Molecules not assigned to a cell draw
 dimmer, and the cell dots fade under them. Only the tiles in view are fetched, once the camera stops; pinning and
-unpinning download nothing. The switch and the pins travel in the URL as `mol=1` and `mg`.
+unpinning download nothing. Click a pinned gene's colour square to choose another colour for it. The switch, the pins and
+their chosen colours travel in the URL as `mol=1` and `mg`.
 
 ## Sharing a view
 
-Copy the URL. It encodes the dataset, the focused sample, color and filter settings, hidden categories, outlines, split layout and camera. See [URL parameters](../reference/url) for the keys.
+Copy the URL. It encodes the dataset, the focused sample, color and filter settings, hidden categories, split layout and camera. See [URL parameters](../reference/url) for the keys.

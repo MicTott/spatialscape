@@ -66,7 +66,7 @@ def test_non_finite_expression_is_refused(tmp_path):
 
 
 # ---------------------------------------------------------------- validate
-def test_validate_catches_corrupted_ids_order_and_outlines(tmp_path):
+def test_validate_catches_corrupted_ids_and_order(tmp_path):
     cfg_path = make_synthetic(tmp_path / "src", n_cells=80, n_genes=5)
     out = tmp_path / "bundle"
     m = build_dataset(load_config(cfg_path), out, log=lambda *_: None)

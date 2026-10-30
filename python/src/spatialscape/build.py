@@ -53,7 +53,6 @@ from .manifest import (
 )
 from .molecules import write_molecules
 from .obs import write_obs
-from .outlines import compute_outlines, write_outlines
 from .polygons import apply_affine, read_polygon_obsm, read_polygon_table
 from .readers import load_sample
 from .shapes import write_shapes
@@ -461,7 +460,6 @@ def build_sample(
     vocab: VocabRegistry,
     *,
     sharded: bool = True,
-    outline_fields: list[str] | bool | None = None,
     log: Log = print,
 ) -> Sample:
     log(f"[{spec.id}] reading {spec.path}")
@@ -580,18 +578,6 @@ def build_sample(
             feature_names=genes,
             log=log,
         )
-    outlines: list[str] = []
-    if spec.kind == "spatial" and outline_fields is not False:
-        for fid, codes in cats.items():
-            if outline_fields and fid not in outline_fields:
-                continue
-            vid = vocab.vocab_id(fid)
-            v = vocab.vocabs[vid]
-            na = {v["categories"].index("NA")} if "NA" in v["categories"] else set()
-            log(f"[{spec.id}] outlines for {fid}")
-            write_outlines(out_dir, fid, compute_outlines(xy, codes, len(v["categories"]), skip_codes=na))
-            outlines.append(fid)
-
     spec = _auto_polygons(spec, adata, log)
     shapes_info = _write_cell_shapes(spec, adata, out_dir, frame, ids, xy, radius, sharded=sharded, log=log)
     seg_infos = _write_segmentations(spec, out_dir, frame, sharded=sharded, log=log)
@@ -626,7 +612,6 @@ def build_sample(
         hasF16=spec.expression.keep_f16,
         fields=list(spec.fields.keys()),
         images=images,
-        outlines=outlines,
         shapes=shapes_info,
         molecules=molecules_info,
         segmentations=seg_infos,
@@ -685,6 +670,8 @@ def _write_dataset_files(
     vocab: VocabRegistry,
     comparisons: list[ComparisonInfo] | None = None,
 ) -> Manifest:
+    for stale in (out / "samples").glob("*/outlines"):  # traced annotation boundaries, written by builds before 0.5.1
+        shutil.rmtree(stale, ignore_errors=True)
     union = gene_union(out, samples)
     genes, groups = _split_features(cfg, sorted(union))
     with open(out / "genes.json", "w") as fh:
@@ -1025,51 +1012,3 @@ def build_bundle(
     except Exception as e:  # thumbnails are a nicety; never fail a build over them
         log(f"thumbnails skipped: {e}")
     return BuildResult(out, plan, m, validate_local(out))
-
-
-def add_outlines(
-    cfg: DatasetConfig,
-    out: Path,
-    *,
-    sample_ids: list[str] | None = None,
-    fields: list[str] | None = None,
-    smooth_um: float = 150.0,
-    min_feature_um: float = 300.0,
-    log: Log = print,
-) -> Manifest:
-    """Compute outlines for categorical fields from the arrays already in the bundle (no source data needed)."""
-    import zarr
-
-    out = Path(out)
-    with open(out / "manifest.json") as fh:
-        existing = Manifest.model_validate_json(fh.read())
-    vocab = VocabRegistry(cfg.fields, load_palette(cfg.palette), existing=existing.vocabularies)
-    vocab.adopt_manifest_fields(existing)
-    vocab.recolor_from_palette()  # palette edits apply on refresh; codes stay put
-    for s in existing.samples:
-        if sample_ids and s.id not in sample_ids:
-            continue
-        if s.kind != "spatial":
-            continue
-        d = out / "samples" / s.id
-        og = zarr.open_group(str(d / "obs.zarr"), mode="r")
-        xy = og["xy"][:]
-        done: list[str] = []
-        for fid in s.fields:
-            f = existing.field_by_id(fid)
-            if not f or f.type != "categorical" or (fields and fid not in fields):
-                continue
-            codes = og["cat"][fid][:]
-            v = existing.vocabularies[f.vocabulary]
-            na = {v.categories.index("NA")} if "NA" in v.categories else set()
-            log(f"[{s.id}] outlines for {fid}")
-            write_outlines(
-                d,
-                fid,
-                compute_outlines(
-                    xy, codes, len(v.categories), skip_codes=na, smooth_um=smooth_um, min_feature_um=min_feature_um
-                ),
-            )
-            done.append(fid)
-        s.outlines = sorted(set(s.outlines) | set(done))
-    return _write_dataset_files(out, cfg, existing.samples, vocab)

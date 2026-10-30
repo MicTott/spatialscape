@@ -64,6 +64,7 @@ export function readUrl(): Partial<ViewerState> {
     if (v <= 0) out.showImages = false; // links written before `imgs` existed
   }
   if (q.get("imgs") === "0") out.showImages = false;
+  if (q.get("cells") === "0") out.showCells = false;
   if (q.get("hc")) out.hiddenChannels = q.get("hc")!.split("|").filter(Boolean); // channel names may contain commas
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
   if (q.get("s")) out.focus = q.get("s");
@@ -77,17 +78,23 @@ export function readUrl(): Partial<ViewerState> {
     });
     out.pointScale = ps;
   }
-  if (q.get("o")) {
-    const [field, style, width] = q.get("o")!.split(":");
-    if (field) out.outline = { field, style: (["field", "light", "dark"].includes(style) ? style : "light") as "field" | "light" | "dark", width: num(width, 1.5) };
-  }
   if (q.get("gf")) out.groupField = q.get("gf");
   if (q.get("poly") === "0") out.cellShapes = "dots"; // links written before cell shapes had modes
   const cs = q.get("cs");
   if (cs === "dots" || cs === "filled" || cs === "outlined") out.cellShapes = cs;
   else if (cs === "edges") out.cellShapes = "outlined"; // the mode's name before 0.4.1
   if (q.get("mol") === "1") out.molecules = true;
-  if (q.get("mg")) out.moleculeGenes = q.get("mg")!.split("|").filter(Boolean);
+  if (q.get("mg")) {
+    // pinned genes, each with an optional chosen colour: GAD1|PENK=ff6b4f
+    const pins = q.get("mg")!.split("|").filter(Boolean);
+    out.moleculeGenes = pins.map((p) => p.split("=")[0]).filter(Boolean);
+    const colors: Record<string, string> = {};
+    for (const p of pins) {
+      const [g, hex] = p.split("=");
+      if (g && /^[0-9a-f]{6}$/i.test(hex ?? "")) colors[g] = `#${hex.toLowerCase()}`;
+    }
+    if (Object.keys(colors).length) out.moleculePinColors = colors;
+  }
   if (q.get("mc") === "all") out.moleculeColors = "all";
   if (q.get("msz")) out.moleculeSize = Math.min(4, Math.max(0.25, num(q.get("msz"), 1)));
   if (q.get("ov")) out.overlay = q.get("ov");
@@ -145,6 +152,7 @@ export function serialize(s: ViewerState): string {
     .join(";");
   if (h) q.set("h", h);
   if (!s.showImages) q.set("imgs", "0");
+  if (!s.showCells) q.set("cells", "0");
   if (s.imageOpacity !== 1) q.set("img", s.imageOpacity.toFixed(2));
   if (s.hiddenChannels.length) q.set("hc", s.hiddenChannels.join("|"));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);
@@ -160,14 +168,13 @@ export function serialize(s: ViewerState): string {
   if (s.groupField) q.set("gf", s.groupField);
   if (s.cellShapes !== "auto") q.set("cs", s.cellShapes);
   if (s.molecules) q.set("mol", "1");
-  if (s.moleculeGenes.length) q.set("mg", s.moleculeGenes.join("|"));
+  if (s.moleculeGenes.length) q.set("mg", s.moleculeGenes.map((g) => (s.moleculePinColors[g] ? `${g}=${s.moleculePinColors[g].slice(1)}` : g)).join("|"));
   if (s.moleculeColors === "all") q.set("mc", "all");
   if (s.moleculeSize !== 1) q.set("msz", s.moleculeSize.toFixed(2));
   if (s.overlay) q.set("ov", s.overlay);
   if (!s.clusterLabels) q.set("cl", "0");
   if (!s.genome) q.set("gb", "0");
   if (s.locus) q.set("gl", `${s.locus.chrom}:${Math.round(s.locus.start)}-${Math.round(s.locus.end)}`);
-  if (s.outline.field) q.set("o", `${s.outline.field}:${s.outline.style}:${s.outline.width}`);
   if (!s.split.on) q.set("sv", "0");
   else if (s.split.side !== "left" || Math.abs(s.split.fraction - 0.38) > 0.005) q.set("sv", `${s.split.side[0]}:${s.split.fraction.toFixed(2)}`);
   if (s.splitBy) {

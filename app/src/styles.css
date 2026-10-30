@@ -83,6 +83,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .layer-body .cats { max-height: 160px; }
 .legend-actions button.on { background: var(--accent); color: #041018; border-color: var(--accent); font-weight: 600; }
 .molecule-genes .cats li { cursor: default; }
+.swatch-pick { appearance: none; -webkit-appearance: none; padding: 0; border: none; background: none; cursor: pointer; }
+.swatch-pick::-webkit-color-swatch-wrapper { padding: 0; }
+.swatch-pick::-webkit-color-swatch { border: none; border-radius: 3px; }
+.swatch-pick::-moz-color-swatch { border: none; border-radius: 3px; }
 .molecule-genes .unpin { background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1; }
 .molecule-genes .unpin:hover { color: var(--text); }
 .blend-swatch { background: linear-gradient(135deg, #ffd23f 50%, #4c8dff 50%); }
@@ -322,7 +326,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .group:last-child { border-bottom: 1px solid var(--border); }
 .group-head { display: flex; align-items: center; gap: 8px; padding: 9px 2px; cursor: pointer; user-select: none; }
 .group-head:hover { background: color-mix(in srgb, var(--panel2) 60%, transparent); }
-.group-head .chev { color: var(--muted); width: 10px; font-size: 11px; }
+.group-head .chev { color: var(--muted); width: 14px; font-size: 15px; line-height: 1; }
 .group-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 .group-summary { margin-left: auto; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
 .group-switch { margin-left: auto; }

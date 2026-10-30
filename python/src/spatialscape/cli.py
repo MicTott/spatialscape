@@ -187,31 +187,6 @@ def build(
 
 
 @app.command()
-def outlines(
-    config: Path = CONFIG_ARG,
-    out: Path | None = OUT_OPT,
-    sample: list[str] = typer.Option(None, "--sample", help="Only these sample ids (repeatable). Default: every spatial sample."),
-    field: list[str] = typer.Option(None, "--field", help="Only these categorical field ids (repeatable). Default: every categorical field the sample carries."),
-    smooth_um: float = typer.Option(150.0, "--smooth-um", help="Side of the majority-vote smoothing window, in microns. Larger values merge small islands into their neighbours."),
-    min_feature_um: float = typer.Option(300.0, "--min-feature-um", help="Islands and holes smaller than this (per side, in microns) are removed before tracing."),
-):
-    """Re-trace annotation boundaries from the arrays already in a bundle.
-
-    `build` traces outlines with the default settings. This command redoes them with other sizes: labels are
-    rasterized at half the cell spacing, majority-smoothed, cleaned of small features, traced with marching
-    squares and simplified. Cells labelled `NA` are treated as unknown and filled by their neighbours. Results
-    go to `samples/<id>/outlines/<field>.json` and the manifest; no source data is read.
-    """
-    from .build import add_outlines
-    from .config import load_config
-
-    cfg = load_config(config)
-    target = out or cfg.default_bundle_dir
-    m = add_outlines(cfg, target, sample_ids=sample or None, fields=field or None, smooth_um=smooth_um, min_feature_um=min_feature_um)
-    typer.echo(f"outlines written: {[(s.id, s.outlines) for s in m.samples if s.outlines]}")
-
-
-@app.command()
 def thumbnails(
     out: Path = typer.Argument(..., help="Bundle directory.", show_default=False),
     hero: str | None = typer.Option(None, "--hero", help="Sample shown on the dataset thumbnail. Default: `thumbnail_sample` from the yaml, else the first spatial sample in layout order."),

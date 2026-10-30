@@ -144,6 +144,14 @@ describe("molecules", () => {
     expect(readUrl().molecules).toBe(true);
     expect(readUrl().moleculeGenes).toEqual(["GAD1", "PENK"]);
     expect(readUrl().moleculeColors).toBe("all");
+    g.window = { location: { search: "?mg=GAD1|PENK=ff6b4f|SST=zz" } };
+    expect(readUrl().moleculeGenes).toEqual(["GAD1", "PENK", "SST"]); // a chosen colour rides on the pin; a bad one is ignored
+    expect(readUrl().moleculePinColors).toEqual({ PENK: "#ff6b4f" });
+    expect(new URLSearchParams(serialize({ ...store.getState(), moleculeGenes: ["GAD1", "PENK"], moleculePinColors: { PENK: "#ff6b4f" } } as ViewerState)).get("mg")).toBe("GAD1|PENK=ff6b4f");
+    g.window = { location: { search: "?cells=0" } };
+    expect(readUrl().showCells).toBe(false);
+    expect(new URLSearchParams(serialize({ ...store.getState(), showCells: false } as ViewerState)).get("cells")).toBe("0");
+    expect(new URLSearchParams(serialize(store.getState())).has("cells")).toBe(false);
     expect(new URLSearchParams(serialize({ ...store.getState(), moleculeColors: "all" } as ViewerState)).get("mc")).toBe("all");
     expect(new URLSearchParams(serialize({ ...store.getState(), overlay: "nucleus" } as ViewerState)).get("ov")).toBe("nucleus");
     g.window = { location: { search: "?ov=nucleus" } };

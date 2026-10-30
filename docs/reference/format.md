@@ -23,7 +23,6 @@
       cat/<fieldId>  uint16 (nObs)    codes into manifest.vocabularies[field.vocabulary].categories
       num/<fieldId>  float32 (nObs)
     ids/<block>.json           obs names in blocks of idBlock (default 65536)
-    outlines/<fieldId>.json    {bin, paths:[{c: code, p:[[x, y], ...]}]} µm polylines
     shapes.json                cell shape tile index: {version, grid (µm per unit, 0.1), tile (µm), origin [x, y] µm,
                                nx, ny, reach (µm), layout "packed"|"files", tiles: [[ix, iy, offset, bytes, rings, vertices]]}
     shapes.bin                 the tiles' zstd frames back to back, row-major (layout "packed", read with byte ranges);
@@ -108,7 +107,7 @@ type Manifest = {
     bbox: [minx, miny, maxx, maxy], toDataset: number[9], pointRadius,
     expr: {kind: "u8"|"csc", sharded, shardGenes}, hasF16, fields: string[],
     images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?, defaultOpacity}>,
-    outlines: string[], shapes?: {path, cells, vertices, tile, tiles, bytes},
+    shapes?: {path, cells, vertices, tile, tiles, bytes},
     molecules?: {path, count, genes, tile, tiles, bytes},
     segmentations: Array<{id, name, path, cells, vertices, tile, tiles, bytes, medianArea}>, idBlock
     // polygons?: {path, cells, vertices, scale}: whole-sample polygons of bundles built before shape tiles (still drawn)

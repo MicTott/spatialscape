@@ -53,10 +53,6 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
         ("Before upload", "spatialscape validate bundles/dlpfc"),
         ("After upload", "spatialscape validate https://data.example.org/dlpfc"),
     ],
-    "outlines": [
-        ("All spatial samples, all categorical fields", "spatialscape outlines dlpfc.yaml"),
-        ("Finer outlines for one Xenium donor", "spatialscape outlines amygdala.yaml --sample xen_Br9280 --field domain --smooth-um 80 --min-feature-um 150"),
-    ],
     "thumbnails": [("Lead with a particular section", "spatialscape thumbnails bundles/dlpfc --hero vis_Br8325")],
     "synth": [("Make inputs, build them, serve them", "spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml && spatialscape serve demo-src/bundles --open")],
 }
@@ -68,7 +64,6 @@ RELATED: dict[str, list[str]] = {
     "site build": ["site init", "serve", "build"],
     "inspect": ["init"],
     "validate": ["build", "serve"],
-    "outlines": ["build"],
     "thumbnails": ["build"],
     "synth": ["build"],
 }
@@ -80,7 +75,6 @@ GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "site build": ("Publish your own site", "/guide/publish"),
     "inspect": ("Where your data comes from", "/guide/preparing-data"),
     "validate": ("Hosting", "/guide/hosting"),
-    "outlines": ("Using the viewer: annotation boundaries", "/guide/viewer#annotation-boundaries"),
     "thumbnails": ("The gallery: site.yaml", "/guide/registry"),
     "synth": ("Getting started", "/guide/getting-started#try-the-full-path-in-two-minutes"),
 }

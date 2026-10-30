@@ -17,7 +17,7 @@ Each one traces to a lesson from an earlier viewer:
 app/src
   views/ViewerController.ts   deck.gl Deck, two OrthographicViews, camera, store subscription, diagnostics
   views/loader.ts             manifest + sample opening + the arrays the current state needs
-  views/layers.ts             store state → deck.gl layers (points, images, outlines, cell shapes, frames, labels)
+  views/layers.ts             store state → deck.gl layers (points, images, cell shapes, frames, labels)
   views/tileManager.ts        spatial tiles per sample: index, fetch once the camera settles, cache, generation across datasets
   views/shapes.ts             cell shape tiles per pane: gate and budgets, colour bytes gathered from the cell arrays
   views/molecules.ts          molecule tiles per pane: the density gate and the per-gene colours

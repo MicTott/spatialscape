@@ -112,9 +112,9 @@ def test_help_lists_the_current_commands_only(capsys):
     main(["--help"])  # help prints and returns (exit status 0)
     out = re.sub(r"\x1b\[[0-9;]*m", "", capsys.readouterr().out)  # CI runners force colors
     assert "Usage: spatialscape" in out
-    for cmd in ("init", "inspect", "build", "serve", "site", "validate", "outlines", "thumbnails", "synth"):
+    for cmd in ("init", "inspect", "build", "serve", "site", "validate", "thumbnails", "synth"):
         assert re.search(rf"\b{cmd}\b", out), cmd
-    for gone in ("convert", "refresh", "add-sample", "plan"):
+    for gone in ("convert", "refresh", "add-sample", "plan", "outlines"):
         assert not re.search(rf"\b{gone}\b", out), gone
     with pytest.raises(SystemExit) as ex:
         main(["build", "--no-such-flag"])

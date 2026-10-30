@@ -13,15 +13,15 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `fl` | filter: `g:<gene>:<lo>,<hi>`, `f:<field>:<lo>,<hi>`, or `c:<field>:<codes>` | `fl=c:domain:2.5` |
 | `h` | hidden categories per field | `h=domain:1.3;celltype:0` |
 | `gf` | annotation for the expression-by-annotation panel | `gf=domain` |
-| `o` | outlines: `<field>:<style>:<width>` | `o=domain:light:1.5` |
 | `mol` | `1` draws molecules once zoomed in | `mol=1` |
-| `mg` | pinned molecule genes, in pin order, separated by `\|` | `mg=PENK\|SST` |
+| `mg` | pinned molecule genes, in pin order, separated by `\|`; `=<hex>` after a gene is its chosen colour | `mg=PENK\|SST=ff6b4f` |
 | `msz` | molecule point size multiplier | `msz=2.00` |
 | `mc` | `all`: every gene's molecules in its own colour | `mc=all` |
 | `cs` | how cells draw once zoomed in: `filled`, `outlined` or `dots` (default: filled, or outlined over an image). Older links' `poly=0` means `dots` and `cs=edges` means `outlined` | `cs=outlined` |
 | `cl` | `0` hides the cluster names on the embedding | `cl=0` |
 | `img` | image opacity, `0` hides images | `img=0.6` |
 | `imgs` | `0` switches images off | `imgs=0` |
+| `cells` | `0` switches the cells (dots and shapes) off | `cells=0` |
 | `hc` | image channels switched off, by name, separated by `\|` | `hc=DAPI\|18S` |
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |

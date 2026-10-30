@@ -81,6 +81,7 @@ function HeaderActions() {
 function Groups({ genes }: { genes: string[] }) {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
+  const showCells = useViewer((s) => s.showCells);
   const imageOpacity = useViewer((s) => s.imageOpacity);
   const hiddenChannels = useViewer((s) => s.hiddenChannels);
   const molecules = useViewer((s) => s.molecules);
@@ -124,7 +125,7 @@ function Groups({ genes }: { genes: string[] }) {
           <ImageChannels />
         </Group>
       )}
-      <Group id="cells" title="Cells" summary={colorSummary} defaultOpen>
+      <Group id="cells" title="Cells" summary={showCells ? colorSummary : "off"} on={showCells} onToggle={(v) => set({ showCells: v })} defaultOpen>
         <ColorPanel genes={genes} />
         <Legend />
         <GeneByAnnotation />

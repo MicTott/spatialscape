@@ -107,13 +107,7 @@ export interface PaneInfo {
   count: number; // sections laid out in the pane
   hidden: number; // sections of the group hidden by the platform bar or the sample list
 }
-export interface OutlineState {
-  field: string | null;
-  style: "field" | "light" | "dark";
-  width: number; // pixels
-}
 export interface ViewerState {
-  outline: OutlineState;
   groupField: string | null;
   groupStats: GroupStats | null;
   tool: "pan" | "lasso";
@@ -121,6 +115,7 @@ export interface ViewerState {
   shapeHint: string | null; // "zoom in for cell shapes" when too many cells are in view to draw their shapes
   molecules: boolean; // individual molecules (transcripts) once zoomed in, when the bundle has them
   moleculeGenes: string[]; // pinned genes whose molecules draw in fixed colours next to the gene on screen
+  moleculePinColors: Record<string, string>; // a pinned gene's chosen colour (hex), replacing its pin colour
   moleculeColors: "selected" | "all"; // the selected genes (the one on screen and the pins; others grey under an annotation), or every gene in its own colour
   moleculeSize: number; // point radius multiplier for molecules (1 = 1.6 px)
   moleculeHint: string | null; // "zoom in for molecules" when the view holds too many to draw
@@ -166,6 +161,7 @@ export interface ViewerState {
   viewState: ViewState | null;
   imageOpacity: number;
   showImages: boolean;
+  showCells: boolean; // the cells (dots and shapes); off to see the image or the transcripts alone
   hiddenChannels: string[]; // fluorescence channels switched off, by name, so one switch covers every sample
   // point radius multipliers: "spatial" and "embedding" are the bases per pane kind; a group pane ("g0".."g2") may
   // override its own, so a dense section and a sparse one can be read side by side
@@ -260,7 +256,6 @@ export const store = createStore<ViewerState>((set, get) => ({
   split: { on: true, side: "left", fraction: 0.38 },
   activeView: "spatial",
   sidebarOpen: true,
-  outline: { field: null, style: "light", width: 1.5 },
   groupField: null,
   groupStats: null,
   tool: "pan",
@@ -268,6 +263,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   shapeHint: null,
   molecules: false,
   moleculeGenes: [],
+  moleculePinColors: {},
   moleculeColors: "selected",
   moleculeSize: 1,
   moleculeHint: null,
@@ -293,6 +289,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   viewState: null,
   imageOpacity: DEFAULTS.imageOpacity,
   showImages: DEFAULTS.showImages,
+  showCells: true,
   hiddenChannels: [],
   pointScale: DEFAULTS.pointScale,
   hover: null,

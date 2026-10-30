@@ -4,13 +4,12 @@ import { shapeMode } from "../views/shapes";
 import { OVERLAY_HEX } from "../views/overlay";
 import { LayerRow } from "./Group";
 
-/** How cells are drawn: their shapes once zoomed in, annotation boundaries over them, and cluster names in the embedding. */
+/** How cells are drawn: their shapes once zoomed in, another segmentation over them, and cluster names in the embedding. */
 export function CellRows() {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
   const cellShapes = useViewer((s) => s.cellShapes);
   const clusterLabels = useViewer((s) => s.clusterLabels);
-  const outline = useViewer((s) => s.outline);
   const overlay = useViewer((s) => s.overlay);
   const focus = useViewer((s) => s.focus);
   const set = store.getState().set;
@@ -20,9 +19,7 @@ export function CellRows() {
   for (const smp of manifest.samples) for (const sg of smp.segmentations ?? []) if (!segs.has(sg.id)) segs.set(sg.id, sg.name);
   const [lastOverlay, setLastOverlay] = useState<string | null>(null);
   const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
-  const outlineFields = manifest.fields.filter((f) => f.type === "categorical" && manifest.samples.some((s) => s.outlines?.includes(f.id)));
-  const [lastOutline, setLastOutline] = useState<string | null>(null);
-  if (!hasShapes && !hasEmbedding && !outlineFields.length && !segs.size) return null;
+  if (!hasShapes && !hasEmbedding && !segs.size) return null;
   // the comparison table: the focused section, or every section with another segmentation summed
   const compared = manifest.samples.filter((s) => s.segmentations?.length && (!focus || s.id === focus));
   const row = (name: string, pick: (s: (typeof manifest.samples)[number]) => { cells: number; medianArea?: number | null } | undefined) => {
@@ -53,28 +50,6 @@ export function CellRows() {
               </button>
             ))}
           </div>
-        </LayerRow>
-      )}
-      {outlineFields.length > 0 && (
-        <LayerRow
-          name="Annotation boundaries"
-          on={outline.field != null}
-          onToggle={(v) => set({ outline: { ...outline, field: v ? (lastOutline ?? outlineFields[0].id) : null } })}
-          summary={outline.field ? (manifest.fields.find((f) => f.id === outline.field)?.name ?? outline.field) : "off"}
-        >
-          <select
-            value={outline.field ?? ""}
-            onChange={(e) => {
-              setLastOutline(e.target.value || null);
-              set({ outline: { ...outline, field: e.target.value || null } });
-            }}
-          >
-            {outlineFields.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
         </LayerRow>
       )}
       {segs.size > 0 && (

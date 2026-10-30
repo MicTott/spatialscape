@@ -2,7 +2,7 @@
 
 Visium, Visium HD, Slide-seq, Stereo-seq and the like: barcoded spots, beads or bins on a tissue section,
 whole-transcriptome counts, usually an H&E image of the same section. The viewer draws the spots at their true size
-on the image, with spatial domains as colours and their boundaries as lines.
+on the image, with spatial domains as colours.
 
 ## The minimum
 
@@ -41,7 +41,6 @@ A spot drawn too large or too small against the image, or a scale bar that reads
 |---|---|---|
 | H&E image | `images: auto` (default) | SpaceRanger's `spatial/tissue_hires_image.png` + `scalefactors_json.json`, found next to the data; the H&E inside an R object; or any PNG / TIFF / OME-Zarr with `pixel_size` |
 | Spot or bin shapes | `polygons:` | an `obsm` array of shape (n, vertices, 2) is picked up on its own (`segmentations`, `cell_boundaries`, …), as SpatialExperiment exports of HD segmentations carry; else a long table |
-| Annotation boundaries | automatic | traced from every categorical annotation at build time (`outlines:` to choose) |
 
 ### Visium
 
@@ -92,5 +91,5 @@ No image, beads or DNBs in their own pixel units, and often a single file for th
 ## Next
 
 - [Where your data comes from](../preparing-data) for the R, Python and SpatialData paths and image placement.
-- [Using the viewer](../viewer): outlines, blends, the filter, lasso.
+- [Using the viewer](../viewer): blends, the filter, lasso.
 - [Single-cell and multiome](./single-cell) to put a reference beside the sections with shared colours.

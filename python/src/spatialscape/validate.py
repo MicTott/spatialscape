@@ -286,9 +286,6 @@ def validate_local(root: Path) -> list[str]:
             if got != want:
                 _problem(p, f"{s.id}: ids/{b}.json has {got} ids, expected {want}")
                 break
-        for fid in s.outlines or []:
-            if not (d / "outlines" / f"{fid}.json").exists():
-                _problem(p, f"{s.id}: outlines/{fid}.json listed but missing")
         if s.shapes:
             _check_shapes(p, s, d)
         for sg in s.segmentations or []:

@@ -9,6 +9,7 @@ export function MoleculeGenes({ genes }: { genes: string[] }) {
   const colormap = useViewer((s) => s.colormap);
   const geneMin = useViewer((s) => s.geneMin);
   const pins = useViewer((s) => s.moleculeGenes);
+  const pinColors = useViewer((s) => s.moleculePinColors);
   const size = useViewer((s) => s.moleculeSize);
   const mode = useViewer((s) => s.moleculeColors);
   const set = store.getState().set;
@@ -42,10 +43,23 @@ export function MoleculeGenes({ genes }: { genes: string[] }) {
           </li>
         )}
         {pins.map((g, i) => (
-          <li key={g} title="pinned: click to unpin">
-            <span className="swatch" style={{ background: pinColor(i) }} />
+          <li key={g} title="pinned: click the colour to change it, × to unpin">
+            <input
+              type="color"
+              className="swatch swatch-pick"
+              value={pinColors[g] ?? pinColor(i)}
+              onChange={(e) => set({ moleculePinColors: { ...pinColors, [g]: e.target.value } })}
+              aria-label={`colour of ${g}`}
+            />
             <span className="cat-name">{g}</span>
-            <button className="unpin" onClick={() => set({ moleculeGenes: pins.filter((x) => x !== g) })} aria-label={`unpin ${g}`}>
+            <button
+              className="unpin"
+              onClick={() => {
+                const { [g]: _gone, ...rest } = pinColors;
+                set({ moleculeGenes: pins.filter((x) => x !== g), moleculePinColors: rest });
+              }}
+              aria-label={`unpin ${g}`}
+            >
               ×
             </button>
           </li>

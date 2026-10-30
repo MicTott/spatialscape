@@ -60,10 +60,6 @@ prebuilt wheel it compiles against zlib and libcurl; a C compiler and those head
 
 The conversion cache under `bundles/.cache/<id>/` is keyed on the object's path, size and modification time plus `assay`, `sample_col`, `embedding` and `object`. Re-saving the object or changing any of those converts again; editing `fields:` or anything else never does.
 
-## Outlines look fragmented or too coarse
-
-Tune `spatialscape outlines dataset.yaml -o bundle --smooth-um 150 --min-feature-um 300`. Larger values merge islands; smaller values follow finer structure. Cells labeled `NA` are treated as unknown and filled by their neighbors.
-
 ## Polygons matched 0 cells
 
 The `cell_id` values in the boundary file do not match `obs_names`. This happens when the object was built from a different segmentation run than the boundary file. Use the boundaries from the run that produced the cells.

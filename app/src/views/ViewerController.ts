@@ -291,10 +291,11 @@ export class ViewerController {
       s.scalePerSample !== prev.scalePerSample ||
       s.selected !== prev.selected ||
       s.sampleStatus !== prev.sampleStatus ||
-      s.outline !== prev.outline ||
+      s.showCells !== prev.showCells ||
       s.cellShapes !== prev.cellShapes ||
       s.molecules !== prev.molecules ||
       s.moleculeGenes !== prev.moleculeGenes ||
+      s.moleculePinColors !== prev.moleculePinColors ||
       s.moleculeColors !== prev.moleculeColors ||
       s.moleculeSize !== prev.moleculeSize ||
       s.overlay !== prev.overlay

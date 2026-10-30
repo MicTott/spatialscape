@@ -64,6 +64,10 @@ describe("molecule tiles written by the Python build", () => {
     expect(al.shares(counts)).toBe(1);
     expect(pinColor(7)).toMatch(/^#[0-9a-f]{6}$/);
     expect(pinColor(7)).not.toBe(pinColor(8));
+    // a chosen colour replaces the pin colour for that gene only
+    const chosen = geneColors(["A", "B", "C"], { color: null, colormap: "viridis", geneMin: 0, moleculeGenes: ["B", "C"], moleculePinColors: { C: "#102030" } } as any);
+    expect(Array.from(chosen.colors.subarray(8, 11))).toEqual([0x10, 0x20, 0x30]);
+    expect(Array.from(chosen.colors.subarray(4, 7))).toEqual(hexToRGB(pinColor(0)));
   });
 });
 

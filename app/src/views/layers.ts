@@ -28,7 +28,6 @@ export class LayerBuilder {
   private lutCache = new Map<string, Uint8Array>();
   private paletteCache = new Map<string, Uint8Array>();
   private centroidCache = new Map<string, Centroid[]>();
-  private outlinePending = new Set<string>(); // outline fetches already counted in store.pending
   readonly shapes: ShapeManager;
   readonly molecules: MoleculeManager;
   private overlays = new Map<string, OverlayManager>(); // by segmentation id, made when first chosen
@@ -63,7 +62,6 @@ export class LayerBuilder {
     this.lutCache.clear();
     this.paletteCache.clear();
     this.centroidCache.clear();
-    this.outlinePending.clear();
     this.shapes.reset();
     this.molecules.reset();
     for (const m of this.overlays.values()) m.reset();
@@ -181,7 +179,7 @@ export class LayerBuilder {
         };
       };
       const shapePlan =
-        kind === "spatial"
+        kind === "spatial" && s.showCells
           ? this.shapes.pane(view, L, s, (id) => shapeMode(s.cellShapes, s.showImages && c.samplesById.get(id)!.images.length > 0), colorOf)
           : null;
       const moleculePlan = kind === "spatial" ? this.molecules.pane(view, L, s) : null;
@@ -190,7 +188,7 @@ export class LayerBuilder {
         const sd = c.cache.samples.get(id);
         const visible = intersects(p.worldBbox, vb);
         if (smp.images.length && visible) layers.push(...this.imageLayers(s, view, id, p.modelMatrix));
-        if (!sd) continue;
+        if (!sd || !s.showCells) continue;
         const cc = colorOf(id)!;
         const inp = cc.inputs;
         const mode = cc.props.mode;
@@ -222,11 +220,10 @@ export class LayerBuilder {
           } as any),
         );
       }
-      if (kind === "spatial" && s.outline.field) layers.push(...this.outlineLayers(s, view, L));
       if (shapePlan) layers.push(...shapePlan.layers);
       if (moleculePlan) layers.push(...moleculePlan.layers);
       if (overlay && kind === "spatial") layers.push(...overlay.pane(view, L));
-      if (kind === "spatial" && s.cellShapes !== "dots") layers.push(...this.polygonLayers(view, L));
+      if (kind === "spatial" && s.showCells && s.cellShapes !== "dots") layers.push(...this.polygonLayers(view, L));
       if (kind === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
       layers.push(...c.regions.layers(s, view, L));
       layers.push(...c.selection.layers(s, view, L));
@@ -311,54 +308,6 @@ export class LayerBuilder {
           getWidth: 1,
           widthUnits: "pixels",
           widthMinPixels: 0.75,
-        } as any),
-      );
-    }
-    return out;
-  }
-
-  /** One PathLayer per sample with the chosen categorical field's boundaries. */
-  private outlineLayers(s: ViewerState, view: ViewId, L: LayoutResult) {
-    const c = this.c;
-    const field = s.outline.field!;
-    const f = c.manifest && fieldById(c.manifest, field);
-    if (!f || f.type !== "categorical" || !s.datasetUrl) return [];
-    const colors = c.manifest!.vocabularies[f.vocabulary].colors.map((col) => hexToRGB(col));
-    const out: any[] = [];
-    for (const [id, p] of L.placements) {
-      const smp = c.samplesById.get(id)!;
-      if (!smp.outlines?.includes(field)) continue;
-      const data = c.cache.getOutlines(s.datasetUrl, id, field);
-      if (data instanceof Promise) {
-        const key = `${id}/${field}`;
-        if (!this.outlinePending.has(key)) {
-          this.outlinePending.add(key); // count the fetch once, not once per frame while it is in flight
-          store.getState().set({ pending: store.getState().pending + 1 });
-          data
-            .catch((e) => console.warn("outline load failed", id, field, e))
-            .finally(() => {
-              this.outlinePending.delete(key);
-              store.getState().set({ pending: Math.max(0, store.getState().pending - 1) });
-              c.requestLayers();
-            });
-        }
-        continue;
-      }
-      const style = s.outline.style;
-      out.push(
-        new PathLayer({
-          ...overlayProps(view),
-          id: `outline-${id}`,
-          data: data.paths,
-          getPath: (d: any) => d.p,
-          getColor: (d: any) => (style === "field" ? [...colors[d.c], 235] : style === "light" ? [255, 255, 255, 210] : [15, 17, 22, 230]),
-          getWidth: s.outline.width,
-          widthUnits: "pixels",
-          widthMinPixels: 0.5,
-          jointRounded: true,
-          capRounded: true,
-          modelMatrix: p.modelMatrix,
-          updateTriggers: { getColor: [style] },
         } as any),
       );
     }
