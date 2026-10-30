@@ -147,3 +147,22 @@ def test_csr_helpers_agree_with_scipy(monkeypatch):
     assert csr_is_canonical(bad) is (bad.has_canonical_format if bad.indptr[1] > 4 else csr_is_canonical(bad))
     dup = sp.csr_matrix((np.array([1.0, 1.0, 2.0], dtype=np.float32), np.array([0, 0, 1]), np.array([0, 2, 3])), shape=(2, 3))
     assert csr_is_canonical(dup) is False
+
+
+def test_csr_input_with_unsorted_rows_writes_the_same_bundle(tmp_path):
+    """A CSR matrix whose rows are not sorted by column (as a concatenation of pieces may leave it) is gathered as
+    stored, with no copy and the same result as the sorted matrix."""
+    rng = np.random.default_rng(11)
+    M = sp.random(80, 20, density=0.3, random_state=12, format="csr", dtype=np.float32)
+    M.data[:] = rng.uniform(0.1, 2, M.nnz)
+    shuffled = M.copy()
+    for r in range(shuffled.shape[0]):  # reverse each row's entries
+        a, b = shuffled.indptr[r], shuffled.indptr[r + 1]
+        shuffled.indices[a:b] = shuffled.indices[a:b][::-1].copy()
+        shuffled.data[a:b] = shuffled.data[a:b][::-1].copy()
+    shuffled.has_sorted_indices = False
+    write_expression(M, tmp_path / "sorted", shard_genes=8)
+    write_expression(shuffled, tmp_path / "shuffled", shard_genes=8)
+    a = zarr.open_group(str(tmp_path / "sorted" / "expr.zarr"), mode="r")["u8"][:]
+    b = zarr.open_group(str(tmp_path / "shuffled" / "expr.zarr"), mode="r")["u8"][:]
+    assert np.array_equal(a, b)

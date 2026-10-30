@@ -160,7 +160,8 @@ def _positions_in_columns(indices: np.ndarray, lo: int, hi: int) -> np.ndarray:
 
 
 def csr_is_canonical(M: sp.csr_matrix) -> bool:
-    """Whether every row's column indices are strictly increasing (sorted, no duplicates), checked a chunk at a time.
+    """Whether every row's column indices are strictly increasing (sorted, no duplicates), checked a chunk at a time;
+    a diagnostic (the writer does not need canonical CSR input).
     scipy's `has_canonical_format` hands the index arrays to its C routines, which recast an int32 column index to
     the row pointer's int64 first: on a 7-billion-entry matrix that is a 59 GB temporary."""
     idx, indptr = M.indices, M.indptr
@@ -280,8 +281,12 @@ def write_expression(
     n_obs, n_vars = M.shape
     csr = sp.issparse(M) and M.format == "csr"
     Mc = M if csr else M.tocsc()
-    if Mc.nnz and not (csr_is_canonical(Mc) if csr else Mc.has_canonical_format):
-        Mc = Mc.copy()  # duplicate entries must sum, as in a dense view; canonicalise a copy, never the caller's matrix
+    # A CSC matrix is canonicalised (duplicate entries sum, as in a dense view) on a copy, never the caller's. A CSR
+    # matrix is used as stored: its order within a row does not matter to the gather below, and canonicalising a
+    # matrix of several billion values would mean a second copy of it (plus scipy's int64 recast of the index). An
+    # exporter does not write duplicate entries; were there any, the last one would stand instead of the sum.
+    if Mc.nnz and not csr and not Mc.has_canonical_format:
+        Mc = Mc.copy()
         Mc.sum_duplicates()
     inv = None
     if order is not None:
