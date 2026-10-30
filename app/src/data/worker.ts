@@ -126,8 +126,9 @@ const api = {
         gmin = new Float32Array((await zarr.get(gminArr as zarr.Array<"float32", zarr.FetchStore>)).data as Float32Array);
       } catch (e) {
         // only a bundle built before signed features existed has no gmin array; anything else (a failed request, a
-        // damaged array) must not pass as "every feature starts at 0"
-        if (!(e instanceof zarr.NotFoundError)) throw e;
+        // damaged array) must not pass as "every feature starts at 0". A missing key is a 404 from most hosts, but a
+        // 403 from S3 behind CloudFront when the bucket grants GetObject without ListBucket.
+        if (!(e instanceof zarr.NotFoundError || /response status 403\b/.test(String((e as Error)?.message)))) throw e;
       }
       const h: Handles = {
         base,

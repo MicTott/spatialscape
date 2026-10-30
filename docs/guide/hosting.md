@@ -56,6 +56,10 @@ ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 aws s3api put-bucket-policy --bucket $BUCKET --policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Action\":\"s3:GetObject\",\"Resource\":\"arn:aws:s3:::$BUCKET/*\",\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::$ACCOUNT:distribution/$ID\"}}}]}"
 ```
 
+With `GetObject` alone, S3 answers 403 rather than 404 for a key that is not there; the viewer treats that 403
+as "absent" for the files a bundle may lack (older bundles have no `gmin` array), so this policy is enough. Add
+`s3:ListBucket` on `arn:aws:s3:::$BUCKET` to the same statement if you want true 404s in the browser's console.
+
 Upload each bundle folder (not `bundles/` itself: its `.cache/` sibling stays home) and the site, built with
 `data_url` set to the distribution's domain:
 
