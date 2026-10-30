@@ -157,6 +157,11 @@ band by band while it is read, so the whole slide is never in memory. A read tha
 the machine's memory (or of a cgroup or SLURM limit) is refused with the size it would need and the way out: set or
 lower `max_size:` on the image.
 
+`max_size:` is also the only knob for how fine a copy the bundle keeps. `pixels_per_unit` describes the source
+scan and never changes with the level read: a Xenium-layout image stays at 4.705882 pixels per µm (the 0.2125 µm
+scan) whether it is kept at full, half or quarter resolution. Halving `pixels_per_unit` to "read at half
+resolution" declares a pixel twice as large as it is, and the image lands at twice its size over the cells.
+
 ## Layers beyond the matrix
 
 Cell shapes, molecules, nuclei and embeddings each come from a file the platform writes; which ones, where they
