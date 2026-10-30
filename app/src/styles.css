@@ -454,16 +454,13 @@ button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]
 .sidebar .group-head .chev { width: 15px; height: 16px; display: grid; place-items: center; flex: none; color: #b2b8c1; }
 .sidebar .group-head .chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .14s; }
 .sidebar .group.open .chev svg { transform: rotate(90deg); }
-.sidebar .group-switch { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; flex: none; margin-top: 0; margin-bottom: 0; border: 1px solid #797f88; border-radius: 4px; background: #2b2e34; cursor: pointer; }
-.sidebar .group-switch:checked { border-color: #40c4ff; background: #40c4ff; }
-.sidebar .group-switch:checked::after { content: ""; display: block; width: 7px; height: 4px; border: solid #0b1921; border-width: 0 0 2px 2px; transform: translate(4px, 3px) rotate(-45deg); }
 .sidebar .group-body { padding: 0 4px 12px 15px; }
 .sidebar .group-body section { padding: 9px 0; }
 .sidebar .group-body section + section { border-top: 1px solid #34373d; }
 .sidebar .group-body section h2 { color: #d3d7dd; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; margin: 0 0 8px; }
 .sidebar .tabs { gap: 5px; margin-bottom: 9px; }
 .sidebar .tabs button, .sidebar .legend-actions button { border-radius: 7px; }
-.sidebar .tabs button { font-size: 13px; padding: 6px 10px; border-color: #454951; background: #292c32; }
+.sidebar .tabs button { font-size: 13px; padding: 4px 10px; border-color: #454951; background: #292c32; }
 .sidebar .tabs button:hover { background: #3a3e46; color: #fff; }
 .sidebar .tabs button.on { color: #06141b; border-color: #40c4ff; background: #40c4ff; }
 .sidebar select, .sidebar .genesearch input, .sidebar .grouplist input { padding: 7px 9px; border-color: #494d54; border-radius: 7px; background: #282b31; }
@@ -498,41 +495,9 @@ button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]
 .platformbar .canvas-tool[aria-pressed="true"]:hover { background: #80d9ff; color: #06141b; }
 .platformbar .canvas-tools + .split-ctl { border-left: 0; margin-left: 0; padding-left: 2px; }
 
-/* Readability: increase interface text without changing the data canvas or pane layout. */
-:root { font-size: 15px; }
-.sidebar header h1 { font-size: 18px; }
-.sidebar header p { font-size: 14px; line-height: 1.4; }
-.sidebar .group-title { font-size: 15px; }
-.sidebar .group-summary, .sidebar .small, .sidebar .cat-n { font-size: 13px; }
-.sidebar .group-body section h2, .sidebar .tabs button { font-size: 14px; }
-.sidebar .legend-head { font-size: 15px; }
-.sidebar .legend-actions button { font-size: 12px; padding: 2px 7px; }
-.sidebar .s-meta, .sidebar .ramp-labels, .sidebar .comp-head, .sidebar .blend-x, .sidebar .blend-y { font-size: 13px; }
-.sidebar .chip, .sidebar .comp-row, .sidebar .dp-row, .sidebar .heat table { font-size: 13px; }
-.sidebar .dp-head, .sidebar .dp-dot { font-size: 12px; }
-.topnav { font-size: 14px; }
-.topnav .brand { font-size: 16px; }
-.topnav select, .platformbar button, .platformbar select { font-size: 14px; }
-.platformbar .split-ctl .muted, .platformbar button .n { font-size: 13px; }
+/* Keep the canvas toolbar usable on narrow screens. */
 .platformbar { max-width: calc(100% - 340px); overflow-x: auto; scrollbar-width: thin; }
 .platformbar .split-ctl, .platformbar .canvas-tools { flex-shrink: 0; white-space: nowrap; }
-.pointsize .cap, .pointsize small, .scalebar span, .statusbar { font-size: 13px; }
-.tooltip { font-size: 14px; }
-.tt-sample, .tt-id { font-size: 12px; }
-.genome .g-head, .genome .g-head select, .genome .g-head .genesearch input { font-size: 13px; }
-.compare .c-title, .compare .d-gene { font-size: 14px; }
-.compare .c-sub, .compare .c-search, .compare .m-head button, .compare .m-row, .compare .d-toggle { font-size: 13px; }
-.compare .d-foot, .compare .c-axis, .compare .c-group, .compare .c-tip { font-size: 12px; }
 @media (max-width: 700px) { .platformbar { max-width: calc(100% - 24px); } }
-/* Give annotation categories a readable, interactive list without overpowering their colors. */
-.sidebar .annotation-legend { background: #222429; border: 1px solid #383b42; border-radius: 9px; padding: 10px; margin: 8px 0 4px; }
-.sidebar .annotation-legend .legend-head { margin-bottom: 7px; }
-.sidebar .annotation-legend .cats { max-height: 280px; }
-.sidebar .annotation-legend .cats li { min-height: 31px; padding: 5px 6px; border-radius: 6px; }
-.sidebar .annotation-legend .cats li + li { border-top: 1px solid #303238; }
-.sidebar .annotation-legend .cats li:hover, .sidebar .annotation-legend .cats li:focus-visible { background: #30333a; }
-.sidebar .annotation-legend .cats li.off { opacity: .5; }
-.sidebar .annotation-legend .swatch { width: 14px; height: 14px; border-radius: 4px; }
-.sidebar .annotation-legend .notmeasured { padding: 9px 5px 1px; line-height: 1.3; }
 .color-display-controls { margin: 5px 0 12px; }
 .color-display-controls .scaling-note, .labels-hint { margin: 6px 0 0; line-height: 1.35; }
