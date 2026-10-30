@@ -164,13 +164,18 @@ def _all_finite(data: np.ndarray) -> bool:
 
 
 def column_ranges_csr(M: sp.csr_matrix) -> tuple[np.ndarray, np.ndarray]:
-    """`column_ranges` for a CSR matrix: one pass over the stored values with ufunc.at, no CSC copy."""
+    """`column_ranges` for a CSR matrix: one pass over the stored values, a chunk at a time. (`bincount` and
+    `ufunc.at` cast an int32 index to int64 internally: on a 7-billion-entry panel that was a 59 GB temporary each.)"""
     n_obs, n_vars = M.shape
-    nnz_col = np.bincount(M.indices, minlength=n_vars)
+    nnz_col = np.zeros(n_vars, dtype=np.int64)
     gmax = np.full(n_vars, -np.inf, dtype=np.float32)
     gmin = np.full(n_vars, np.inf, dtype=np.float32)
-    np.maximum.at(gmax, M.indices, M.data)
-    np.minimum.at(gmin, M.indices, M.data)
+    for s in range(0, M.nnz, MASK_CHUNK):
+        idx = M.indices[s : s + MASK_CHUNK]
+        val = M.data[s : s + MASK_CHUNK]
+        nnz_col += np.bincount(idx, minlength=n_vars)
+        np.maximum.at(gmax, idx, val)
+        np.minimum.at(gmin, idx, val)
     has = nnz_col > 0
     gmax[~has] = 0
     gmin[~has] = 0
