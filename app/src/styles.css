@@ -435,9 +435,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cmp-row .cmp-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
 
 /* Viewer polish: preserve the existing layout and rendering while refining its controls. */
-@font-face { font-family: "Source Sans 3"; src: url("./assets/fonts/source-sans-regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Source Sans 3"; src: url("./assets/fonts/source-sans-semibold.ttf") format("truetype"); font-weight: 600 800; font-display: swap; }
-:root { --bg: #0e1116; --panel: #191b1f; --panel2: #282b31; --fg: #eef0f3; --muted: #a7adb6; --border: #3b3f46; font-family: "Source Sans 3", "Trebuchet MS", sans-serif; font-size: 14px; }
+:root { --bg: #0e1116; --panel: #191b1f; --panel2: #282b31; --fg: #eef0f3; --muted: #a7adb6; --border: #3b3f46; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size: 14px; }
 button { transition: background-color .14s, border-color .14s, color .14s; }
 button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid #80d7fb; outline-offset: 2px; }
 .sidebar { background: #191b1f; border-left-color: #303238; backdrop-filter: none; }
