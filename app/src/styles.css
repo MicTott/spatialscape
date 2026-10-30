@@ -433,3 +433,70 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cmp-row.on .cmp-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
 .cmp-row .cmp-name { font-weight: 600; font-size: 12px; }
 .cmp-row .cmp-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+
+/* Viewer design experiment: a quieter workspace with a clearer control hierarchy. */
+@font-face { font-family: "Source Sans 3"; src: url("./assets/fonts/source-sans-regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Source Sans 3"; src: url("./assets/fonts/source-sans-semibold.ttf") format("truetype"); font-weight: 600 800; font-display: swap; }
+:root { --bg: #0e1117; --panel: #242e33; --panel2: #303c42; --fg: #eff5f6; --muted: #b0c0c6; --accent: #9bd8ef; --border: #42535b; font-family: "Source Sans 3", "Trebuchet MS", sans-serif; font-size: 14px; }
+button { transition: background-color .15s, color .15s, border-color .15s; }
+button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid #a7dff4; outline-offset: 2px; }
+.topnav { height: 56px; background: #20292e; border-bottom-color: #303e45; gap: 20px; padding: 0 20px; font-size: 14px; }
+.topnav .brand { font-size: 19px; gap: 10px; }
+.topnav .brand img { height: 29px; }
+.topnav select { font-size: 13px; padding: 5px 10px; border-radius: 8px; }
+.app.with-nav .map, .app.with-nav .sidebar { top: 56px; }
+.app.with-nav .platformbar { top: 66px; }
+.app.with-nav .platformbar.below-heads { top: 96px; }
+.app.with-nav .overlay { top: 56px; }
+.sidebar { background: #242e33; border-left: 1px solid #303e45; backdrop-filter: none; }
+.sidebar-inner { padding: 22px 20px 28px; }
+.sidebar header h1 { font-size: 20px; font-weight: 600; margin-bottom: 5px; }
+.sidebar .collapse { top: 14px; background: #303c42; border-radius: 8px 0 0 8px; }
+.dataset-description { margin: 4px 0 12px; color: var(--muted); font-size: 13px; }
+.dataset-description summary { cursor: pointer; }
+.dataset-description p { margin-top: 8px !important; line-height: 1.4; }
+.hdr-actions button { font-size: 12px; padding: 5px 8px; border-radius: 7px; }
+.inspector-tabs { display: flex; gap: 20px; border-bottom: 1px solid #3d4e55; margin: 15px -1px 12px; }
+.inspector-tabs button { border: 0; border-bottom: 2px solid transparent; padding: 0 0 10px; color: var(--muted); background: none; cursor: pointer; font-size: 14px; }
+.inspector-tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+[role="tabpanel"][hidden] { display: none; }
+.sidebar .group { border-top: 1px solid #3b4c52; }
+.sidebar .group:last-child { border-bottom: 0; }
+.sidebar .group-head { padding: 12px 3px; border-radius: 6px; }
+.sidebar .group-title { text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 600; }
+.sidebar .group-summary { font-size: 13px; }
+.sidebar .group-body { padding: 0 0 12px 5px; }
+.sidebar .group-body section { padding: 9px 0; }
+.sidebar .group-body section + section { border-top: 1px solid #3b4c52; }
+.sidebar .group-body section h2 { text-transform: none; letter-spacing: 0; color: var(--fg); font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.sidebar .tabs { gap: 4px; background: #1a2226; padding: 4px; border-radius: 9px; }
+.sidebar .tabs button { flex: 1; background: transparent; border: 0; border-radius: 7px; padding: 7px 8px; color: #bfccd1; font-size: 13px; }
+.sidebar .tabs button:hover { background: #36474e; color: white; }
+.sidebar .tabs button.on { background: #4a5c64; color: #fff; font-weight: 600; }
+.sidebar select, .sidebar .genesearch input, .sidebar .grouplist input { background: #303c42; border-color: #53656d; border-radius: 8px; padding: 8px 10px; }
+.sidebar .legend { padding-top: 12px; }
+.sidebar .legend-head { font-size: 14px; margin-bottom: 9px; }
+.sidebar .cats li { padding: 5px 4px; border-radius: 6px; }
+.sidebar .swatch { border-radius: 4px; }
+.sidebar .cat-n { font-size: 12px; }
+.platformbar { padding: 5px; border-radius: 10px; background: #202a2f; border-color: #394950; backdrop-filter: none; }
+.platformbar button { border-radius: 7px; padding: 5px 10px; font-size: 13px; }
+.platformbar button.on { background: #485c64; color: #f5fbfc; border-color: transparent; }
+.platformbar button.tool.on { background: #486d7d; color: #fff; }
+.platformbar button:hover { background: #35464d; color: white; }
+.platformbar .split-ctl .muted { font-size: 12px; }
+.map > .pointsize { border-radius: 9px; background: #263238; border-color: #42535b; backdrop-filter: none; padding: 7px 10px; }
+.pointsize .cap { text-transform: none; font-size: 12px; letter-spacing: 0; color: #d7e5e9; }
+.pointsize small { font-size: 11px; }
+.statusbar { background: #1b2428; border-color: #303e45; font-size: 12px; }
+.tooltip { background: #27363c; border-color: #4a5e66; border-radius: 9px; font-size: 13px; }
+.app.has-data .map, .app.has-data .genome, .app.has-data .compare { left: 52px; }
+.app.has-data .platformbar { left: 64px; }
+.toolrail { position: absolute; left: 0; top: 0; bottom: 26px; width: 52px; padding: 14px 0; display: flex; flex-direction: column; align-items: center; gap: 7px; background: #222b30; z-index: 4; }
+.app.with-nav .toolrail { top: 56px; }
+.toolrail button { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 9px; color: #b5c6cd; background: transparent; cursor: pointer; }
+.toolrail button.active { background: #465962; color: #f7fbfc; }
+.toolrail button:hover { background: #35464d; color: white; }
+.toolrail svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.toolrail-divider { width: 24px; height: 1px; background: #405057; margin: 6px 0; }
+.toolrail .toolrail-help { margin-top: auto; }

@@ -8,6 +8,7 @@ import { Tooltip } from "./ui/Tooltip";
 import { StatusBar } from "./ui/StatusBar";
 import { Landing, resolveDataset } from "./ui/Landing";
 import { PlatformBar } from "./ui/PlatformBar";
+import { ToolRail } from "./ui/ToolRail";
 import { PaneDividers } from "./ui/PaneDividers";
 import { PaneHeaders } from "./ui/PaneHeaders";
 import { ScaleBars } from "./ui/ScaleBar";
@@ -55,13 +56,14 @@ export function App() {
   }, [datasetUrl, status]);
 
   return (
-    <div className={`app${hasNav ? " with-nav" : ""}`} style={{ "--genome-h": `${hasGenome ? genomeHeight : 0}px`, "--below-h": `${below}px` } as React.CSSProperties}>
+    <div className={`app${hasNav ? " with-nav" : ""}${hasManifest ? " has-data" : ""}`} style={{ "--genome-h": `${hasGenome ? genomeHeight : 0}px`, "--below-h": `${below}px` } as React.CSSProperties}>
       <TopNav />
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}${below ? " with-below" : ""}`} ref={mapRef}>
         <PaneHeaders />
         <PaneDividers mapRef={mapRef} />
         <ScaleBars />
         <PointSizeControls />
+        <Tooltip />
       </div>
       <GenomePanel />
       <ComparePanel />
@@ -74,8 +76,8 @@ export function App() {
         </div>
       )}
       <PlatformBar />
+      <ToolRail />
       <Sidebar />
-      <Tooltip />
       <StatusBar />
       <HelpOverlay />
     </div>

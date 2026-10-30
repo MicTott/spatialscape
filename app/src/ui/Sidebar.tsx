@@ -18,6 +18,7 @@ export function Sidebar() {
   const features = useViewer((s) => s.features);
   const genes = features?.genes ?? [];
   const collapsed = !useViewer((s) => s.sidebarOpen);
+  const [activeTab, setActiveTab] = useState<"explore" | "layers" | "samples">("explore");
 
   if (!manifest) return null;
   return (
@@ -32,9 +33,22 @@ export function Sidebar() {
               <h1>{manifest.name}</h1>
               <HeaderActions />
             </div>
-            {manifest.description && <p className="muted">{manifest.description}</p>}
+            {manifest.description && <details className="dataset-description"><summary>About this dataset</summary><p className="muted">{manifest.description}</p></details>}
           </header>
-          <Groups genes={genes} />
+          <div className="inspector-tabs" role="tablist" aria-label="Viewer controls" onKeyDown={(e) => {
+            const tabs = ["explore", "layers", "samples"] as const;
+            const current = tabs.indexOf(activeTab);
+            const next = e.key === "ArrowRight" ? (current + 1) % tabs.length : e.key === "ArrowLeft" ? (current + tabs.length - 1) % tabs.length : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : -1;
+            if (next < 0) return;
+            e.preventDefault();
+            setActiveTab(tabs[next]);
+            document.getElementById(`inspector-tab-${tabs[next]}`)?.focus();
+          }}>
+            {(["explore", "layers", "samples"] as const).map((tab) => (
+              <button key={tab} role="tab" id={`inspector-tab-${tab}`} aria-controls={`inspector-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} onClick={() => setActiveTab(tab)}>{tab[0].toUpperCase() + tab.slice(1)}</button>
+            ))}
+          </div>
+          <Groups genes={genes} activeTab={activeTab} />
         </div>
       )}
     </aside>
@@ -78,7 +92,7 @@ function HeaderActions() {
 
 /** The panel's five groups, each a bar that opens its controls and shows a one-line summary when closed. Several can
  * be open at once; what is open is remembered per browser. Image and Transcripts carry their switch in the bar. */
-function Groups({ genes }: { genes: string[] }) {
+function Groups({ genes, activeTab }: { genes: string[]; activeTab: "explore" | "layers" | "samples" }) {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
   const showCells = useViewer((s) => s.showCells);
@@ -116,6 +130,7 @@ function Groups({ genes }: { genes: string[] }) {
   const imageSummary = !showImages ? "off" : channelRows ? `${channelRows - hiddenChannels.length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
   return (
     <>
+      <div role="tabpanel" id="inspector-panel-layers" aria-labelledby="inspector-tab-layers" hidden={activeTab !== "layers"}>
       {hasImages && (
         <Group id="image" title="Image" summary={imageSummary} on={showImages} onToggle={(v) => set({ showImages: v })}>
           <label>
@@ -125,6 +140,13 @@ function Groups({ genes }: { genes: string[] }) {
           <ImageChannels />
         </Group>
       )}
+      {hasMolecules && (
+        <Group id="transcripts" title="Transcripts" summary={transcriptSummary} on={molecules} onToggle={(v) => set({ molecules: v })}>
+          <MoleculeGenes genes={genes} />
+        </Group>
+      )}
+      </div>
+      <div role="tabpanel" id="inspector-panel-explore" aria-labelledby="inspector-tab-explore" hidden={activeTab !== "explore"}>
       <Group id="cells" title="Cells" summary={showCells ? colorSummary : "off"} on={showCells} onToggle={(v) => set({ showCells: v })} defaultOpen>
         <ColorPanel genes={genes} />
         <Legend />
@@ -132,11 +154,6 @@ function Groups({ genes }: { genes: string[] }) {
         <FilterPanel genes={genes} />
         <CellRows />
       </Group>
-      {hasMolecules && (
-        <Group id="transcripts" title="Transcripts" summary={transcriptSummary} on={molecules} onToggle={(v) => set({ molecules: v })}>
-          <MoleculeGenes genes={genes} />
-        </Group>
-      )}
       {comparisons.length > 0 && (
         <Group id="comparisons" title="Comparisons" summary={comparisonText} on={!!activeComparison} onToggle={(v) => (v ? reopenComparison() : void activateComparison(null))}>
           <CompareGroup />
@@ -146,9 +163,12 @@ function Groups({ genes }: { genes: string[] }) {
         <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
         <RegionsPanel />
       </Group>
+      </div>
+      <div role="tabpanel" id="inspector-panel-samples" aria-labelledby="inspector-tab-samples" hidden={activeTab !== "samples"}>
       <Group id="samples" title="Samples" summary={sampleSummary}>
         <SampleStrip />
       </Group>
+      </div>
     </>
   );
 }

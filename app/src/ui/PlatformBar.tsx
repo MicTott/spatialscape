@@ -11,7 +11,6 @@ export function PlatformBar() {
   const split = useViewer((s) => s.split);
   const genome = useViewer((s) => s.genome);
   const hasTracks = useViewer((s) => !!s.manifest?.samples.some((x) => x.tracks));
-  const tool = useViewer((s) => s.tool);
   const splitBy = useViewer((s) => s.splitBy);
   const matchScale = useViewer((s) => s.matchScale);
   if (!manifest) return null;
@@ -19,15 +18,13 @@ export function PlatformBar() {
   const left = splitBy ? unassignedSamples(manifest, splitBy).length : 0;
   const present = ORDER.filter((p) => manifest.samples.some((s) => s.kind !== "embedding" && s.platform === p));
   const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
-  // always shown: it also hosts the lasso tool
+  // Platform and linked-view controls remain available above the canvas.
   const active = new Set(platforms ?? present);
   const counts = Object.fromEntries(present.map((p) => [p, manifest.samples.filter((s) => s.kind !== "embedding" && s.platform === p).length]));
   const set = store.getState().set;
+  if (present.length < 2 && keys.length === 0 && !hasEmbedding && !hasTracks) return null;
   return (
     <div className={`platformbar${splitBy && keys.length ? " below-heads" : ""}`}>
-      <button className={tool === "lasso" ? "on tool" : "tool"} onClick={() => set({ tool: tool === "lasso" ? "pan" : "lasso" })} title="lasso select cells (L)">
-        ⌒ lasso
-      </button>
       {present.length >= 2 && (
         <>
           <button className={platforms === null ? "on" : ""} onClick={() => set({ platforms: null })}>

@@ -64,3 +64,29 @@ test("loads the synthetic bundle, switches genes fast, filters without network",
   expect(Math.abs(vs.target[1] - vs.center[1])).toBeLessThan(1);
   expect(errors, errors.join("\n")).toEqual([]);
 });
+
+test("redesigned controls keep viewer state while switching panels", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await expect(page.getByRole("tab", { name: "Explore" })).toHaveAttribute("aria-selected", "true");
+
+  await page.getByRole("button", { name: "Gene", exact: true }).click();
+  const search = page.locator("#inspector-panel-explore .genesearch input").first();
+  await search.fill("G005");
+  await search.press("Enter");
+  await expect.poll(() => page.evaluate(() => (window as any).__sscape.getState().color)).toMatchObject({ kind: "gene", gene: "G005" });
+
+  await page.getByRole("tab", { name: "Layers" }).click();
+  await expect(page.locator("#inspector-panel-layers")).toBeVisible();
+  await page.getByRole("tab", { name: "Samples" }).click();
+  await expect(page.locator("#inspector-panel-samples")).toBeVisible();
+  await page.getByRole("tab", { name: "Explore" }).click();
+  await expect(search).toHaveValue("G005");
+
+  await page.getByRole("button", { name: "Lasso select" }).click();
+  await expect(page.getByRole("button", { name: "Lasso select" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Pan", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Pan", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Fit view" }).click();
+});
