@@ -19,7 +19,7 @@ export function MoleculeGenes({ genes }: { genes: string[] }) {
   };
   return (
     <div className="molecule-genes">
-      <div className="tabs" title="selected genes: the gene or blend on screen and the pinned genes, other molecules grey under an annotation. all genes: every gene in its own colour">
+      <div className="tabs" title="selected genes: the gene or gene sets on screen and the pinned genes, other molecules grey under an annotation. all genes: every gene in its own colour">
         <button className={mode === "selected" ? "on" : ""} onClick={() => set({ moleculeColors: "selected" })}>
           selected genes
         </button>
@@ -36,9 +36,9 @@ export function MoleculeGenes({ genes }: { genes: string[] }) {
           </li>
         )}
         {color?.kind === "blend" && (
-          <li title="the blend's two gene sets, in the blend's colours">
+          <li title="the two gene sets, in their colours">
             <span className="swatch blend-swatch" />
-            <span className="cat-name">blend sets</span>
+            <span className="cat-name">gene sets</span>
             <span className="cat-n">on screen</span>
           </li>
         )}

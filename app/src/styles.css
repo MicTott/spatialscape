@@ -489,3 +489,11 @@ button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]
 .statusbar { background: #191b1f; border-color: #303238; font-size: 12px; }
 .tooltip { background: #24262b; border-color: #4a4d54; border-radius: 8px; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { button, .sidebar .group-head .chev svg { transition: none; } }
+/* Canvas tools: selection and navigation remain together and leave room for dataset controls. */
+.platformbar .canvas-tools { display: inline-flex; gap: 2px; align-items: center; padding-right: 8px; margin-right: 4px; border-right: 1px solid #44474e; }
+.platformbar .canvas-tool { display: inline-grid; place-items: center; width: 32px; height: 30px; padding: 0; border-radius: 6px; }
+.platformbar .canvas-tool svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.platformbar .canvas-tool[aria-pressed="true"] { color: #06141b; background: #40c4ff; border-color: #40c4ff; }
+.platformbar .canvas-tool:hover { background: #3b3f46; color: #fff; }
+.platformbar .canvas-tool[aria-pressed="true"]:hover { background: #80d9ff; color: #06141b; }
+.platformbar .canvas-tools + .split-ctl { border-left: 0; margin-left: 0; padding-left: 2px; }

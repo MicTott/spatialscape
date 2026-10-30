@@ -85,3 +85,29 @@ test("polished group controls preserve independent visibility and expansion", as
   await expect(samples.locator(".group-head")).toHaveAttribute("aria-expanded", "true");
   await expect(header).toHaveAttribute("aria-expanded", "true");
 });
+
+test("canvas controls and labels support the full-view workflow", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}&s=sampleB`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await expect(page.getByRole("button", { name: "Pan and navigate" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Lasso select" }).click();
+  await expect(page.getByRole("button", { name: "Lasso select" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Pan and navigate" }).click();
+  await expect(page.getByRole("button", { name: "Pan and navigate" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".group-title", { hasText: "ROIs" })).toBeVisible();
+  await page.getByRole("button", { name: "Gene Set", exact: true }).click();
+  await expect(page.evaluate(() => (window as any).__sscape.getState().color)).resolves.toMatchObject({ kind: "blend" });
+  await expect(page.locator(".blend-legend")).toContainText("Gene Set");
+
+  await page.getByRole("button", { name: "Recenter all visible data" }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__sscape.getState().focus)).toBeNull();
+  await expect.poll(() => page.evaluate(() => {
+    const c = (window as any).__sscape.controller;
+    return c.panes.every((pane: any) => {
+      const vp = c.deck.getViewports().find((v: any) => v.id === pane.id);
+      const b = c.layouts[pane.id]?.worldBbox;
+      return vp && b && Math.abs(vp.target[0] - (b[0] + b[2]) / 2) < 1 && Math.abs(vp.target[1] - (b[1] + b[3]) / 2) < 1;
+    });
+  }), { timeout: 5000 }).toBe(true);
+});

@@ -28,7 +28,7 @@ function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[
   return (
     <div className="legend blend-legend">
       <div className="legend-head">
-        <span>Blend</span>
+        <span>Gene Set</span>
         <span className="muted">{sc.name}</span>
       </div>
       <div className="blend-grid">

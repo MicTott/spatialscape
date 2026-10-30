@@ -25,9 +25,22 @@ export function PlatformBar() {
   const set = store.getState().set;
   return (
     <div className={`platformbar${splitBy && keys.length ? " below-heads" : ""}`}>
-      <button className={tool === "lasso" ? "on tool" : "tool"} onClick={() => set({ tool: tool === "lasso" ? "pan" : "lasso" })} title="lasso select cells (L)">
-        ⌒ lasso
-      </button>
+      <span className="canvas-tools" role="group" aria-label="Canvas tools">
+        <button className={tool === "pan" ? "on canvas-tool" : "canvas-tool"} onClick={() => set({ tool: "pan" })} aria-label="Pan and navigate" aria-pressed={tool === "pan"} title="Pan and navigate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5 19 13l-6.5.6-3.2 6.1L5 3.5Z" /></svg>
+        </button>
+        <button className={tool === "lasso" ? "on canvas-tool" : "canvas-tool"} onClick={() => set({ tool: "lasso" })} aria-label="Lasso select" aria-pressed={tool === "lasso"} title="Lasso select (L)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 18.2c-2.4-.8-4-2.6-4-5 0-4 3.7-7.2 8.5-7.2S21 9.2 21 13.2s-3.5 6.8-8.1 6.8H9.2c-2.1 0-2.6 2.2-4.5 2.2" /><path d="M8.3 18.2c0 1 .8 1.8 1.8 1.8" /></svg>
+        </button>
+        <button className="canvas-tool" aria-label="Recenter all visible data" title="Recenter all visible data" onClick={() => {
+          const c = window.__sscape?.controller;
+          if (!c) return;
+          if (store.getState().focus) store.getState().setFocus(null);
+          c.fitAllPanes(true);
+        }}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" /><circle cx="12" cy="12" r="2" /></svg>
+        </button>
+      </span>
       {present.length >= 2 && (
         <>
           <button className={platforms === null ? "on" : ""} onClick={() => set({ platforms: null })}>
