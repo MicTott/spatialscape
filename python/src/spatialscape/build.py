@@ -27,13 +27,19 @@ from .geometry import default_point_radius, microns_per_unit, transform_points
 from .images import (
     DEFAULT_CHANNEL_COLORS,
     ImageReadRefused,
+    _choose_level,
+    _yx,
     auto_windows,
     copy_ome_zarr,
+    crop_window,
     ome_channel_names,
     ome_zarr_coarse,
     ome_zarr_info,
     prepare_image,
     read_image_shape,
+    source_levels,
+    stream_ome_zarr,
+    streamable,
     write_ome_zarr,
 )
 from .manifest import (
@@ -88,19 +94,11 @@ def crop_to_points(
     """Cut an image (c, y, x) placed at `translate` (um) with `pixel_size` um/px down to the points' bounding box plus
     a margin (a fraction of its longer side), and return the image with its new translate. A slide scan reaches well
     past the capture area; without this the H&E, not the tissue, sets the size of every grid cell."""
-    x0, y0, x1, y1 = bbox
-    pad = margin * max(x1 - x0, y1 - y0)
     _c, h, w = img.shape
-    px0 = int(np.clip(np.floor((x0 - pad - translate[0]) / pixel_size), 0, w))
-    px1 = int(np.clip(np.ceil((x1 + pad - translate[0]) / pixel_size), 0, w))
-    py0 = int(np.clip(np.floor((y0 - pad - translate[1]) / pixel_size), 0, h))
-    py1 = int(np.clip(np.ceil((y1 + pad - translate[1]) / pixel_size), 0, h))
-    if px1 - px0 < 2 or py1 - py0 < 2:  # the points lie outside the image: leave it alone
+    (py0, py1, px0, px1), moved = crop_window((h, w), pixel_size, translate, bbox, margin)
+    if (py0, py1, px0, px1) == (0, h, 0, w):
         return img, translate
-    if (px0, py0, px1, py1) == (0, 0, w, h):
-        return img, translate
-    out = np.ascontiguousarray(img[:, py0:py1, px0:px1])
-    return out, (translate[0] + px0 * pixel_size, translate[1] + py0 * pixel_size)
+    return np.ascontiguousarray(img[:, py0:py1, px0:px1]), moved
 
 
 def mask_to_points(
@@ -316,8 +314,9 @@ def _write_sample_molecules(
     return info
 
 
-def _pixel_moves(spec: SampleSpec, im: ImageSpec) -> list[str]:
-    """The settings that need the pixels in hand (and so rule out copying a pyramid as it is)."""
+def _pixel_moves(spec: SampleSpec, im: ImageSpec, *, allow_max_size: bool = False) -> list[str]:
+    """The settings that need the pixels in hand: they rule out copying a pyramid as it is, and all but `max_size`
+    rule out writing it band by band."""
     moves = []
     if spec.transform.flip and spec.transform.flip != "none":
         moves.append(f"transform.flip {spec.transform.flip}")
@@ -329,9 +328,70 @@ def _pixel_moves(spec: SampleSpec, im: ImageSpec) -> list[str]:
         moves.append(f"flip {im.flip}")
     if im.mask:
         moves.append("mask")
-    if im.max_size:
+    if im.max_size and not allow_max_size:
         moves.append("max_size")
     return moves
+
+
+def _channel_meta(
+    spec: SampleSpec, im: ImageSpec, nch: int, dtype, *, source_names: list[str] | None, source_colors: list[str] | None, source_windows: list | None, log: Log
+) -> tuple[list[str] | None, list[str] | None, list[tuple[float, float] | None] | None]:
+    """Names, colours and windows (None where one is to be fitted) for an image's channels: the yaml first, then the
+    source's own metadata, then defaults. An RGB image without a `channels:` list carries none."""
+    listed = im.channels if im.channels and len(im.channels) == nch else None
+    if im.channels and listed is None:
+        log(f"[{spec.id}] warning: `channels:` lists {len(im.channels)} entries but {im.path.name} has {nch} channels; using the file's names, default colours and fitted windows")
+    if im.kind == "rgb":
+        if not listed:
+            return None, None, None
+        maxv = float(np.iinfo(dtype).max) if np.issubdtype(dtype, np.integer) else 1.0
+        return [ch.name for ch in listed], [ch.color or "#ffffff" for ch in listed], [ch.window or (0.0, maxv) for ch in listed]
+    names = [ch.name for ch in listed] if listed else (source_names if source_names and len(source_names) == nch else ([im.name] if nch == 1 else [f"{im.name} {k + 1}" for k in range(nch)]))
+    defaults = ["#ffffff"] if nch == 1 else [DEFAULT_CHANNEL_COLORS[k % len(DEFAULT_CHANNEL_COLORS)] for k in range(nch)]
+    colors = [(listed[k].color if listed and listed[k].color else (source_colors[k] if source_colors and len(source_colors) == nch else defaults[k])) for k in range(nch)]
+    given: list[tuple[float, float] | None] = [ch.window for ch in listed] if listed else [None] * nch
+    if source_windows and len(source_windows) == nch:
+        given = [g if g is not None else source_windows[k] for k, g in enumerate(given)]
+    return names, colors, given
+
+
+def _stream_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _Frame, bbox: tuple, *, log: Log) -> SampleImage:
+    """A TIFF, OME-Zarr or Zarr-array source written as a pyramid band by band: the level `max_size` asks for, cut to
+    the points, whatever the source's size, in bounded memory."""
+    rgb = im.kind == "rgb"
+    shapes, axes = source_levels(im.path)
+    level, f = _choose_level(shapes, axes, im.max_size)
+    h0, w0 = _yx(axes, shapes[0])
+    hl, wl = _yx(axes, shapes[level])
+    h, w = hl // f, wl // f
+    pixel_size = frame.upu / im.pixels_per_unit * (max(h0, w0) / max(h, w)) if im.pixel_size == "auto" else float(im.pixel_size)
+    translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
+    window = None
+    if im.crop:
+        (y0, y1, x0, x1), translate = crop_window((h, w), pixel_size, translate, bbox)
+        if (y0, y1, x0, x1) != (0, h, 0, w):
+            window = (y0, y1, x0, x1)
+    cax = next((i for i, a in enumerate(axes) if a in ("c", "s", "i") and shapes[0][i] > 1), None)
+    nch_src = shapes[0][cax] if cax is not None else 1
+    nch = 3 if rgb and nch_src == 4 else nch_src
+    dtype = _source_dtype(im.path)
+    names, colors, given = _channel_meta(spec, im, nch, dtype, source_names=ome_channel_names(im.path), source_colors=None, source_windows=None, log=log)
+    out_path = out_dir / f"{im.id}.ome.zarr"
+    levels, wins = stream_ome_zarr(im.path, out_path, rgb=rgb, level=level, factor=f, window=window, channel_names=names, channel_colors=colors, windows=given)
+    log(f"[{spec.id}] image written band by band: {levels[0][2]:,} x {levels[0][1]:,} px, {len(levels)} levels" + (", cropped to the points" if window else ""))
+    chans = None
+    if names is not None:
+        chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]  # type: ignore[index]
+        if not rgb and given is not None and any(g is None for g in given):
+            log(f"[{spec.id}] image channel windows fitted to the signal: " + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None))
+    return SampleImage(id=im.id, name=im.name, path=out_path.name, kind=im.kind, pixelSize=pixel_size, translate=translate, size=(levels[0][1], levels[0][2]), channels=chans, defaultOpacity=im.default_opacity)
+
+
+def _source_dtype(path: Path):
+    from .images import open_level
+
+    with open_level(path, 0) as (src, _axes):
+        return np.dtype(src.dtype)
 
 
 def _passthrough_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _Frame, *, log: Log) -> SampleImage:
@@ -340,29 +400,17 @@ def _passthrough_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _F
     yaml or the pyramid gives usable ones."""
     info = ome_zarr_info(im.path)
     assert info is not None
-    rgb = im.kind == "rgb"
     pixel_size = frame.upu / im.pixels_per_unit if im.pixel_size == "auto" else float(im.pixel_size)
     translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
     nch = info.channels
-    listed = im.channels if im.channels and len(im.channels) == nch else None
-    if im.channels and listed is None:
-        log(f"[{spec.id}] warning: `channels:` lists {len(im.channels)} entries but {im.path.name} has {nch} channels; using the pyramid's own names")
+    names, colors, given = _channel_meta(spec, im, nch, info.dtype, source_names=info.channel_names, source_colors=info.channel_colors, source_windows=info.channel_windows, log=log)
     chans = None
-    if not rgb:
-        names = [ch.name for ch in listed] if listed else info.channel_names or ([im.name] if nch == 1 else [f"{im.name} {k + 1}" for k in range(nch)])
-        default_colors = ["#ffffff"] if nch == 1 else [DEFAULT_CHANNEL_COLORS[k % len(DEFAULT_CHANNEL_COLORS)] for k in range(nch)]
-        colors = [(listed[k].color if listed and listed[k].color else (info.channel_colors[k] if info.channel_colors else default_colors[k])) for k in range(nch)]
-        given: list[tuple[float, float] | None] = [ch.window for ch in listed] if listed else [None] * nch
-        if info.channel_windows:
-            given = [g if g is not None else info.channel_windows[k] for k, g in enumerate(given)]
-        fitted = auto_windows(ome_zarr_coarse(im.path, info)) if any(w is None for w in given) else []
-        wins = [tuple(w) if w is not None else fitted[k] for k, w in enumerate(given)]
-        chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]
+    if names is not None:
+        fitted = auto_windows(ome_zarr_coarse(im.path, info)) if given is not None and any(g is None for g in given) else []
+        wins = [tuple(g) if g is not None else fitted[k] for k, g in enumerate(given or [])]
+        chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]  # type: ignore[index]
         if fitted:
-            log(f"[{spec.id}] image channel windows fitted to the signal: " + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None))
-    elif listed:
-        maxv = float(np.iinfo(info.dtype).max) if np.issubdtype(info.dtype, np.integer) else 1.0
-        chans = [ImageChannel(name=ch.name, color=ch.color or "#ffffff", window=ch.window or (0, maxv)) for ch in listed]
+            log(f"[{spec.id}] image channel windows fitted to the signal: " + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None))  # type: ignore[index]
     out_path = out_dir / f"{im.id}.ome.zarr"
     copy_ome_zarr(im.path, out_path)
     log(f"[{spec.id}] image copied as is: an OME-Zarr pyramid of {len(info.levels)} levels, {info.size[1]:,} x {info.size[0]:,} px, {nch} channel{'s' if nch != 1 else ''} (not cropped)")
@@ -385,6 +433,14 @@ def _write_images(
                 images.append(_passthrough_image(spec, im, out_dir, frame, log=log))
                 continue
             log(f"[{spec.id}] note: {im.path.name} is an OME-Zarr pyramid but {', '.join(moves)} moves its pixels, so it is read and written again")
+        if streamable(im.path) and not _pixel_moves(spec, im, allow_max_size=True):
+            try:
+                images.append(_stream_image(spec, im, out_dir, frame, bbox, log=log))
+            except ImageReadRefused as e:
+                if not discovered:
+                    raise
+                log(f"[{spec.id}] note: skipping the image found next to the data: {e}")
+            continue
         img = None
         max_size = im.max_size
         while img is None:

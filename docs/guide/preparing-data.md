@@ -151,11 +151,15 @@ resolution waits for a streaming converter; `max_size:` on an explicit image ent
 need the optional `imagecodecs` package: `pip install "spatialscape[images]"`. Without it the image is skipped
 with a note and the sample builds without it.
 
-`max_size:` bounds what an image costs to read. A pyramidal file is read at the level that gives the largest copy
-within it; a larger level, or a file without pyramid levels (10x's CytAssist and Visium HD TIFFs), is reduced
-band by band while it is read, so the whole slide is never in memory. A read that would need more than a sixth of
-the machine's memory (or of a cgroup or SLURM limit) is refused with the size it would need and the way out: set or
-lower `max_size:` on the image.
+`max_size:` picks the level kept. A pyramidal file is read at the level that gives the largest copy within it,
+reduced by a power of two on the way when no level fits. TIFF, OME-Zarr and Zarr-array sources are written band
+by band, a few tile rows at a time, so the memory a build needs does not grow with the scan: a 2-gigapixel,
+50-channel slide converts on a laptop. Only an image whose pixels have to move (`transform.flip` or `rotate`,
+`transpose`, `flip`, a shared slide image with `mask`) and PNG or JPEG files are still read whole, and a read of
+those that would need more than a sixth of the machine's memory (or of a cgroup or SLURM limit) is refused with
+the size it would need and the way out: set or lower `max_size:` on the image. A TIFF that stores each plane as a
+single strip is read a plane at a time and refused the same way when one plane is too large; convert such a file
+to a tiled TIFF first.
 
 **OME-Zarr in, OME-Zarr out.** An image that is already an OME-Zarr pyramid, the output of `bioformats2raw`,
 a SpatialData image or an earlier bundle's image, is copied into the bundle as it is: no decode, no re-encode,

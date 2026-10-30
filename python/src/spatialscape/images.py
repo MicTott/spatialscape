@@ -17,6 +17,7 @@ from .geometry import transform_image
 
 TILE = 512
 TIFF_SUFFIXES = (".tif", ".tiff", ".btf")
+CHANNEL_AXES = ("c", "s", "i", "q")  # axis letters tifffile uses for planes: channel, sample, image sequence, unlabelled
 J2K_CODES = {34712: "JPEG 2000", 33003: "Aperio JPEG 2000", 33005: "Aperio JPEG 2000"}  # Xenium morphology is 34712
 DEFAULT_CHANNEL_COLORS = ["#4c8dff", "#3fd14a", "#ff4fd8", "#ffd23f", "#3fe0e0", "#ff6b4f"]  # blue first: the nuclear stain
 BAND_BYTES = 256 * 2**20  # source pixels decoded at once when a large image is downsampled while it is read
@@ -183,7 +184,7 @@ def _choose_level(shapes: list[tuple[int, ...]], axes: str | list[str], max_size
 def _to_cyx_axes(arr: np.ndarray, axes: str) -> np.ndarray:
     """A block read in the source's axis order -> (c, y, x). Singleton t/z/q axes are dropped."""
     ax = [a.lower() for a in axes]
-    keep_c = next((a for a in ("c", "s", "i") if a in ax and arr.shape[ax.index(a)] > 1), None)
+    keep_c = next((a for a in CHANNEL_AXES if a in ax and arr.shape[ax.index(a)] > 1), None)
     for i in sorted(range(arr.ndim), reverse=True):
         if ax[i] not in ("y", "x") and ax[i] != keep_c:
             if arr.shape[i] != 1:
@@ -214,7 +215,7 @@ def _read_reduced(src, axes: str, f: int, path: Path) -> np.ndarray:
     shape = tuple(src.shape)
     yi, xi = ax.index("y"), ax.index("x")
     h, w = (shape[yi] // f) * f, (shape[xi] // f) * f
-    cax = next((i for i, a in enumerate(ax) if a in ("c", "s", "i") and shape[i] > 1), None)
+    cax = next((i for i, a in enumerate(ax) if a in CHANNEL_AXES and shape[i] > 1), None)
     nch = shape[cax] if cax is not None else 1
     itemsize = np.dtype(src.dtype).itemsize
     out = np.empty((nch, h // f, w // f), dtype=src.dtype)
@@ -374,43 +375,212 @@ def write_ome_zarr(
         )
         arr[:] = lv
         datasets.append({"path": str(i), "coordinateTransformations": [{"type": "scale", "scale": [1, 2**i, 2**i]}]})
+    root.attrs.update(_ome_attrs(out_path.stem, c, img.dtype, rgb, channel_names, channel_colors, windows, datasets))
+    return [tuple(lv.shape) for lv in levels]
+
+
+def _ome_attrs(name: str, c: int, dtype, rgb: bool, channel_names, channel_colors, windows, datasets: list[dict]) -> dict:
+    """NGFF 0.4 `multiscales` and `omero` attributes for a (c, y, x) pyramid."""
     names = channel_names or ([f"{k}" for k in ("R", "G", "B")] if rgb else [f"ch{k}" for k in range(c)])
     colors = channel_colors or (["ff0000", "00ff00", "0000ff"] if rgb else ["ffffff"] * c)
-    maxv = 255 if img.dtype == np.uint8 else int(np.iinfo(img.dtype).max) if np.issubdtype(img.dtype, np.integer) else 1
+    maxv = 255 if dtype == np.uint8 else int(np.iinfo(dtype).max) if np.issubdtype(dtype, np.integer) else 1
     wins = windows or [(0, maxv)] * c
-    root.attrs.update(
-        {
-            "multiscales": [
-                {
-                    "version": "0.4",
-                    "name": out_path.stem,
-                    "axes": [
-                        {"name": "c", "type": "channel"},
-                        {"name": "y", "type": "space"},
-                        {"name": "x", "type": "space"},
-                    ],
-                    "datasets": datasets,
-                    "type": "mean",
-                }
-            ],
-            "omero": {
-                "id": 1,
-                "name": out_path.stem,
+    return {
+        "multiscales": [
+            {
                 "version": "0.4",
-                "rdefs": {"model": "color" if rgb else "greyscale", "defaultT": 0, "defaultZ": 0},
-                "channels": [
-                    {
-                        "label": names[k],
-                        "color": colors[k].lstrip("#"),
-                        "active": True,
-                        "window": {"min": 0, "max": maxv, "start": wins[k][0], "end": wins[k][1]},
-                    }
-                    for k in range(c)
+                "name": name,
+                "axes": [
+                    {"name": "c", "type": "channel"},
+                    {"name": "y", "type": "space"},
+                    {"name": "x", "type": "space"},
                 ],
-            },
-        }
-    )
-    return [tuple(lv.shape) for lv in levels]
+                "datasets": datasets,
+                "type": "mean",
+            }
+        ],
+        "omero": {
+            "id": 1,
+            "name": name,
+            "version": "0.4",
+            "rdefs": {"model": "color" if rgb else "greyscale", "defaultT": 0, "defaultZ": 0},
+            "channels": [
+                {
+                    "label": names[k],
+                    "color": colors[k].lstrip("#"),
+                    "active": True,
+                    "window": {"min": 0, "max": maxv, "start": wins[k][0], "end": wins[k][1]},
+                }
+                for k in range(c)
+            ],
+        },
+    }
+
+
+def _zarr_array_axes(arr) -> str:
+    dims = arr.attrs.get("_ARRAY_DIMENSIONS") or []
+    return "".join(str(d)[0].lower() for d in dims) if len(dims) == arr.ndim else "cyx"[-arr.ndim :]
+
+
+def is_zarr_array(path: Path) -> bool:
+    path = Path(path)
+    return path.is_dir() and ((path / ".zarray").exists() or (path / "zarr.json").exists()) and ome_zarr_info(path) is None
+
+
+def streamable(path: Path) -> bool:
+    """Sources the band-by-band writer reads: TIFF (tiled or striped, pyramidal or not), an OME-Zarr pyramid, a Zarr array."""
+    path = Path(path)
+    return path.suffix.lower() in TIFF_SUFFIXES or ome_zarr_info(path) is not None or is_zarr_array(path)
+
+
+def source_levels(path: Path) -> tuple[list[tuple[int, ...]], str]:
+    """Level shapes (finest first) and the axes letters of a TIFF, an OME-Zarr pyramid or a single Zarr array, from
+    headers alone."""
+    path = Path(path)
+    if path.suffix.lower() in TIFF_SUFFIXES:
+        import tifffile
+
+        with tifffile.TiffFile(str(path)) as tf:
+            series = tf.series[0]
+            _require_codec(path, series.keyframe.compression)
+            return [tuple(lv.shape) for lv in series.levels], str(series.axes).lower()
+    info = ome_zarr_info(path)
+    if info is not None:
+        return info.levels, info.axes
+    arr = zarr.open_array(str(path), mode="r")
+    return [tuple(arr.shape)], _zarr_array_axes(arr)
+
+
+@contextlib.contextmanager
+def open_level(path: Path, level: int):
+    """One pyramid level of a source as a chunked array to slice from, with its axes letters; a TIFF stays open
+    while it is read and its tiles are decoded on demand."""
+    path = Path(path)
+    if path.suffix.lower() in TIFF_SUFFIXES:
+        import tifffile
+
+        with tifffile.TiffFile(str(path)) as tf:
+            series = tf.series[0]
+            _require_codec(path, series.keyframe.compression)
+            yield zarr.open(series.aszarr(level=level, maxworkers=_decode_workers()), mode="r"), str(series.axes).lower()
+        return
+    info = ome_zarr_info(path)
+    if info is not None:
+        g = zarr.open_group(str(path), mode="r")
+        ms = _multiscales(dict(g.attrs))
+        assert ms is not None
+        yield g[ms["datasets"][level]["path"]], info.axes
+        return
+    arr = zarr.open_array(str(path), mode="r")
+    yield arr, _zarr_array_axes(arr)
+
+
+def crop_window(
+    shape_hw: tuple[int, int], pixel_size: float, translate: tuple[float, float], bbox: tuple[float, float, float, float], margin: float = 0.03
+) -> tuple[tuple[int, int, int, int], tuple[float, float]]:
+    """The pixel window (y0, y1, x0, x1) of an image of `shape_hw` placed at `translate` (um) with `pixel_size` um/px
+    that covers the points' bounding box plus a margin (a fraction of its longer side), with the window's translate.
+    The whole image when the points lie outside it or already fill it."""
+    x0, y0, x1, y1 = bbox
+    pad = margin * max(x1 - x0, y1 - y0)
+    h, w = shape_hw
+    px0 = int(np.clip(np.floor((x0 - pad - translate[0]) / pixel_size), 0, w))
+    px1 = int(np.clip(np.ceil((x1 + pad - translate[0]) / pixel_size), 0, w))
+    py0 = int(np.clip(np.floor((y0 - pad - translate[1]) / pixel_size), 0, h))
+    py1 = int(np.clip(np.ceil((y1 + pad - translate[1]) / pixel_size), 0, h))
+    if px1 - px0 < 2 or py1 - py0 < 2:
+        return (0, h, 0, w), translate
+    return (py0, py1, px0, px1), (translate[0] + px0 * pixel_size, translate[1] + py0 * pixel_size)
+
+
+def stream_ome_zarr(
+    path: Path,
+    out_path: Path,
+    *,
+    rgb: bool,
+    level: int = 0,
+    factor: int = 1,
+    window: tuple[int, int, int, int] | None = None,
+    channel_names: list[str] | None = None,
+    channel_colors: list[str] | None = None,
+    windows: list[tuple[float, float] | None] | None = None,
+    min_level_px: int = 256,
+) -> tuple[list[tuple[int, int, int]], list[tuple[float, float]]]:
+    """Write an NGFF 0.4 pyramid from one level of a TIFF, OME-Zarr or Zarr-array source, reduced by `factor` and cut
+    to `window` (y0, y1, x0, x1 in reduced pixels), one band of rows at a time: memory is one band, never the image.
+    Coarser levels are made from the written level below them, band by band too. Display windows that are None are
+    fitted on a coarse level once it exists. Returns the level shapes and the windows used."""
+    out_path = Path(out_path)
+    store = zarr.storage.LocalStore(str(out_path))
+    root = zarr.open_group(store, mode="w", zarr_format=2)
+    comp = Blosc(cname="zstd", clevel=5, shuffle=Blosc.SHUFFLE)
+
+    def new_level(i: int, c: int, h: int, w: int, dtype):
+        return root.create_array(str(i), shape=(c, h, w), chunks=(1, min(TILE, h), min(TILE, w)), dtype=dtype, compressors=comp, fill_value=0, config={"write_empty_chunks": True})
+
+    with open_level(path, level) as (src, axes):
+        shape = tuple(src.shape)
+        ax = list(axes)
+        yi, xi = ax.index("y"), ax.index("x")
+        cax = next((i for i, a in enumerate(ax) if a in CHANNEL_AXES and shape[i] > 1), None)
+        nch_src = shape[cax] if cax is not None else 1
+        drop_alpha = rgb and nch_src == 4
+        nch = 3 if drop_alpha else nch_src
+        f = factor
+        full_h, full_w = shape[yi] // f, shape[xi] // f
+        y0, y1, x0, x1 = window or (0, full_h, 0, full_w)
+        h, w = y1 - y0, x1 - x0
+        dtype = np.dtype(src.dtype)
+        itemsize = dtype.itemsize
+        out0 = new_level(0, nch, h, w, dtype)
+        chunk_rows = int(getattr(src, "chunks", shape)[yi]) or shape[yi]
+        if chunk_rows >= shape[yi]:  # one strip per plane: a band would decode the plane again, so read it once per channel
+            plane = shape[yi] * shape[xi] * itemsize
+            if plane > read_limit_bytes():
+                raise ImageReadRefused(
+                    f"{path}: this file stores each {shape[xi]:,} x {shape[yi]:,} px plane as one block ({plane / 2**30:.1f} GB), more than this build can read at once; convert it to a tiled or pyramidal OME-TIFF",
+                    kind="layout",
+                )
+            for c in range(nch):
+                sel: list = [slice(0, 1)] * len(shape)
+                sel[yi], sel[xi] = slice(y0 * f, y1 * f), slice(x0 * f, x1 * f)
+                if cax is not None:
+                    sel[cax] = slice(c, c + 1)
+                out0[c] = _reduce(_to_cyx_axes(np.asarray(src[tuple(sel)]), axes), f)[0]
+        else:
+            step = math.lcm(f * TILE, chunk_rows)  # output bands end on tile rows, source reads on chunk rows
+            rows = max(step, BAND_BYTES // max(1, w * f * nch_src * itemsize) // step * step)
+            for sy in range(y0 * f, y1 * f, rows):
+                sy1 = min(y1 * f, sy + rows)
+                sel = [slice(None) if i == cax else slice(0, 1) for i in range(len(shape))]
+                sel[yi], sel[xi] = slice(sy, sy1), slice(x0 * f, x1 * f)
+                blk = _to_cyx_axes(np.asarray(src[tuple(sel)]), axes)
+                if drop_alpha:
+                    blk = blk[:3]
+                out0[:, (sy - y0 * f) // f : (sy1 - y0 * f) // f, :] = _reduce(np.ascontiguousarray(blk), f)
+    levels = [(nch, h, w)]
+    i = 0
+    while max(levels[-1][1], levels[-1][2]) > min_level_px:
+        _c, ph, pw = levels[-1]
+        nh, nw = ph // 2, pw // 2
+        if nh == 0 or nw == 0:
+            break
+        prev = root[str(i)]
+        nxt = new_level(i + 1, nch, nh, nw, dtype)
+        band = 2 * TILE * max(1, BAND_BYTES // max(1, pw * nch * itemsize * 2 * TILE))  # even, tile-aligned source rows
+        for py in range(0, 2 * nh, band):
+            py1 = min(2 * nh, py + band)
+            nxt[:, py // 2 : py1 // 2, :] = downsample2(np.asarray(prev[:, py:py1, : 2 * nw]))
+        levels.append((nch, nh, nw))
+        i += 1
+    wins: list[tuple[float, float] | None] = list(windows) if windows else [None] * nch
+    if any(wn is None for wn in wins):
+        coarse = next((j for j, lv in enumerate(levels) if max(lv[1], lv[2]) <= 2048), len(levels) - 1)
+        fitted = auto_windows(np.asarray(root[str(coarse)][:]))
+        wins = [wn if wn is not None else fitted[k] for k, wn in enumerate(wins)]
+    datasets = [{"path": str(j), "coordinateTransformations": [{"type": "scale", "scale": [1, 2**j, 2**j]}]} for j in range(len(levels))]
+    root.attrs.update(_ome_attrs(out_path.stem, nch, dtype, rgb, channel_names, channel_colors, wins, datasets))
+    return levels, [tuple(wn) for wn in wins]  # type: ignore[misc]
 
 
 def prepare_image(path: Path, flip: str, rotate: int, max_size: int | None, *, rgb: bool = True, transpose: bool = False, image_flip: str = "") -> np.ndarray:
@@ -435,7 +605,7 @@ def read_image_shape(path: Path, *, rgb: bool = True) -> tuple[int, int, int]:
     def from_shape(shape: tuple[int, ...], axes: str | None) -> tuple[int, int, int]:
         ax = (axes or "").lower()
         if {"y", "x"} <= set(ax):
-            cax = next((a for a in ("c", "s", "i") if a in ax), None)
+            cax = next((a for a in CHANNEL_AXES if a in ax), None)
             c = shape[ax.index(cax)] if cax else 1
             return (3 if c == 4 and rgb else c, shape[ax.index("y")], shape[ax.index("x")])
         dims = [n for n in shape if n != 1] or [1, 1]

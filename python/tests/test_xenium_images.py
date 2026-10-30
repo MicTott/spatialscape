@@ -226,7 +226,7 @@ def test_an_unreadable_discovered_image_is_skipped_but_a_listed_one_stops_the_bu
     def refuse(*a, **k):
         raise images.ImageReadRefused("needs imagecodecs", kind="codec")
 
-    monkeypatch.setattr("spatialscape.build.prepare_image", refuse)
+    monkeypatch.setattr("spatialscape.build.stream_ome_zarr", refuse)  # TIFFs are written band by band
     lines: list[str] = []
     r = build_bundle(load_config(p), log=lines.append)
     assert r.problems == [] and r.manifest.samples[0].images == []
@@ -278,7 +278,9 @@ def test_decode_threads_follow_the_allocation(monkeypatch):
     assert images._decode_workers() == 2
 
 
-def test_a_discovered_image_too_large_for_memory_is_read_smaller(tmp_path, monkeypatch):
+def test_a_discovered_image_is_written_band_by_band_whatever_the_memory(tmp_path, monkeypatch):
+    """A TIFF is never read whole: the band writer honours the size asked for in bounded memory, so a small machine
+    gets the same image as a large one instead of a coarser copy."""
     import yaml
 
     import spatialscape.discover as D
@@ -290,23 +292,15 @@ def test_a_discovered_image_too_large_for_memory_is_read_smaller(tmp_path, monke
     doc["samples"][0].pop("images")
     doc["samples"][0]["platform"] = "xenium"
     p.write_text(yaml.safe_dump(doc))
-    monkeypatch.setattr(D, "AUTO_MORPHOLOGY_UM_PER_PX", 0.05)  # asks for 6,528 px per side
-    real = images.prepare_image
-    asked: list[int] = []
-
-    def small_machine(path, flip, rotate, max_size, *, rgb, **_):
-        asked.append(max_size)
-        if max_size > 2000:
-            raise images.ImageReadRefused("too big", kind="memory")
-        return real(path, flip, rotate, max_size, rgb=rgb)
-
-    monkeypatch.setattr("spatialscape.build.prepare_image", small_machine)
+    monkeypatch.setattr(D, "AUTO_MORPHOLOGY_UM_PER_PX", 0.05)  # asks for 6,528 px per side: the whole 1,536 px scan
+    monkeypatch.setattr(images, "read_limit_bytes", lambda: 1 << 20)  # a machine that could not hold one level
+    monkeypatch.setattr(images, "BAND_BYTES", 1 << 16)  # many small bands
     lines: list[str] = []
     r = build_bundle(load_config(p), log=lines.append)
-    assert asked == [6528, 3264, 1632]
-    assert any("reading it at most 1,632 px per side" in line for line in lines)
+    assert any("written band by band" in line for line in lines)
+    assert not any("reading it at most" in line for line in lines)
     [img] = r.manifest.samples[0].images
-    assert img.pixelSize == pytest.approx(0.2125)  # 1,632 px fits the 1,536 px scan, so it is read whole
+    assert img.pixelSize == pytest.approx(0.2125)  # read whole, at the scan's own resolution
 
 
 def test_a_pyramid_with_4x_steps_is_reduced_from_level_0(tmp_path):
