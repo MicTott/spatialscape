@@ -12,6 +12,7 @@ from zarr.codecs import ZstdCodec
 
 TARGET_SHARD_BYTES = 128 * 1024 * 1024
 ENTRY_BLOCK = 4 * 1024 * 1024  # stored values quantized per step: bounds the per-entry temporaries, not the shard
+MASK_CHUNK = 1 << 27  # entries scanned per step when a CSR matrix's column index is searched for a gene block (1 GB of int64 temporaries at most)
 
 
 @dataclass
@@ -146,6 +147,22 @@ def column_ranges(Mc: sp.csc_matrix) -> tuple[np.ndarray, np.ndarray]:
     return gmin, gmax
 
 
+def _positions_in_columns(indices: np.ndarray, lo: int, hi: int) -> np.ndarray:
+    """Positions of the stored values whose column is in [lo, hi], found a chunk at a time: a boolean mask over a
+    7-billion-entry index would be three 7 GB temporaries, which is what put a 1.5 M-nuclei panel out of memory."""
+    parts = []
+    for start in range(0, len(indices), MASK_CHUNK):
+        piece = indices[start : start + MASK_CHUNK]
+        hit = np.flatnonzero((piece >= lo) & (piece <= hi))
+        if hit.size:
+            parts.append(hit + start)
+    return np.concatenate(parts) if parts else np.zeros(0, dtype=np.int64)
+
+
+def _all_finite(data: np.ndarray) -> bool:
+    return all(np.isfinite(data[s : s + MASK_CHUNK]).all() for s in range(0, len(data), MASK_CHUNK))
+
+
 def column_ranges_csr(M: sp.csr_matrix) -> tuple[np.ndarray, np.ndarray]:
     """`column_ranges` for a CSR matrix: one pass over the stored values with ufunc.at, no CSC copy."""
     n_obs, n_vars = M.shape
@@ -245,8 +262,8 @@ def write_expression(
     gmax_all = np.zeros(n_vars, dtype=np.float32)
     gmin_all = np.zeros(n_vars, dtype=np.float32)
     if Mc.nnz:
-        finite = np.isfinite(Mc.data)
-        if not finite.all():
+        if not _all_finite(Mc.data):
+            finite = np.isfinite(Mc.data)  # only now, to name the columns in the error
             cols = Mc.indices[~finite] if csr else np.repeat(np.arange(n_vars), np.diff(Mc.indptr))[~finite]
             names = ", ".join(str(c) for c in np.unique(cols)[:5])
             raise ValueError(f"expression has NaN or infinite values (feature columns {names}{'...' if len(np.unique(cols)) > 5 else ''}); fix or drop those features before building")
@@ -305,7 +322,7 @@ def write_expression(
         if csr:
             # every stored value whose column is one of the block's kept genes (dropped genes have none)
             lo_c, hi_c = int(kept[g0]), int(kept[g1 - 1])
-            pos = np.flatnonzero((Mc.indices >= lo_c) & (Mc.indices <= hi_c))
+            pos = _positions_in_columns(Mc.indices, lo_c, hi_c)
             g = kept_index[Mc.indices[pos]]
             if (g < 0).any():  # explicitly stored zeros of a dropped gene sit inside the block's column span
                 pos, g = pos[g >= 0], g[g >= 0]

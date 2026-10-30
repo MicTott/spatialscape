@@ -112,3 +112,18 @@ def test_csr_explicit_zero_in_a_dropped_gene(tmp_path):
     a = zarr.open_group(str(tmp_path / "csr" / "expr.zarr"), mode="r")["u8"][:]
     b = zarr.open_group(str(tmp_path / "csc" / "expr.zarr"), mode="r")["u8"][:]
     assert np.array_equal(a, b) and a.shape == (5, 2) and a[:, 0].tolist() == [255] * 5 and a[:, 1].tolist() == [0] * 5
+
+
+def test_csr_gather_is_the_same_in_small_chunks(tmp_path, monkeypatch):
+    """The column scan of a CSR matrix runs chunk by chunk; a tiny chunk must give the same bundle as one pass."""
+    import spatialscape.expression as ex
+
+    rng = np.random.default_rng(9)
+    M = sp.random(120, 30, density=0.25, random_state=10, format="csr", dtype=np.float32)
+    M.data[:] = rng.uniform(0.1, 2, M.nnz)
+    a = write_expression(M, tmp_path / "one", shard_genes=8)
+    monkeypatch.setattr(ex, "MASK_CHUNK", 7)
+    b = write_expression(M, tmp_path / "chunked", shard_genes=8)
+    ga = zarr.open_group(str(tmp_path / "one" / "expr.zarr"), mode="r")["u8"][:]
+    gb = zarr.open_group(str(tmp_path / "chunked" / "expr.zarr"), mode="r")["u8"][:]
+    assert np.array_equal(ga, gb) and (a.keep == b.keep).all()
