@@ -18,7 +18,7 @@ import scipy.sparse as sp
 
 from . import __version__
 from .comparisons import ComparisonAction, plan_comparisons, read_info, samples_signature, write_comparison
-from .config import DatasetConfig, FieldSpec, PolygonSpec, SampleSpec
+from .config import DatasetConfig, FieldSpec, ImageSpec, PolygonSpec, SampleSpec
 from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, auto_segmentations, infer_field_spec
 from .expression import column_moments, csr_rows, detect_lognorm, get_matrix, log1p_cp10k, write_expression
@@ -28,7 +28,10 @@ from .images import (
     DEFAULT_CHANNEL_COLORS,
     ImageReadRefused,
     auto_windows,
+    copy_ome_zarr,
     ome_channel_names,
+    ome_zarr_coarse,
+    ome_zarr_info,
     prepare_image,
     read_image_shape,
     write_ome_zarr,
@@ -313,15 +316,75 @@ def _write_sample_molecules(
     return info
 
 
+def _pixel_moves(spec: SampleSpec, im: ImageSpec) -> list[str]:
+    """The settings that need the pixels in hand (and so rule out copying a pyramid as it is)."""
+    moves = []
+    if spec.transform.flip and spec.transform.flip != "none":
+        moves.append(f"transform.flip {spec.transform.flip}")
+    if spec.transform.rotate:
+        moves.append(f"transform.rotate {spec.transform.rotate}")
+    if im.transpose:
+        moves.append("transpose")
+    if im.flip:
+        moves.append(f"flip {im.flip}")
+    if im.mask:
+        moves.append("mask")
+    if im.max_size:
+        moves.append("max_size")
+    return moves
+
+
+def _passthrough_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _Frame, *, log: Log) -> SampleImage:
+    """An OME-Zarr source copied into the bundle untouched: no decode, no re-encode, no crop, whatever its size.
+    Channel names come from the yaml or the pyramid's own metadata; windows are fitted on a coarse level unless the
+    yaml or the pyramid gives usable ones."""
+    info = ome_zarr_info(im.path)
+    assert info is not None
+    rgb = im.kind == "rgb"
+    pixel_size = frame.upu / im.pixels_per_unit if im.pixel_size == "auto" else float(im.pixel_size)
+    translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
+    nch = info.channels
+    listed = im.channels if im.channels and len(im.channels) == nch else None
+    if im.channels and listed is None:
+        log(f"[{spec.id}] warning: `channels:` lists {len(im.channels)} entries but {im.path.name} has {nch} channels; using the pyramid's own names")
+    chans = None
+    if not rgb:
+        names = [ch.name for ch in listed] if listed else info.channel_names or ([im.name] if nch == 1 else [f"{im.name} {k + 1}" for k in range(nch)])
+        default_colors = ["#ffffff"] if nch == 1 else [DEFAULT_CHANNEL_COLORS[k % len(DEFAULT_CHANNEL_COLORS)] for k in range(nch)]
+        colors = [(listed[k].color if listed and listed[k].color else (info.channel_colors[k] if info.channel_colors else default_colors[k])) for k in range(nch)]
+        given: list[tuple[float, float] | None] = [ch.window for ch in listed] if listed else [None] * nch
+        if info.channel_windows:
+            given = [g if g is not None else info.channel_windows[k] for k, g in enumerate(given)]
+        fitted = auto_windows(ome_zarr_coarse(im.path, info)) if any(w is None for w in given) else []
+        wins = [tuple(w) if w is not None else fitted[k] for k, w in enumerate(given)]
+        chans = [ImageChannel(name=names[k], color=colors[k], window=wins[k]) for k in range(nch)]
+        if fitted:
+            log(f"[{spec.id}] image channel windows fitted to the signal: " + ", ".join(f"{names[k]} {wins[k][0]:g}-{wins[k][1]:g}" for k in range(nch) if given[k] is None))
+    elif listed:
+        maxv = float(np.iinfo(info.dtype).max) if np.issubdtype(info.dtype, np.integer) else 1.0
+        chans = [ImageChannel(name=ch.name, color=ch.color or "#ffffff", window=ch.window or (0, maxv)) for ch in listed]
+    out_path = out_dir / f"{im.id}.ome.zarr"
+    copy_ome_zarr(im.path, out_path)
+    log(f"[{spec.id}] image copied as is: an OME-Zarr pyramid of {len(info.levels)} levels, {info.size[1]:,} x {info.size[0]:,} px, {nch} channel{'s' if nch != 1 else ''} (not cropped)")
+    return SampleImage(id=im.id, name=im.name, path=out_path.name, kind=im.kind, pixelSize=pixel_size, translate=translate, size=info.size, channels=chans, defaultOpacity=im.default_opacity)
+
+
 def _write_images(
     spec: SampleSpec, out_dir: Path, frame: _Frame, xy: np.ndarray, bbox: tuple, *, discovered: bool, log: Log
 ) -> list[SampleImage]:
     """Every image of the sample as an OME-Zarr pyramid placed in the frame; a discovered image that cannot be read
-    is skipped with a note (smaller first, when memory is what it lacks), a listed one stops the build."""
+    is skipped with a note (smaller first, when memory is what it lacks), a listed one stops the build. An OME-Zarr
+    source is copied as it is unless a setting moves its pixels."""
     images: list[SampleImage] = []
     for im in spec.images:
         log(f"[{spec.id}] image {im.path}")
         rgb = im.kind == "rgb"
+        if ome_zarr_info(im.path) is not None:
+            moves = _pixel_moves(spec, im)
+            if not moves:
+                images.append(_passthrough_image(spec, im, out_dir, frame, log=log))
+                continue
+            log(f"[{spec.id}] note: {im.path.name} is an OME-Zarr pyramid but {', '.join(moves)} moves its pixels, so it is read and written again")
         img = None
         max_size = im.max_size
         while img is None:

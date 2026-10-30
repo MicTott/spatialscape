@@ -306,9 +306,13 @@ def validate_local(root: Path) -> list[str]:
         for im in s.images:
             try:
                 ig = zarr.open_group(str(d / im.path), mode="r")
-                lv0 = ig[ig.attrs["multiscales"][0]["datasets"][0]["path"]]
-                if tuple(lv0.shape[1:]) != tuple(im.size):
-                    _problem(p, f"{s.id}: image {im.id} size {lv0.shape[1:]} != {im.size}")
+                attrs = dict(ig.attrs)
+                ms = (attrs.get("multiscales") or attrs["ome"]["multiscales"])[0]
+                lv0 = ig[ms["datasets"][0]["path"]]
+                axes = "".join((a["name"] if isinstance(a, dict) else a)[0].lower() for a in ms.get("axes", [])) or "tczyx"[-lv0.ndim :]
+                size = (lv0.shape[axes.index("y")], lv0.shape[axes.index("x")])  # a pass-through pyramid may carry t and z axes
+                if size != tuple(im.size):
+                    _problem(p, f"{s.id}: image {im.id} size {size} != {im.size}")
             except Exception as e:
                 _problem(p, f"{s.id}: image {im.id} unreadable: {e}")
         if not np.isfinite(s.bbox).all():

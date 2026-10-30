@@ -157,6 +157,15 @@ band by band while it is read, so the whole slide is never in memory. A read tha
 the machine's memory (or of a cgroup or SLURM limit) is refused with the size it would need and the way out: set or
 lower `max_size:` on the image.
 
+**OME-Zarr in, OME-Zarr out.** An image that is already an OME-Zarr pyramid, the output of `bioformats2raw`,
+a SpatialData image or an earlier bundle's image, is copied into the bundle as it is: no decode, no re-encode,
+no limit on its size, and hard links rather than a second copy when the bundle sits on the same disk. Channel
+names and colours come from the pyramid's own metadata when the yaml gives none, and display windows are
+fitted on a coarse level unless the pyramid carries a narrower one. Such an image is not cropped to the points,
+and a setting that moves pixels (`transform.flip` or `rotate`, `transpose`, `flip`, `mask`, `max_size`) switches
+back to reading and writing it. For a whole-slide scan of many channels, convert once with `bioformats2raw` and
+let every build pass it through.
+
 `max_size:` is also the only knob for how fine a copy the bundle keeps. `pixels_per_unit` describes the source
 scan and never changes with the level read: a Xenium-layout image stays at 4.705882 pixels per µm (the 0.2125 µm
 scan) whether it is kept at full, half or quarter resolution. Halving `pixels_per_unit` to "read at half

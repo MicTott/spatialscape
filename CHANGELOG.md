@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **OME-Zarr images pass through.** An image source that is already an OME-Zarr pyramid (`bioformats2raw` output, a SpatialData image, an earlier bundle's image) is copied into the bundle as it is, hard-linked on the same disk, whatever its size: no decode, no re-encode, no crop. Channel names and colours come from its metadata when the yaml gives none; windows are fitted on a coarse level unless the pyramid carries narrower ones. A setting that moves pixels (`transform.flip`/`rotate`, `transpose`, `flip`, `mask`, `max_size`) still reads and writes it. `validate` reads an image's size by axis name, so pyramids with `t` and `z` axes check out.
 - **Annotation boundaries are gone.** The traced spatial-domain outlines (`outlines/<field>.json`, the `outlines` command, *Annotation boundaries* in the Cells group, the `o` URL key) added little over the colours themselves and a file per field per sample; they are removed. Bundles built earlier still open, and their `outlines/` folders are deleted by the next `build`.
 - **Cells have a switch.** The Cells group's bar carries an on/off switch like Image and Transcripts, so dots and shapes can be put away to see the image or the transcripts alone (`cells=0` in the URL).
 - **Pinned transcript genes take any colour.** Click the colour square next to a pinned gene to choose its colour; the choice rides on the pin in the URL (`mg=PENK=ff6b4f`). The group bars' arrows are larger.

@@ -5,6 +5,8 @@ import contextlib
 import json
 import math
 import os
+import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -464,6 +466,93 @@ def read_image_shape(path: Path, *, rgb: bool = True) -> tuple[int, int, int]:
         return (3 if c == 4 and rgb else c, h, w)
     except Exception:
         return read_image(path, rgb=rgb).shape
+
+
+@dataclass
+class OmeZarrInfo:
+    """What the build needs to know about an OME-Zarr pyramid it will copy as is."""
+
+    axes: str  # e.g. "cyx" or "tczyx", one letter per dimension of every level
+    levels: list[tuple[int, ...]]  # level shapes, finest first
+    dtype: np.dtype
+    channels: int
+    size: tuple[int, int]  # level-0 (height, width)
+    channel_names: list[str] | None  # omero labels, when every channel has one
+    channel_colors: list[str] | None  # omero colours as #rrggbb
+    channel_windows: list[tuple[float, float] | None] | None  # omero windows narrower than the dtype's range
+    zarr_format: int
+
+
+def _multiscales(attrs: dict) -> dict | None:
+    ms = attrs.get("multiscales") or attrs.get("ome", {}).get("multiscales")
+    return ms[0] if ms else None
+
+
+def ome_zarr_info(path: Path) -> OmeZarrInfo | None:
+    """The pyramid's layout and channel metadata, from its attributes alone; None when `path` is not an OME-Zarr."""
+    path = Path(path)
+    if not path.is_dir():
+        return None
+    try:
+        g = zarr.open_group(str(path), mode="r")
+    except Exception:
+        return None
+    attrs = dict(g.attrs)
+    ms = _multiscales(attrs)
+    if not ms:
+        return None
+    levels = [tuple(g[d["path"]].shape) for d in ms["datasets"]]
+    lv0 = g[ms["datasets"][0]["path"]]
+    axes = "".join((a["name"] if isinstance(a, dict) else a)[0].lower() for a in ms.get("axes", [])) or "tczyx"[-len(levels[0]) :]
+    channels = levels[0][axes.index("c")] if "c" in axes else 1
+    size = (levels[0][axes.index("y")], levels[0][axes.index("x")])
+    omero = attrs.get("omero") or attrs.get("ome", {}).get("omero") or {}
+    chans = omero.get("channels") or []
+    names = colors = windows = None
+    if len(chans) == channels:
+        labels = [c.get("label") for c in chans]
+        names = [str(label) for label in labels] if all(labels) else None
+        colors = [f"#{str(c.get('color', 'ffffff')).lstrip('#').lower()}" for c in chans]
+        maxv = float(np.iinfo(lv0.dtype).max) if np.issubdtype(lv0.dtype, np.integer) else 1.0
+        windows = []
+        for c in chans:
+            w = c.get("window") or {}
+            start, end = w.get("start"), w.get("end")
+            full = start in (None, 0) and (end is None or float(end) >= maxv)
+            windows.append(None if full or start is None or end is None or float(end) <= float(start) else (float(start), float(end)))
+    return OmeZarrInfo(axes, levels, lv0.dtype, int(channels), (int(size[0]), int(size[1])), names, colors, windows, int((getattr(g, "metadata", None) and g.metadata.zarr_format) or 2))
+
+
+def ome_zarr_coarse(path: Path, info: OmeZarrInfo, max_px: int = 2048) -> np.ndarray:
+    """One coarse level as (c, y, x), the finest level within `max_px` per side: enough pixels to fit windows on."""
+    g = zarr.open_group(str(path), mode="r")
+    ms = _multiscales(dict(g.attrs))
+    assert ms is not None
+    yi, xi = info.axes.index("y"), info.axes.index("x")
+    pick = len(info.levels) - 1
+    for i, shape in enumerate(info.levels):
+        if max(shape[yi], shape[xi]) <= max_px:
+            pick = i
+            break
+    arr = g[ms["datasets"][pick]["path"]]
+    index = tuple(slice(None) if a in "cyx" else 0 for a in info.axes)  # t and z: the first plane
+    sub = np.asarray(arr[index])
+    axes = "".join(a for a in info.axes if a in "cyx")
+    return _to_cyx_axes(sub, axes)
+
+
+def _link_or_copy(src: str, dst: str) -> None:
+    try:
+        os.link(src, dst)  # same filesystem: no second copy of the pixels
+    except OSError:
+        shutil.copy2(src, dst)
+
+
+def copy_ome_zarr(src: Path, dst: Path) -> None:
+    """The pyramid into the bundle as it is, hard-linked where the filesystem allows, copied otherwise."""
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst, copy_function=_link_or_copy)
 
 
 def json_dump(obj, path: Path) -> None:
