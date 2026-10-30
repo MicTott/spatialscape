@@ -72,10 +72,10 @@ test("polished group controls preserve independent visibility and expansion", as
   const cells = page.locator(".group").filter({ has: page.locator(".group-title", { hasText: "Cells" }) });
   const header = cells.locator(".group-head");
   await expect(header).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("checkbox", { name: "Hide cells" }).click();
+  await page.getByRole("checkbox", { name: "Cells" }).click();
   expect((await page.evaluate(() => (window as any).__sscape.getState())).showCells).toBe(false);
   await expect(header).toHaveAttribute("aria-expanded", "true");
-  const showCells = page.getByRole("checkbox", { name: "Show cells" });
+  const showCells = page.getByRole("checkbox", { name: "Cells" });
   await showCells.focus();
   await showCells.press("Space");
   expect((await page.evaluate(() => (window as any).__sscape.getState())).showCells).toBe(true);
@@ -96,9 +96,9 @@ test("canvas controls and labels support the full-view workflow", async ({ page 
   await page.getByRole("button", { name: "Pan and navigate" }).click();
   await expect(page.getByRole("button", { name: "Pan and navigate" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".group-title", { hasText: "ROIs" })).toBeVisible();
-  await page.getByRole("button", { name: "Gene Set", exact: true }).click();
+  await page.getByRole("button", { name: "Gene sets", exact: true }).click();
   await expect(page.evaluate(() => (window as any).__sscape.getState().color)).resolves.toMatchObject({ kind: "blend" });
-  await expect(page.locator(".blend-legend")).toContainText("Gene Set");
+  await expect(page.locator(".blend-legend")).toContainText("Gene sets");
 
   await page.getByRole("button", { name: "Recenter all visible data" }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__sscape.getState().focus)).toBeNull();
@@ -118,19 +118,19 @@ test("gene controls follow the color scale and scaling survives a shared link", 
   await page.evaluate(() => (window as any).__sscape.ready);
   await page.getByRole("button", { name: "Gene", exact: true }).click();
   const scale = page.getByRole("checkbox", { name: "scale each sample to its own max" });
-  await expect(scale).toBeChecked();
+  await expect(scale).not.toBeChecked(); // one shared scale is the default
   const ordered = await page.evaluate(() => {
     const ramp = document.querySelector(".legend .ramp")!;
     const controls = document.querySelector(".color-display-controls")!;
     return !!(ramp.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING);
   });
   expect(ordered).toBe(true);
-  await scale.uncheck();
-  await expect.poll(() => new URL(page.url()).searchParams.get("sps")).toBe("0");
+  await scale.check();
+  await expect.poll(() => new URL(page.url()).searchParams.get("sps")).toBe("1");
   await page.reload();
   await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
   await page.evaluate(() => (window as any).__sscape.ready);
-  await expect(page.getByRole("checkbox", { name: "scale each sample to its own max" })).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "scale each sample to its own max" })).toBeChecked();
 });
 
 test("embedding label toggle immediately redraws labels and categories respond to keyboard", async ({ page }) => {

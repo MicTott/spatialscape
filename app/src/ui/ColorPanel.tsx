@@ -58,7 +58,7 @@ export function ColorPanel({ genes }: { genes: string[] }) {
           </button>
         ))}
         <button className={isBlend ? "on" : ""} onClick={() => store.getState().setColor({ kind: "blend", a: isGene && !activeGroup ? [color.gene] : [], b: [], scheme: "yb" })} title="two gene sets, blended colors">
-          Gene Set
+          Gene sets
         </button>
         <button className={color?.kind === "field" ? "on" : ""} onClick={() => fields[0] && store.getState().setColor({ kind: "field", field: color?.kind === "field" ? color.field : fields[0].id })}>
           Annotation

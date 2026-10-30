@@ -28,7 +28,7 @@ function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[
   return (
     <div className="legend blend-legend">
       <div className="legend-head">
-        <span>Gene Set</span>
+        <span>Gene sets</span>
         <span className="muted">{sc.name}</span>
       </div>
       <div className="blend-grid">
@@ -92,8 +92,8 @@ export function Legend() {
           <div className="legend-head">
             <span>{f.name}</span>
             <span className="legend-actions">
-              <button onClick={all}>All</button>
-              <button onClick={none}>None</button>
+              <button onClick={all}>all</button>
+              <button onClick={none}>none</button>
             </span>
           </div>
           <ul className="cats">

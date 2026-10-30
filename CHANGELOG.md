@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Viewer polish.** Larger, plainer type and group bars in the side panel; the canvas gets pan, lasso and *recenter* buttons beside the platform tabs; *Blend* is now *Gene sets* and *Selections* is *ROIs*; the range, hide-zeros and scaling controls sit under the legend they adjust; legend categories, group switches and sliders work from the keyboard with visible focus; switching *Embedding labels* redraws at once. Gene colours keep one shared scale across sections by default; *scale each sample to its own max* remains the opt-in, and the legend and PNG export label its ramp in fractions of each sample's range.
 - **Annotation boundaries are gone.** The traced spatial-domain outlines (`outlines/<field>.json`, the `outlines` command, *Annotation boundaries* in the Cells group, the `o` URL key) added little over the colours themselves and a file per field per sample; they are removed. Bundles built earlier still open, and their `outlines/` folders are deleted by the next `build`.
 - **Cells have a switch.** The Cells group's bar carries an on/off switch like Image and Transcripts, so dots and shapes can be put away to see the image or the transcripts alone (`cells=0` in the URL).
 - **Pinned transcript genes take any colour.** Click the colour square next to a pinned gene to choose its colour; the choice rides on the pin in the URL (`mg=PENK=ff6b4f`). The group bars' arrows are larger.

@@ -33,7 +33,7 @@ export function Group({ id, title, summary, on, onToggle, defaultOpen = false, c
         <span className="group-title">{title}</span>
         {!open && summary && <span className="group-summary">{summary}</span>}
         {onToggle && (
-          <input type="checkbox" className="group-switch" aria-label={`${on ? "Hide" : "Show"} ${title.toLowerCase()}`} checked={!!on} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(e.target.checked)} title={`${on ? "hide" : "show"} ${title.toLowerCase()}`} />
+          <input type="checkbox" className="group-switch" aria-label={title} checked={!!on} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(e.target.checked)} title={`${on ? "hide" : "show"} ${title.toLowerCase()}`} />
         )}
       </div>
       {open && <div className="group-body">{children}</div>}

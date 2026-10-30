@@ -29,7 +29,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `ps` | point size multiplier, spatial view | `ps=1.5` |
 | `pse` | point size multiplier, embedding view | `pse=0.5` |
 | `psg` | point size multipliers of the group panes in pane order, empty where a pane follows `ps` | `psg=,1.50` |
-| `sps` | `1`: scale expression colors per sample (default); `0`: use one shared scale. Older saved gene views without this key use the former shared default. | `sps=1` |
+| `sps` | `1`: scale gene colors per sample instead of the one shared scale (`0` or absent) | `sps=1` |
 | `debug` | `1`: show timing and frame-rate readouts in the status bar | `debug=1` |
 | `sv` | embedding split: `0` off, or `l:<fraction>` / `r:<fraction>` | `sv=r:0.4` |
 | `v` | camera: `x,y,zoom` in dataset microns and log2 scale (the single tissue pane) | `v=24609,23505,-6.4` |
@@ -40,4 +40,4 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `pv` | cameras of the group panes, `x,y,zoom` each, `;`-separated in pane order | `pv=5379,2723,-4.7;5390,2090,-4.7` |
 | `cmp` | the comparison shown under the maps | `cmp=stress_vs_control` |
 
-Blend scheme codes: `yb` yellow/blue → green, `cm` cyan/magenta → white, `rg` red/green → yellow. Gene lists use commas; a `+` would decode as a space.
+Gene-set scheme codes (`c=b:<scheme>:<set A>|<set B>`): `yb` yellow/blue → green, `cm` cyan/magenta → white, `rg` red/green → yellow. Gene lists use commas; a `+` would decode as a space.
