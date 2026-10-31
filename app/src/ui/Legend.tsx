@@ -28,7 +28,7 @@ function BlendLegend({ scheme, a, b }: { scheme: string; a: string[]; b: string[
   return (
     <div className="legend blend-legend">
       <div className="legend-head">
-        <span>Blend</span>
+        <span>Gene sets</span>
         <span className="muted">{sc.name}</span>
       </div>
       <div className="blend-grid">
@@ -88,7 +88,7 @@ export function Legend() {
         return null;
       };
       return (
-        <div className="legend">
+        <div className="legend annotation-legend">
           <div className="legend-head">
             <span>{f.name}</span>
             <span className="legend-actions">
@@ -103,6 +103,15 @@ export function Legend() {
               <li
                 key={c}
                 className={hid.has(i) ? "off" : ""}
+                role="button"
+                tabIndex={0}
+                aria-pressed={!hid.has(i)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    store.getState().toggleCategory(f.id, i);
+                  }
+                }}
                 onClick={() => store.getState().toggleCategory(f.id, i)}
                 onDoubleClick={(e) => {
                   e.preventDefault();
@@ -161,8 +170,8 @@ export function Legend() {
       </div>
       <div className="ramp" style={{ background: colormapCSS(effectiveColormap(colormap, geneMin < 0)) }} />
       <div className="ramp-labels">
-        <span>{scalePerSample ? "0" : lo.toFixed(2)}</span>
-        <span>{scalePerSample ? "max per sample" : hi.toFixed(2)}</span>
+        <span>{scalePerSample ? (vrange[0] === 0 ? (geneMin < 0 ? "min per sample" : "0") : `${Math.round(vrange[0] * 100)}% of range`) : lo.toFixed(2)}</span>
+        <span>{scalePerSample ? (vrange[1] === 1 ? "max per sample" : `${Math.round(vrange[1] * 100)}% of range`) : hi.toFixed(2)}</span>
       </div>
     </div>
   );

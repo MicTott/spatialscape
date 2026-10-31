@@ -73,9 +73,13 @@ export function composePNG(gl: HTMLCanvasElement, container: HTMLElement, panes:
     title = grp?.features.find((f) => f.id === (s.color as any).gene)?.label ?? s.color.gene;
     const lo = s.geneMin + s.vrange[0] * (s.geneMax - s.geneMin);
     const hi = s.geneMin + s.vrange[1] * (s.geneMax - s.geneMin);
-    ramp = { lut: colormapLUT(effectiveColormap(s.colormap, s.geneMin < 0)), lo: s.scalePerSample ? (s.geneMin < 0 ? "min" : "0") : lo.toFixed(2), hi: s.scalePerSample ? "max per sample" : hi.toFixed(2) };
+    ramp = {
+      lut: colormapLUT(effectiveColormap(s.colormap, s.geneMin < 0)),
+      lo: s.scalePerSample ? (s.vrange[0] === 0 ? (s.geneMin < 0 ? "min per sample" : "0") : `${Math.round(s.vrange[0] * 100)}% of range`) : lo.toFixed(2),
+      hi: s.scalePerSample ? (s.vrange[1] === 1 ? "max per sample" : `${Math.round(s.vrange[1] * 100)}% of range`) : hi.toFixed(2),
+    };
   } else if (s.color?.kind === "blend") {
-    title = `Blend: A = ${s.color.a.join(", ") || "(empty)"} · B = ${s.color.b.join(", ") || "(empty)"}`;
+    title = `Gene sets: A = ${s.color.a.join(", ") || "(empty)"} · B = ${s.color.b.join(", ") || "(empty)"}`;
   }
   const maxRows = 30;
   const shownRows = rows.slice(0, maxRows);

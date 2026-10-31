@@ -8,7 +8,7 @@ import { SampleStrip } from "./SampleStrip";
 import { CompareGroup, comparisonSummary } from "../compare/CompareGroup";
 import { activateComparison, reopenComparison } from "../compare/activate";
 import { Group } from "./Group";
-import { ColorPanel, FilterPanel } from "./ColorPanel";
+import { ColorPanel, ColorDisplayControls, FilterPanel } from "./ColorPanel";
 import { CellRows } from "./CellRows";
 import { MoleculeGenes } from "./MoleculeGenes";
 import { ImageChannels, channelSummary } from "./ImageChannels";
@@ -109,12 +109,12 @@ function Groups({ genes }: { genes: string[] }) {
   const hasMolecules = manifest.samples.some((s) => s.molecules);
   const channelRows = channelSummary(manifest);
   const fieldName = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
-  const colorSummary = !color ? "no colour" : color.kind === "gene" ? color.gene : color.kind === "blend" ? "blend" : fieldName(color.field);
+  const colorSummary = !color ? "no colour" : color.kind === "gene" ? color.gene : color.kind === "blend" ? "gene sets" : fieldName(color.field);
   const sections = manifest.samples.filter((s) => s.kind !== "embedding").length;
   const sampleSummary = [`${sections} section${sections === 1 ? "" : "s"}`, splitBy ? `split by ${splitBy.key}` : layoutMode, focus ? `focused on ${manifest.samples.find((s) => s.id === focus)?.name ?? focus}` : null].filter(Boolean).join(" · ");
   const nRegions = regions.groups.reduce((n, g) => n + g.polygons.length, 0);
   const selectionSummary = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : "lasso, regions";
-  const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "blend" : "other genes grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");
+  const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "gene sets" : "other genes grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");
   const imageSummary = !showImages ? "off" : channelRows ? `${drawnChannels(datasetChannels(manifest).map(([n]) => n), activeChannels, hiddenChannels).length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
   return (
     <>
@@ -130,6 +130,7 @@ function Groups({ genes }: { genes: string[] }) {
       <Group id="cells" title="Cells" summary={showCells ? colorSummary : "off"} on={showCells} onToggle={(v) => set({ showCells: v })} defaultOpen>
         <ColorPanel genes={genes} />
         <Legend />
+        <ColorDisplayControls />
         <GeneByAnnotation />
         <FilterPanel genes={genes} />
         <CellRows />
@@ -144,7 +145,7 @@ function Groups({ genes }: { genes: string[] }) {
           <CompareGroup />
         </Group>
       )}
-      <Group id="selections" title="Selections" summary={selectionSummary}>
+      <Group id="selections" title="ROIs" summary={selectionSummary}>
         <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
         <RegionsPanel />
       </Group>

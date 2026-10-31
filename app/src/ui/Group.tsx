@@ -28,12 +28,12 @@ export function Group({ id, title, summary, on, onToggle, defaultOpen = false, c
   };
   return (
     <div className={`group${open ? " open" : ""}${on === false ? " off" : ""}`}>
-      <div className="group-head" role="button" tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => (e.key === "Enter" || e.key === " " ? (e.preventDefault(), toggle()) : undefined)}>
-        <span className="chev">{open ? "▾" : "▸"}</span>
+      <div className="group-head" role="button" tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ") ? (e.preventDefault(), toggle()) : undefined)}>
+        <span className="chev" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5.5 3.5 10 8l-4.5 4.5" /></svg></span>
         <span className="group-title">{title}</span>
         {!open && summary && <span className="group-summary">{summary}</span>}
         {onToggle && (
-          <input type="checkbox" className="group-switch" checked={!!on} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(e.target.checked)} title={`${on ? "hide" : "show"} ${title.toLowerCase()}`} />
+          <input type="checkbox" className="group-switch" aria-label={title} checked={!!on} onClick={(e) => e.stopPropagation()} onChange={(e) => onToggle(e.target.checked)} title={`${on ? "hide" : "show"} ${title.toLowerCase()}`} />
         )}
       </div>
       {open && <div className="group-body">{children}</div>}

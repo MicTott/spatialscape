@@ -14,9 +14,6 @@ export function ColorPanel({ genes }: { genes: string[] }) {
   const color = useViewer((s) => s.color);
   const colormap = useViewer((s) => s.colormap);
   const geneMin = useViewer((s) => s.geneMin);
-  const vrange = useViewer((s) => s.vrange);
-  const hideZeros = useViewer((s) => s.hideZeros);
-  const scalePerSample = useViewer((s) => s.scalePerSample);
   const recent = useViewer((s) => s.recentGenes);
   const set = store.getState().set;
   const groups = features?.groups ?? [];
@@ -61,7 +58,7 @@ export function ColorPanel({ genes }: { genes: string[] }) {
           </button>
         ))}
         <button className={isBlend ? "on" : ""} onClick={() => store.getState().setColor({ kind: "blend", a: isGene && !activeGroup ? [color.gene] : [], b: [], scheme: "yb" })} title="two gene sets, blended colors">
-          Blend
+          Gene sets
         </button>
         <button className={color?.kind === "field" ? "on" : ""} onClick={() => fields[0] && store.getState().setColor({ kind: "field", field: color?.kind === "field" ? color.field : fields[0].id })}>
           Annotation
@@ -143,18 +140,38 @@ export function ColorPanel({ genes }: { genes: string[] }) {
               {geneMin < 0 && <small className="muted">signed feature: drawn with a diverging map centred on zero</small>}
             </label>
           )}
-          <RangeSlider value={vrange} onChange={(v) => set({ vrange: v })} label="range" />
-          <label className="check">
-            <input type="checkbox" checked={hideZeros} onChange={(e) => set({ hideZeros: e.target.checked })} /> hide zeros
-          </label>
-          {(isGene || isBlend) && (
-            <label className="check" title="off: one shared scale across samples, so colors are comparable. on: each sample is stretched to its own maximum">
-              <input type="checkbox" checked={scalePerSample} onChange={(e) => set({ scalePerSample: e.target.checked })} /> scale each sample to its own max
-            </label>
-          )}
         </div>
       )}
     </section>
+  );
+}
+
+/** Display settings follow the legend so the controls sit next to the scale they adjust. */
+export function ColorDisplayControls() {
+  const manifest = useViewer((s) => s.manifest)!;
+  const color = useViewer((s) => s.color);
+  const vrange = useViewer((s) => s.vrange);
+  const hideZeros = useViewer((s) => s.hideZeros);
+  const scalePerSample = useViewer((s) => s.scalePerSample);
+  const isExpression = color?.kind === "gene" || color?.kind === "blend";
+  const continuous = color?.kind === "field" && manifest.fields.find((f) => f.id === color.field)?.type === "continuous";
+  if (!isExpression && !continuous) return null;
+  const set = store.getState().set;
+  return (
+    <div className="controls color-display-controls">
+      <RangeSlider value={vrange} onChange={(v) => set({ vrange: v })} label="range" />
+      <label className="check">
+        <input type="checkbox" checked={hideZeros} onChange={(e) => set({ hideZeros: e.target.checked })} /> hide zeros
+      </label>
+      {isExpression && (
+        <>
+          <label className="check" title={color?.kind === "blend" ? "On: scale set means by the largest selected gene maximum within each sample. Off: use a shared maximum across samples." : "Off: one shared scale across samples, so colors are comparable. On: each sample is stretched to its own maximum."}>
+            <input type="checkbox" checked={scalePerSample} onChange={(e) => set({ scalePerSample: e.target.checked })} /> scale each sample to its own max
+          </label>
+          {scalePerSample && <div className="muted small scaling-note">Colors scale independently; uncheck to compare color values across samples.</div>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -164,8 +181,8 @@ function RangeSlider({ value, onChange, label }: { value: [number, number]; onCh
       <span className="range-label">
         {label} <small>{(value[0] * 100).toFixed(0)}–{(value[1] * 100).toFixed(0)}%</small>
       </span>
-      <input type="range" min={0} max={1} step={0.005} value={value[0]} onChange={(e) => onChange([Math.min(+e.target.value, value[1] - 0.005), value[1]])} />
-      <input type="range" min={0} max={1} step={0.005} value={value[1]} onChange={(e) => onChange([value[0], Math.max(+e.target.value, value[0] + 0.005)])} />
+      <input aria-label={`Minimum ${label}`} type="range" min={0} max={1} step={0.005} value={value[0]} onChange={(e) => onChange([Math.min(+e.target.value, value[1] - 0.005), value[1]])} />
+      <input aria-label={`Maximum ${label}`} type="range" min={0} max={1} step={0.005} value={value[1]} onChange={(e) => onChange([value[0], Math.max(+e.target.value, value[0] + 0.005)])} />
     </div>
   );
 }

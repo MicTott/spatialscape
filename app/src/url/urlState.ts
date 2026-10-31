@@ -71,6 +71,7 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("s")) out.focus = q.get("s");
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
   if (q.get("sps") === "1") out.scalePerSample = true;
+  else if (q.get("sps") === "0") out.scalePerSample = false;
   if (q.get("debug") === "1") out.debug = true;
   if (q.get("ps") || q.get("pse") || q.get("psg")) {
     const ps: Record<string, number> = { spatial: num(q.get("ps"), 1), embedding: num(q.get("pse"), 1) };

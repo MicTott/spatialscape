@@ -39,7 +39,7 @@ the handle positions and each pane's camera travel in the URL, so a copied link 
 
 - **Gene**: type to search. Values are log-normalized expression; the range slider rescales the colormap, "hide zeros" removes non-expressing cells.
 - **Feature groups**: non-gene features such as RCTD cell type weights appear under their own tab with a scrollable list.
-- **Blend**: two gene sets, one gene or fifty each. Each set's score is the mean normalized expression of its genes; the two scores index a 2D color table. Schemes: yellow / blue → green, cyan / magenta → white, red / green → yellow. The legend becomes a color square.
+- **Gene sets**: two gene sets, one gene or fifty each. Each set's score is the mean normalized expression of its genes; the two scores index a 2D color table. Schemes: yellow / blue → green, cyan / magenta → white, red / green → yellow. The legend becomes a color square.
 - **Annotation**: any categorical or continuous field. Categorical legends show counts; click a category to hide it, double-click to solo it. Fields that only some samples carry are grouped separately in the menu.
 
 Samples that don't carry the selected feature are drawn in grey ("not measured") rather than hidden.
@@ -71,7 +71,7 @@ Press `L` or the ⌒ lasso button, drag around a region, release. Selected cells
 
 ## Gene color scale
 
-Gene colors share one scale across all samples on screen, so the same color means the same log-normalized value in every section; the legend shows the numeric range. Every number the viewer shows for a gene (legend range, hover value, selection mean, dot plot, filter histogram) is reconstructed from the bundle's 8-bit storage, where each gene is kept as 256 levels between its minimum and maximum in that sample, so they are display summaries good to about 0.4% of a gene's range, not the values in your object; compute statistics on the object, with `s.selection()` from a [notebook](./notebooks) if the selection came from the viewer. Tick *scale each sample to its own max* to stretch every section to its own maximum instead, which brings out structure in low-count platforms at the cost of comparability. The two gene sets of the **Blend** mode are scored as the mean log-normalized expression of their genes, on the same shared scale.
+Gene colors share one scale across all samples on screen, so the same color means the same log-normalized value in every section; the legend shows the numeric range. Every number the viewer shows for a gene (legend range, hover value, selection mean, dot plot, filter histogram) is reconstructed from the bundle's 8-bit storage, where each gene is kept as 256 levels between its minimum and maximum in that sample, so they are display summaries good to about 0.4% of a gene's range, not the values in your object; compute statistics on the object, with `s.selection()` from a [notebook](./notebooks) if the selection came from the viewer. Tick *scale each sample to its own max* to stretch every section to its own maximum instead, which brings out structure in low-count platforms at the cost of comparability: the legend then reads in fractions of each sample's range, and a gene filter's threshold becomes a fraction of each sample's own maximum rather than one expression level. The two gene sets of **Gene sets** mode are scored as the mean log-normalized expression of their genes, scaled against the largest selected gene maximum across samples, or within each sample when per-sample scaling is on.
 
 ## Sharing and export
 
@@ -167,12 +167,12 @@ open at once, and what is open is remembered per browser:
 
 - **Image**: its switch in the bar, opacity and, for fluorescence, the channel list.
 - **Cells**: its switch in the bar (off leaves the image and the transcripts alone on the canvas), colour by (gene,
-  cell type weights, blend, annotation), the legend, expression by annotation, the filter, and *Drawing*: how cells
+  cell type weights, gene sets, annotation), the legend, expression by annotation, the filter, and *Drawing*: how cells
   draw once zoomed in (dots, filled, outlined), cluster labels.
 - **Transcripts**: its switch in the bar, selected genes or all genes, the pinned genes with their colours, the point size.
 - **Comparisons** (when the dataset carries any): its switch in the bar opens or closes the panel under the maps;
   one row per comparison, the active one with its level (a cluster, a cell type).
-- **Selections**: the lasso's selection and your drawn regions.
+- **ROIs**: the lasso's selection and your drawn regions.
 - **Samples**: comparisons, the grid or strip layout, focus and the list of sections.
 
 The groups are what is drawn, not how; a Transcripts bar reading "GAD1 · 2 pinned" tells you what the molecules show
@@ -193,7 +193,7 @@ once a view holds at most about one per screen pixel, counted from the tiles in 
 window, which keeps a laptop near 60 frames per second; every molecule of a view is drawn, none are sampled). Until
 then the status line says *zoom in for molecules*. A size slider in the group scales the points (double-click to
 reset; `msz` in the URL). **Selected genes** colours the genes you have chosen: the gene you are looking at draws
-in the colormap's top colour, a blend's two gene sets in the blend's colours, and under an annotation every molecule
+in the colormap's top colour, the two gene sets in their colours, and under an annotation every molecule
 draws in grey, which is the view for judging a segmentation.
 
 Zoomed out, a cell can show one gene; zoomed in, the molecules can show several. The Transcripts group lists the gene on

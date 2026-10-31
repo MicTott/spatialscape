@@ -299,7 +299,8 @@ export class ViewerController {
       s.moleculePinColors !== prev.moleculePinColors ||
       s.moleculeColors !== prev.moleculeColors ||
       s.moleculeSize !== prev.moleculeSize ||
-      s.overlay !== prev.overlay
+      s.overlay !== prev.overlay ||
+      s.clusterLabels !== prev.clusterLabels
     ) {
       if (s.hideZeros !== prev.hideZeros || s.hiddenCategories !== prev.hiddenCategories || s.scalePerSample !== prev.scalePerSample) this.stats.updateFilterHistogram();
       this.requestLayers();

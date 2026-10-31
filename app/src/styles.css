@@ -1,14 +1,14 @@
 :root {
   --bg: #0e1116;
-  --panel: #161b22;
-  --panel2: #1f2630;
-  --fg: #e6edf3;
-  --muted: #8b949e;
+  --panel: #191b1f;
+  --panel2: #282b31;
+  --fg: #eef0f3;
+  --muted: #a7adb6;
   --accent: #40c4ff;
-  --border: #30363d;
+  --border: #3b3f46;
   --warn: #f0883e;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--fg);
 }
 * { box-sizing: border-box; }
@@ -433,5 +433,69 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cmp-row.on .cmp-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
 .cmp-row .cmp-name { font-weight: 600; font-size: 12px; }
 .cmp-row .cmp-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+
+/* Viewer polish: preserve the existing layout and rendering while refining its controls. */
+button { transition: background-color .14s, border-color .14s, color .14s; }
+button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid #80d7fb; outline-offset: 2px; }
+.sidebar { background: var(--panel); border-left-color: #303238; backdrop-filter: none; }
+.sidebar-inner { padding: 15px 15px 24px; }
+.sidebar header h1 { font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+.sidebar header p { font-size: 13px; line-height: 1.35; color: #afb4bd; margin-bottom: 10px; }
+.sidebar .collapse { top: 11px; width: 25px; height: 32px; left: -25px; border-color: #46494f; border-radius: 8px 0 0 8px; color: #c1c6cd; }
+.sidebar .collapse:hover { background: #34373e; color: #fff; }
+.sidebar .group { border-color: #383b41; }
+.sidebar .group-head { min-height: 43px; padding: 8px 7px; gap: 9px; border-radius: 7px; }
+.sidebar .group-head:hover { background: #2a2d32; }
+.sidebar .group-title { font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.sidebar .group-summary { font-size: 12px; color: #a9afb7; }
+.sidebar .group-head .chev { width: 15px; height: 16px; display: grid; place-items: center; flex: none; color: #b2b8c1; }
+.sidebar .group-head .chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .14s; }
+.sidebar .group.open .chev svg { transform: rotate(90deg); }
+.sidebar .group-body { padding: 0 4px 12px 15px; }
+.sidebar .group-body section { padding: 9px 0; }
+.sidebar .group-body section + section { border-top: 1px solid #34373d; }
+.sidebar .group-body section h2 { color: #d3d7dd; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; margin: 0 0 8px; }
+.sidebar .tabs { gap: 5px; margin-bottom: 9px; }
+.sidebar .tabs button, .sidebar .legend-actions button { border-radius: 7px; }
+.sidebar .tabs button { font-size: 13px; padding: 4px 10px; border-color: #454951; background: #292c32; }
+.sidebar .tabs button:hover { background: #3a3e46; color: #fff; }
+.sidebar .tabs button.on { color: #06141b; border-color: var(--accent); background: var(--accent); }
+.sidebar select, .sidebar .genesearch input, .sidebar .grouplist input { padding: 7px 9px; border-color: #494d54; border-radius: 7px; background: var(--panel2); }
+.sidebar .legend { padding-top: 10px; }
+.sidebar .legend-head { margin-bottom: 8px; font-size: 14px; }
+.sidebar .cats li { padding: 4px 4px; border-radius: 6px; }
+.sidebar .cat-n, .sidebar .small { font-size: 12px; }
+.sidebar .swatch { border-radius: 4px; }
+.topnav { background: var(--panel); border-color: #303238; }
+.topnav .brand { font-size: 15px; }
+.topnav select { border-radius: 7px; font-size: 13px; }
+.platformbar { border-radius: 9px; padding: 5px; background: color-mix(in srgb, var(--panel) 96%, transparent); border-color: #41454c; backdrop-filter: none; }
+.platformbar button { padding: 5px 10px; border-radius: 7px; font-size: 13px; color: #b8bec6; }
+.platformbar button:hover { color: #fff; background: #35383e; }
+.platformbar button.on { background: #33363c; color: #fff; border-color: #4a4e56; }
+.platformbar .split-ctl { border-color: #44474e; }
+.platformbar .split-ctl .muted { font-size: 12px; }
+.platformbar select { font-size: 13px; border-radius: 7px; }
+.map > .pointsize { border-radius: 8px; background: color-mix(in srgb, var(--panel) 95%, transparent); border-color: #44474e; backdrop-filter: none; padding: 6px 9px; }
+.pointsize .cap { text-transform: none; letter-spacing: 0; font-size: 12px; color: #c6ccd3; }
+.pointsize small { font-size: 11px; }
+.statusbar { background: var(--panel); border-color: #303238; font-size: 12px; }
+.tooltip { background: #24262b; border-color: #4a4d54; border-radius: 8px; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { button, .sidebar .group-head .chev svg { transition: none; } }
+/* Canvas tools: selection and navigation remain together and leave room for dataset controls. */
+.platformbar .canvas-tools { display: inline-flex; gap: 2px; align-items: center; padding-right: 8px; margin-right: 4px; border-right: 1px solid #44474e; }
+.platformbar .canvas-tool { display: inline-grid; place-items: center; width: 32px; height: 30px; padding: 0; border-radius: 6px; }
+.platformbar .canvas-tool svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.platformbar .canvas-tool[aria-pressed="true"] { color: #06141b; background: var(--accent); border-color: var(--accent); }
+.platformbar .canvas-tool:hover { background: #3b3f46; color: #fff; }
+.platformbar .canvas-tool[aria-pressed="true"]:hover { background: #80d9ff; color: #06141b; }
+.platformbar .canvas-tools + .split-ctl { border-left: 0; margin-left: 0; padding-left: 2px; }
+
+/* Keep the canvas toolbar usable on narrow screens. */
+.platformbar { max-width: calc(100% - 340px); overflow-x: auto; scrollbar-width: thin; }
+.platformbar .split-ctl, .platformbar .canvas-tools { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 700px) { .platformbar { max-width: calc(100% - 24px); } }
+.color-display-controls { margin: 5px 0 12px; }
+.color-display-controls .scaling-note { margin: 6px 0 0; line-height: 1.35; }
 .channels-note { margin: 0 0 6px; }
 .cats.channels li.blocked { cursor: not-allowed; opacity: 0.25; }

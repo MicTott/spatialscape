@@ -94,7 +94,8 @@ describe("point size per view", () => {
 });
 
 describe("scale and debug flags", () => {
-  it("serialize only when set and read back", () => {
+  it("serialize only when set and read back, shared scale being the default", () => {
+    expect(store.getState().scalePerSample).toBe(false);
     const q = new URLSearchParams(serialize({ ...store.getState(), scalePerSample: true, debug: true } as ViewerState));
     expect(q.get("sps")).toBe("1");
     expect(q.get("debug")).toBe("1");
@@ -102,9 +103,12 @@ describe("scale and debug flags", () => {
     const g = globalThis as any;
     const saved = g.window;
     g.window = { location: { search: "?sps=1&debug=1" } };
-    const r = readUrl();
-    expect(r.scalePerSample).toBe(true);
-    expect(r.debug).toBe(true);
+    expect(readUrl().scalePerSample).toBe(true);
+    expect(readUrl().debug).toBe(true);
+    g.window = { location: { search: "?sps=0" } };
+    expect(readUrl().scalePerSample).toBe(false); // an explicit off, whatever the default
+    g.window = { location: { search: "?d=x&c=g:GAD1" } };
+    expect(readUrl().scalePerSample).toBeUndefined();
     g.window = saved;
   });
 

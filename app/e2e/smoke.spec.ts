@@ -64,3 +64,89 @@ test("loads the synthetic bundle, switches genes fast, filters without network",
   expect(Math.abs(vs.target[1] - vs.center[1])).toBeLessThan(1);
   expect(errors, errors.join("\n")).toEqual([]);
 });
+
+test("polished group controls preserve independent visibility and expansion", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  const cells = page.locator(".group").filter({ has: page.locator(".group-title", { hasText: "Cells" }) });
+  const header = cells.locator(".group-head");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("checkbox", { name: "Cells" }).click();
+  expect((await page.evaluate(() => (window as any).__sscape.getState())).showCells).toBe(false);
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  const showCells = page.getByRole("checkbox", { name: "Cells" });
+  await showCells.focus();
+  await showCells.press("Space");
+  expect((await page.evaluate(() => (window as any).__sscape.getState())).showCells).toBe(true);
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  const samples = page.locator(".group").filter({ has: page.locator(".group-title", { hasText: "Samples" }) });
+  await samples.locator(".group-head").click();
+  await expect(samples.locator(".group-head")).toHaveAttribute("aria-expanded", "true");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+});
+
+test("canvas controls and labels support the full-view workflow", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}&s=sampleB`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await expect(page.getByRole("button", { name: "Pan and navigate" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Lasso select" }).click();
+  await expect(page.getByRole("button", { name: "Lasso select" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Pan and navigate" }).click();
+  await expect(page.getByRole("button", { name: "Pan and navigate" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".group-title", { hasText: "ROIs" })).toBeVisible();
+  await page.getByRole("button", { name: "Gene sets", exact: true }).click();
+  await expect(page.evaluate(() => (window as any).__sscape.getState().color)).resolves.toMatchObject({ kind: "blend" });
+  await expect(page.locator(".blend-legend")).toContainText("Gene sets");
+
+  await page.getByRole("button", { name: "Recenter all visible data" }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__sscape.getState().focus)).toBeNull();
+  await expect.poll(() => page.evaluate(() => {
+    const c = (window as any).__sscape.controller;
+    return c.panes.every((pane: any) => {
+      const vp = c.deck.getViewports().find((v: any) => v.id === pane.id);
+      const b = c.layouts[pane.id]?.worldBbox;
+      return vp && b && Math.abs(vp.target[0] - (b[0] + b[2]) / 2) < 1 && Math.abs(vp.target[1] - (b[1] + b[3]) / 2) < 1;
+    });
+  }), { timeout: 5000 }).toBe(true);
+});
+
+test("gene controls follow the color scale and scaling survives a shared link", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await page.getByRole("button", { name: "Gene", exact: true }).click();
+  const scale = page.getByRole("checkbox", { name: "scale each sample to its own max" });
+  await expect(scale).not.toBeChecked(); // one shared scale is the default
+  const ordered = await page.evaluate(() => {
+    const ramp = document.querySelector(".legend .ramp")!;
+    const controls = document.querySelector(".color-display-controls")!;
+    return !!(ramp.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  expect(ordered).toBe(true);
+  await scale.check();
+  await expect.poll(() => new URL(page.url()).searchParams.get("sps")).toBe("1");
+  await page.reload();
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  await expect(page.getByRole("checkbox", { name: "scale each sample to its own max" })).toBeChecked();
+});
+
+test("embedding label toggle immediately redraws labels and categories respond to keyboard", async ({ page }) => {
+  await page.goto(`/?d=${encodeURIComponent(DATA)}`);
+  await page.waitForFunction(() => !!(window as any).__sscape, null, { timeout: 20_000 });
+  await page.evaluate(() => (window as any).__sscape.ready);
+  const hasLabels = () => page.evaluate(() => (window as any).__sscape.controller.deck.props.layers.flat(Infinity).some((l: any) => l?.id === "cluster-labels-embedding"));
+  await expect.poll(hasLabels).toBe(true);
+  const labels = page.getByRole("checkbox", { name: /Embedding labels/ });
+  await labels.uncheck();
+  await expect.poll(hasLabels).toBe(false);
+  await labels.check();
+  await expect.poll(hasLabels).toBe(true);
+  const firstCategory = page.locator(".annotation-legend .cats li").first();
+  await expect(firstCategory).toHaveAttribute("aria-pressed", "true");
+  await firstCategory.focus();
+  await firstCategory.press("Space");
+  await expect(firstCategory).toHaveAttribute("aria-pressed", "false");
+});

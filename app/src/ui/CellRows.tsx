@@ -91,7 +91,7 @@ export function CellRows() {
           </table>
         </LayerRow>
       )}
-      {hasEmbedding && <LayerRow name="Labels" on={clusterLabels} onToggle={(v) => set({ clusterLabels: v })} summary="cluster names in the embedding" />}
+      {hasEmbedding && <LayerRow name="Embedding labels" on={clusterLabels} onToggle={(v) => set({ clusterLabels: v })} summary="cluster names in the embedding, with a categorical annotation on screen" />}
     </section>
   );
 }
