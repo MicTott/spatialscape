@@ -22,7 +22,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `img` | image opacity, `0` hides images | `img=0.6` |
 | `imgs` | `0` switches images off | `imgs=0` |
 | `cells` | `0` switches the cells (dots and shapes) off | `cells=0` |
-| `hc` | image channels switched off, by name, separated by `\|` | `hc=DAPI\|18S` |
+| `ch` | the image channels drawn, by name and in order, separated by `\|`; at most six. Older links' `hc` (channels switched off) is still read | `ch=DAPI\|CD3\|CD20` |
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |
 | `hs` | hidden samples | `hs=vis_Br2743` |

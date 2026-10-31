@@ -1,7 +1,7 @@
 /** Viv image layers for OME-Zarr pyramids, positioned in sample space via modelMatrix. */
 import { Matrix4 } from "@math.gl/core";
 import { loadOmeZarr, MultiscaleImageLayer, ImageLayer } from "@hms-dbmi/viv";
-import type { SampleImage } from "../data/manifest";
+import type { Manifest, SampleImage } from "../data/manifest";
 import { hexToRGB } from "./lut";
 
 export interface ImageHandle {
@@ -12,7 +12,8 @@ export interface ImageHandle {
 }
 
 const loaders = new Map<string, Promise<ImageHandle>>();
-const MAX_DRAWN = 6;
+/** Channels drawn at once: Viv blends at most this many in one pass, and additive colours stop being readable past about six. */
+export const MAX_DRAWN = 6;
 
 export function loadImage(url: string): Promise<ImageHandle> {
   let p = loaders.get(url);
@@ -52,7 +53,27 @@ const RGB_COLORS = [
 
 /** The channel names a multichannel image offers, in file order (at most the ones the viewer can draw). */
 export function channelNames(img: SampleImage, count: number): string[] {
-  return Array.from({ length: Math.min(count, MAX_DRAWN) }, (_, i) => img.channels?.[i]?.name ?? `channel ${i + 1}`);
+  return Array.from({ length: count }, (_, i) => img.channels?.[i]?.name ?? `channel ${i + 1}`);
+}
+
+/** Every fluorescence channel name across the dataset, in first-seen order, with its colour. */
+export function datasetChannels(manifest: Manifest): [string, string][] {
+  const seen = new Map<string, string>();
+  for (const smp of manifest.samples)
+    for (const img of smp.images) {
+      if (img.kind !== "multichannel" || !img.channels?.length) continue;
+      channelNames(img, img.channels.length).forEach((name, i) => {
+        if (!seen.has(name)) seen.set(name, img.channels![i].color ?? "#ffffff");
+      });
+    }
+  return [...seen.entries()];
+}
+
+/** The channels on screen, in order: the chosen list, or the dataset's first MAX_DRAWN minus any an older link hid. */
+export function drawnChannels(names: string[], activeChannels: string[] | null, hiddenChannels: string[]): string[] {
+  if (activeChannels) return activeChannels.filter((n) => names.includes(n)).slice(0, MAX_DRAWN);
+  const hidden = new Set(hiddenChannels);
+  return names.filter((n) => !hidden.has(n)).slice(0, MAX_DRAWN);
 }
 
 export function imageLayer(
@@ -62,7 +83,7 @@ export function imageLayer(
   sampleMatrix: Matrix4,
   opacity: number,
   visible: boolean,
-  hiddenChannels: ReadonlySet<string>,
+  drawn: readonly string[],
   extraProps: Record<string, unknown> = {},
 ) {
   const slot = `${id}|${String(extraProps.viewId ?? "")}`;
@@ -72,10 +93,11 @@ export function imageLayer(
   );
   const n = handle.channels;
   const isRGB = img.kind === "rgb" && n >= 3;
-  // the first MAX_DRAWN channels: Viv refuses more than 10, and additive colours stop being readable past about 6.
-  // All of them are fetched, so switching one on or off is instant; a hidden channel is only not drawn.
-  const chans = isRGB ? [0, 1, 2] : channelNames(img, n).map((_, i) => i);
-  const shown = isRGB ? chans.map(() => true) : channelNames(img, n).map((name) => !hiddenChannels.has(name));
+  // the drawn channels this image has, in the order chosen; only those are fetched, so a 56-channel panel costs
+  // no more than a 6-channel one, and a channel switched on is fetched then
+  const names = channelNames(img, n);
+  const chans = isRGB ? [0, 1, 2] : drawn.map((name) => names.indexOf(name)).filter((i) => i >= 0);
+  const shown = chans.map(() => true);
   const maxv = handle.dtype === "Uint8" || handle.dtype === "uint8" ? 255 : 65535;
   // only keys that exist in the source's dimension labels are valid selection keys
   const selections = stable(`${slot}|selections`, `${handle.labels.join(",")}|${chans.join(",")}`, () =>

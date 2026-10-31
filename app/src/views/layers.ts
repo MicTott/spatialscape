@@ -3,7 +3,7 @@ import { PathLayer, TextLayer } from "@deck.gl/layers";
 import type { SampleData } from "../data/cache";
 import { fieldById, type CategoricalField } from "../data/manifest";
 import { ExpressionScatterLayer } from "../layers/ExpressionScatterLayer";
-import { channelNames, imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
+import { channelNames, datasetChannels, drawnChannels, imageLayer, loadImage, type ImageHandle } from "../layers/imageLayers";
 import { blendLUT, categoryPalette, colormapLUT, effectiveColormap, hexToRGB } from "../layers/lut";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import type { LayoutResult } from "./layout";
@@ -240,10 +240,15 @@ export class LayerBuilder {
   // off: an existing layer keeps its tiles and loads nothing, but a new one would start loading while hidden
   private liveImages = new Set<string>();
   private nextLiveImages = new Set<string>();
-  private hiddenChannels: { from: string[]; set: ReadonlySet<string> } = { from: [], set: new Set() };
-  private hiddenChannelSet(s: ViewerState): ReadonlySet<string> {
-    if (this.hiddenChannels.from !== s.hiddenChannels) this.hiddenChannels = { from: s.hiddenChannels, set: new Set(s.hiddenChannels) };
-    return this.hiddenChannels.set;
+  private drawn: { manifest: unknown; active: string[] | null; hidden: string[]; list: string[] } = { manifest: null, active: null, hidden: [], list: [] };
+  /** The channel names on screen, one array identity while nothing changed (Viv keys its tiles on the selection). */
+  private drawnChannelList(s: ViewerState): string[] {
+    const m = this.c.manifest;
+    if (this.drawn.manifest !== m || this.drawn.active !== s.activeChannels || this.drawn.hidden !== s.hiddenChannels) {
+      const names = m ? datasetChannels(m).map(([n]) => n) : [];
+      this.drawn = { manifest: m, active: s.activeChannels, hidden: s.hiddenChannels, list: drawnChannels(names, s.activeChannels, s.hiddenChannels) };
+    }
+    return this.drawn.list;
   }
 
   private imageLayers(s: ViewerState, view: ViewId, id: string, modelMatrix: any) {
@@ -256,8 +261,8 @@ export class LayerBuilder {
       // an image switched off (or with every channel hidden) stays as an invisible layer: deck neither draws it nor
       // follows the camera with it, and its tile cache is there when it comes back, with no fetch
       const liveKey = `${s.datasetUrl}|${layerId}|${view}`;
-      const hidden = this.hiddenChannelSet(s);
-      const drawn = s.showImages && (img.kind !== "multichannel" || !img.channels?.length || channelNames(img, img.channels.length).some((n) => !hidden.has(n)));
+      const list = this.drawnChannelList(s);
+      const drawn = s.showImages && (img.kind !== "multichannel" || !img.channels?.length || channelNames(img, img.channels.length).some((n) => list.includes(n)));
       if (!drawn && !this.liveImages.has(liveKey)) continue;
       const h = this.imageHandles.get(key);
       if (!h) {
@@ -272,7 +277,7 @@ export class LayerBuilder {
             this.imageHandles.set(key, "error");
           });
       } else if (h !== "loading" && h !== "error") {
-        const layer = imageLayer(layerId, img, h, modelMatrix, s.imageOpacity * img.defaultOpacity, s.showImages, this.hiddenChannelSet(s), { viewId: view });
+        const layer = imageLayer(layerId, img, h, modelMatrix, s.imageOpacity * img.defaultOpacity, s.showImages, this.drawnChannelList(s), { viewId: view });
         this.nextLiveImages.add(liveKey);
         out.push(layer);
       }

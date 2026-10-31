@@ -157,7 +157,7 @@ export function Legend() {
     <div className="legend">
       <div className="legend-head">
         <span>{label}</span>
-        <span className="muted">{group ? (group.units ?? group.name) : "log-normalized"}</span>
+        <span className="muted">{group ? (group.units ?? group.name) : manifest.samples.some((s) => s.expr?.normalized === "raw") ? "value" : "log-normalized"}</span>
       </div>
       <div className="ramp" style={{ background: colormapCSS(effectiveColormap(colormap, geneMin < 0)) }} />
       <div className="ramp-labels">

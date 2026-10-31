@@ -1,5 +1,5 @@
 /** Mirrors python/src/sscape/manifest.py. Keep in sync. */
-export type Platform = "visium" | "visium_hd" | "xenium" | "merfish" | "snrnaseq" | "other";
+export type Platform = "visium" | "visium_hd" | "xenium" | "merfish" | "codex" | "snrnaseq" | "other";
 export type SampleKind = "spatial" | "embedding";
 export type LayoutMode = "grid" | "strip";
 
@@ -107,7 +107,7 @@ export interface Sample {
   bbox: [number, number, number, number];
   toDataset: number[];
   pointRadius: number;
-  expr: { kind: "u8" | "csc"; sharded: boolean; shardGenes: number; normalized?: "lognorm" | "log1p_cp10k" | null };
+  expr: { kind: "u8" | "csc"; sharded: boolean; shardGenes: number; normalized?: "lognorm" | "log1p_cp10k" | "raw" | null };
   hasF16: boolean;
   fields: string[];
   images: SampleImage[];

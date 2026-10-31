@@ -286,6 +286,7 @@ export class ViewerController {
       s.hiddenCategories !== prev.hiddenCategories ||
       s.imageOpacity !== prev.imageOpacity ||
       s.showImages !== prev.showImages ||
+      s.activeChannels !== prev.activeChannels ||
       s.hiddenChannels !== prev.hiddenChannels ||
       s.pointScale !== prev.pointScale ||
       s.scalePerSample !== prev.scalePerSample ||

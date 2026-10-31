@@ -25,15 +25,15 @@ from .discover import SKIP_COLUMNS, field_id, is_textual
 
 Log = Callable[[str], None]
 
-PLATFORM_LABEL = {"visium": "Visium", "visium_hd": "Visium HD", "xenium": "Xenium", "merfish": "MERFISH", "snrnaseq": "snRNA-seq", "other": "Sample"}
-PLATFORM_PREFIX = {"visium": "vis", "visium_hd": "hd", "xenium": "xen", "merfish": "mer", "snrnaseq": "sn", "other": "smp"}
+PLATFORM_LABEL = {"visium": "Visium", "visium_hd": "Visium HD", "xenium": "Xenium", "merfish": "MERFISH", "codex": "CODEX", "snrnaseq": "snRNA-seq", "other": "Sample"}
+PLATFORM_PREFIX = {"visium": "vis", "visium_hd": "hd", "xenium": "xen", "merfish": "mer", "codex": "cdx", "snrnaseq": "sn", "other": "smp"}
 GENERIC_STORE_NAMES = {"adata", "data", "sample", "outs", "table", "sdata", "spe", "sce"}
 # tables an imaging platform writes next to its matrix (Xenium Ranger names): the yaml key, what it gives, the cost
 LAYER_FILES = {
     "cell_boundaries.parquet": ("polygons", "cell shapes", "cell shapes; a nucleus_boundaries.parquet next to it is compared automatically"),
     "transcripts.parquet": ("molecules", "transcripts", "transcripts, drawn once zoomed in: 170-400 MB per section; delete the line to leave them out"),
 }
-IMAGING_PLATFORMS = {"xenium", "merfish", "other"}
+IMAGING_PLATFORMS = {"xenium", "merfish", "codex", "other"}
 FIELD_NAMES = {"domain": "Spatial domain", "celltype": "Cell type", "total_counts": "Total counts", "detected_genes": "Detected genes", "mito_percent": "Mito %"}
 MAX_MENU_LEVELS = 60
 DOMAIN_RE = re.compile(r"domain|cluster|bayesspace|precast|banksy|layer|leiden|louvain|^bs_|_k\d+", re.I)
@@ -55,6 +55,7 @@ COORDINATE_NOTE = {
     "visium_hd": "full-resolution pixels; set `microns: { microns_per_unit: <SpaceRanger microns_per_pixel> }`",
     "xenium": "taken as microns",
     "merfish": "taken as microns",
+    "codex": "pixels of the scan; set `microns: { microns_per_unit: <um per pixel> }`",
     "snrnaseq": "the 2-D embedding, rescaled to a fixed extent",
     "other": "taken as microns; set `microns:` otherwise",
 }

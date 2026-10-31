@@ -136,6 +136,27 @@ def ome_channel_names(path: Path) -> list[str] | None:
     return names if names and all(names) else None  # type: ignore[return-value]
 
 
+def source_channel_names(path: Path) -> list[str] | None:
+    """Channel names a source carries: a TIFF's OME-XML, or, for a Zarr array saved by xarray (a spatialproteomics
+    `_image`), the coordinate labels of its channel dimension in the parent group."""
+    path = Path(path)
+    if path.suffix.lower() in TIFF_SUFFIXES:
+        return ome_channel_names(path)
+    if not is_zarr_array(path):
+        return None
+    arr = zarr.open_array(str(path), mode="r")
+    dims = arr.attrs.get("_ARRAY_DIMENSIONS") or []
+    cdim = next((d for d in dims if str(d)[0].lower() in CHANNEL_AXES), None)
+    coord = path.parent / str(cdim) if cdim else None
+    if coord is None or not coord.is_dir():
+        return None
+    try:
+        names = [str(v) for v in np.asarray(zarr.open_array(str(coord), mode="r")[:]).tolist()]
+    except Exception:
+        return None
+    return names if len(names) == arr.shape[dims.index(cdim)] and all(names) else None
+
+
 def auto_windows(img: np.ndarray) -> list[tuple[float, float]]:
     """A display window per channel: the 0.5th to 99.9th percentile of the finite, non-zero pixels. Without it a
     16-bit fluorescence channel whose signal sits in the low thousands is drawn against 0..65535 and looks black."""
@@ -292,6 +313,15 @@ def _to_cyx(arr: np.ndarray, *, rgb: bool = True) -> np.ndarray:
 
 
 def _read_ome_zarr(path: Path, *, rgb: bool = True, max_size: int | None = None) -> np.ndarray:
+    """An OME-Zarr pyramid, or a bare Zarr array with `_ARRAY_DIMENSIONS` (one level)."""
+    if is_zarr_array(path):
+        arr = zarr.open_array(str(path), mode="r")
+        axes = _zarr_array_axes(arr)
+        _level, f = _choose_level([tuple(arr.shape)], axes, max_size)
+        out_shape = tuple(n // f if a.lower() in "yx" else n for n, a in zip(arr.shape, axes, strict=True))
+        _check_read_size(path, out_shape, axes, arr.dtype.itemsize, max_size=max_size)
+        img = _to_cyx_axes(np.asarray(arr[:]), axes) if f == 1 else _read_reduced(arr, axes, f, path)
+        return _drop_alpha(img, rgb)
     g = zarr.open_group(str(path), mode="r")
     attrs = dict(g.attrs)
     ms = attrs.get("multiscales") or attrs.get("ome", {}).get("multiscales")
@@ -620,13 +650,9 @@ def read_image_shape(path: Path, *, rgb: bool = True) -> tuple[int, int, int]:
         with tifffile.TiffFile(str(path)) as tf:
             series = tf.series[0]
             return from_shape(tuple(series.shape), str(series.axes))
-    if path.is_dir():
-        g = zarr.open_group(str(path), mode="r")
-        attrs = dict(g.attrs)
-        ms = attrs.get("multiscales") or attrs.get("ome", {}).get("multiscales")
-        shape = tuple(g[ms[0]["datasets"][0]["path"]].shape)
-        axes = "".join((a["name"] if isinstance(a, dict) else a)[0] for a in ms[0].get("axes", []))
-        return from_shape(shape, axes or None)
+    if path.is_dir():  # an OME-Zarr pyramid or a bare Zarr array
+        shapes, axes = source_levels(path)
+        return from_shape(shapes[0], axes or None)
     from PIL import Image
 
     try:

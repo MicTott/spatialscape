@@ -118,18 +118,22 @@ describe("scale and debug flags", () => {
 });
 
 describe("image channels", () => {
-  it("round-trips hidden channel names, commas and slashes included", () => {
+  it("round-trips the drawn channel names, commas and slashes included, and reads older hidden-channel links", () => {
     const names = ["DAPI", "ATP1A1/CD45/E-Cadherin", "CD3, CD8"];
-    const qs = serialize({ ...store.getState(), hiddenChannels: names } as ViewerState);
-    expect(new URLSearchParams(qs).get("hc")).toBe(names.join("|"));
+    const qs = serialize({ ...store.getState(), activeChannels: names } as ViewerState);
+    expect(new URLSearchParams(qs).get("ch")).toBe(names.join("|"));
     const g = globalThis as any;
     const saved = g.window;
     g.window = { location: { search: `?${qs}` } };
-    expect(readUrl().hiddenChannels).toEqual(names);
+    expect(readUrl().activeChannels).toEqual(names);
+    g.window = { location: { search: "?hc=18S|DAPI" } }; // a link from before `ch`
+    expect(readUrl().hiddenChannels).toEqual(["18S", "DAPI"]);
+    expect(readUrl().activeChannels).toBeUndefined();
     g.window = { location: { search: "?d=x" } };
-    expect(readUrl().hiddenChannels).toBeUndefined();
+    expect(readUrl().activeChannels).toBeUndefined();
     g.window = saved;
-    expect(new URLSearchParams(serialize(store.getState())).has("hc")).toBe(false);
+    expect(new URLSearchParams(serialize(store.getState())).has("ch")).toBe(false);
+    expect(new URLSearchParams(serialize({ ...store.getState(), hiddenChannels: ["DAPI"] } as ViewerState)).has("hc")).toBe(false); // never written again
   });
 });
 

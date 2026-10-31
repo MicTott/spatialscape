@@ -1,8 +1,8 @@
 import { store, useViewer } from "../store/store";
 import { splitKeys, unassignedSamples } from "../views/panes";
 
-const ORDER = ["visium", "visium_hd", "xenium", "merfish", "other"];
-const LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", other: "Other" };
+const ORDER = ["visium", "visium_hd", "xenium", "merfish", "codex", "other"];
+const LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", codex: "CODEX", other: "Other" };
 
 /** Top bar: which spatial platforms are shown in the mosaic. */
 export function PlatformBar() {

@@ -12,6 +12,7 @@ import { ColorPanel, FilterPanel } from "./ColorPanel";
 import { CellRows } from "./CellRows";
 import { MoleculeGenes } from "./MoleculeGenes";
 import { ImageChannels, channelSummary } from "./ImageChannels";
+import { datasetChannels, drawnChannels } from "../layers/imageLayers";
 
 export function Sidebar() {
   const manifest = useViewer((s) => s.manifest);
@@ -83,6 +84,7 @@ function Groups({ genes }: { genes: string[] }) {
   const showImages = useViewer((s) => s.showImages);
   const showCells = useViewer((s) => s.showCells);
   const imageOpacity = useViewer((s) => s.imageOpacity);
+  const activeChannels = useViewer((s) => s.activeChannels);
   const hiddenChannels = useViewer((s) => s.hiddenChannels);
   const molecules = useViewer((s) => s.molecules);
   const pins = useViewer((s) => s.moleculeGenes);
@@ -113,7 +115,7 @@ function Groups({ genes }: { genes: string[] }) {
   const nRegions = regions.groups.reduce((n, g) => n + g.polygons.length, 0);
   const selectionSummary = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : "lasso, regions";
   const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "blend" : "other genes grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");
-  const imageSummary = !showImages ? "off" : channelRows ? `${channelRows - hiddenChannels.length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
+  const imageSummary = !showImages ? "off" : channelRows ? `${drawnChannels(datasetChannels(manifest).map(([n]) => n), activeChannels, hiddenChannels).length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
   return (
     <>
       {hasImages && (

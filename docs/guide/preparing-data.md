@@ -115,6 +115,15 @@ For 10x outputs, `scanpy.read_visium` / `squidpy.read.visium` leave `uns["spatia
 
 Images inside the SpatialData store are not yet discovered automatically; point `images:` at the OME-Zarr inside the store.
 
+## From spatialproteomics
+
+A [spatialproteomics](https://sagar87.github.io/spatialproteomics) object (`ds.drop_encoding().to_zarr("core.zarr")`)
+is read as a sample by its path alone: intensities become the expression layer, the cell table the annotations with
+the object's names and colours, the centroids the coordinates. Point `images:` at `core.zarr/_image_raw` and
+`polygons: { labels: core.zarr/_segmentation }` for the stains and the outlines, set `microns: { microns_per_unit: }`
+to the scan's pixel size and `expression: { normalized: raw }` to keep the intensities as they are. The
+[imaging-based](./platforms/imaging#codex-phenocycler-mics-imc-multiplexed-protein-imaging) page has the full entry.
+
 ## Getting the scale right
 
 Everything in the viewer is laid out in **microns**, so Visium spots are 55 µm wide next to 10 µm Xenium cells, and the scale bar is honest. The rules, in order:
@@ -181,3 +190,5 @@ Cell shapes, molecules, nuclei and embeddings each come from a file the platform
 are and what they cost is on the family pages: [sequencing-based](./platforms/sequencing),
 [imaging-based](./platforms/imaging), [single-cell](./platforms/single-cell). Boundary and transcript tables are
 read as Parquet, CSV or TSV, gzipped or not, with the column names given in the yaml when they are not 10x's.
+A segmentation that exists only as a label mask (one integer per cell) is traced into outlines with
+`polygons: { labels: mask.tif }`; the label numbers must spell the cells' ids.

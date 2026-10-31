@@ -152,6 +152,22 @@ class VocabRegistry:
             return QUALITATIVE[index]
         return _golden_color(index)
 
+    def hint_colors(self, field_id: str, values: pd.Series, colors) -> None:
+        """Colours an object carries for a column (`uns["<col>_colors"]`, one per category) become the palette of
+        the field's vocabulary where the palette says nothing yet; labels already coded keep their colour."""
+        if colors is None or not isinstance(values.dtype, pd.CategoricalDtype):
+            return
+        cols = [str(c) for c in list(colors)]
+        cats = [str(c) for c in values.cat.categories]
+        if len(cols) != len(cats):
+            return
+        vid = self.vocab_id(field_id)
+        key = str(self.vocabs.get(vid, {}).get("_palette_key", vid)).split(",")[0].strip()
+        pal = self.palette.setdefault(key, {})
+        for label, color in zip(cats, cols, strict=True):
+            if color and label not in pal:
+                pal[label] = color
+
     def _add(self, vid: str, label: str) -> int:
         v = self.vocabs[vid]
         cats = v["categories"]

@@ -45,6 +45,10 @@ def read_anndata(path: Path, table: str | None = None, *, layer: str | None = No
             return _read_parts(f, layer, obsm_keys or [])
     if not path.is_dir():
         raise FileNotFoundError(path)
+    from .proteomics import is_spatialproteomics, read_spatialproteomics
+
+    if is_spatialproteomics(path):  # a multiplexed-imaging object: intensities, cell table and centroids
+        return read_spatialproteomics(path)
     target = _table_dir(path, table) if (path / "tables").is_dir() else path  # SpatialData store or AnnData Zarr
     if layer is None:
         return ad.read_zarr(target)
@@ -191,5 +195,10 @@ def peek(path: Path, table: str | None = None) -> Peek:
         raise FileNotFoundError(path)
     import zarr
 
+    from .proteomics import is_spatialproteomics, read_obs
+
+    if is_spatialproteomics(path):
+        obs, _colors = read_obs(path)
+        return Peek(obs=obs, obsm=["spatial"], layers=[], n_vars=int(zarr.open_group(str(path), mode="r")["channels"].shape[0]))
     target = _table_dir(path, table) if (path / "tables").is_dir() else path
     return _peek_group(zarr.open_group(str(target), mode="r"), read_elem)

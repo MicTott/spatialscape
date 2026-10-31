@@ -162,7 +162,8 @@ export interface ViewerState {
   imageOpacity: number;
   showImages: boolean;
   showCells: boolean; // the cells (dots and shapes); off to see the image or the transcripts alone
-  hiddenChannels: string[]; // fluorescence channels switched off, by name, so one switch covers every sample
+  activeChannels: string[] | null; // fluorescence channels drawn, by name and in order, at most MAX_DRAWN; null = the dataset's first ones
+  hiddenChannels: string[]; // channels switched off in links written before `ch` existed (`hc`); read once, never written
   // point radius multipliers: "spatial" and "embedding" are the bases per pane kind; a group pane ("g0".."g2") may
   // override its own, so a dense section and a sparse one can be read side by side
   pointScale: Record<string, number>;
@@ -290,6 +291,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   imageOpacity: DEFAULTS.imageOpacity,
   showImages: DEFAULTS.showImages,
   showCells: true,
+  activeChannels: null,
   hiddenChannels: [],
   pointScale: DEFAULTS.pointScale,
   hover: null,

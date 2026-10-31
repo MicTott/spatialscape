@@ -47,7 +47,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `assay`, `sample_col`, `embedding`, `object` | string | `logcounts`, `sample_id`, UMAP, | R objects only: the assay drawn (for a Seurat object a layer of its gene assay, `data` or `counts`; its other assays become `peak: ` / `activity: ` / `motif: ` features), the column that splits samples, the reducedDims entry or Seurat reduction for objects without spatialCoords, the object to take from an `.rda` |
 | `id` | string | sanitized `{name}` | unique |
 | `name` | string | `id` | |
-| `platform` | `visium`, `visium_hd`, `xenium`, `merfish`, `snrnaseq`, `other` | required | |
+| `platform` | `visium`, `visium_hd`, `xenium`, `merfish`, `codex`, `snrnaseq`, `other` | required | `codex` covers PhenoCycler, MICS and IMC: pixel coordinates, `microns:` required |
 | `kind` | `spatial` or `embedding` | `spatial` | |
 | `group` | string | | donor or batch label |
 | `path` | path | required | h5ad, AnnData zarr, SpatialData zarr, or an R object (above) |

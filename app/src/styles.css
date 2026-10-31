@@ -433,3 +433,5 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .cmp-row.on .cmp-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
 .cmp-row .cmp-name { font-weight: 600; font-size: 12px; }
 .cmp-row .cmp-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+.channels-note { margin: 0 0 6px; }
+.cats.channels li.blocked { cursor: not-allowed; opacity: 0.25; }

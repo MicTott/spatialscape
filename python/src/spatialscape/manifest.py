@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 FORMAT_VERSION = 1
 
-Platform = Literal["visium", "visium_hd", "xenium", "merfish", "snrnaseq", "other"]
+Platform = Literal["visium", "visium_hd", "xenium", "merfish", "codex", "snrnaseq", "other"]
 SampleKind = Literal["spatial", "embedding"]
 LayoutMode = Literal["grid", "strip"]
 BUILTIN_COLORMAPS = ["viridis", "magma", "inferno", "plasma", "cividis", "turbo", "greys", "rdbu"]
@@ -82,7 +82,7 @@ class ExprSpec(_Model):
     kind: Literal["u8", "csc"] = "u8"
     sharded: bool = True
     shardGenes: int = 512
-    normalized: Literal["lognorm", "log1p_cp10k"] | None = None  # as stored by the source, or log1p(CP10k) applied by the build
+    normalized: Literal["lognorm", "log1p_cp10k", "raw"] | None = None  # as stored by the source, log1p(CP10k) applied by the build, or values kept as they are
 
 
 class PolygonInfo(_Model):

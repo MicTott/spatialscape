@@ -37,6 +37,7 @@ from .images import (
     ome_zarr_info,
     prepare_image,
     read_image_shape,
+    source_channel_names,
     source_levels,
     stream_ome_zarr,
     streamable,
@@ -62,7 +63,7 @@ from .manifest import (
 )
 from .molecules import write_molecules
 from .obs import write_obs
-from .polygons import apply_affine, read_polygon_obsm, read_polygon_table
+from .polygons import apply_affine, read_polygon_labels, read_polygon_obsm, read_polygon_table
 from .readers import load_sample
 from .shapes import write_shapes
 from .vocab import VocabRegistry, load_palette
@@ -206,6 +207,9 @@ def _write_cell_shapes(
     if ps.obsm:
         log(f"[{spec.id}] polygons from obsm/{ps.obsm}")
         pids, px_, py_ = read_polygon_obsm(adata, ps.obsm)
+    elif ps.labels:
+        log(f"[{spec.id}] polygons traced from the label mask {ps.labels}")
+        pids, px_, py_ = read_polygon_labels(ps.labels, ps.max_vertices)
     else:
         log(f"[{spec.id}] polygons {ps.path}")
         pids, px_, py_ = read_polygon_table(ps.path, ps.id_column, ps.x_column, ps.y_column)
@@ -375,7 +379,7 @@ def _stream_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _Frame,
     nch_src = shapes[0][cax] if cax is not None else 1
     nch = 3 if rgb and nch_src == 4 else nch_src
     dtype = _source_dtype(im.path)
-    names, colors, given = _channel_meta(spec, im, nch, dtype, source_names=ome_channel_names(im.path), source_colors=None, source_windows=None, log=log)
+    names, colors, given = _channel_meta(spec, im, nch, dtype, source_names=source_channel_names(im.path), source_colors=None, source_windows=None, log=log)
     out_path = out_dir / f"{im.id}.ome.zarr"
     levels, wins = stream_ome_zarr(im.path, out_path, rgb=rgb, level=level, factor=f, window=window, channel_names=names, channel_colors=colors, windows=given)
     log(f"[{spec.id}] image written band by band: {levels[0][2]:,} x {levels[0][1]:,} px, {len(levels)} levels" + (", cropped to the points" if window else ""))
@@ -618,6 +622,8 @@ def build_sample(
     # --- expression -------------------------------------------------------
     M = get_matrix(adata, spec.expression.layer)
     mode = spec.expression.normalized
+    if mode == "raw":
+        log(f"[{spec.id}] expression layer {spec.expression.layer!r} kept as it is (`normalized: raw`)")
     if mode == "auto":
         mode = "lognorm" if detect_lognorm(M) else "counts"
         mx = float(M.data.max()) if getattr(M, "nnz", 1) else 0.0
@@ -668,6 +674,7 @@ def build_sample(
         f = vocab.fields[fid]
         series = adata.obs[col].iloc[perm]
         if f.type == "categorical":
+            vocab.hint_colors(fid, adata.obs[col], adata.uns.get(f"{col}_colors"))  # the object's own colours, unless a palette says otherwise
             cats[fid] = vocab.encode(fid, series.reset_index(drop=True))
         else:
             arr = pd.to_numeric(series, errors="coerce").to_numpy(dtype=np.float32, na_value=np.nan)
@@ -726,7 +733,7 @@ def build_sample(
             kind="u8",
             sharded=res.sharded,
             shardGenes=res.shard_genes,
-            normalized="log1p_cp10k" if mode == "counts" else "lognorm",
+            normalized="log1p_cp10k" if mode == "counts" else "raw" if mode == "raw" else "lognorm",
         ),
         hasF16=spec.expression.keep_f16,
         fields=list(spec.fields.keys()),

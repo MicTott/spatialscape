@@ -35,6 +35,42 @@ def read_polygon_obsm(adata, key: str) -> tuple[np.ndarray, np.ndarray, np.ndarr
     return ids[ok], x[ok], y[ok]
 
 
+def read_polygon_labels(path: Path, max_vertices: int = 24) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Every cell's outline traced from a label mask (one integer per cell, 0 = background): a Zarr array, a TIFF or
+    a PNG. Vertices are in the mask's pixel frame (x = column, y = row, pixel centres on whole numbers, as the
+    centroids skimage measures), ids are the label numbers as strings."""
+    from skimage.measure import find_contours, regionprops
+
+    from .images import read_image
+
+    path = Path(path)
+    if path.is_dir():
+        import zarr
+
+        labels = np.asarray(zarr.open_array(str(path), mode="r")[:])
+    else:
+        labels = read_image(path, rgb=False)[0]
+    labels = np.squeeze(labels)
+    if labels.ndim != 2:
+        raise ValueError(f"{path}: a label mask has two dimensions, this array has shape {labels.shape}")
+    ids, xs, ys = [], [], []
+    for region in regionprops(labels.astype(np.int64, copy=False)):
+        r0, c0, r1, c1 = region.bbox
+        crop = np.pad(labels[r0:r1, c0:c1] == region.label, 1)
+        rings = find_contours(crop.astype(np.uint8), 0.5)
+        if not rings:
+            continue
+        ring = max(rings, key=len)
+        if len(ring) > max_vertices:
+            ring = ring[np.linspace(0, len(ring) - 1, max_vertices).astype(int)]
+        ids.append(np.full(len(ring), str(region.label), dtype=object))
+        xs.append(ring[:, 1] + c0 - 1)
+        ys.append(ring[:, 0] + r0 - 1)
+    if not ids:
+        return np.array([], dtype=str), np.array([], dtype=np.float64), np.array([], dtype=np.float64)
+    return np.concatenate(ids).astype(str), np.concatenate(xs), np.concatenate(ys)
+
+
 def apply_affine(x: np.ndarray, y: np.ndarray, affine) -> tuple[np.ndarray, np.ndarray]:
     a, b, c, d, e, f = (float(v) for v in affine)
     return a * x + b * y + c, d * x + e * y + f

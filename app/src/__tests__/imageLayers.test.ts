@@ -22,23 +22,37 @@ const handle: ImageHandle = { data: [{ shape: [2, 2989, 4269] }, { shape: [2, 14
 describe("image layer props", () => {
   it("keeps the props Viv keys its tiles on when a rebuild changes nothing", () => {
     // every camera frame rebuilds the layers; a new selections array made Viv refetch every visible tile
-    const a = imageLayer("img-a", img, handle, new Matrix4().translate([5, 0, 0]), 1, true, new Set(), { viewId: "spatial" });
-    const b = imageLayer("img-a", img, handle, new Matrix4().translate([5, 0, 0]), 0.5, true, new Set(), { viewId: "spatial" });
+    const both = ["DAPI", "18S"];
+    const a = imageLayer("img-a", img, handle, new Matrix4().translate([5, 0, 0]), 1, true, both, { viewId: "spatial" });
+    const b = imageLayer("img-a", img, handle, new Matrix4().translate([5, 0, 0]), 0.5, true, both, { viewId: "spatial" });
     for (const k of ["selections", "contrastLimits", "colors", "channelsVisible", "modelMatrix"] as const) expect(b.props[k]).toBe(a.props[k]);
     expect(b.props.opacity).toBe(0.5);
-    const moved = imageLayer("img-a", img, handle, new Matrix4().translate([9, 0, 0]), 1, true, new Set(), { viewId: "spatial" });
+    const moved = imageLayer("img-a", img, handle, new Matrix4().translate([9, 0, 0]), 1, true, both, { viewId: "spatial" });
     expect(moved.props.modelMatrix).not.toBe(a.props.modelMatrix);
     expect(moved.props.selections).toBe(a.props.selections);
   });
 
-  it("hides channels by name without changing what is fetched, and keeps the layer invisible when all are hidden", () => {
-    const one = imageLayer("img-b", img, handle, new Matrix4(), 1, true, new Set(["DAPI"]));
-    expect(one.props.channelsVisible).toEqual([false, true]);
-    expect(one.props.selections).toEqual([{ c: 0 }, { c: 1 }]);
-    const none = imageLayer("img-b", img, handle, new Matrix4(), 1, true, new Set(["DAPI", "18S"]));
+  it("fetches only the drawn channels, in the order chosen, and keeps the layer invisible when none of its channels is drawn", () => {
+    const one = imageLayer("img-b", img, handle, new Matrix4(), 1, true, ["18S"]);
+    expect(one.props.channelsVisible).toEqual([true]);
+    expect(one.props.selections).toEqual([{ c: 1 }]);
+    const swapped = imageLayer("img-b", img, handle, new Matrix4(), 1, true, ["18S", "DAPI"]);
+    expect(swapped.props.selections).toEqual([{ c: 1 }, { c: 0 }]);
+    const none = imageLayer("img-b", img, handle, new Matrix4(), 1, true, ["CD3"]); // a channel this image lacks
     expect(none.props.visible).toBe(false);
-    expect(none.props.selections).toBe(one.props.selections); // same tiles: nothing to refetch when one comes back
-    expect(imageLayer("img-b", img, handle, new Matrix4(), 1, false, new Set()).props.visible).toBe(false);
-    expect(channelNames({ ...img, channels: null }, 8)).toEqual(["channel 1", "channel 2", "channel 3", "channel 4", "channel 5", "channel 6"]);
+    expect(imageLayer("img-b", img, handle, new Matrix4(), 1, false, ["DAPI"]).props.visible).toBe(false);
+    expect(channelNames({ ...img, channels: null }, 8)).toEqual(Array.from({ length: 8 }, (_, i) => `channel ${i + 1}`));
+  });
+});
+
+describe("drawn channels", () => {
+  it("are the chosen ones in order, else the dataset's first six minus an old link's hidden ones", async () => {
+    const { drawnChannels, MAX_DRAWN } = await import("../layers/imageLayers");
+    const names = Array.from({ length: 56 }, (_, i) => (i === 0 ? "DAPI" : `M${i}`));
+    expect(drawnChannels(names, null, [])).toEqual(names.slice(0, MAX_DRAWN));
+    expect(drawnChannels(names, null, ["M2", "M3"])).toEqual(["DAPI", "M1", "M4", "M5", "M6", "M7"]);
+    expect(drawnChannels(names, ["M40", "DAPI", "nope"], [])).toEqual(["M40", "DAPI"]); // order kept, unknown names dropped
+    expect(drawnChannels(names, names.slice(10, 20), [])).toHaveLength(MAX_DRAWN);
+    expect(drawnChannels(["DAPI", "CD3"], null, [])).toEqual(["DAPI", "CD3"]);
   });
 });

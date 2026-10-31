@@ -60,6 +60,11 @@ def microns_per_unit(spec: SampleSpec, sinput: SampleInput) -> float:
         return float(spec.extent / ext) if ext > 0 else 1.0
     if spec.platform in ("xenium", "merfish"):
         return 1.0
+    if spec.platform == "codex":
+        raise ValueError(
+            f"sample {spec.id}: multiplexed-imaging coordinates are pixels; set `microns: {{ microns_per_unit: <um per pixel> }}` "
+            "(PhenoCycler-Fusion scans at 0.5, a Keyence 20x CODEX run at 0.377)"
+        )
     uns = sinput.uns
     if "spot_nn_spacing_level0_px" in uns:
         _no_spot_rule_for_hd(spec, {})  # the 100 um rule is Visium geometry: on HD bins it would be off by the bin pitch / 100 um

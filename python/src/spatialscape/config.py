@@ -55,7 +55,7 @@ class TransformSpec(_Model):
 
 class ExpressionSpec(_Model):
     layer: str = "X"
-    normalized: Literal["auto", "lognorm", "counts"] = "auto"
+    normalized: Literal["auto", "lognorm", "counts", "raw"] = "auto"  # raw: keep the values as they are (intensities, scores)
     keep_f16: bool = False
 
 
@@ -97,6 +97,7 @@ class PolygonSpec(_Model):
 
     path: Path | None = None
     obsm: str | None = None
+    labels: Path | None = None  # a label mask (Zarr array, TIFF or PNG): one integer per cell, traced into outlines
     id_column: str = "cell_id"
     x_column: str = "vertex_x"
     y_column: str = "vertex_y"
@@ -107,8 +108,8 @@ class PolygonSpec(_Model):
 
     @model_validator(mode="after")
     def _one_source(self):
-        if (self.path is None) == (self.obsm is None):
-            raise ValueError("polygons: set exactly one of `path` or `obsm`")
+        if sum(v is not None for v in (self.path, self.obsm, self.labels)) != 1:
+            raise ValueError("polygons: set exactly one of `path`, `obsm` or `labels`")
         return self
 
 
@@ -589,6 +590,8 @@ def _resolve_paths(cfg: DatasetConfig, base: Path) -> DatasetConfig:
                 im.path = res(im.path)
         if s.polygons and s.polygons.path is not None:
             s.polygons.path = res(s.polygons.path)
+        if s.polygons and s.polygons.labels is not None:
+            s.polygons.labels = res(s.polygons.labels)
         if s.molecules:
             s.molecules.path = res(s.molecules.path)
         if isinstance(s.segmentations, list):

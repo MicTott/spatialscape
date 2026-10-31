@@ -101,6 +101,38 @@ The flat files number cells per FOV (`cell_ID`) while AtoMx exports name them `c
 boundary ids must spell the matrix's `obs_names` the same way, and the build log says how many matched. One
 `microns:` covers coordinates, boundaries and transcripts, since all three share the global pixel frame.
 
+### CODEX, PhenoCycler, MICS, IMC (multiplexed protein imaging)
+
+Antibody panels of 30 to 100 markers imaged on one section give a many-channel image, a segmentation mask and a
+cells × markers intensity table, usually with gated cell types on top. The scverse toolbox
+[spatialproteomics](https://sagar87.github.io/spatialproteomics) keeps all of that in one object (an xarray
+Dataset saved as Zarr), and spatialscape reads that object directly:
+
+```yaml
+defaults:
+  platform: codex
+  microns: { microns_per_unit: 0.5 }        # the scan's pixel size: coordinates are pixels (PhenoCycler-Fusion 0.5, Keyence 20x 0.377)
+  expression: { normalized: raw }           # per-cell intensities summarised by spatialproteomics, kept as they are
+  fields: { cell_type: labels, neighborhood: neighborhoods, pd1_positive: PD-1_binarized, degree: degree }
+samples:
+  - glob: cores/LN_*.zarr                   # one object per core
+    id: "{stem}"
+    polygons: { labels: "{dir}/{stem}.zarr/_segmentation" }     # the label mask, traced into cell outlines
+    images:
+      - { id: stains, name: Stains, path: "{dir}/{stem}.zarr/_image_raw", kind: multichannel, pixels_per_unit: 1.0, crop: false }
+```
+
+What the reader takes from the object: `_intensity` (cells × channels) as the expression layer, with the channel
+names as features; `_obs` as annotations, `_labels` and `_neighborhoods` turned into names through the object's
+property tables and their colours kept, every `<marker>_binarized` column as a positive / negative category, the
+gating tree's levels (`labels_0`, `labels_1`, ...) as categories too, and the centroids as coordinates. The image
+is the `_image_raw` (or `_image`) array, written band by band with the channel names from the object; `_segmentation`
+becomes the cell shapes. A label mask from any other pipeline (MCMICRO, Cytokit, QuPath) works the same way as a
+TIFF or PNG with `polygons: { labels: mask.tif }`, next to a table of cells read as any other AnnData.
+
+In the viewer the channel list shows every marker; up to six draw at once, chosen by clicking, and only those are
+fetched. Colour cells by any marker's intensity from the gene box, or by a gating-tree level from the annotations.
+
 ## What each layer costs
 
 | Layer | Build | Bundle | Viewer |
