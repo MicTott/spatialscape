@@ -22,6 +22,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `img` | image opacity, `0` hides images | `img=0.6` |
 | `imgs` | `0` switches images off | `imgs=0` |
 | `cells` | `0` switches the cells (dots and shapes) off | `cells=0` |
+| `roi` | `0` hides the drawn regions and the lasso's highlight (the ROIs group's switch) | `roi=0` |
 | `ch` | the image channels drawn, by name and in order, separated by `\|`; at most six. Older links' `hc` (channels switched off) is still read | `ch=DAPI\|CD3\|CD20` |
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |

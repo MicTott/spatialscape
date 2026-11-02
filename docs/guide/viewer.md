@@ -108,7 +108,9 @@ The Regions panel turns the lasso into an annotation tool. Add a group, then las
 any section or in the embedding; each lasso becomes a translucent polygon in the group's colour, labelled, and
 stays attached to its section through layout changes. Add the next group and keep going; click a group (or press
 `1`–`9`) to draw into it, Backspace removes the last area, Esc stops drawing. Where lassos overlap, the last one
-drawn wins. Double-click a name to rename it; the swatch changes the colour.
+drawn wins. Double-click a name to rename it; the swatch changes the colour. The switch on the *ROIs* bar
+hides the drawn regions and the lasso's highlight to see the tissue under them; the groups, their cells and the
+test results stay, and drawing anything switches them back on (`roi=0` in the URL).
 
 The groups are a live annotation called *Regions*: colour the cells by it, and the legend shows the counts per
 region (plus "unassigned", which you can hide), hover rows name the region, the dot plot can be grouped by it and

@@ -65,6 +65,7 @@ export function readUrl(): Partial<ViewerState> {
   }
   if (q.get("imgs") === "0") out.showImages = false;
   if (q.get("cells") === "0") out.showCells = false;
+  if (q.get("roi") === "0") out.showRois = false;
   if (q.get("ch") != null) out.activeChannels = q.get("ch")!.split("|").filter(Boolean); // channel names may contain commas
   else if (q.get("hc")) out.hiddenChannels = q.get("hc")!.split("|").filter(Boolean); // links from before `ch`
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
@@ -167,6 +168,7 @@ export function serialize(s: ViewerState): string {
   if (h) q.set("h", h);
   if (!s.showImages) q.set("imgs", "0");
   if (!s.showCells) q.set("cells", "0");
+  if (!s.showRois) q.set("roi", "0");
   if (s.imageOpacity !== 1) q.set("img", s.imageOpacity.toFixed(2));
   if (s.activeChannels) q.set("ch", s.activeChannels.join("|"));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);

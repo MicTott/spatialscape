@@ -171,6 +171,7 @@ export interface ViewerState {
   imageOpacity: number;
   showImages: boolean;
   showCells: boolean; // the cells (dots and shapes); off to see the image or the transcripts alone
+  showRois: boolean; // the drawn regions and the lasso's highlight; drawing switches it back on
   activeChannels: string[] | null; // fluorescence channels drawn, by name and in order, at most MAX_DRAWN; null = the dataset's first ones
   hiddenChannels: string[]; // channels switched off in links written before `ch` existed (`hc`); read once, never written
   // point radius multipliers: "spatial" and "embedding" are the bases per pane kind; a group pane ("g0".."g2") may
@@ -308,6 +309,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   imageOpacity: DEFAULTS.imageOpacity,
   showImages: DEFAULTS.showImages,
   showCells: true,
+  showRois: true,
   activeChannels: null,
   hiddenChannels: [],
   pointScale: DEFAULTS.pointScale,
@@ -354,10 +356,10 @@ export const store = createStore<ViewerState>((set, get) => ({
     let n = r.groups.length + 1;
     while (taken.has(`Region ${n}`)) n++; // names are categories and keys: never reuse one that is still there
     const group: RegionGroup = { id, name: name ?? `Region ${n}`, color: REGION_COLORS[r.groups.length % REGION_COLORS.length], polygons: [] };
-    set({ regions: { ...r, groups: [...r.groups, group], active: id }, tool: "lasso" });
+    set({ regions: { ...r, groups: [...r.groups, group], active: id }, tool: "lasso", showRois: true });
     return id;
   },
-  setActiveRegion: (active) => set({ regions: { ...get().regions, active }, tool: active ? "lasso" : get().tool }),
+  setActiveRegion: (active) => set({ regions: { ...get().regions, active }, tool: active ? "lasso" : get().tool, showRois: active ? true : get().showRois }),
   updateRegionGroup: (id, patch) => set({ regions: { ...get().regions, groups: get().regions.groups.map((g) => (g.id === id ? { ...g, ...patch } : g)) } }),
   removeRegionGroup: (id) => {
     const r = get().regions;
@@ -372,7 +374,7 @@ export const store = createStore<ViewerState>((set, get) => ({
     const r = get().regions;
     set({ regions: { ...r, groups: r.groups.map((g) => (g.id === groupId ? { ...g, polygons: g.polygons.slice(0, -1) } : g)) } });
   },
-  setRegions: (groups) => set({ regions: { groups, active: null, seq: groups.reduce((m, g) => Math.max(m, ...g.polygons.map((p) => p.seq)), 0) } }),
+  setRegions: (groups) => set({ regions: { groups, active: null, seq: groups.reduce((m, g) => Math.max(m, ...g.polygons.map((p) => p.seq)), 0) }, showRois: groups.length ? true : get().showRois }),
   toggleSample: (id) => {
     const cur = new Set(get().hiddenSamples);
     if (cur.has(id)) cur.delete(id);

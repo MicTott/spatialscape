@@ -160,6 +160,10 @@ describe("molecules", () => {
     expect(readUrl().showCells).toBe(false);
     expect(new URLSearchParams(serialize({ ...store.getState(), showCells: false } as ViewerState)).get("cells")).toBe("0");
     expect(new URLSearchParams(serialize(store.getState())).has("cells")).toBe(false);
+    g.window = { location: { search: "?roi=0" } };
+    expect(readUrl().showRois).toBe(false);
+    expect(new URLSearchParams(serialize({ ...store.getState(), showRois: false } as ViewerState)).get("roi")).toBe("0");
+    expect(new URLSearchParams(serialize(store.getState())).has("roi")).toBe(false);
     expect(new URLSearchParams(serialize({ ...store.getState(), moleculeColors: "all" } as ViewerState)).get("mc")).toBe("all");
     expect(new URLSearchParams(serialize({ ...store.getState(), overlay: "nucleus" } as ViewerState)).get("ov")).toBe("nucleus");
     g.window = { location: { search: "?ov=nucleus" } };

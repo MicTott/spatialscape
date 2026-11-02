@@ -94,7 +94,7 @@ export class Selection {
     }
     this.current = { view, samples, highlight, polygon };
     this.version++;
-    store.getState().set({ tool: "pan" });
+    store.getState().set({ tool: "pan", showRois: true }); // what you just drew is shown
     this.updateSummary();
     c.requestLayers();
   }

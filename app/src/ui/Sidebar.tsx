@@ -83,6 +83,7 @@ function Groups({ genes }: { genes: string[] }) {
   const manifest = useViewer((s) => s.manifest)!;
   const showImages = useViewer((s) => s.showImages);
   const showCells = useViewer((s) => s.showCells);
+  const showRois = useViewer((s) => s.showRois);
   const imageOpacity = useViewer((s) => s.imageOpacity);
   const activeChannels = useViewer((s) => s.activeChannels);
   const hiddenChannels = useViewer((s) => s.hiddenChannels);
@@ -115,7 +116,8 @@ function Groups({ genes }: { genes: string[] }) {
   const nPinned = pinned.filter(Boolean).length;
   const sampleSummary = [`${sections} section${sections === 1 ? "" : "s"}`, nPinned ? `${nPinned} pinned` : splitBy ? `split by ${splitBy.key}` : layoutMode, focus ? `focused on ${manifest.samples.find((s) => s.id === focus)?.name ?? focus}` : null].filter(Boolean).join(" · ");
   const nRegions = regions.groups.reduce((n, g) => n + g.polygons.length, 0);
-  const selectionSummary = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : "lasso, regions";
+  const drawn = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : null;
+  const selectionSummary = showRois ? (drawn ?? "lasso, regions") : drawn ? `${drawn} · hidden` : "off";
   const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "gene sets" : "other genes grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");
   const imageSummary = !showImages ? "off" : channelRows ? `${drawnChannels(datasetChannels(manifest).map(([n]) => n), activeChannels, hiddenChannels).length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
   return (
@@ -147,7 +149,7 @@ function Groups({ genes }: { genes: string[] }) {
           <CompareGroup />
         </Group>
       )}
-      <Group id="selections" title="ROIs" summary={selectionSummary}>
+      <Group id="selections" title="ROIs" summary={selectionSummary} on={showRois} onToggle={(v) => set({ showRois: v })}>
         <SelectionPanel controller={() => window.__sscape?.controller ?? null} />
         <RegionsPanel />
       </Group>

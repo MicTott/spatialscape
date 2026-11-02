@@ -228,8 +228,10 @@ export class LayerBuilder {
       if (overlay && kind === "spatial") layers.push(...overlay.pane(view, L));
       if (kind === "spatial" && s.showCells && s.cellShapes !== "dots") layers.push(...this.polygonLayers(view, L));
       if (kind === "embedding" && s.clusterLabels && colorField?.type === "categorical") layers.push(...this.clusterLabelLayers(s, view, L, colorField));
-      layers.push(...c.regions.layers(s, view, L));
-      layers.push(...c.selection.layers(s, view, L));
+      if (s.showRois) {
+        layers.push(...c.regions.layers(s, view, L));
+        layers.push(...c.selection.layers(s, view, L));
+      }
       layers.push(...this.frameLayers(s, view, L));
     }
     this.liveImages = this.nextLiveImages;

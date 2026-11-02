@@ -308,6 +308,7 @@ export class ViewerController {
       s.selected !== prev.selected ||
       s.sampleStatus !== prev.sampleStatus ||
       s.showCells !== prev.showCells ||
+      s.showRois !== prev.showRois ||
       s.cellShapes !== prev.cellShapes ||
       s.molecules !== prev.molecules ||
       s.moleculeGenes !== prev.moleculeGenes ||
