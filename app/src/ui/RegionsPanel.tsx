@@ -1,6 +1,8 @@
 /** Regions: draw your own annotation. Add a group, lasso as many areas as you like in any section, switch groups
  *  (click, or keys 1-9), colour the cells by it, export the table or save the drawing. */
 import { useRef, useState } from "react";
+import { cancelRegionTest, runRegionTest, type RestScope, type TestMode } from "../compare/live";
+import { DEFAULT_CAP } from "../data/de";
 import { store, useViewer } from "../store/store";
 
 export function RegionsPanel() {
@@ -119,8 +121,68 @@ export function RegionsPanel() {
               color cells by regions
             </button>
           </div>
+          <RegionTest drawn={regions.groups.filter((g) => g.polygons.length).length} />
         </>
       )}
     </section>
+  );
+}
+
+/** Differential expression on the drawn regions: what to compare, how many cells, run. The result opens under
+ *  the maps as a comparison. Needs the bundle's per-cell row store. */
+function RegionTest({ drawn }: { drawn: number }) {
+  const manifest = useViewer((s) => s.manifest)!;
+  const test = useViewer((s) => s.test);
+  const note = useViewer((s) => s.testNote);
+  const [mode, setMode] = useState<TestMode | null>(null);
+  const [scope, setScope] = useState<RestScope>("drawn");
+  const [cap, setCap] = useState(DEFAULT_CAP);
+  const ctl = () => window.__sscape?.controller ?? null;
+  if (!drawn) return null;
+  const hasRows = manifest.samples.some((s) => s.rows);
+  if (!hasRows)
+    return (
+      <div className="de">
+        <div className="de-head">Differential expression</div>
+        <div className="muted small">
+          This bundle has no per-cell row store, which the test reads. Build it with <code>expression.rows: true</code>.
+        </div>
+      </div>
+    );
+  const pair = drawn === 2;
+  const m: TestMode = mode ?? (pair ? "pair" : "rest");
+  return (
+    <div className="de">
+      <div className="de-head">Differential expression</div>
+      <div className="de-row">
+        <select value={m} onChange={(e) => setMode(e.target.value as TestMode)} disabled={!!test} title="what is tested against what; the two sides are tested per platform">
+          {pair && <option value="pair">one region against the other</option>}
+          <option value="rest">{drawn === 1 ? "the region against the rest" : "each region against the rest"}</option>
+        </select>
+        {m === "rest" && (
+          <select value={scope} onChange={(e) => setScope(e.target.value as RestScope)} disabled={!!test} title="which cells count as the rest">
+            <option value="drawn">rest: other cells of the sections drawn on</option>
+            <option value="all">rest: other cells of every section</option>
+          </select>
+        )}
+        <select value={cap} onChange={(e) => setCap(+e.target.value)} disabled={!!test} title="a larger side is cut to this many cells, taken as whole blocks of the row store">
+          <option value={3000}>up to 3,000 cells a side</option>
+          <option value={10000}>up to 10,000 cells a side</option>
+        </select>
+      </div>
+      <div className="de-row">
+        {test ? (
+          <>
+            <span className="muted small de-progress">{test.text}…</span>
+            <button onClick={() => ctl() && cancelRegionTest(ctl()!)}>cancel</button>
+          </>
+        ) : (
+          <button className="primary" onClick={() => ctl() && void runRegionTest(ctl()!, { mode: m, scope, cap })} title="Wilcoxon rank-sum per gene on single cells; the result opens under the maps">
+            run the test
+          </button>
+        )}
+      </div>
+      {note && <div className="muted small">{note}</div>}
+    </div>
   );
 }

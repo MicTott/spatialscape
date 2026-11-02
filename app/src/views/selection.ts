@@ -7,7 +7,7 @@ import { pointInPolygon } from "./geometry";
 import type { LayoutResult } from "./layout";
 import { pointScaleFor } from "./panes";
 import { intersects } from "./lod";
-import { csvLine, overlayProps } from "./types";
+import { csvLine, download, overlayProps } from "./types";
 import type { ViewerController } from "./ViewerController";
 
 export interface SelectionState {
@@ -190,12 +190,7 @@ export class Selection {
       const smp = c.samplesById.get(id)!;
       for (const i of idx) lines.push(csvLine([id, (await c.cache.getId(id, i, smp.idBlock)) ?? "", i]));
     }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${c.manifest?.id ?? "selection"}-selection.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    download(`${c.manifest?.id ?? "selection"}-selection.csv`, lines.join("\n"), "text/csv");
   }
 
   layers(s: ViewerState, view: ViewId, L: LayoutResult) {

@@ -302,6 +302,14 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .region-row kbd { font: 10px/1 ui-monospace, monospace; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 1px 4px; margin-right: 2px; }
 .region-row .legend-actions { visibility: hidden; }
 .region-row:hover .legend-actions, .region-row.active .legend-actions { visibility: visible; }
+.de { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.de-head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.de-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.de-row select { width: auto; flex: 1 1 100%; padding: 4px 6px; font-size: 12px; }
+.de-row button.primary { background: var(--accent); color: #0b1220; border: 1px solid var(--accent); border-radius: 6px; padding: 5px 12px; font-weight: 600; cursor: pointer; }
+.de-row button.primary:hover { filter: brightness(1.08); }
+.de-progress { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.de code { font: 11px ui-monospace, monospace; background: var(--panel2); padding: 1px 4px; border-radius: 3px; }
 
 /* panes: one per group when the canvas is split by a sample meta key */
 .pane-head { position: absolute; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 12px; background: color-mix(in srgb, var(--panel) 92%, transparent); border-bottom: 1px solid var(--border); z-index: 3; user-select: none; overflow: hidden; white-space: nowrap; }

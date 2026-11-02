@@ -31,3 +31,13 @@ export const fmtValue = (v: number) => (Math.abs(v) >= 1000 ? v.toFixed(0) : Mat
 export function csvLine(fields: (string | number)[]): string {
   return fields.map((f) => (/[",\r\n]/.test(String(f)) ? `"${String(f).replace(/"/g, '""')}"` : String(f))).join(",");
 }
+
+/** Offer a text file for download. */
+export function download(name: string, text: string, type: string) {
+  const blob = new Blob([text], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}

@@ -117,6 +117,38 @@ the drawing itself (groups and polygons) as JSON and *load* brings it back, incl
 polygons are stored in each section's own coordinates. In a notebook, `s.regions()` returns the same table as a
 pandas Series aligned with your object ([In a notebook](./notebooks)).
 
+### Differential expression between regions
+
+Under the region list, *Differential expression* tests the regions you drew, in the browser, on the cells
+themselves. Choose what to compare and press *run the test*:
+
+- **one region against the other**, when you drew two: positive log2FC means higher in the first.
+- **each region against the rest**: every region in turn against every other cell, of the sections you drew on
+  or of every section, as you choose (one region alone is always tested this way).
+
+Each side is tested per platform, never pooled across them: with regions on a Visium section and a Visium HD
+section the result has a *Visium* and a *Visium HD* column, so the same contrast can be read on both. Per gene
+and column the panel holds the log2 fold change of mean expression (on the expm1 scale, with a pseudocount of 1,
+as Seurat reports it), the two-sided Wilcoxon rank-sum p-value with ties corrected, the Benjamini-Hochberg padj
+over the genes expressed in at least 10 % of either side, the percent expressing on each side, the AUROC the
+rank statistic implies, and *sections agreeing*: of the sections holding at least three cells on both sides, how
+many show the same direction on their own. A side larger than the cap (3,000 cells, or 10,000) is cut to it by
+whole blocks of the row store, so the download shrinks with the cap; the ⓘ in the panel header lists how many
+cells each side used, per section. A few thousand cells a side take about a second on a local bundle.
+
+The result opens in the Compare panel like a comparison shipped with the dataset, is listed in the *Comparisons*
+group until the next run, and exports with the panel's *CSV* button. It needs the bundle's per-cell row store
+(`rows.zarr`, which `build` writes for tissue sections; a bundle built before it existed lacks it, and the panel says so), and
+sections without one are left out and named. The test treats cells as independent: spots of one section are
+not replicates, and a difference between regions drawn on different donors is a difference between donors too.
+For a result to publish, fit a model with replicates and add it as a [comparison](./comparisons).
+
+![Central vs Medial in donor Br9280: two regions boxed on the Visium section and on the Visium HD capture, tested against each other; PENK tops both columns, with its violins per region on the right](/screenshots/regions-test.jpg)
+
+Above, two regions boxed over the central and medial amygdala of donor Br9280, on the Visium section pinned
+left and the Visium HD capture pinned right, tested against each other: one column per platform, sorted by the
+Visium log2 fold change, PENK and C11orf96 at the top of both.
+
 ## Compare panel: a test's results next to the tissue
 
 When the dataset carries [comparisons](./comparisons#comparisons-results-of-a-test-next-to-the-sections), the
@@ -127,9 +159,11 @@ the panel header says so and clears it), and opens a panel under the maps:
 - **The matrix**, left: one row per gene, one column per level (every cluster of a marker table, every cell
   type a contrast was fit in, or the one column of a plain two-group result), each cell the log2 fold change
   tinted by sign and size (hover for padj, % in / out and rank; blank where a filtered table has no row).
-  Click a column head to focus that level and sort by it (again to flip), the box to find a gene. Clicking a
-  row colours every pane by that gene; `↑` and `↓` step through the table as sorted. Genes no section
-  measures stay listed, greyed, with a count in the header.
+  Click a column head to focus that level and sort by it (again to flip), the box to find a gene; the select
+  in the corner shows another statistic in every cell (padj, % expressing, rank, and for a test run in the
+  viewer AUC and sections agreeing). Clicking a row colours every pane by that gene; `↑` and `↓` step through
+  the table as sorted. Genes no section measures stay listed, greyed, with a count in the header. *CSV* in the
+  header downloads the whole matrix, every level's statistics per gene.
 - **The distribution**, right, for the gene on screen. When the levels are an annotation's categories (a
   marker table, a per-cell-type contrast): **violins** of the gene's expression per category, drawn from the
   same per-cell values the maps use, the focused level in full colour with a tick at each median. When the
@@ -145,9 +179,10 @@ focused cluster on request and follows the focus; each legend row of the matchin
 button on hover that opens the table focused on that cluster. The violins and the *expression by annotation* dot
 plot in the Cells group read the same field, so the two agree.
 
-Nothing in the panel is computed by the viewer: the effects, p-values and replicate values are the ones the
-tables held, and the dots are the values you fitted, not a re-aggregation of the 8-bit expression the maps are
-drawn from. The chosen comparison travels in the URL as `cmp`; closing the panel with × leaves the split and
+For a comparison shipped with the dataset nothing in the panel is computed by the viewer: the effects, p-values
+and replicate values are the ones the tables held, and the dots are the values you fitted, not a re-aggregation
+of the 8-bit expression the maps are drawn from. The one exception is a
+[test on drawn regions](#differential-expression-between-regions), computed in the browser and marked as such. The chosen comparison travels in the URL as `cmp`; closing the panel with × leaves the split and
 the filter as they are.
 
 ## Genome panel

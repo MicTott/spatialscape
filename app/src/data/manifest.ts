@@ -1,5 +1,7 @@
 /** Mirrors python/src/sscape/manifest.py. Keep in sync. */
 export type Platform = "visium" | "visium_hd" | "xenium" | "merfish" | "codex" | "snrnaseq" | "other";
+export const PLATFORM_LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", codex: "CODEX", snrnaseq: "snRNA-seq", other: "Other" };
+export const platformLabel = (p: string): string => PLATFORM_LABEL[p] ?? p;
 export type SampleKind = "spatial" | "embedding";
 export type LayoutMode = "grid" | "strip";
 
@@ -94,6 +96,7 @@ export interface ComparisonInfo {
   hasPct?: boolean;
   hasScore?: boolean;
   hasPseudobulk: boolean;
+  live?: boolean; // viewer only: a test run on drawn regions, held in memory (not in manifest.py, not in the URL)
 }
 export interface Sample {
   id: string;

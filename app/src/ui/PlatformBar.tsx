@@ -1,9 +1,9 @@
+import { platformLabel } from "../data/manifest";
 import { store, useViewer } from "../store/store";
 import { anyPinned, bothPinned, splitKeys, unassignedSamples } from "../views/panes";
 import { nextPinSide } from "../views/pins";
 
 const ORDER = ["visium", "visium_hd", "xenium", "merfish", "codex", "other"];
-const LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", codex: "CODEX", other: "Other" };
 
 /** Top bar: which spatial platforms are shown in the mosaic. */
 export function PlatformBar() {
@@ -68,7 +68,7 @@ export function PlatformBar() {
               onClick={(e) => (e.shiftKey ? store.getState().togglePlatform(p, present) : set({ platforms: [p] }))}
               title="click: only this platform · shift-click: toggle"
             >
-              {LABEL[p] ?? p} <span className="n">{counts[p]}</span>
+              {platformLabel(p)} <span className="n">{counts[p]}</span>
             </button>
           ))}
         </>

@@ -4,13 +4,13 @@
  *  Python session all read like any other annotation. Where lassos overlap, the last one drawn wins. */
 import { PathLayer, SolidPolygonLayer, TextLayer } from "@deck.gl/layers";
 import { Matrix4 } from "@math.gl/core";
-import type { Manifest } from "../data/manifest";
+import type { ComparisonInfo, Manifest } from "../data/manifest";
 import { fetchRegions, postRegions } from "../data/sessionApi";
 import { hexToRGB } from "../layers/lut";
 import { REGION_COLORS, store, type RegionGroup, type RegionPolygon, type Regions, type ViewerState, type ViewId } from "../store/store";
 import { pointInPolygon } from "./geometry";
 import type { LayoutResult } from "./layout";
-import { overlayProps } from "./types";
+import { download, overlayProps } from "./types";
 import type { ViewerController } from "./ViewerController";
 
 export const UNASSIGNED_COLOR = "#4b5563";
@@ -20,6 +20,8 @@ export class RegionsManager {
   private base: Manifest | null = null;
   private version = 0;
   private postTimer: number | null = null;
+  /** The result of a test run on the regions (compare/live.ts), listed with the dataset's comparisons until the next run or dataset. */
+  live: ComparisonInfo | null = null;
 
   constructor(private c: ViewerController) {}
 
@@ -32,6 +34,7 @@ export class RegionsManager {
    *  or a kernel restart must not cost an afternoon of lassos). */
   reset(manifest: Manifest) {
     this.base = manifest;
+    this.live = null;
     if (store.getState().regions.groups.length) store.getState().set({ regions: { groups: [], active: null, seq: 0 } });
     void this.restore(manifest);
   }
@@ -114,16 +117,23 @@ export class RegionsManager {
     if (Object.keys(upd).length) s.set(upd);
   }
 
+  /** A test finished: its comparison joins the manifest so the Compare panel and the Comparisons group can show it. */
+  setLive(info: ComparisonInfo | null) {
+    this.live = info;
+    this.syncManifest();
+  }
+
   private syncManifest() {
     const base = this.base;
     if (!base) return;
     const { groups } = store.getState().regions;
     const field = this.field;
     let m: Manifest = base;
+    if (this.live) m = { ...m, comparisons: [...(base.comparisons ?? []), this.live] };
     if (groups.length) {
       const vocab = { categories: [...groups.map((g) => g.name), "unassigned"], colors: [...groups.map((g) => g.color), UNASSIGNED_COLOR] };
       m = {
-        ...base,
+        ...m,
         fields: [...base.fields, { id: field, name: "Regions", type: "categorical", vocabulary: field, description: "drawn in the viewer" }],
         vocabularies: { ...base.vocabularies, [field]: vocab },
         samples: base.samples.map((x) => ({ ...x, fields: [...x.fields, field] })),
@@ -317,13 +327,4 @@ export class RegionsManager {
     const drawing = groups.map((g) => ({ name: g.name, color: g.color, polygons: g.polygons.map((p) => ({ sample: p.sample, view: p.view, local: p.local })) }));
     await postRegions(store.getState().datasetUrl, ++this.version, drawing, codes);
   }
-}
-
-function download(name: string, text: string, type: string) {
-  const blob = new Blob([text], { type });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }

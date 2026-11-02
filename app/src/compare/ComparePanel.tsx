@@ -12,7 +12,8 @@ import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer, type GroupRow, t
 import type { LevelInfo } from "../data/manifest";
 import { activateComparison, populationFilterActive, toggleLevelFilter } from "./activate";
 import { loadComparison, loadMatrix } from "./data";
-import { arrangeMatrix, bestIsHigh, fmtEffect, fmtMean, fmtP, fmtPct, fmtStat, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, matrixStats, pairs, statLabel, ticks, type ComparisonData, type MatrixData, type MatrixRow, contrastLabel, effectLabel } from "./model";
+import { arrangeMatrix, bestIsHigh, fmtEffect, fmtMean, fmtP, fmtPct, fmtStat, groupColors, groupValues, jitter, levelOf, matrixCSV, matrixRows, matrixStat, matrixStats, pairs, statLabel, ticks, type ComparisonData, type MatrixData, type MatrixRow, contrastLabel, effectLabel } from "./model";
+import { download } from "../views/types";
 
 const ROW_H = 22;
 const HEAD_H = 30;
@@ -151,8 +152,10 @@ export function ComparePanel() {
     if (lv === level.id) setDesc((d) => !d);
     else void activateComparison(info.id, lv);
   };
+  const platforms = info.live && new Set(info.levels.map((l) => l.name.split(" · ").pop())).size > 1 ? "per platform" : null;
   const subtitle = [
-    markers ? `each ${facetField ? facetField.name.toLowerCase() : "cluster"} against the rest` : contrastLabel(info) + (info.levels.length > 1 && facetField ? ` within each ${facetField.name.toLowerCase()}` : ""),
+    info.live ? (markers ? `${info.levels.length > 1 && info.name === "each region vs rest" ? "each region" : info.name.replace(/ vs rest$/, "")} against the rest, on single cells` : `${contrastLabel(info)}, on single cells`) : markers ? `each ${facetField ? facetField.name.toLowerCase() : "cluster"} against the rest` : contrastLabel(info) + (info.levels.length > 1 && facetField ? ` within each ${facetField.name.toLowerCase()}` : ""),
+    platforms,
     !markers && info.nReplicates ? `${info.nReplicates} replicates` : null,
     matrix ? `${matrix.genes.length.toLocaleString()} genes` : null,
     info.nUnmatched ? `${info.nUnmatched.toLocaleString()} not in this dataset` : null,
@@ -164,6 +167,10 @@ export function ComparePanel() {
   const focusColor = swatch(catOf(level));
   const levelRow = levelData && gene ? (levelData.geneIndex.get(gene) ?? null) : null;
   const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel, levelGenes: level.nGenes, effect: effectLabel(info), has: { effect: !!info.hasEffect, padj: !!info.hasPadj, p: !!info.hasP, pct: !!info.hasPct }, labels: info.levels.map((l) => l.name) });
+  // a test of two regions: the violins are the two regions, the first one (what "up" means) in focus
+  const violinOrder = info.live && !markers ? info.groups : info.levels.map((l) => catOf(l));
+  const violinFocus = info.live && !markers ? info.groups[0] : catOf(level);
+  const exportCSV = () => matrix && download(`${manifest.id}-${info.id}.csv`, matrixCSV(matrix, info.levels.map((l) => l.name), effectLabel(info)), "text/csv");
   return (
     <div className={`compare${sidebarOpen ? " with-sidebar" : ""}`} style={{ height, bottom }}>
       <div className="c-handle" onPointerDown={onHandleDown} title="drag to resize" />
@@ -183,6 +190,9 @@ export function ComparePanel() {
             i
           </button>
         )}
+        <button className="c-ib text" onClick={exportCSV} disabled={!matrix} title="download the table: every level's statistics per gene">
+          CSV
+        </button>
         <button className="c-ib" onClick={() => void activateComparison(null)} title="close the panel (the split and the filter stay); the Comparisons group reopens it" aria-label="close">
           ×
         </button>
@@ -207,9 +217,9 @@ export function ComparePanel() {
             {markers && <span className="muted small">vs rest</span>}
             <span className="d-right">
               {markers && level.population && (
-                <label className="d-toggle" title={population ? "show every cell again" : `filter the map to the cells of ${level.name}`}>
+                <label className="d-toggle" title={population ? "show every cell again" : `filter the map to the cells of ${level.population.value}`}>
                   <input type="checkbox" checked={!!population} onChange={toggleLevelFilter} />
-                  only {level.name} on the map
+                  only {level.population.value} on the map
                 </label>
               )}
               {!markers && population && (
@@ -231,7 +241,7 @@ export function ComparePanel() {
             {hasDots && levelData && levelRow != null ? (
               <ReplicatePlot data={levelData} geneRow={levelRow} box={box} />
             ) : hasViolins && vocab ? (
-              <Violins stats={groupStats!} vocab={vocab} focus={catOf(level)} order={info.levels.map((l) => catOf(l))} gene={gene!} />
+              <Violins stats={groupStats!} vocab={vocab} focus={violinFocus} order={violinOrder} gene={gene!} />
             ) : (
               <div className="muted small c-note">{!matrix ? "" : !gene ? "pick a gene in the table" : vocab ? "computing the distributions…" : "no replicate values in this comparison; add `pseudobulk:` for a dot per replicate"}</div>
             )}
@@ -295,11 +305,16 @@ function footerText(a: {
   const p = at("p");
   if (padj != null) parts.push(`padj ${fmtP(padj)}`);
   else if (p != null) parts.push(`p ${fmtP(p)}`);
+  else if (matrix.info.live && eff != null) parts.push("not tested: under 10% expressing on both sides");
   else if (has.padj || has.p) parts.push("padj –");
   const pin = at("pct_in");
   const pout = at("pct_out");
   if (pin != null || pout != null) parts.push(markers ? `${fmtPct(pin)}% of ${levelName} cells express it, ${fmtPct(pout)}% of the rest` : `expressed in ${fmtPct(pin)}% / ${fmtPct(pout)}%`);
   else if (has.pct) parts.push("% expressing –");
+  const auc = at("auc");
+  if (auc != null) parts.push(`AUC ${auc.toFixed(2)}`);
+  const agree = at("agree");
+  if (agree != null) parts.push(`same direction in ${agree} of ${matrix.sections?.[col] ?? "?"} sections`);
   if (levelData && levelRow != null && levelData.results.mean) {
     const m = levelData.results.mean[levelRow];
     if (m != null) parts.push(`mean ${fmtMean(m)}`);
@@ -358,6 +373,8 @@ function MatrixTable({ matrix, rows: list, stat, onStat, gene, focus, desc, onFo
       return `color-mix(in srgb, var(--accent) ${Math.round(6 + 24 * strength)}%, transparent)`;
     }
     if (stat === "pct_in") return `color-mix(in srgb, var(--accent) ${Math.round(6 + 24 * Math.min(1, Math.max(0, v)))}%, transparent)`;
+    if (stat === "auc") return `color-mix(in srgb, var(${v >= 0.5 ? "--c-up" : "--c-down"}) ${Math.round(8 + 52 * Math.min(0.5, Math.abs(v - 0.5)))}%, transparent)`;
+    if (stat === "agree") return `color-mix(in srgb, var(--accent) ${Math.round(6 + 24 * Math.min(1, v / Math.max(1, maxAbs)))}%, transparent)`;
     const pct = Math.round(8 + 26 * Math.min(1, Math.abs(v) / maxAbs));
     return `color-mix(in srgb, var(${v >= 0 ? "--c-up" : "--c-down"}) ${pct}%, transparent)`;
   };
@@ -371,6 +388,10 @@ function MatrixTable({ matrix, rows: list, stat, onStat, gene, focus, desc, onFo
     const pin = at("pct_in");
     const pout = at("pct_out");
     if (pin != null && !Number.isNaN(pin)) bits.push(`in ${fmtPct(pin)}% · out ${fmtPct(pout ?? null)}%`);
+    const auc = at("auc");
+    if (auc != null && !Number.isNaN(auc)) bits.push(`AUC ${auc.toFixed(2)}`);
+    const agree = at("agree");
+    if (agree != null && !Number.isNaN(agree)) bits.push(`same direction in ${agree} of ${matrix.sections?.[j] ?? "?"} sections`);
     const rank = at("rank");
     if (rank != null && !Number.isNaN(rank)) bits.push(`rank ${rank}`);
     return bits.length ? `${matrix.genes[i]} in ${labels[j]}: ${bits.join(" · ")}` : `${matrix.genes[i]}: not in ${labels[j]}'s table`;
@@ -418,7 +439,7 @@ function MatrixTable({ matrix, rows: list, stat, onStat, gene, focus, desc, onFo
                 const blank = Number.isNaN(v);
                 return (
                   <span key={lv} className={`m-cell${blank ? " e" : ""}`} style={{ background: tint(v) }} title={detail(r.i, j)}>
-                    {blank ? "·" : fmtStat(stat, v)}
+                    {blank ? "·" : fmtStat(stat, v, matrix.sections?.[j])}
                   </span>
                 );
               })}

@@ -12,6 +12,7 @@ import { decodeMoleculeTile, type MoleculeTile } from "./moleculeTiles";
 import { decodeShapeTile, type ShapeTile } from "./shapeTiles";
 import { coalesce, indexByKey, tileKey, type TileEntry, type TileIndexBase } from "./tileIndex";
 
+import { subsample, testLevel, type DeBlock, type DeLevelResult, type DePart, type DeProgress, type DeRequest } from "./de";
 import { fetchRows, openRows, type CellRows, type RowsHandle } from "./rows";
 
 type U8Array = zarr.Array<"uint8", zarr.FetchStore>;
@@ -30,6 +31,15 @@ type Handles = {
 
 const samples = new Map<string, Handles>();
 const inflight = new Map<string, Promise<unknown>>();
+const cancelledTests = new Set<number>();
+
+/** The sample's row store, opened once. */
+function rowsOf(sampleId: string, chunk: number): Promise<RowsHandle> {
+  const h = samples.get(sampleId);
+  if (!h) throw new Error(`sample ${sampleId} not open`);
+  h.rows ??= zarr.open.v3(zarr.root(new zarr.FetchStore(`${h.base}/rows.zarr`)), { kind: "group" }).then((g) => openRows(g, chunk));
+  return h.rows;
+}
 const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
 type TileKind = string; // "shapes", "molecules", or a segmentation's "segmentations/<id>/shapes": the path under the sample
 const tileIndexes = new Map<string, { index: TileIndexBase; byKey: Map<string, TileEntry> }>(); // `${kind}:${sampleId}`
@@ -189,11 +199,60 @@ const api = {
 
   /** The stored values of a few cells from the per-cell row store (bundle row indices, any order). */
   async getRows(sampleId: string, rows: Uint32Array, chunk: number): Promise<CellRows> {
-    const h = samples.get(sampleId);
-    if (!h) throw new Error(`sample ${sampleId} not open`);
-    h.rows ??= zarr.open.v3(zarr.root(new zarr.FetchStore(`${h.base}/rows.zarr`)), { kind: "group" }).then((g) => openRows(g, chunk));
-    const out = await fetchRows(await h.rows, rows);
+    const out = await fetchRows(await rowsOf(sampleId, chunk), rows);
     return Comlink.transfer(out, [out.indptr.buffer, out.gene.buffer, out.value.buffer]);
+  },
+
+  /** Differential expression between the two sides of each level: the sides are cut to the cap by whole blocks of
+   *  the row store, their rows fetched, and every requested gene tested (data/de.ts). `progress` is told what is
+   *  being fetched; `cancelDe` with the request's token stops it at the next step. */
+  async de(req: DeRequest, progress: (p: DeProgress) => void): Promise<DeLevelResult[]> {
+    cancelledTests.delete(req.token);
+    const check = () => {
+      if (cancelledTests.has(req.token)) throw new Error("cancelled");
+    };
+    const geneAt = new Map(req.genes.map((g, i) => [g, i]));
+    const out: DeLevelResult[] = [];
+    const transfer: ArrayBuffer[] = [];
+    for (const level of req.levels) {
+      const blocks: DeBlock[] = [];
+      for (const side of [0, 1] as const) {
+        const parts: DePart[] = side === 0 ? level.a : level.b;
+        const withBlocks = await Promise.all(
+          parts.map(async (p) => {
+            const h = await rowsOf(p.sample, p.chunk);
+            const block = new Uint32Array(p.rows.length);
+            for (let i = 0; i < p.rows.length; i++) block[i] = Math.floor(h.indptr[h.pos[p.rows[i]]] / h.chunk);
+            return { sample: p.sample, rows: p.rows, block };
+          }),
+        );
+        const chosen = subsample(withBlocks, req.cap);
+        for (const [k, part] of chosen.entries()) {
+          check();
+          progress({ level: level.id, text: `${side === 0 ? "first" : "second"} group: fetching ${part.sample} (${k + 1} of ${chosen.length})` });
+          const h = samples.get(part.sample)!;
+          const rows = await fetchRows(await rowsOf(part.sample, parts.find((p) => p.sample === part.sample)!.chunk), part.rows);
+          const geneMap = new Int32Array(h.genes.length);
+          const scale = new Float32Array(h.genes.length);
+          for (let g = 0; g < h.genes.length; g++) {
+            // a signed feature's codes do not start at zero; it is not a gene and is left out
+            geneMap[g] = h.gmin[g] < 0 ? -1 : (geneAt.get(h.genes[g]) ?? -1);
+            scale[g] = h.gmax[g] / 255;
+          }
+          blocks.push({ sample: part.sample, side, rows, geneMap, scale });
+        }
+      }
+      check();
+      progress({ level: level.id, text: "testing" });
+      const r = testLevel(level.id, blocks, req.genes.length, req.minPct);
+      out.push(r);
+      for (const arr of [r.measured, r.effect, r.p, r.padj, r.pctIn, r.pctOut, r.auc, r.agree]) transfer.push(arr.buffer as ArrayBuffer);
+    }
+    return Comlink.transfer(out, transfer);
+  },
+
+  cancelDe(token: number) {
+    cancelledTests.add(token);
   },
 
   async getCategorical(sampleId: string, field: string): Promise<Uint16Array> {

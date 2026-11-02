@@ -54,7 +54,7 @@ export async function activateComparison(id: string | null, levelId?: string | n
   } else if (isFilterFor(m, s.filter, previous)) patch.filter = null;
   if (info.facet?.field && s.groupField !== info.facet.field) patch.groupField = info.facet.field; // the dot plot and the violins read the same field
   s.set(patch);
-  if (!s.datasetUrl || !level) return;
+  if (!s.datasetUrl || !level || info.live) return; // a test run in the viewer has no files; the panel picks its gene
   const data = await loadComparison(s.datasetUrl, info, level.id);
   const cur = store.getState();
   if (cur.comparison !== id || cur.comparisonLevel !== level.id) return; // changed again while loading

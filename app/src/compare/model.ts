@@ -48,6 +48,7 @@ export interface MatrixData {
   stats: Record<string, Float32Array>; // row-major (genes, levels); NaN where a level's table has no row for the gene
   unmeasured: Set<number>;
   geneIndex: Map<string, number>;
+  sections?: number[]; // a test run in the viewer: per level, the sections with cells on both sides (the `agree` denominator)
 }
 export interface MatrixRow {
   i: number;
@@ -55,25 +56,28 @@ export interface MatrixRow {
   measured: boolean;
 }
 /** The statistics the matrix can show, in the order offered: the effect, the adjusted p (or p), the percent
- *  expressing, and the rank in each level's table. */
+ *  expressing, the AUROC and the agreeing sections of a test run in the viewer, and the rank in each level's table. */
 export function matrixStats(m: MatrixData): string[] {
   const out: string[] = [];
   if (m.stats.effect) out.push("effect");
   if (m.stats.padj) out.push("padj");
   else if (m.stats.p) out.push("p");
   if (m.stats.pct_in) out.push("pct_in");
+  if (m.stats.auc) out.push("auc");
+  if (m.stats.agree) out.push("agree");
   if (m.stats.rank) out.push("rank");
   return out;
 }
 /** The statistic the matrix opens on: the effect when the tables have one, else the first available. */
 export const matrixStat = (m: MatrixData): string => matrixStats(m)[0] ?? "rank";
-/** Whether "best first" for a statistic means descending (effect, % expressing) or ascending (p, rank). */
-export const bestIsHigh = (stat: string): boolean => stat === "effect" || stat === "pct_in";
+/** Whether "best first" for a statistic means descending (effect, % expressing, AUC, sections) or ascending (p, rank). */
+export const bestIsHigh = (stat: string): boolean => stat === "effect" || stat === "pct_in" || stat === "auc" || stat === "agree";
 export function statLabel(stat: string, effect: string): string {
-  return stat === "effect" ? effect : stat === "padj" ? "padj" : stat === "p" ? "p" : stat === "pct_in" ? "% expressing" : "rank";
+  return stat === "effect" ? effect : stat === "padj" ? "padj" : stat === "p" ? "p" : stat === "pct_in" ? "% expressing" : stat === "auc" ? "AUC" : stat === "agree" ? "sections agreeing" : "rank";
 }
-export function fmtStat(stat: string, v: number): string {
-  return stat === "effect" ? fmtEffect(v) : stat === "padj" || stat === "p" ? fmtP(v) : stat === "pct_in" ? `${fmtPct(v)}%` : String(v);
+/** `n` is the level's section count for the `agree` statistic ("3/4"). */
+export function fmtStat(stat: string, v: number, n?: number): string {
+  return stat === "effect" ? fmtEffect(v) : stat === "padj" || stat === "p" ? fmtP(v) : stat === "pct_in" ? `${fmtPct(v)}%` : stat === "auc" ? v.toFixed(2) : stat === "agree" ? `${v}/${n ?? "?"}` : String(v);
 }
 
 export function matrixRows(m: MatrixData): MatrixRow[] {
@@ -117,9 +121,32 @@ export function cellDetail(m: MatrixData, i: number, j: number): string {
   const pin = at("pct_in");
   const pout = at("pct_out");
   if ((pin != null && !Number.isNaN(pin)) || (pout != null && !Number.isNaN(pout))) parts.push(`in ${fmtPct(pin ?? null)}% / out ${fmtPct(pout ?? null)}%`);
+  const auc = at("auc");
+  if (auc != null && !Number.isNaN(auc)) parts.push(`AUC ${auc.toFixed(2)}`);
+  const agree = at("agree");
+  if (agree != null && !Number.isNaN(agree)) parts.push(`same direction in ${agree} of ${m.sections?.[j] ?? "?"} sections`);
   const rank = at("rank");
   if (rank != null && !Number.isNaN(rank)) parts.push(`rank ${rank}`);
   return parts.join(" · ");
+}
+
+/** The matrix as CSV: one row per gene, one column per level and statistic. */
+export function matrixCSV(m: MatrixData, labels: string[], effect: string): string {
+  const stats = Object.keys(m.stats);
+  const head = ["gene", ...m.levels.flatMap((_, j) => stats.map((st) => `${labels[j] ?? m.levels[j]} ${st === "effect" ? effect : st}`))];
+  const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const k = m.levels.length;
+  const lines = [head.map(q).join(",")];
+  m.genes.forEach((g, i) => {
+    const cells = m.levels.flatMap((_, j) =>
+      stats.map((st) => {
+        const v = m.stats[st][i * k + j];
+        return Number.isNaN(v) ? "" : String(v);
+      }),
+    );
+    lines.push([q(g), ...cells].join(","));
+  });
+  return lines.join("\n");
 }
 
 export type SortKey = "padj" | "effect" | "mean" | "pct" | "gene";

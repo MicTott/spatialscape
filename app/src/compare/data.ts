@@ -88,6 +88,11 @@ export function loadMatrix(datasetUrl: string, info: ComparisonInfo): Promise<Ma
   return p;
 }
 
+/** A matrix computed in the viewer (a test on drawn regions): served to the panel like one read from the bundle. */
+export function registerMatrix(datasetUrl: string, info: ComparisonInfo, matrix: MatrixData) {
+  matrices.set(base(datasetUrl, info), Promise.resolve(matrix));
+}
+
 export function forgetComparisons() {
   docs.clear();
   levels.clear();

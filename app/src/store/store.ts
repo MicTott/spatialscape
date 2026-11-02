@@ -127,6 +127,8 @@ export interface ViewerState {
   genomeHeight: number; // px; dragged at the panel's top edge, remembered per browser
   locus: Locus | null; // what the genome panel shows (gl in the URL)
   regions: Regions; // annotation drawn in the viewer: groups of lassos, exposed as the "regions" field
+  test: { token: number; text: string } | null; // a differential expression test on the regions while it runs: what it is fetching
+  testNote: string | null; // after a test: what was left out, or why it did not finish
   viewPx: Record<ViewId, number>; // px per µm per pane (scale bar)
   viewRects: Record<ViewId, ViewRect>;
   panes: PaneInfo[]; // the panes on screen, in order
@@ -282,6 +284,8 @@ export const store = createStore<ViewerState>((set, get) => ({
   genomeHeight: storedGenomeHeight(),
   locus: null,
   regions: EMPTY_REGIONS,
+  test: null,
+  testNote: null,
   viewPx: {},
   viewRects: {},
   panes: [],

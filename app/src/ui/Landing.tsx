@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { platformLabel } from "../data/manifest";
 import { store } from "../store/store";
 import { thumbnailUrl, useRegistry, type RegistryEntry } from "./registry";
 export { resolveDataset } from "./registry";
 
-const PLATFORM_LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", snrnaseq: "snRNA-seq" };
 
 export function Landing() {
   const [url, setUrl] = useState("");
@@ -47,7 +47,7 @@ export function Landing() {
                   <div className="meta">
                     {(d.platforms ?? []).map((p) => (
                       <span key={p} className="pill">
-                        {PLATFORM_LABEL[p] ?? p}
+                        {platformLabel(p)}
                       </span>
                     ))}
                   </div>
