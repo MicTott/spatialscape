@@ -19,7 +19,7 @@
       f16     float16 (nGenes, nObs)  optional; not read by the viewer
     rows.zarr/                 Zarr v3 group, optional (`expression.rows`): the same codes one cell at a time
       indptr  uint32  (nObs + 1)      stored values before each row of the store
-      gene    uint16|uint32 (nnz)     kept-gene index (row of u8) of every stored value; chunk 2^20, shard 32 chunks
+      gene    uint16|uint32 (nnz)     kept-gene index (row of u8) of every stored value, as the step from the row's previous id (first absolute); chunk 2^20, shard 32 chunks
       value   uint8   (nnz)           the u8 code of that value; zeros are not stored
       pos     uint32  (nObs)          position in the store of bundle row i; rows follow a Morton curve over xy
     obs.zarr/                  Zarr v3 group

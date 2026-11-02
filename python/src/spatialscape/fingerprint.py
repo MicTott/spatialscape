@@ -92,6 +92,7 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
     spec_json = resolved.model_dump(mode="json", exclude={"name", "group"})
     # a meta value typed in the yaml is applied to the manifest without a rebuild; one read from a column is fixed at build time
     spec_json["meta"] = {k: v for k, v in (spec_json.get("meta") or {}).items() if isinstance(v, dict)}
+    spec_json.get("expression", {}).pop("rows", None)  # carried resolved as "rows" below, so sidecars from before it still compare
     paths: list[Path | None] = [resolved.path, resolved.microns.scalefactors_json]
     paths += [im.path for im in resolved.images]
     # a Xenium morphology_focus/ series reads every stain file through its first one: watch the folder

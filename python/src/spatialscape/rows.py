@@ -5,7 +5,9 @@ expression test on a lasso needs the opposite, every gene for a few cells, and f
 the whole sample. So each sample may also carry `rows.zarr`, a sparse CSR copy of the kept genes' values:
 
     indptr  uint32 (nObs + 1)   stored values before each row of the store
-    gene    uint16 | uint32     kept-gene index (the row of expr.zarr/u8) of every stored value
+    gene    uint16 | uint32     kept-gene index (the row of expr.zarr/u8) of every stored value, as the step from
+                                the previous value of the same row (the row's first value absolute): sorted ids
+                                make small steps, which zstd packs about twice as tight as the ids themselves
     value   uint8               the same code as expr.zarr/u8: x = gmin + value / 255 * (gmax - gmin)
     pos     uint32 (nObs)       where bundle row i (the shuffled order of obs.zarr) sits in the store
 
@@ -121,7 +123,7 @@ def write_rows(
         codes = quantize_values(vals, gmin[g], gmax[g]) if len(g) else np.zeros(0, dtype=np.uint8)
         counts = np.bincount(rid, minlength=len(rows))
         indptr[b0 + 1 : b0 + 1 + len(rows)] = counts
-        buf_g.append(g.astype(gene_dtype))
+        buf_g.append(gene_steps(g, rid).astype(gene_dtype))
         buf_v.append(codes)
         buffered += len(g)
         if buffered >= shard:
@@ -144,6 +146,22 @@ def write_rows(
     return {"nnz": nnz, "chunk": CHUNK, "order": "morton"}
 
 
+def gene_steps(gene: np.ndarray, row: np.ndarray) -> np.ndarray:
+    """Gene ids sorted within rows -> the step from the previous id of the same row, the first of a row as it is."""
+    if not len(gene):
+        return gene
+    steps = np.diff(gene, prepend=gene[:1])
+    first = np.ones(len(gene), dtype=bool)
+    first[1:] = row[1:] != row[:-1]
+    steps[first] = gene[first]
+    return steps
+
+
+def gene_ids(steps: np.ndarray) -> np.ndarray:
+    """The ids of one row back from its steps."""
+    return np.cumsum(steps, dtype=np.int64)
+
+
 def read_rows(sample_dir: Path, bundle_rows: np.ndarray) -> sp.csr_matrix:
     """The stored values of the given bundle rows as a CSR matrix (rows in the order asked, columns = kept genes),
     codes as uint8. For tests and scripts; the viewer's worker does the same with range requests."""
@@ -156,7 +174,7 @@ def read_rows(sample_dir: Path, bundle_rows: np.ndarray) -> sp.csr_matrix:
     for p in pos:
         a, b = int(indptr[p]), int(indptr[p + 1])
         data.append(np.asarray(value[a:b]))
-        indices.append(np.asarray(gene[a:b]))
+        indices.append(gene_ids(np.asarray(gene[a:b])))
         out_ptr.append(out_ptr[-1] + (b - a))
     d = np.concatenate(data) if data else np.zeros(0, dtype=np.uint8)
     i = np.concatenate(indices) if indices else np.zeros(0, dtype=np.int64)

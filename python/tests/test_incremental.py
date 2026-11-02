@@ -125,3 +125,17 @@ def test_bundle_without_sidecars_is_rebuilt_once(project):
     assert set(reasons(r2).values()) == {"new"}
     r3 = build_bundle(load_config(project), log=quiet)
     assert set(reasons(r3).values()) == {"unchanged"}
+
+
+def test_samples_from_before_the_row_store_gain_one_and_embeddings_stand(project):
+    """A sidecar written before `rows` existed: a tissue section is rebuilt to gain its row store, an embedding
+    (which wants none) is left alone, even though the yaml setting is new to the fingerprint."""
+    cfg = load_config(project)
+    out = build_bundle(cfg, log=quiet).out
+    for d in (out / "samples").iterdir():
+        side = d / "build.json"
+        fp = json.loads(side.read_text())
+        fp["fingerprint"].pop("rows")
+        side.write_text(json.dumps(fp))
+    r = build_bundle(cfg, dry_run=True, log=quiet)
+    assert reasons(r) == {"sampleA": "row store added", "sampleB": "row store added", "umapA": "unchanged"}

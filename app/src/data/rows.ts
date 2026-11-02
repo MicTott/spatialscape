@@ -13,7 +13,8 @@ export interface RowsHandle {
   chunk: number; // values per inner chunk
 }
 
-/** Rows of a few cells as one CSR block: `indptr` over the cells in the order asked, gene indices and codes. */
+/** Rows of a few cells as one CSR block: `indptr` over the cells in the order asked, gene indices (decoded from the
+ *  store's per-row steps) and codes. */
 export interface CellRows {
   indptr: Uint32Array;
   gene: Uint32Array;
@@ -80,7 +81,8 @@ export async function fetchRows(h: RowsHandle, rows: ArrayLike<number>): Promise
     const s = spanOf(p);
     const a = h.indptr[p] - s.lo;
     const len = indptr[i + 1] - indptr[i];
-    gene.set(s.gene.subarray(a, a + len), indptr[i]);
+    let id = 0;
+    for (let k = 0; k < len; k++) gene[indptr[i] + k] = id += s.gene[a + k]; // steps back to ids
     value.set(s.value.subarray(a, a + len), indptr[i]);
   }
   return { indptr, gene, value };

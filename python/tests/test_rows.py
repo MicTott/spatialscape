@@ -38,9 +38,9 @@ def test_rows_match_the_gene_major_codes(tmp_path, small_adata):
     rg = zarr.open_group(str(d / "rows.zarr"), mode="r")
     assert (np.asarray(rg["value"][:]) > 0).all()
     ptr = np.asarray(rg["indptr"][:])
-    gene = np.asarray(rg["gene"][:])
+    steps = np.asarray(rg["gene"][:])
     for a, b in pairwise(ptr):
-        assert (np.diff(gene[a:b].astype(int)) > 0).all()
+        assert (steps[a + 1 : b] > 0).all()  # ids ascend within a row, stored as their steps
 
 
 def test_rows_follow_the_curve_and_pos_inverts_it(tmp_path):

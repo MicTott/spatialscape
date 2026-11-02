@@ -253,8 +253,10 @@ def validate_local(root: Path) -> list[str]:
                     if s.nObs and (pos.min() != 0 or pos.max() != s.nObs - 1 or len(np.unique(pos)) != s.nObs):
                         _problem(p, f"{s.id}: rows.zarr pos is not a permutation of the rows")
                     if nnz:
-                        gi = np.asarray(rg["gene"][: min(nnz, 4096)])
-                        if gi.max() >= s.nGenes:
+                        from .rows import gene_ids
+
+                        a, b = int(ptr[0]), int(ptr[1])  # the first row's ids, back from their steps
+                        if b > a and gene_ids(np.asarray(rg["gene"][a:b])).max() >= s.nGenes:
                             _problem(p, f"{s.id}: rows.zarr gene index past nGenes")
             except Exception as e:
                 _problem(p, f"{s.id}: rows.zarr unreadable: {e}")
