@@ -49,6 +49,13 @@ steps aside while a section is pinned and returns when the last pin goes. A pinn
 the grid in the pin colour. The two slots travel in the URL as `pins=<left>,<right>`, with the left window's
 share as `pf`.
 
+![PENK in donor Br9280: the Visium section pinned left at 1.5× spot size, the Visium HD capture of its central amygdala pinned right at 3× bin size, images off, one viridis scale](/screenshots/penk-visium-vs-hd.jpg)
+
+The view above compares one gene across two platforms in the same donor: PENK in Br9280 on Visium (55 µm
+spots) beside the Visium HD capture of its central nucleus (8 µm bins), with the H&E hidden, the points
+enlarged for the HD bins, and each window zoomed on its own. Its URL parameters: `c=g:PENK`, `img=0`,
+`pins=vis_Br9280,hd_Br9280_CeA`, `psg=1.50,3.05`.
+
 ## Color by
 
 - **Gene**: type to search. Values are log-normalized expression; the range slider rescales the colormap, "hide zeros" removes non-expressing cells.
