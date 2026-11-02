@@ -113,10 +113,21 @@ export function readUrl(): Partial<ViewerState> {
       if (m) out.split = { on: true, side: m[1] === "l" ? "left" : "right", fraction: Math.min(0.8, Math.max(0.2, num(m[2], 0.38))) };
     }
   }
-  if (q.get("sb")) {
+  if (q.get("sb") === "section") {
+    // links from the first pin release, which wrote pins as a split by "section"
+    const [a, b] = (q.get("sg") ?? "").split(",");
+    out.pins = [a || null, b || null];
+  } else if (q.get("sb")) {
     const groups = q.get("sg") ? q.get("sg")!.split(",").filter(Boolean) : null;
     const fr = q.get("sf") ? q.get("sf")!.split(",").map(Number) : null;
     out.splitBy = { key: q.get("sb")!, groups: groups?.length ? groups : null, fractions: fr && fr.length && fr.every((x) => Number.isFinite(x) && x > 0) ? fr : null };
+  }
+  if (q.get("pins") != null) {
+    const [a, b] = q.get("pins")!.split(",");
+    out.pins = [a || null, b || null];
+  }
+  if (q.get("pf")) out.pinFraction = Math.min(0.8, Math.max(0.2, num(q.get("pf"), 0.5)));
+  if (out.splitBy || out.pins?.some(Boolean)) {
     if (q.get("pv")) {
       const cams = q.get("pv")!.split(";").map((part) => {
         const [x, y, z] = part.split(",");
@@ -183,8 +194,13 @@ export function serialize(s: ViewerState): string {
     q.set("sb", s.splitBy.key);
     if (s.splitBy.groups?.length) q.set("sg", s.splitBy.groups.join(","));
     if (s.splitBy.fractions?.length) q.set("sf", s.splitBy.fractions.map((f) => f.toFixed(3)).join(","));
-    if (s.paneCameras?.length) q.set("pv", s.paneCameras.map((c) => `${c.target[0].toFixed(0)},${c.target[1].toFixed(0)},${c.zoom.toFixed(2)}`).join(";"));
   }
+  const pinned = s.pins.some(Boolean);
+  if (pinned) {
+    q.set("pins", s.pins.map((p) => p ?? "").join(","));
+    if (Math.abs(s.pinFraction - 0.5) > 0.005) q.set("pf", s.pinFraction.toFixed(2));
+  }
+  if ((s.splitBy || pinned) && s.paneCameras?.length) q.set("pv", s.paneCameras.map((c) => `${c.target[0].toFixed(0)},${c.target[1].toFixed(0)},${c.zoom.toFixed(2)}`).join(";"));
   if (!s.matchScale) q.set("ms", "0");
   if (s.comparison) q.set("cmp", s.comparisonLevel ? `${s.comparison}:${s.comparisonLevel}` : s.comparison);
   return q.toString();

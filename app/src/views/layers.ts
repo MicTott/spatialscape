@@ -15,6 +15,9 @@ import { ShapeManager, shapeMode, type CellColor } from "./shapes";
 import { overlayProps, type SampleLayerInputs } from "./types";
 import type { ViewerController } from "./ViewerController";
 
+/** The colour of pins: the frame of a pinned section in the grid, the pin tool's highlight, the pane header's glyph. */
+export const PIN_COLOR: [number, number, number, number] = [255, 196, 64, 230];
+
 interface Centroid {
   code: number;
   x: number;
@@ -407,7 +410,8 @@ export class LayerBuilder {
     ];
   }
 
-  /** Sample outlines (selected / focused / failed) and name labels, one layer each per view. */
+  /** Sample outlines (selected / focused / failed / pinned, every section while the pin tool is armed) and name
+   *  labels, one layer each per view. */
   private frameLayers(s: ViewerState, view: ViewId, L: LayoutResult) {
     const c = this.c;
     const frames: { path: [number, number][]; color: [number, number, number, number]; width: number; dashed: boolean }[] = [];
@@ -419,6 +423,8 @@ export class LayerBuilder {
     const vs = c.viewStates[view];
     const [vw, vh] = c.viewSize(view);
     const taken: [number, number, number, number][] = [];
+    const grid = !c.paneOf(view)?.group; // the pane the pin tool picks from; pinned sections are marked in it
+    const pinMode = s.tool === "pin" && grid && c.kindOf(view) === "spatial";
     for (const [id, p] of L.placements) {
       const smp = c.samplesById.get(id)!;
       const [x0, y0, x1, y1] = p.worldBbox;
@@ -431,6 +437,9 @@ export class LayerBuilder {
         [x0, y0],
       ];
       if (st === "error") frames.push({ path: rect, color: [255, 90, 90, 220], width: 2, dashed: true });
+      else if (pinMode && id === s.pinHover?.sampleId) frames.push({ path: rect, color: PIN_COLOR, width: 2.5, dashed: false });
+      else if (pinMode) frames.push({ path: rect, color: [PIN_COLOR[0], PIN_COLOR[1], PIN_COLOR[2], 150], width: 1.5, dashed: true });
+      else if (grid && s.pins.includes(id)) frames.push({ path: rect, color: PIN_COLOR, width: 1.5, dashed: false });
       else if (id === s.focus) frames.push({ path: rect, color: [64, 196, 255, 200], width: 2, dashed: false });
       else if (id === s.selected) frames.push({ path: rect, color: [230, 237, 243, 140], width: 1.5, dashed: false });
       const base = onePlatform ? smp.name.replace(/\s*\([^()]*\)\s*$/, "") : smp.name;

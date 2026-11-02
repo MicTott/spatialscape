@@ -3,9 +3,10 @@ import { store, useViewer } from "../store/store";
 const ROWS: [string, string][] = [
   ["double-click", "focus a sample (map or list)"],
   ["← / →", "step through samples"],
-  ["Esc", "back to all samples · clear selection · leave lasso"],
+  ["Esc", "back to all samples · clear selection · leave the lasso or pin tool"],
   ["f", "fit the view"],
   ["l", "lasso tool on / off"],
+  ["right-click a section", "pin it to the left or right window; the pin tool (top left) does the same by clicking"],
   ["Enter", "focus the selected sample"],
   ["scroll / drag", "zoom / pan"],
   ["legend click", "toggle a category · double-click: solo"],

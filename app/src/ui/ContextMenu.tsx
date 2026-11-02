@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { store, useViewer } from "../store/store";
 import { clearPins, isPinned, pinSection, pinnedSections, unpinSection } from "../views/pins";
 
-/** The canvas's right-click menu: pin the section under the pointer to the left or right pane, unpin it, or clear
- *  every pin. Closes on a click anywhere, Esc, or scrolling. */
+/** The canvas's right-click menu: pin the section under the pointer to the left or right window, unpin it, or
+ *  clear every pin. Closes on a click anywhere, Esc, or scrolling. */
 export function ContextMenu() {
   const menu = useViewer((s) => s.menu);
   const manifest = useViewer((s) => s.manifest);
@@ -40,7 +40,7 @@ export function ContextMenu() {
       {menu.sampleId && item("Pin right", () => pinSection(menu.sampleId!, "right"))}
       {menu.sampleId && isPinned(menu.sampleId) && item("Unpin", () => unpinSection(menu.sampleId!))}
       {pins.length > 0 && item(pins.length === 1 ? "Clear the pin" : "Clear pins", clearPins, true)}
-      {!menu.sampleId && !pins.length && <div className="ctx-title muted">right-click a section to pin it</div>}
+      {!menu.sampleId && !pins.length && <div className="ctx-title muted">right-click a section to pin it beside the others</div>}
     </div>
   );
 }

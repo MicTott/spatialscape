@@ -176,3 +176,28 @@ describe("molecules", () => {
     g.window = saved;
   });
 });
+
+describe("pinned windows in the URL", () => {
+  it("round-trips the two slots, the left share and the pane cameras; reads the first release's section split", () => {
+    const s = { ...store.getState(), pins: [null, "vis_Br6423"], pinFraction: 0.3, paneCameras: [{ target: [10, 20, 0] as [number, number, number], zoom: -2 }] } as ViewerState;
+    const qs = serialize(s);
+    const q = new URLSearchParams(qs);
+    expect(q.get("pins")).toBe(",vis_Br6423");
+    expect(q.get("pf")).toBe("0.30");
+    expect(q.get("pv")).toBe("10,20,-2.00");
+    expect(q.has("sb")).toBe(false);
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: `?${qs}` } };
+    const back = readUrl();
+    expect(back.pins).toEqual([null, "vis_Br6423"]);
+    expect(back.pinFraction).toBeCloseTo(0.3);
+    expect(back.paneCameras).toEqual([{ target: [10, 20, 0], zoom: -2 }]);
+    g.window = { location: { search: "?sb=section&sg=a,b" } };
+    const old = readUrl();
+    expect(old.pins).toEqual(["a", "b"]);
+    expect(old.splitBy).toBeUndefined();
+    g.window = saved;
+    expect(new URLSearchParams(serialize(store.getState())).has("pins")).toBe(false);
+  });
+});

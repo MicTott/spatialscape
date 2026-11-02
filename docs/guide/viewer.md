@@ -35,12 +35,19 @@ handle to equalise); under about 900 px of width the panes stack vertically. Sec
 the key are not drawn while the canvas is split, and the top bar says how many. The split, the groups shown,
 the handle positions and each pane's camera travel in the URL, so a copied link reopens the same comparison.
 
-Two sections that are not neighbours in the grid can be put side by side the same way: right-click a section
-and choose *Pin left*, then right-click another and choose *Pin right*. Each pinned section gets its own pane,
-with its own camera, scale bar, point size and header select, exactly as the group panes do; *match scale*
-applies too. A third pin adds a third pane, pinning a fourth replaces the far slot, and pinning a section
-already on screen moves it. *Unpin* from the menu ends the split when the last
-pin goes; *Clear pins* removes them all. Pins travel in the URL as `sb=section&sg=<id>,<id>`.
+### Pinned windows: two sections side by side
+
+Two sections that are not neighbours in the grid can be put side by side. The canvas is then two windows,
+left and right. Press the pin tool (top left, next to the lasso): every section in the grid gets a frame, and
+the words next to the pointer say what a click does ("pin Br6423 (Visium) on the left"). The first click opens
+that section in the left window; the grid moves to the right, where you click a second section to fill the
+right window. Right-clicking a section offers the same two choices, *Pin left* and *Pin right*, without arming
+the tool. Each window has its own camera, scale bar, point size and header: a select to swap the section it
+shows, the side it is pinned to, and an × to unpin. With both windows pinned, *match scale* keeps them at the
+same microns per pixel, as the group panes do. Unpinning gives the window back to the grid; the embedding pane
+steps aside while a section is pinned and returns when the last pin goes. A pinned section keeps a frame in
+the grid in the pin colour. The two slots travel in the URL as `pins=<left>,<right>`, with the left window's
+share as `pf`.
 
 ## Color by
 

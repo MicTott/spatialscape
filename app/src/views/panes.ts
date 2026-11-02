@@ -1,19 +1,29 @@
 /**
  * Panes: how the canvas is divided. One pane holds the tissue sections (or one pane per group when the
  * dataset is split by a sample meta key such as condition), plus an optional pane for the embeddings.
+ * Pinning a section opens a second window: the canvas is then two windows, left and right, each holding a
+ * pinned section or the grid of every section (the embedding pane steps aside while a section is pinned).
  * Pure functions of the manifest and the store state, so the layout can be tested without a GL context.
  */
 import type { Manifest, Sample } from "../data/manifest";
-import type { GroupSplit, PaneInfo, SplitState, ViewKind, ViewRect } from "../store/store";
+import type { GroupSplit, PaneInfo, Pins, SplitState, ViewKind, ViewRect } from "../store/store";
 
 export const MAX_GROUP_PANES = 3;
-/** The built-in split key that puts chosen sections side by side ("pin left" / "pin right"): every tissue section is
- *  its own level, so the pane machinery (cameras, point sizes, headers, match scale, the URL) serves pins unchanged. */
+/** The group key of a pinned section's pane. A pinned pane is a group pane of one section ("g0" on the left,
+ *  "g1" on the right), so cameras, point sizes, headers, match scale and the URL serve pins unchanged. */
 export const SECTION_KEY = "section";
+export const NO_PINS: Pins = [null, null];
 
-/** A section's level under a split key: its meta value, or its id under the section key. */
+export function anyPinned(pins: Pins): boolean {
+  return pins.some(Boolean);
+}
+export function bothPinned(pins: Pins): boolean {
+  return pins.every(Boolean);
+}
+
+/** A section's level under a split key: its meta value. */
 export function levelOfSample(s: Sample, key: string): string | undefined {
-  return key === SECTION_KEY ? s.id : s.meta?.[key];
+  return s.meta?.[key];
 }
 export const PANE_HEADER = 30; // px above each pane for the caption, when the canvas is split by a key
 export const STACK_BELOW = 900; // container width (px) under which group panes stack vertically
@@ -28,7 +38,6 @@ export interface Pane {
 
 /** The levels of a meta key: the declared order first, then values that samples carry, in sample order. */
 export function metaLevels(m: Manifest, key: string, samples: Sample[] = m.samples): string[] {
-  if (key === SECTION_KEY) return samples.filter((s) => s.kind !== "embedding").map((s) => s.id);
   const out = [...(m.meta?.find((k) => k.id === key)?.levels ?? [])];
   for (const s of samples) {
     const v = s.meta?.[key];
@@ -73,17 +82,28 @@ export function paneGroups(m: Manifest, split: GroupSplit): string[] {
   return (chosen.length ? chosen : levels).slice(0, MAX_GROUP_PANES);
 }
 
-/** Tissue sections that carry no value of the split key (or a level not shown): drawn in no pane. */
-export function unassignedSamples(m: Manifest, split: GroupSplit | null): Sample[] {
+/** Tissue sections drawn in no pane: with both windows pinned, every other section; under a split, the sections
+ *  that carry no value of the key (or a level not shown). */
+export function unassignedSamples(m: Manifest, split: GroupSplit | null, pins: Pins = NO_PINS): Sample[] {
+  if (anyPinned(pins)) return bothPinned(pins) ? m.samples.filter((s) => s.kind !== "embedding" && !pins.includes(s.id)) : [];
   if (!split) return [];
   const shown = new Set(paneGroups(m, split));
   return m.samples.filter((s) => s.kind !== "embedding" && !shown.has(levelOfSample(s, split.key) ?? ""));
 }
 
-export function computePanes(m: Manifest, split: GroupSplit | null, emb: SplitState): Pane[] {
+export function computePanes(m: Manifest, split: GroupSplit | null, emb: SplitState, pins: Pins = NO_PINS): Pane[] {
   const spatial = m.samples.filter((s) => s.kind !== "embedding");
   const embedding = m.samples.filter((s) => s.kind === "embedding");
   const tissue: Pane[] = [];
+  if (anyPinned(pins)) {
+    // two windows at most: a pinned section in each slot, the grid in the empty one; the split and the embedding wait
+    pins.forEach((id, i) => {
+      const smp = id ? spatial.find((x) => x.id === id) : undefined;
+      if (smp) tissue.push({ id: `g${i}`, kind: "spatial", group: { key: SECTION_KEY, value: smp.id }, samples: [smp] });
+      else if (spatial.length && !tissue.some((p) => p.id === "spatial")) tissue.push({ id: "spatial", kind: "spatial", group: null, samples: spatial });
+    });
+    return tissue;
+  }
   const groups = split && presentLevels(m, split.key).length >= 2 ? paneGroups(m, split) : null;
   if (groups) {
     groups.forEach((value, i) => tissue.push({ id: `g${i}`, kind: "spatial", group: { key: split!.key, value }, samples: spatial.filter((s) => levelOfSample(s, split!.key) === value) }));
@@ -109,19 +129,22 @@ export function groupFractions(n: number, fractions: number[] | null): number[] 
   return new Array(n).fill(1 / Math.max(1, n));
 }
 
-/** Pixel rectangles of the panes inside a width x height container. Group panes get a header strip when the
- *  canvas is split; the embedding pane keeps its width fraction and sits at its side. Under `stacked` the panes
- *  are laid out top to bottom instead. The last pane always takes the rounding remainder. */
-export function paneRects(panes: Pane[], width: number, height: number, split: GroupSplit | null, emb: SplitState, stacked: boolean): Record<string, ViewRect> {
+/** Pixel rectangles of the panes inside a width x height container. Every pane gets a header strip when the
+ *  canvas is split or pinned; the embedding pane keeps its width fraction and sits at its side; pinned windows
+ *  share the width by `pinFraction` (the left one's share). Under `stacked` the panes are laid out top to bottom
+ *  instead. The last pane always takes the rounding remainder. */
+export function paneRects(panes: Pane[], width: number, height: number, split: GroupSplit | null, emb: SplitState, stacked: boolean, pinFraction = 0.5): Record<string, ViewRect> {
   const out: Record<string, ViewRect> = {};
   if (!panes.length) return out;
-  const header = split && panes.some((p) => p.group) ? PANE_HEADER : 0;
+  const header = panes.some((p) => p.group) ? PANE_HEADER : 0;
+  const pinned = panes.some((p) => p.group?.key === SECTION_KEY);
   const embPane = panes.find((p) => p.kind === "embedding");
   const tissue = panes.filter((p) => p.kind !== "embedding");
   const total = stacked ? height : width;
   const embSize = embPane && tissue.length ? Math.round(total * Math.min(0.8, Math.max(0.2, emb.fraction))) : embPane ? total : 0;
   const tissueSize = total - embSize;
-  const shares = groupFractions(tissue.length, tissue.some((p) => p.group) ? (split?.fractions ?? null) : null);
+  const pf = Math.min(0.8, Math.max(0.2, pinFraction));
+  const shares = pinned ? (tissue.length === 2 ? [pf, 1 - pf] : [1]) : groupFractions(tissue.length, tissue.some((p) => p.group) ? (split?.fractions ?? null) : null);
   const sizes = new Map<string, number>();
   if (embPane) sizes.set(embPane.id, embSize);
   let used = 0;
@@ -145,12 +168,13 @@ export function pointScaleFor(scales: Record<string, number>, view: string, kind
 }
 
 export function paneInfo(panes: Pane[], m: Manifest, hidden: Set<string>): PaneInfo[] {
+  const pinned = panes.some((p) => p.group?.key === SECTION_KEY);
   return panes.map((p) => ({
     id: p.id,
     kind: p.kind,
     key: p.group?.key ?? null,
     value: p.group?.value ?? null,
-    label: p.group ? levelName(m, p.group.key, p.group.value) : p.kind === "embedding" ? "snRNA-seq" : "sections",
+    label: p.group ? levelName(m, p.group.key, p.group.value) : p.kind === "embedding" ? "snRNA-seq" : pinned ? "all sections" : "sections",
     count: p.samples.filter((s) => !hidden.has(s.id)).length,
     hidden: p.samples.filter((s) => hidden.has(s.id)).length,
   }));

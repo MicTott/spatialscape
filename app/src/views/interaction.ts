@@ -3,6 +3,7 @@ import { Matrix4 } from "@math.gl/core";
 import type { SampleData } from "../data/cache";
 import { drawCount } from "./lod";
 import { pointScaleFor } from "./panes";
+import { nextPinSide, pinSection } from "./pins";
 import { store, type ViewId, type ViewerState } from "../store/store";
 import { fmtValue } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -16,7 +17,7 @@ export class Interaction {
     el.addEventListener("pointerdown", this.onPointerDown, { signal });
     el.addEventListener("pointerup", this.onPointerUp, { signal });
     el.addEventListener("pointermove", this.onPointerMove, { signal });
-    el.addEventListener("pointerleave", () => store.getState().set({ hover: null }), { signal });
+    el.addEventListener("pointerleave", () => store.getState().set({ hover: null, pinHover: null }), { signal });
     el.addEventListener("click", this.onClick, { signal });
     el.addEventListener("dblclick", this.onDblClick, { signal });
     el.addEventListener("contextmenu", this.onContextMenu, { signal });
@@ -83,11 +84,18 @@ export class Interaction {
       return;
     }
     if (!hit) {
-      if (s.hover) s.set({ hover: null });
+      if (s.hover || s.pinHover) s.set({ hover: null, pinHover: null });
       return;
     }
     if (s.activeView !== hit.view) s.set({ activeView: hit.view });
     const scale = Math.pow(2, c.viewStates[hit.view].zoom);
+    if (s.tool === "pin") {
+      // the pin tool: the hint follows the pointer and names the eligible section under it (those in the grid)
+      const over = this.pinnable(hit.view, hit.world, scale);
+      const cur = s.pinHover;
+      if (!cur || cur.sampleId !== over || Math.abs(cur.x - hit.px[0]) > 1 || Math.abs(cur.y - hit.px[1]) > 1) s.set({ pinHover: { x: hit.px[0], y: hit.px[1], sampleId: over }, hover: null });
+      return;
+    }
     const id = this.sampleAt(hit.view, hit.world[0], hit.world[1], 8 / scale);
     const sd = id ? c.cache.samples.get(id) : undefined;
     const smp = id ? c.samplesById.get(id) : undefined;
@@ -181,10 +189,25 @@ export class Interaction {
     return gene;
   }
 
+  /** A section the pin tool can take from this pane: one of the grid's tissue sections, not a pinned window's own. */
+  private pinnable(view: ViewId, world: [number, number], scale: number): string | null {
+    if (this.c.paneOf(view)?.group) return null;
+    const id = this.sampleAt(view, world[0], world[1], 8 / scale);
+    const smp = id ? this.c.samplesById.get(id) : null;
+    return smp && smp.kind !== "embedding" ? id : null;
+  }
+
   private onClick = (e: MouseEvent) => {
     const hit = this.worldFromEvent(e);
     if (!hit) return;
-    store.getState().set({ selected: this.sampleAt(hit.view, hit.world[0], hit.world[1]), activeView: hit.view });
+    const s = store.getState();
+    if (s.tool === "pin") {
+      const id = this.pinnable(hit.view, hit.world, Math.pow(2, this.c.viewStates[hit.view].zoom));
+      const side = nextPinSide(s.pins);
+      if (id && side) pinSection(id, side);
+      return;
+    }
+    s.set({ selected: this.sampleAt(hit.view, hit.world[0], hit.world[1]), activeView: hit.view });
   };
 
   /** Right-click: the pin menu for the section under the pointer (or the clear-pins menu on empty canvas). */
@@ -228,7 +251,7 @@ export class Interaction {
       else if (s.regions.active) {
         s.setActiveRegion(null);
         s.set({ tool: "pan" });
-      } else if (s.tool === "lasso") s.set({ tool: "pan" });
+      } else if (s.tool !== "pan") s.set({ tool: "pan" });
       else s.setFocus(null);
     } else if (e.key >= "1" && e.key <= "9" && !e.metaKey && !e.ctrlKey && !e.altKey && s.regions.groups[+e.key - 1]) {
       s.setActiveRegion(s.regions.groups[+e.key - 1].id);

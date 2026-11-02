@@ -11,6 +11,7 @@ import { PlatformBar } from "./ui/PlatformBar";
 import { PaneDividers } from "./ui/PaneDividers";
 import { PaneHeaders } from "./ui/PaneHeaders";
 import { ContextMenu } from "./ui/ContextMenu";
+import { PinHint } from "./ui/PinHint";
 import { ScaleBars } from "./ui/ScaleBar";
 import { PointSizeControls } from "./ui/PointSizeControl";
 import { HelpOverlay } from "./ui/HelpOverlay";
@@ -61,6 +62,7 @@ export function App() {
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}${below ? " with-below" : ""}`} ref={mapRef}>
         <PaneHeaders />
         <ContextMenu />
+        <PinHint />
         <PaneDividers mapRef={mapRef} />
         <ScaleBars />
         <PointSizeControls />

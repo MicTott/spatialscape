@@ -94,6 +94,7 @@ function Groups({ genes }: { genes: string[] }) {
   const regions = useViewer((s) => s.regions);
   const layoutMode = useViewer((s) => s.layoutMode);
   const splitBy = useViewer((s) => s.splitBy);
+  const pinned = useViewer((s) => s.pins);
   const focus = useViewer((s) => s.focus);
   const comparison = useViewer((s) => s.comparison);
   const comparisonLevel = useViewer((s) => s.comparisonLevel);
@@ -111,7 +112,8 @@ function Groups({ genes }: { genes: string[] }) {
   const fieldName = (id: string) => manifest.fields.find((f) => f.id === id)?.name ?? id;
   const colorSummary = !color ? "no colour" : color.kind === "gene" ? color.gene : color.kind === "blend" ? "gene sets" : fieldName(color.field);
   const sections = manifest.samples.filter((s) => s.kind !== "embedding").length;
-  const sampleSummary = [`${sections} section${sections === 1 ? "" : "s"}`, splitBy ? `split by ${splitBy.key}` : layoutMode, focus ? `focused on ${manifest.samples.find((s) => s.id === focus)?.name ?? focus}` : null].filter(Boolean).join(" · ");
+  const nPinned = pinned.filter(Boolean).length;
+  const sampleSummary = [`${sections} section${sections === 1 ? "" : "s"}`, nPinned ? `${nPinned} pinned` : splitBy ? `split by ${splitBy.key}` : layoutMode, focus ? `focused on ${manifest.samples.find((s) => s.id === focus)?.name ?? focus}` : null].filter(Boolean).join(" · ");
   const nRegions = regions.groups.reduce((n, g) => n + g.polygons.length, 0);
   const selectionSummary = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : "lasso, regions";
   const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "gene sets" : "other genes grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Manifest, Sample } from "../data/manifest";
-import { computePanes, dragFractions, groupFractions, MIN_PANE_FRACTION, PANE_HEADER, paneGroups, paneRects, presentLevels, splitKeys, unassignedSamples } from "../views/panes";
+import { computePanes, dragFractions, paneInfo, groupFractions, MIN_PANE_FRACTION, PANE_HEADER, paneGroups, paneRects, presentLevels, splitKeys, unassignedSamples } from "../views/panes";
 
 const mk = (id: string, kind: "spatial" | "embedding", meta?: Record<string, string>): Sample => ({
   id,
@@ -101,16 +101,35 @@ describe("panes", () => {
 });
 
 describe("pinned sections", () => {
-  it("are a split by the section key: one pane per pinned section, named after it, the rest not drawn", async () => {
-    const { SECTION_KEY, levelName } = await import("../views/panes");
-    const panes = computePanes(two, { key: SECTION_KEY, groups: ["c", "a"], fractions: null }, { ...emb, on: false });
-    expect(panes.map((p) => [p.id, p.group?.value, p.samples.map((s) => s.id)])).toEqual([
+  const noEmb = { ...emb, on: false };
+  it("one pin opens a second window beside the grid; the embedding steps aside; the split waits", () => {
+    const panes = computePanes(two, { key: "condition", groups: null, fractions: null }, emb, ["c", null]);
+    expect(panes.map((p) => [p.id, p.group?.value ?? null, p.samples.map((s) => s.id)])).toEqual([
       ["g0", "c", ["c"]],
-      ["g1", "a", ["a"]],
+      ["spatial", null, ["a", "b", "c"]],
     ]);
-    expect(presentLevels(two, SECTION_KEY)).toEqual(["a", "b", "c"]);
-    expect(unassignedSamples(two, { key: SECTION_KEY, groups: ["c", "a"], fractions: null }).map((s) => s.id)).toEqual(["b"]);
-    expect(levelName(two, SECTION_KEY, "a")).toBe(two.samples.find((s) => s.id === "a")!.name);
-    expect(splitKeys(two).map((k) => k.id)).not.toContain(SECTION_KEY); // pins come from the menu, not the split select
+    expect(computePanes(two, null, emb, [null, "a"]).map((p) => p.id)).toEqual(["spatial", "g1"]);
+    expect(unassignedSamples(two, null, ["c", null])).toEqual([]);
+  });
+  it("two pins fill both windows and the other sections are not drawn", () => {
+    const panes = computePanes(two, null, noEmb, ["c", "a"]);
+    expect(panes.map((p) => [p.id, p.group?.value])).toEqual([
+      ["g0", "c"],
+      ["g1", "a"],
+    ]);
+    expect(unassignedSamples(two, null, ["c", "a"]).map((s) => s.id)).toEqual(["b"]);
+    expect(paneInfo(panes, two, new Set()).map((p) => p.label)).toEqual([two.samples[2].name, two.samples[0].name]);
+    expect(paneInfo(computePanes(two, null, noEmb, ["c", null]), two, new Set()).map((p) => p.label)).toEqual([two.samples[2].name, "all sections"]);
+  });
+  it("a pin of a section that no longer exists leaves its window to the grid", () => {
+    expect(computePanes(two, null, noEmb, ["gone", "a"]).map((p) => p.id)).toEqual(["spatial", "g1"]);
+  });
+  it("the two windows share the width by the pin fraction, under a header strip", () => {
+    const panes = computePanes(two, null, noEmb, ["c", null]);
+    const r = paneRects(panes, 1000, 500, null, noEmb, false, 0.3);
+    expect([r.g0.x, r.g0.w, r.spatial.x, r.spatial.w]).toEqual([0, 300, 300, 700]);
+    expect(r.g0.y).toBe(PANE_HEADER);
+    const stacked = paneRects(panes, 600, 1000, null, noEmb, true, 0.5);
+    expect([stacked.g0.y, stacked.g0.h, stacked.spatial.y]).toEqual([PANE_HEADER, 500 - PANE_HEADER, 500 + PANE_HEADER]);
   });
 });

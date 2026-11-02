@@ -97,6 +97,8 @@ export interface GroupSplit {
   groups: string[] | null; // the levels shown, in pane order; null = the first three levels
   fractions: number[] | null; // width shares of the group panes once a divider was dragged; null = equal
 }
+/** The two windows of a pinned canvas, left then right: a section id, or null for the grid of every section. */
+export type Pins = [string | null, string | null];
 /** What the UI needs to know about a pane; the controller publishes it with the rectangles. */
 export interface PaneInfo {
   id: ViewId;
@@ -110,7 +112,7 @@ export interface PaneInfo {
 export interface ViewerState {
   groupField: string | null;
   groupStats: GroupStats | null;
-  tool: "pan" | "lasso";
+  tool: "pan" | "lasso" | "pin"; // pin: the next click on a section pins it to the empty window
   cellShapes: CellShapes; // how cells draw once zoomed in: auto (filled, or outlined over an image), dots, filled, outlined
   shapeHint: string | null; // "zoom in for cell shapes" when too many cells are in view to draw their shapes
   molecules: boolean; // individual molecules (transcripts) once zoomed in, when the bundle has them
@@ -128,7 +130,10 @@ export interface ViewerState {
   viewPx: Record<ViewId, number>; // px per µm per pane (scale bar)
   viewRects: Record<ViewId, ViewRect>;
   panes: PaneInfo[]; // the panes on screen, in order
-  splitBy: GroupSplit | null; // tissue sections split into one pane per group (key "section": pinned sections)
+  splitBy: GroupSplit | null; // tissue sections split into one pane per group (suspended while a section is pinned)
+  pins: Pins; // the left and right windows: a pinned section in each slot, or null (the grid takes the empty slot)
+  pinFraction: number; // width share of the left window while a section is pinned
+  pinHover: { x: number; y: number; sampleId: string | null } | null; // the pointer while the pin tool is armed
   menu: { x: number; y: number; sampleId: string | null } | null; // the right-click menu on the canvas, while open
   matchScale: boolean; // group panes share one µm/px: zoom one, the others follow in scale
   paneCameras: ViewState[] | null; // cameras of the group panes, pane order (pv in the URL)
@@ -279,6 +284,9 @@ export const store = createStore<ViewerState>((set, get) => ({
   viewRects: {},
   panes: [],
   splitBy: null,
+  pins: [null, null] as Pins,
+  pinFraction: 0.5,
+  pinHover: null,
   menu: null,
   matchScale: DEFAULTS.matchScale,
   paneCameras: null,

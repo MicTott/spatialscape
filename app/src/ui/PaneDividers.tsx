@@ -27,6 +27,11 @@ export function PaneDividers({ mapRef }: { mapRef: React.RefObject<HTMLDivElemen
         st.set({ split: { ...st.split, fraction: Math.min(0.8, Math.max(0.2, frac)) } });
         return;
       }
+      if (st.pins.some(Boolean)) {
+        // the boundary between the two windows: the left one's share
+        st.set({ pinFraction: Math.min(0.8, Math.max(0.2, pos)) });
+        return;
+      }
       // boundary between two group panes: a fraction of the group area, which excludes the embedding pane
       const groups = st.panes.filter((p) => p.key);
       const first = st.viewRects[groups[0].id];
@@ -55,7 +60,7 @@ export function PaneDividers({ mapRef }: { mapRef: React.RefObject<HTMLDivElemen
 
   if (panes.length < 2) return null;
   const stacked = panes.length > 1 && panes.every((p) => (rects[p.id]?.x ?? 0) === 0);
-  const header = splitBy && panes.some((p) => p.key) ? PANE_HEADER : 0;
+  const header = panes.some((p) => p.key) ? PANE_HEADER : 0;
   return (
     <>
       {panes.slice(1).map((p, i) => {
@@ -67,6 +72,7 @@ export function PaneDividers({ mapRef }: { mapRef: React.RefObject<HTMLDivElemen
         const equalise = () => {
           const st = store.getState();
           if (embBoundary) st.set({ split: { ...st.split, fraction: 0.38 } });
+          else if (st.pins.some(Boolean)) st.set({ pinFraction: 0.5 });
           else if (st.splitBy) st.set({ splitBy: { ...st.splitBy, fractions: null } });
         };
         return (

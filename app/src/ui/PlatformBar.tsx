@@ -1,5 +1,6 @@
 import { store, useViewer } from "../store/store";
-import { SECTION_KEY, splitKeys, unassignedSamples } from "../views/panes";
+import { anyPinned, bothPinned, splitKeys, unassignedSamples } from "../views/panes";
+import { nextPinSide } from "../views/pins";
 
 const ORDER = ["visium", "visium_hd", "xenium", "merfish", "codex", "other"];
 const LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", codex: "CODEX", other: "Other" };
@@ -14,9 +15,12 @@ export function PlatformBar() {
   const tool = useViewer((s) => s.tool);
   const splitBy = useViewer((s) => s.splitBy);
   const matchScale = useViewer((s) => s.matchScale);
+  const pins = useViewer((s) => s.pins);
   if (!manifest) return null;
   const keys = splitKeys(manifest);
-  const left = splitBy ? unassignedSamples(manifest, splitBy).length : 0;
+  const pinned = anyPinned(pins);
+  const left = splitBy || pinned ? unassignedSamples(manifest, splitBy, pins).length : 0;
+  const nextSide = nextPinSide(pins);
   const present = ORDER.filter((p) => manifest.samples.some((s) => s.kind !== "embedding" && s.platform === p));
   const hasEmbedding = manifest.samples.some((s) => s.kind === "embedding");
   // always shown: it also hosts the lasso tool
@@ -24,13 +28,23 @@ export function PlatformBar() {
   const counts = Object.fromEntries(present.map((p) => [p, manifest.samples.filter((s) => s.kind !== "embedding" && s.platform === p).length]));
   const set = store.getState().set;
   return (
-    <div className={`platformbar${splitBy && keys.length ? " below-heads" : ""}`}>
+    <div className={`platformbar${(splitBy && keys.length) || pinned ? " below-heads" : ""}`}>
       <span className="canvas-tools" role="group" aria-label="Canvas tools">
         <button className={tool === "pan" ? "on canvas-tool" : "canvas-tool"} onClick={() => set({ tool: "pan" })} aria-label="Pan and navigate" aria-pressed={tool === "pan"} title="Pan and navigate">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5 19 13l-6.5.6-3.2 6.1L5 3.5Z" /></svg>
         </button>
         <button className={tool === "lasso" ? "on canvas-tool" : "canvas-tool"} onClick={() => set({ tool: "lasso" })} aria-label="Lasso select" aria-pressed={tool === "lasso"} title="Lasso select (L)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 18.2c-2.4-.8-4-2.6-4-5 0-4 3.7-7.2 8.5-7.2S21 9.2 21 13.2s-3.5 6.8-8.1 6.8H9.2c-2.1 0-2.6 2.2-4.5 2.2" /><path d="M8.3 18.2c0 1 .8 1.8 1.8 1.8" /></svg>
+        </button>
+        <button
+          className={tool === "pin" ? "on canvas-tool" : "canvas-tool"}
+          onClick={() => set({ tool: tool === "pin" ? "pan" : "pin" })}
+          disabled={!nextSide}
+          aria-label="Pin a section beside the others"
+          aria-pressed={tool === "pin"}
+          title={!nextSide ? "both windows hold a pinned section: unpin one (× in its header) first" : `Pin a section: click one to open it in its own window on the ${nextSide}`}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3H7l3-3-1-6Z" /><path d="M12 12v9" /></svg>
         </button>
         <button className="canvas-tool" aria-label="Recenter all visible data" title="Recenter all visible data" onClick={() => {
           const c = window.__sscape?.controller;
@@ -58,44 +72,48 @@ export function PlatformBar() {
           ))}
         </>
       )}
-      {keys.length > 0 && (
+      {(keys.length > 0 || pinned) && (
         <span className="split-ctl">
-          <span className="muted">split by</span>
-          <select
-            value={splitBy?.key ?? ""}
-            onChange={(e) => set({ splitBy: e.target.value ? { key: e.target.value, groups: null, fractions: null } : null })}
-            title="one pane per group, side by side, each with its own camera"
-          >
-            <option value="">none</option>
-            {splitBy?.key === SECTION_KEY && <option value={SECTION_KEY}>pinned sections</option>}
-            {keys.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.name}
-              </option>
-            ))}
-          </select>
-          {splitBy && (
+          {keys.length > 0 && (
+            <>
+              <span className="muted">split by</span>
+              <select
+                value={splitBy?.key ?? ""}
+                disabled={pinned}
+                onChange={(e) => set({ splitBy: e.target.value ? { key: e.target.value, groups: null, fractions: null } : null })}
+                title={pinned ? "the canvas shows pinned windows; unpin them to split by a group" : "one pane per group, side by side, each with its own camera"}
+              >
+                <option value="">none</option>
+                {keys.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {(splitBy || bothPinned(pins)) && (
             <button className={matchScale ? "on" : ""} onClick={() => set({ matchScale: !matchScale })} title="keep every pane at the same microns per pixel: zoom one, the others follow in scale">
               match scale
             </button>
           )}
           {left > 0 && (
-            <span className="muted" title={splitBy!.key === SECTION_KEY ? `${left} section${left === 1 ? " is" : "s are"} not pinned; right-click one to pin it, or clear the pins to see them all` : `${left} section${left === 1 ? " has" : "s have"} no ${splitBy!.key} value, or one that is not in a pane; not drawn while the canvas is split`}>
+            <span className="muted" title={pinned ? `${left} section${left === 1 ? " is" : "s are"} not pinned; unpin a window (× in its header) to see them all` : `${left} section${left === 1 ? " has" : "s have"} no ${splitBy!.key} value, or one that is not in a pane; not drawn while the canvas is split`}>
               {left} not shown
             </span>
           )}
         </span>
       )}
       {hasEmbedding && (
-        <span className="split-ctl">
+        <span className="split-ctl" title={pinned ? "the embedding steps aside while a section is pinned; it returns when the pins are cleared" : undefined}>
           <span className="muted">snRNA-seq</span>
-          <button className={!split.on ? "on" : ""} onClick={() => set({ split: { ...split, on: false } })}>
+          <button className={!split.on ? "on" : ""} disabled={pinned} onClick={() => set({ split: { ...split, on: false } })}>
             off
           </button>
-          <button className={split.on && split.side === "left" ? "on" : ""} onClick={() => set({ split: { ...split, on: true, side: "left" } })}>
+          <button className={split.on && split.side === "left" ? "on" : ""} disabled={pinned} onClick={() => set({ split: { ...split, on: true, side: "left" } })}>
             left
           </button>
-          <button className={split.on && split.side === "right" ? "on" : ""} onClick={() => set({ split: { ...split, on: true, side: "right" } })}>
+          <button className={split.on && split.side === "right" ? "on" : ""} disabled={pinned} onClick={() => set({ split: { ...split, on: true, side: "right" } })}>
             right
           </button>
         </span>

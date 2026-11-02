@@ -71,7 +71,10 @@ export class ViewerController {
       layerFilter: ({ layer, viewport }) => (layer.props as any).viewId === viewport.id,
       layers: [],
       useDevicePixels: true,
-      getCursor: ({ isDragging }) => (store.getState().tool === "lasso" ? "crosshair" : isDragging ? "grabbing" : "crosshair"),
+      getCursor: ({ isDragging }) => {
+        const s = store.getState();
+        return s.tool === "lasso" ? "crosshair" : s.tool === "pin" ? (s.pinHover?.sampleId ? "pointer" : "default") : isDragging ? "grabbing" : "crosshair";
+      },
       onAfterRender: () => this.afterRender(),
       onResize: () => this.onResize(),
     });
@@ -159,7 +162,7 @@ export class ViewerController {
     return this.panes.filter((p) => p.group);
   }
   private stacked(): boolean {
-    return this.groupPanes().length >= 2 && this.container.clientWidth < STACK_BELOW;
+    return this.panes.filter((p) => p.kind === "spatial").length >= 2 && this.container.clientWidth < STACK_BELOW;
   }
 
   /** Panes and their pixel rectangles from the manifest and the split state; published for the UI. */
@@ -170,8 +173,8 @@ export class ViewerController {
       this.panes = [];
       return {};
     }
-    this.panes = computePanes(this.manifest, s.splitBy, s.split);
-    return paneRects(this.panes, w, h, s.splitBy, s.split, this.stacked());
+    this.panes = computePanes(this.manifest, s.splitBy, s.split, s.pins);
+    return paneRects(this.panes, w, h, s.splitBy, s.split, this.stacked(), s.pinFraction);
   }
 
   private makeViews(): OrthographicView[] {
@@ -241,12 +244,17 @@ export class ViewerController {
       void this.loader.loadChannels();
       if (s.filter !== prev.filter && s.filter && prev.filter && sameChannel(s.filter, prev.filter)) this.stats.updateFilterHistogram();
     }
-    if (s.splitBy !== prev.splitBy || s.split !== prev.split) {
+    if (s.splitBy !== prev.splitBy || s.split !== prev.split || s.pins !== prev.pins || s.pinFraction !== prev.pinFraction) {
       const regrouped = s.splitBy?.key !== prev.splitBy?.key || s.splitBy?.groups !== prev.splitBy?.groups;
       if (regrouped) this.userMoved.clear(); // new panes start fitted; a dragged divider keeps the cameras
+      if (s.pins !== prev.pins) {
+        // a window whose section changed starts fitted; the grid refits when it gains or loses its neighbour
+        s.pins.forEach((id, i) => id !== prev.pins[i] && this.userMoved.delete(`g${i}`));
+        if (s.pins.some(Boolean) !== prev.pins.some(Boolean)) this.userMoved.delete("spatial");
+      }
       this.applyViews();
       this.relayoutAll(true);
-      if (s.splitBy !== prev.splitBy) {
+      if (s.splitBy !== prev.splitBy || s.pins !== prev.pins) {
         if (s.color?.kind === "field") this.stats.updateCategoryCounts(s.color.field);
         this.stats.updateGroupStats();
         this.stats.updateFilterHistogram();
@@ -256,9 +264,11 @@ export class ViewerController {
     if (s.matchScale !== prev.matchScale && s.matchScale) this.applyMatchScale(this.paneOf(s.activeView)?.group ? s.activeView : undefined);
     if (s.tool !== prev.tool) {
       this.applyViews();
-      if (s.tool === "pan") this.selection.cancelDrawing();
+      if (s.tool !== "lasso") this.selection.cancelDrawing();
+      if (s.tool !== "pin" && s.pinHover) s.set({ pinHover: null });
       this.requestLayers();
     }
+    if (s.pinHover?.sampleId !== prev.pinHover?.sampleId) this.requestLayers();
     if (s.groupField !== prev.groupField) {
       this.generation++;
       void this.loader.loadChannels();

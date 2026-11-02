@@ -40,6 +40,7 @@ export async function activateComparison(id: string | null, levelId?: string | n
   const patch: Partial<ViewerState> = { comparison: id, comparisonLevel: level?.id ?? null };
   if (!markers && info.split && splitKeys(m).some((k) => k.id === info.split) && (!s.splitBy || s.splitBy.key === info.split)) {
     patch.splitBy = { key: info.split, groups: info.groups.slice(0, 3), fractions: s.splitBy?.key === info.split ? s.splitBy.fractions : null };
+    if (s.pins.some(Boolean)) patch.pins = [null, null]; // the comparison's groups take the canvas back from the pinned windows
   }
   const opening = s.comparison !== id;
   const pop = levelPopulation(info, level);

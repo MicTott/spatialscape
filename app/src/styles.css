@@ -1,4 +1,5 @@
 :root {
+  --pin: #ffc440; /* pinned sections: their frame in the grid, the pin tool's highlight, the window header glyph */
   --bg: #0e1116;
   --panel: #191b1f;
   --panel2: #282b31;
@@ -309,6 +310,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .pane-head .key { margin-left: auto; font-size: 11px; }
 .pane-head select { width: auto; padding: 2px 6px; font-size: 12px; font-weight: 600; }
 .pane-head.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); }
+.pane-head .pin-glyph { color: var(--pin); font-size: 14px; line-height: 1; }
+.pane-head .unpin { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 16px; line-height: 1; }
+.pane-head .unpin:hover { color: var(--fg); }
+.pin-hint { position: absolute; pointer-events: none; z-index: 10; padding: 4px 8px; font-size: 12px; border-radius: 6px; background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.pin-hint.over { color: var(--fg); border-color: var(--pin); }
+.canvas-tools .canvas-tool:disabled { opacity: .4; cursor: not-allowed; }
+.split-ctl button:disabled, .split-ctl select:disabled { opacity: .5; cursor: not-allowed; }
 .divider.h { top: auto; bottom: auto; left: 0; right: 0; width: auto; height: 8px; cursor: row-resize; }
 .divider.h::before { top: 3px; bottom: auto; left: 0; right: 0; width: auto; height: 2px; }
 .platformbar select { width: auto; padding: 2px 6px; font-size: 12px; background: var(--panel2); }
