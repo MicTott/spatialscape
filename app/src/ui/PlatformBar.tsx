@@ -15,6 +15,7 @@ export function PlatformBar() {
   const tool = useViewer((s) => s.tool);
   const splitBy = useViewer((s) => s.splitBy);
   const matchScale = useViewer((s) => s.matchScale);
+  const linkPins = useViewer((s) => s.linkPins);
   const pins = useViewer((s) => s.pins);
   if (!manifest) return null;
   const keys = splitKeys(manifest);
@@ -93,7 +94,11 @@ export function PlatformBar() {
             </>
           )}
           {(splitBy || bothPinned(pins)) && (
-            <button className={matchScale ? "on" : ""} onClick={() => set({ matchScale: !matchScale })} title="keep every pane at the same microns per pixel: zoom one, the others follow in scale">
+            <button
+              className={(pinned ? linkPins : matchScale) ? "on" : ""}
+              onClick={() => (pinned ? set({ linkPins: !linkPins }) : set({ matchScale: !matchScale }))}
+              title={pinned ? "keep both windows at the same microns per pixel: zoom one, the other follows in scale (off: each window zooms on its own)" : "keep every pane at the same microns per pixel: zoom one, the others follow in scale"}
+            >
               match scale
             </button>
           )}

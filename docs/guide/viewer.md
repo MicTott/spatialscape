@@ -43,8 +43,8 @@ the words next to the pointer say what a click does ("pin Br6423 (Visium) on the
 that section in the left window; the grid moves to the right, where you click a second section to fill the
 right window. Right-clicking a section offers the same two choices, *Pin left* and *Pin right*, without arming
 the tool. Each window has its own camera, scale bar, point size and header: a select to swap the section it
-shows, the side it is pinned to, and an × to unpin. With both windows pinned, *match scale* keeps them at the
-same microns per pixel, as the group panes do. Unpinning gives the window back to the grid; the embedding pane
+shows, the side it is pinned to, and an × to unpin. Each window zooms and pans on its own; with both pinned,
+*match scale* in the top bar links them at the same microns per pixel when you want that. Unpinning gives the window back to the grid; the embedding pane
 steps aside while a section is pinned and returns when the last pin goes. A pinned section keeps a frame in
 the grid in the pin colour. The two slots travel in the URL as `pins=<left>,<right>`, with the left window's
 share as `pf`.

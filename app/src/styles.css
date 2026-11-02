@@ -452,6 +452,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, [role="button"]
 .sidebar header p { font-size: 13px; line-height: 1.35; color: #afb4bd; margin-bottom: 10px; }
 .sidebar .collapse { top: 11px; width: 25px; height: 32px; left: -25px; border-color: #46494f; border-radius: 8px 0 0 8px; color: #c1c6cd; }
 .sidebar .collapse:hover { background: #34373e; color: #fff; }
+.app.with-heads .sidebar .collapse { top: 41px; } /* under the pane header strip, clear of a window's × */
 .sidebar .group { border-color: #383b41; }
 .sidebar .group-head { min-height: 43px; padding: 8px 7px; gap: 9px; border-radius: 7px; }
 .sidebar .group-head:hover { background: #2a2d32; }

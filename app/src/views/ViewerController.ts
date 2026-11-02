@@ -161,6 +161,11 @@ export class ViewerController {
   groupPanes(): Pane[] {
     return this.panes.filter((p) => p.group);
   }
+  /** Whether the group panes share one scale: the split's match scale, or, with pinned windows, their own link. */
+  private matching(): boolean {
+    const s = store.getState();
+    return s.pins.some(Boolean) ? s.linkPins : s.matchScale;
+  }
   private stacked(): boolean {
     return this.panes.filter((p) => p.kind === "spatial").length >= 2 && this.container.clientWidth < STACK_BELOW;
   }
@@ -261,7 +266,7 @@ export class ViewerController {
       }
       this.requestLayers();
     }
-    if (s.matchScale !== prev.matchScale && s.matchScale) this.applyMatchScale(this.paneOf(s.activeView)?.group ? s.activeView : undefined);
+    if ((s.matchScale !== prev.matchScale || s.linkPins !== prev.linkPins) && this.matching()) this.applyMatchScale(this.paneOf(s.activeView)?.group ? s.activeView : undefined);
     if (s.tool !== prev.tool) {
       this.applyViews();
       if (s.tool !== "lasso") this.selection.cancelDrawing();
@@ -329,7 +334,7 @@ export class ViewerController {
     }
     const s = store.getState();
     if (s.focus && !this.viewOf(s.focus)) s.set({ focus: null }); // the split left the focused section out
-    if (s.matchScale) this.applyMatchScale();
+    if (this.matching()) this.applyMatchScale();
   }
 
   relayout(view: ViewId, animate: boolean, columns?: number) {
@@ -358,7 +363,7 @@ export class ViewerController {
   fitAllPanes(animate: boolean) {
     this.userMoved.clear();
     for (const p of this.panes) this.fitAll(p.id, animate, false);
-    if (store.getState().matchScale) this.applyMatchScale();
+    if (this.matching()) this.applyMatchScale();
   }
 
   focusSample(id: string, animate: boolean) {
@@ -384,7 +389,7 @@ export class ViewerController {
 
   setViewState(view: ViewId, vs: ViewState, propagate = false) {
     this.viewStates = { ...this.viewStates, [view]: vs };
-    if (propagate && this.paneOf(view)?.group && store.getState().matchScale) {
+    if (propagate && this.paneOf(view)?.group && this.matching()) {
       this.applyMatchScale(view); // pushes the state to deck as well
       return;
     }
@@ -420,7 +425,7 @@ export class ViewerController {
     this.viewStates = { ...this.viewStates, [view]: vs };
     const pane = this.paneOf(view);
     if (!inTransition) this.userMoved.add(view);
-    if (!inTransition && pane?.group && store.getState().matchScale) {
+    if (!inTransition && pane?.group && this.matching()) {
       for (const p of this.groupPanes()) {
         if (p.id === view || !this.layouts[p.id]) continue;
         const o = this.viewStates[p.id];
@@ -492,7 +497,7 @@ export class ViewerController {
         if (s.focus && this.viewOf(s.focus) === p.id) this.focusSample(s.focus, false);
         else if (!this.userMoved.has(p.id)) this.fitAll(p.id, false, false);
       }
-      if (s.matchScale && !this.groupPanes().some((p) => this.userMoved.has(p.id))) this.applyMatchScale();
+      if (this.matching() && !this.groupPanes().some((p) => this.userMoved.has(p.id))) this.applyMatchScale();
     }
     this.requestLayers();
   }

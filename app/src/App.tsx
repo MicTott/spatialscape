@@ -35,6 +35,7 @@ export function App() {
   const compareHeight = useViewer((s) => s.compareHeight);
   const below = (hasGenome ? genomeHeight : 0) + (hasCompare ? compareHeight : 0);
   const hasNav = !!useRegistry()?.site;
+  const hasHeads = useViewer((s) => s.panes.some((p) => p.key)); // pane headers across the top of the map
 
   useEffect(() => {
     if (!mapRef.current || ctrlRef.current) return;
@@ -57,7 +58,7 @@ export function App() {
   }, [datasetUrl, status]);
 
   return (
-    <div className={`app${hasNav ? " with-nav" : ""}`} style={{ "--genome-h": `${hasGenome ? genomeHeight : 0}px`, "--below-h": `${below}px` } as React.CSSProperties}>
+    <div className={`app${hasNav ? " with-nav" : ""}${hasHeads ? " with-heads" : ""}`} style={{ "--genome-h": `${hasGenome ? genomeHeight : 0}px`, "--below-h": `${below}px` } as React.CSSProperties}>
       <TopNav />
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}${below ? " with-below" : ""}`} ref={mapRef}>
         <PaneHeaders />

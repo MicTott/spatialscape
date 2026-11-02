@@ -136,6 +136,7 @@ export interface ViewerState {
   pinHover: { x: number; y: number; sampleId: string | null } | null; // the pointer while the pin tool is armed
   menu: { x: number; y: number; sampleId: string | null } | null; // the right-click menu on the canvas, while open
   matchScale: boolean; // group panes share one µm/px: zoom one, the others follow in scale
+  linkPins: boolean; // the two pinned windows share one µm/px; off by default, each window zooms on its own
   paneCameras: ViewState[] | null; // cameras of the group panes, pane order (pv in the URL)
   comparison: string | null; // the comparison shown under the maps (cmp in the URL)
   comparisonLevel: string | null; // its level (a cluster, a cell type) when it has several (cmp=<id>:<level>)
@@ -240,6 +241,7 @@ export const DEFAULTS = {
   showImages: true,
   pointScale: { spatial: 1, embedding: 1 } as Record<string, number>,
   matchScale: true,
+  linkPins: false,
 };
 
 export const store = createStore<ViewerState>((set, get) => ({
@@ -289,6 +291,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   pinHover: null,
   menu: null,
   matchScale: DEFAULTS.matchScale,
+  linkPins: DEFAULTS.linkPins,
   paneCameras: null,
   comparison: null,
   comparisonLevel: null,

@@ -186,6 +186,8 @@ describe("pinned windows in the URL", () => {
     expect(q.get("pf")).toBe("0.30");
     expect(q.get("pv")).toBe("10,20,-2.00");
     expect(q.has("sb")).toBe(false);
+    expect(q.has("pl")).toBe(false); // pinned windows zoom on their own unless linked
+    expect(new URLSearchParams(serialize({ ...s, linkPins: true } as ViewerState)).get("pl")).toBe("1");
     const g = globalThis as any;
     const saved = g.window;
     g.window = { location: { search: `?${qs}` } };
@@ -193,6 +195,8 @@ describe("pinned windows in the URL", () => {
     expect(back.pins).toEqual([null, "vis_Br6423"]);
     expect(back.pinFraction).toBeCloseTo(0.3);
     expect(back.paneCameras).toEqual([{ target: [10, 20, 0], zoom: -2 }]);
+    g.window = { location: { search: `?${qs}&pl=1` } };
+    expect(readUrl().linkPins).toBe(true);
     g.window = { location: { search: "?sb=section&sg=a,b" } };
     const old = readUrl();
     expect(old.pins).toEqual(["a", "b"]);
