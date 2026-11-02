@@ -239,20 +239,12 @@ def test_one_file_per_level_with_its_own_pseudobulk(experiment):
     assert c.nReplicates == 4  # the same four mice in every level
 
 
-def test_a_ranked_list_without_statistics_keeps_its_order(experiment, tmp_path):
+def test_a_ranked_list_without_statistics_is_refused(tmp_path):
+    """A list of genes per cluster with no effect or p-value has nothing to show in the matrix: the build says what to export instead."""
     p = tmp_path / "Supplementary_markers.csv"
     pd.DataFrame({"cluster": ["BM", "BM", "BM", "AI", "AI"], "gene": ["G005", "G001", "G009", "G002", "G003"]}).to_csv(p, index=False)
-    spec = ComparisonSpec(id="paper", kind="markers", results=p)
-    loaded = load_tables(spec)
-    assert "effect" not in loaded.results and loaded.levels == ["BM", "AI"] and loaded.columns == {"gene": "gene", "facet": "cluster"}
-    assert loaded.results["gene"].tolist() == ["G005", "G001", "G009", "G002", "G003"]  # the file's own order is the rank
-    doc = yaml.safe_load(experiment.read_text())
-    doc["comparisons"] = [{"id": "paper", "kind": "markers", "results": str(p)}]
-    experiment.write_text(yaml.safe_dump(doc))
-    r = build_bundle(load_config(experiment), log=quiet)
-    c = r.manifest.comparisons[0]
-    assert not c.hasEffect and not c.hasP and c.facet.field is None and [lv.name for lv in c.levels] == ["BM", "AI"]  # BM / AI are no categories of the data
-    assert validate_local(r.out) == []
+    with pytest.raises(ValueError, match="ranked gene list without statistics"):
+        load_tables(ComparisonSpec(id="paper", kind="markers", results=p))
     with pytest.raises(ValueError, match="needs a column that says which cluster"):
         q = tmp_path / "flat.csv"
         pd.DataFrame({"gene": ["G001"], "avg_log2FC": [1.0], "p_val_adj": [0.1]}).to_csv(q, index=False)
@@ -274,14 +266,14 @@ def test_init_recognises_marker_tables(experiment, tmp_path):
     lst = tmp_path / "paper_markers.csv"
     pd.DataFrame({"cluster": ["BM", "AI"], "gene": ["G005", "G002"]}).to_csv(lst, index=False)
     r = runner.invoke(app, ["init", str(src / "*.h5ad"), str(lst), "--platform", "visium", "--id", "m2", "-o", str(tmp_path / "m2.yaml")])
-    assert r.exit_code == 0 and "a ranked list" in r.output and "kind: markers" in (tmp_path / "m2.yaml").read_text(), r.output
+    assert r.exit_code != 0 and "ranked gene list without statistics" in (r.output + str(r.exception)), r.output  # a list without statistics is refused
 
 
 def test_facet_levels_link_through_the_fields_aliases(tmp_path):
     """The paper's 'AI' domain is the bundle's 'IA' through the vocabulary alias: the level keeps its name, its
     population is the category, and the field is still inferred when most levels match only through aliases."""
     p = tmp_path / "markers.csv"
-    pd.DataFrame({"cluster": ["AI", "AI", "BL", "BL", "Nowhere"], "gene": ["G1", "G2", "G3", "G4", "G5"]}).to_csv(p, index=False)
+    pd.DataFrame({"cluster": ["AI", "AI", "BL", "BL", "Nowhere"], "gene": ["G1", "G2", "G3", "G4", "G5"], "avg_log2FC": [2.0, 1.5, 1.2, 1.0, 0.8], "p_val_adj": [1e-5, 1e-4, 1e-3, 1e-2, 0.04]}).to_csv(p, index=False)
     spec = ComparisonSpec(id="m", kind="markers", results=p)
     fields = {"domain": ["IA", "BL", "CeA"], "celltype": ["Astro"]}
     aliases = {"domain": {"AI": "IA"}}

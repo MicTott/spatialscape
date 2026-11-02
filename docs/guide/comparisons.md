@@ -88,8 +88,9 @@ changing its description applies without a rebuild.
 
 A marker table is a comparison of `kind: markers`: every cluster against the rest, one level per cluster, no
 replicates and no split. Seurat `FindAllMarkers`, scanpy `rank_genes_groups` (as `sc.get.rank_genes_groups_df(adata, None)`),
-presto `wilcoxauc` and scran `findMarkers` (as a data frame with a `group` column) are read as written, and so is
-a plain ranked list with just a cluster and a gene column, as supplementary tables often are:
+presto `wilcoxauc` and scran `findMarkers` (as a data frame with a `group` column) are read as written. Every
+table needs an effect and a p-value per gene; export the full result rather than a top-N list, so that every gene
+has a value in every cluster's column:
 
 ```yaml
 comparisons:
@@ -106,8 +107,9 @@ column holds fractions (Seurat, scanpy) or percentages (presto) is decided once 
 failing that by its range, never value by value; the build's notes say which reading it took.
 When the clusters are the categories of an annotation in the dataset, the levels are linked to it on their own
 (`facet: { field: celltype }` names it), which gives the viewer two things: a **markers** button on each legend row
-that opens that cluster's table, and an *only &lt;cluster&gt;* toggle in the panel that filters the map to the cluster. A
-ranked list without statistics keeps the file's order as the rank. `init markers.csv` recognises both shapes.
+that opens that cluster's table, and an *only &lt;cluster&gt;* toggle in the panel that filters the map to the cluster.
+In the panel, the matrix shows one statistic at a time, chosen from its header: the effect, the adjusted p, the
+percent expressing, or the rank in each cluster's table.
 
 ## One contrast per population
 

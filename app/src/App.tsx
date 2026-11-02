@@ -10,6 +10,7 @@ import { Landing, resolveDataset } from "./ui/Landing";
 import { PlatformBar } from "./ui/PlatformBar";
 import { PaneDividers } from "./ui/PaneDividers";
 import { PaneHeaders } from "./ui/PaneHeaders";
+import { ContextMenu } from "./ui/ContextMenu";
 import { ScaleBars } from "./ui/ScaleBar";
 import { PointSizeControls } from "./ui/PointSizeControl";
 import { HelpOverlay } from "./ui/HelpOverlay";
@@ -59,6 +60,7 @@ export function App() {
       <TopNav />
       <div className={`map${sidebarOpen && hasManifest ? " with-sidebar" : ""}${below ? " with-below" : ""}`} ref={mapRef}>
         <PaneHeaders />
+        <ContextMenu />
         <PaneDividers mapRef={mapRef} />
         <ScaleBars />
         <PointSizeControls />

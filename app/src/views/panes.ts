@@ -7,6 +7,14 @@ import type { Manifest, Sample } from "../data/manifest";
 import type { GroupSplit, PaneInfo, SplitState, ViewKind, ViewRect } from "../store/store";
 
 export const MAX_GROUP_PANES = 3;
+/** The built-in split key that puts chosen sections side by side ("pin left" / "pin right"): every tissue section is
+ *  its own level, so the pane machinery (cameras, point sizes, headers, match scale, the URL) serves pins unchanged. */
+export const SECTION_KEY = "section";
+
+/** A section's level under a split key: its meta value, or its id under the section key. */
+export function levelOfSample(s: Sample, key: string): string | undefined {
+  return key === SECTION_KEY ? s.id : s.meta?.[key];
+}
 export const PANE_HEADER = 30; // px above each pane for the caption, when the canvas is split by a key
 export const STACK_BELOW = 900; // container width (px) under which group panes stack vertically
 export const MIN_PANE_FRACTION = 0.12;
@@ -20,6 +28,7 @@ export interface Pane {
 
 /** The levels of a meta key: the declared order first, then values that samples carry, in sample order. */
 export function metaLevels(m: Manifest, key: string, samples: Sample[] = m.samples): string[] {
+  if (key === SECTION_KEY) return samples.filter((s) => s.kind !== "embedding").map((s) => s.id);
   const out = [...(m.meta?.find((k) => k.id === key)?.levels ?? [])];
   for (const s of samples) {
     const v = s.meta?.[key];
@@ -29,7 +38,14 @@ export function metaLevels(m: Manifest, key: string, samples: Sample[] = m.sampl
 }
 
 export function metaName(m: Manifest, key: string): string {
+  if (key === SECTION_KEY) return "section";
   return m.meta?.find((k) => k.id === key)?.name ?? key;
+}
+
+/** What a level is called: a section's name under the section key, else the level itself. */
+export function levelName(m: Manifest, key: string, level: string): string {
+  if (key !== SECTION_KEY) return level;
+  return m.samples.find((s) => s.id === level)?.name ?? level;
 }
 
 /** Meta keys the tissue sections can be split by: two or more levels among the spatial samples. */
@@ -46,7 +62,7 @@ export function splitKeys(m: Manifest): { id: string; name: string; levels: stri
 /** Levels of a key that at least one tissue section carries, in level order. */
 export function presentLevels(m: Manifest, key: string): string[] {
   const spatial = m.samples.filter((s) => s.kind !== "embedding");
-  const have = new Set(spatial.map((s) => s.meta?.[key]).filter((v): v is string => v != null));
+  const have = new Set(spatial.map((s) => levelOfSample(s, key)).filter((v): v is string => v != null));
   return metaLevels(m, key, spatial).filter((v) => have.has(v));
 }
 
@@ -61,7 +77,7 @@ export function paneGroups(m: Manifest, split: GroupSplit): string[] {
 export function unassignedSamples(m: Manifest, split: GroupSplit | null): Sample[] {
   if (!split) return [];
   const shown = new Set(paneGroups(m, split));
-  return m.samples.filter((s) => s.kind !== "embedding" && !shown.has(s.meta?.[split.key] ?? ""));
+  return m.samples.filter((s) => s.kind !== "embedding" && !shown.has(levelOfSample(s, split.key) ?? ""));
 }
 
 export function computePanes(m: Manifest, split: GroupSplit | null, emb: SplitState): Pane[] {
@@ -70,7 +86,7 @@ export function computePanes(m: Manifest, split: GroupSplit | null, emb: SplitSt
   const tissue: Pane[] = [];
   const groups = split && presentLevels(m, split.key).length >= 2 ? paneGroups(m, split) : null;
   if (groups) {
-    groups.forEach((value, i) => tissue.push({ id: `g${i}`, kind: "spatial", group: { key: split!.key, value }, samples: spatial.filter((s) => s.meta?.[split!.key] === value) }));
+    groups.forEach((value, i) => tissue.push({ id: `g${i}`, kind: "spatial", group: { key: split!.key, value }, samples: spatial.filter((s) => levelOfSample(s, split!.key) === value) }));
   } else if (spatial.length) {
     tissue.push({ id: "spatial", kind: "spatial", group: null, samples: spatial });
   }
@@ -134,7 +150,7 @@ export function paneInfo(panes: Pane[], m: Manifest, hidden: Set<string>): PaneI
     kind: p.kind,
     key: p.group?.key ?? null,
     value: p.group?.value ?? null,
-    label: p.group ? p.group.value : p.kind === "embedding" ? "snRNA-seq" : "sections",
+    label: p.group ? levelName(m, p.group.key, p.group.value) : p.kind === "embedding" ? "snRNA-seq" : "sections",
     count: p.samples.filter((s) => !hidden.has(s.id)).length,
     hidden: p.samples.filter((s) => hidden.has(s.id)).length,
   }));

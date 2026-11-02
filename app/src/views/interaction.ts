@@ -19,6 +19,7 @@ export class Interaction {
     el.addEventListener("pointerleave", () => store.getState().set({ hover: null }), { signal });
     el.addEventListener("click", this.onClick, { signal });
     el.addEventListener("dblclick", this.onDblClick, { signal });
+    el.addEventListener("contextmenu", this.onContextMenu, { signal });
     window.addEventListener("keydown", this.onKey, { signal });
   }
 
@@ -184,6 +185,15 @@ export class Interaction {
     const hit = this.worldFromEvent(e);
     if (!hit) return;
     store.getState().set({ selected: this.sampleAt(hit.view, hit.world[0], hit.world[1]), activeView: hit.view });
+  };
+
+  /** Right-click: the pin menu for the section under the pointer (or the clear-pins menu on empty canvas). */
+  private onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    const hit = this.worldFromEvent(e);
+    const id = hit ? this.sampleAt(hit.view, hit.world[0], hit.world[1], 8 / Math.pow(2, this.c.viewStates[hit.view].zoom)) : null;
+    const smp = id ? this.c.samplesById.get(id) : null;
+    store.getState().set({ menu: { x: e.clientX, y: e.clientY, sampleId: smp && smp.kind !== "embedding" ? id : null } });
   };
 
   private onDblClick = (e: MouseEvent) => {

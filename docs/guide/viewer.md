@@ -35,6 +35,13 @@ handle to equalise); under about 900 px of width the panes stack vertically. Sec
 the key are not drawn while the canvas is split, and the top bar says how many. The split, the groups shown,
 the handle positions and each pane's camera travel in the URL, so a copied link reopens the same comparison.
 
+Two sections that are not neighbours in the grid can be put side by side the same way: right-click a section
+and choose *Pin left*, then right-click another and choose *Pin right*. Each pinned section gets its own pane,
+with its own camera, scale bar, point size and header select, exactly as the group panes do; *match scale*
+applies too. A third pin adds a third pane, pinning a fourth replaces the far slot, and pinning a section
+already on screen moves it. *Unpin* from the menu ends the split when the last
+pin goes; *Clear pins* removes them all. Pins travel in the URL as `sb=section&sg=<id>,<id>`.
+
 ## Color by
 
 - **Gene**: type to search. Values are log-normalized expression; the range slider rescales the colormap, "hide zeros" removes non-expressing cells.

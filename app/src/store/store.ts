@@ -128,7 +128,8 @@ export interface ViewerState {
   viewPx: Record<ViewId, number>; // px per µm per pane (scale bar)
   viewRects: Record<ViewId, ViewRect>;
   panes: PaneInfo[]; // the panes on screen, in order
-  splitBy: GroupSplit | null; // tissue sections split into one pane per group
+  splitBy: GroupSplit | null; // tissue sections split into one pane per group (key "section": pinned sections)
+  menu: { x: number; y: number; sampleId: string | null } | null; // the right-click menu on the canvas, while open
   matchScale: boolean; // group panes share one µm/px: zoom one, the others follow in scale
   paneCameras: ViewState[] | null; // cameras of the group panes, pane order (pv in the URL)
   comparison: string | null; // the comparison shown under the maps (cmp in the URL)
@@ -278,6 +279,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   viewRects: {},
   panes: [],
   splitBy: null,
+  menu: null,
   matchScale: DEFAULTS.matchScale,
   paneCameras: null,
   comparison: null,

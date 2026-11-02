@@ -56,7 +56,7 @@ export function SampleStrip() {
             ))}
           {unassignedSamples(manifest, splitBy).length > 0 && (
             <li className="group">
-              <div className="subhead">no {splitBy.key} · not drawn</div>
+              <div className="subhead">{splitBy.key === "section" ? "not pinned" : `no ${splitBy.key}`} · not drawn</div>
               <ul className="samples">{order.filter((id) => unassignedSamples(manifest, splitBy).some((s) => s.id === id)).map(row)}</ul>
             </li>
           )}

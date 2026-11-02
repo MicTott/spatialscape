@@ -99,3 +99,18 @@ describe("panes", () => {
     expect(clamped[0]).toBeCloseTo(1 / 3); // only the two neighbours move
   });
 });
+
+describe("pinned sections", () => {
+  it("are a split by the section key: one pane per pinned section, named after it, the rest not drawn", async () => {
+    const { SECTION_KEY, levelName } = await import("../views/panes");
+    const panes = computePanes(two, { key: SECTION_KEY, groups: ["c", "a"], fractions: null }, { ...emb, on: false });
+    expect(panes.map((p) => [p.id, p.group?.value, p.samples.map((s) => s.id)])).toEqual([
+      ["g0", "c", ["c"]],
+      ["g1", "a", ["a"]],
+    ]);
+    expect(presentLevels(two, SECTION_KEY)).toEqual(["a", "b", "c"]);
+    expect(unassignedSamples(two, { key: SECTION_KEY, groups: ["c", "a"], fractions: null }).map((s) => s.id)).toEqual(["b"]);
+    expect(levelName(two, SECTION_KEY, "a")).toBe(two.samples.find((s) => s.id === "a")!.name);
+    expect(splitKeys(two).map((k) => k.id)).not.toContain(SECTION_KEY); // pins come from the menu, not the split select
+  });
+});

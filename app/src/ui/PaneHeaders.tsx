@@ -1,5 +1,5 @@
 import { store, useViewer } from "../store/store";
-import { MAX_GROUP_PANES, metaName, PANE_HEADER, presentLevels } from "../views/panes";
+import { MAX_GROUP_PANES, levelName, metaName, PANE_HEADER, presentLevels } from "../views/panes";
 
 /** The caption strip above each pane when the canvas is split by a meta key: the group, its section count, and,
  *  with more groups than panes, a select to choose which group the pane shows. The active pane is underlined. */
@@ -36,7 +36,7 @@ export function PaneHeaders() {
               <select value={p.value!} onChange={(e) => setGroupAt(idx, e.target.value)} title="which group this pane shows">
                 {levels.map((l) => (
                   <option key={l} value={l} disabled={chosen.includes(l) && l !== p.value}>
-                    {l}
+                    {levelName(manifest, splitBy.key, l)}
                   </option>
                 ))}
               </select>

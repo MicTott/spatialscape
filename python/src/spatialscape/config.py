@@ -317,8 +317,8 @@ class ComparisonSpec(_Model):
     supply them, a replicate sheet (id, group, subject). The viewer links each replicate to the sections whose
     `meta.<link>` equals its id and splits the canvas by `split`, the key whose levels are the `groups`.
 
-    `kind: markers` is a marker table (Seurat FindAllMarkers, scanpy rank_genes_groups, scran findMarkers, or a
-    plain ranked list of cluster and gene): every level of its facet column against the rest, no replicates. A
+    `kind: markers` is a marker table (Seurat FindAllMarkers, scanpy rank_genes_groups, scran findMarkers), with an
+    effect and a p-value per gene: every level of its facet column against the rest, no replicates. A
     `{level}` in `results` or `pseudobulk` names one file per level instead of a facet column."""
 
     id: str

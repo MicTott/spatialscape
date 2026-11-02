@@ -54,8 +54,27 @@ export interface MatrixRow {
   gene: string;
   measured: boolean;
 }
-/** The statistic the matrix is read by: the effect when the tables have one, else the rank in each level. */
-export const matrixStat = (m: MatrixData): "effect" | "rank" => (m.stats.effect ? "effect" : "rank");
+/** The statistics the matrix can show, in the order offered: the effect, the adjusted p (or p), the percent
+ *  expressing, and the rank in each level's table. */
+export function matrixStats(m: MatrixData): string[] {
+  const out: string[] = [];
+  if (m.stats.effect) out.push("effect");
+  if (m.stats.padj) out.push("padj");
+  else if (m.stats.p) out.push("p");
+  if (m.stats.pct_in) out.push("pct_in");
+  if (m.stats.rank) out.push("rank");
+  return out;
+}
+/** The statistic the matrix opens on: the effect when the tables have one, else the first available. */
+export const matrixStat = (m: MatrixData): string => matrixStats(m)[0] ?? "rank";
+/** Whether "best first" for a statistic means descending (effect, % expressing) or ascending (p, rank). */
+export const bestIsHigh = (stat: string): boolean => stat === "effect" || stat === "pct_in";
+export function statLabel(stat: string, effect: string): string {
+  return stat === "effect" ? effect : stat === "padj" ? "padj" : stat === "p" ? "p" : stat === "pct_in" ? "% expressing" : "rank";
+}
+export function fmtStat(stat: string, v: number): string {
+  return stat === "effect" ? fmtEffect(v) : stat === "padj" || stat === "p" ? fmtP(v) : stat === "pct_in" ? `${fmtPct(v)}%` : String(v);
+}
 
 export function matrixRows(m: MatrixData): MatrixRow[] {
   return m.genes.map((gene, i) => ({ i, gene, measured: !m.unmeasured.has(i) }));

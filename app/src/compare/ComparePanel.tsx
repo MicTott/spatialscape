@@ -12,7 +12,7 @@ import { COMPARE_BOX_KEY, COMPARE_HEIGHT_KEY, store, useViewer, type GroupRow, t
 import type { LevelInfo } from "../data/manifest";
 import { activateComparison, populationFilterActive, toggleLevelFilter } from "./activate";
 import { loadComparison, loadMatrix } from "./data";
-import { arrangeMatrix, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow, contrastLabel, effectLabel } from "./model";
+import { arrangeMatrix, bestIsHigh, fmtEffect, fmtMean, fmtP, fmtPct, fmtStat, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, matrixStats, pairs, statLabel, ticks, type ComparisonData, type MatrixData, type MatrixRow, contrastLabel, effectLabel } from "./model";
 
 const ROW_H = 22;
 const HEAD_H = 30;
@@ -40,6 +40,7 @@ export function ComparePanel() {
   const [error, setError] = useState<string | null>(null);
   const [desc, setDesc] = useState(true);
   const [query, setQuery] = useState("");
+  const [statChoice, setStatChoice] = useState<string | null>(null);
 
   useEffect(() => {
     setMatrix(null);
@@ -71,10 +72,10 @@ export function ComparePanel() {
     if (facetFieldId && store.getState().groupField !== facetFieldId) store.getState().set({ groupField: facetFieldId });
   }, [facetFieldId]);
 
-  const stat = matrix ? matrixStat(matrix) : "effect";
+  const stat = matrix ? (statChoice && matrix.stats[statChoice] ? statChoice : matrixStat(matrix)) : "effect";
   const col = matrix && level ? matrix.levels.indexOf(level.id) : -1;
   const all = useMemo(() => (matrix ? matrixRows(matrix) : []), [matrix]);
-  const descending = stat === "effect" ? desc : !desc;
+  const descending = bestIsHigh(stat) ? desc : !desc; // `desc` means best first
   const shown = useMemo(() => (matrix ? arrangeMatrix(matrix, all, stat, col, descending, query) : []), [matrix, all, stat, col, descending, query]);
   const gene = color?.kind === "gene" ? color.gene : null;
   const geneRow = gene && matrix ? (matrix.geneIndex.get(gene) ?? null) : null;
@@ -84,7 +85,7 @@ export function ComparePanel() {
     if (!matrix || col < 0) return;
     const cur = store.getState().color;
     if (cur?.kind === "gene" && matrix.geneIndex.has(cur.gene)) return;
-    const first = arrangeMatrix(matrix, matrixRows(matrix), matrixStat(matrix), col, matrixStat(matrix) === "effect", "").find((r) => r.measured);
+    const first = arrangeMatrix(matrix, matrixRows(matrix), matrixStat(matrix), col, bestIsHigh(matrixStat(matrix)), "").find((r) => r.measured);
     if (first) store.getState().setColor({ kind: "gene", gene: first.gene });
   }, [matrix, col]);
 
@@ -190,7 +191,7 @@ export function ComparePanel() {
         <div className="c-matrix">
           {error && <div className="muted small c-note">could not load the comparison: {error}</div>}
           {!matrix && !error && <div className="muted small c-note">loading…</div>}
-          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(catOf(l)))} single={single ? focusLabel : null} effect={effectLabel(info)} />}
+          {matrix && <MatrixTable matrix={matrix} rows={shown} stat={stat} onStat={setStatChoice} gene={gene} focus={level.id} desc={descending} onFocus={focusHeader} labels={info.levels.map((l) => l.name)} colors={info.levels.map((l) => swatch(catOf(l)))} single={single ? focusLabel : null} effect={effectLabel(info)} />}
         </div>
         <div className="c-dist">
           <div className="d-head">
@@ -305,12 +306,11 @@ function footerText(a: {
   }
   const rank = at("rank");
   if (rank != null) parts.push(`rank ${rank} of ${levelGenes} in ${levelName}`);
-  if (!has.effect && !has.padj && !has.p && !has.pct) parts.push("the table carries ranks only, no statistics");
   return { parts, title: `${gene} in ${levelName}` };
 }
 
 /** genes x levels, windowed by rows, scrolling both ways; the gene column stays put, the focused column is lit. */
-function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, labels, colors, single, effect }: { matrix: MatrixData; rows: MatrixRow[]; stat: "effect" | "rank"; gene: string | null; focus: string; desc: boolean; onFocus: (level: string) => void; labels: string[]; colors: (string | undefined)[]; single: string | null; effect: string }) {
+function MatrixTable({ matrix, rows: list, stat, onStat, gene, focus, desc, onFocus, labels, colors, single, effect }: { matrix: MatrixData; rows: MatrixRow[]; stat: string; onStat: (stat: string) => void; gene: string | null; focus: string; desc: boolean; onFocus: (level: string) => void; labels: string[]; colors: (string | undefined)[]; single: string | null; effect: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [h, setH] = useState(300);
@@ -338,6 +338,13 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
     return m || 1;
   }, [a]);
   const nRank = useMemo(() => (stat === "rank" ? Math.max(1, ...Array.from(a).filter((v) => !Number.isNaN(v))) : 1), [a, stat]);
+  const minP = useMemo(() => {
+    if (stat !== "padj" && stat !== "p") return 1;
+    let m = 1;
+    for (let i = 0; i < a.length; i++) if (!Number.isNaN(a[i]) && a[i] > 0) m = Math.min(m, a[i]);
+    return m;
+  }, [a, stat]);
+  const stats = matrixStats(matrix);
   const width = GENE_W + COL_W * k;
   const columns = `${GENE_W}px repeat(${k}, ${COL_W}px)`;
   const first = Math.max(0, Math.floor(top / ROW_H) - 8);
@@ -346,6 +353,11 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
   const tint = (v: number): string | undefined => {
     if (Number.isNaN(v)) return undefined;
     if (stat === "rank") return `color-mix(in srgb, var(--accent) ${Math.round(6 + 22 * (1 - (v - 1) / nRank))}%, transparent)`;
+    if (stat === "padj" || stat === "p") {
+      const strength = minP < 1 ? Math.min(1, Math.log10(Math.max(v, minP)) / Math.log10(minP)) : 0; // 1 at the smallest p
+      return `color-mix(in srgb, var(--accent) ${Math.round(6 + 24 * strength)}%, transparent)`;
+    }
+    if (stat === "pct_in") return `color-mix(in srgb, var(--accent) ${Math.round(6 + 24 * Math.min(1, Math.max(0, v)))}%, transparent)`;
     const pct = Math.round(8 + 26 * Math.min(1, Math.abs(v) / maxAbs));
     return `color-mix(in srgb, var(${v >= 0 ? "--c-up" : "--c-down"}) ${pct}%, transparent)`;
   };
@@ -367,7 +379,20 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
     <div className="m-scroll" ref={ref} onScroll={(e) => setTop((e.target as HTMLDivElement).scrollTop)}>
       {focusCol >= 0 && k > 1 && <div className="m-colbg" style={{ left: GENE_W + focusCol * COL_W, width: COL_W, height: Math.max(HEAD_H + list.length * ROW_H, h) }} />}
       <div className="m-head" style={{ gridTemplateColumns: columns, width }}>
-        <span className="m-gene">{stat === "effect" ? `Gene · ${effect}` : "Gene · rank"}</span>
+        <span className="m-gene">
+          Gene ·
+          {stats.length > 1 ? (
+            <select className="m-stat" value={stat} onChange={(e) => onStat(e.target.value)} title="the statistic shown in every cell">
+              {stats.map((st) => (
+                <option key={st} value={st}>
+                  {statLabel(st, effect)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{statLabel(stat, effect)}</span>
+          )}
+        </span>
         {matrix.levels.map((lv, j) => (
           <button key={lv} className={lv === focus ? "on" : ""} onClick={() => onFocus(lv)} title={single ? `${single}: click to flip the order` : `${labels[j]}: click to sort by it and focus it`}>
             {colors[j] && <i style={{ background: colors[j] }} />}
@@ -393,7 +418,7 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
                 const blank = Number.isNaN(v);
                 return (
                   <span key={lv} className={`m-cell${blank ? " e" : ""}`} style={{ background: tint(v) }} title={detail(r.i, j)}>
-                    {blank ? "·" : stat === "rank" ? v : fmtEffect(v)}
+                    {blank ? "·" : fmtStat(stat, v)}
                   </span>
                 );
               })}

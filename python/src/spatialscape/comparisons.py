@@ -265,9 +265,10 @@ def load_tables(spec: ComparisonSpec, union: set[str] | None = None) -> LoadedCo
             raise KeyError(f"comparison {spec.id}: {e}") from None
     if markers and facet_col is None:
         raise ValueError(f"comparison {spec.id}: a markers table needs a column that says which cluster each gene marks (cluster, celltype, group, ...); name it with `facet: {{ column: <column> }}`")
-    if not markers and "effect" not in cols:
-        raise ValueError(f"comparison {spec.id}: no effect column (log2FoldChange, logFC, avg_log2FC, ...) in {source}; name it with `columns: {{ results: {{ effect: <column> }} }}`")
-    if not markers and "p" not in cols and "padj" not in cols:
+    # every table carries statistics: a bare list of genes per cluster has nothing to show in the matrix
+    if "effect" not in cols:
+        raise ValueError(f"comparison {spec.id}: no effect column (log2FoldChange, logFC, avg_log2FC, summary.logFC, ...) in {source}; name it with `columns: {{ results: {{ effect: <column> }} }}`. A ranked gene list without statistics is not enough: export the full test result (every gene, with its effect and p-value)")
+    if "p" not in cols and "padj" not in cols:
         raise ValueError(f"comparison {spec.id}: no p-value column (pvalue, P.Value, p_val, padj, FDR, ...) in {source}; name one with `columns: {{ results: {{ padj: <column> }} }}`")
     if facet_col is not None:
         cols["facet"] = LEVEL_TOKEN if facet_col == "__level__" else facet_col
@@ -296,9 +297,7 @@ def load_tables(spec: ComparisonSpec, union: set[str] | None = None) -> LoadedCo
     parts = []
     for lvl in levels:
         part = res[res["level"] == lvl]
-        if "effect" in part:
-            part = part.iloc[bh_sorted_order(part)]  # else a ranked list: the file's own order
-        parts.append(part)
+        parts.append(part.iloc[bh_sorted_order(part)])
     res = pd.concat(parts).reset_index(drop=True)
 
     pb: dict[str, pd.DataFrame] | None = None

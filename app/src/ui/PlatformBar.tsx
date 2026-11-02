@@ -1,5 +1,5 @@
 import { store, useViewer } from "../store/store";
-import { splitKeys, unassignedSamples } from "../views/panes";
+import { SECTION_KEY, splitKeys, unassignedSamples } from "../views/panes";
 
 const ORDER = ["visium", "visium_hd", "xenium", "merfish", "codex", "other"];
 const LABEL: Record<string, string> = { visium: "Visium", visium_hd: "Visium HD", xenium: "Xenium", merfish: "MERFISH", codex: "CODEX", other: "Other" };
@@ -67,6 +67,7 @@ export function PlatformBar() {
             title="one pane per group, side by side, each with its own camera"
           >
             <option value="">none</option>
+            {splitBy?.key === SECTION_KEY && <option value={SECTION_KEY}>pinned sections</option>}
             {keys.map((k) => (
               <option key={k.id} value={k.id}>
                 {k.name}
@@ -79,7 +80,7 @@ export function PlatformBar() {
             </button>
           )}
           {left > 0 && (
-            <span className="muted" title={`${left} section${left === 1 ? " has" : "s have"} no ${splitBy!.key} value, or one that is not in a pane; not drawn while the canvas is split`}>
+            <span className="muted" title={splitBy!.key === SECTION_KEY ? `${left} section${left === 1 ? " is" : "s are"} not pinned; right-click one to pin it, or clear the pins to see them all` : `${left} section${left === 1 ? " has" : "s have"} no ${splitBy!.key} value, or one that is not in a pane; not drawn while the canvas is split`}>
               {left} not shown
             </span>
           )}
