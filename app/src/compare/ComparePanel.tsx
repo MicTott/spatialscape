@@ -14,10 +14,10 @@ import { activateComparison, populationFilterActive, toggleLevelFilter } from ".
 import { loadComparison, loadMatrix } from "./data";
 import { arrangeMatrix, fmtEffect, fmtMean, fmtP, fmtPct, groupColors, groupValues, jitter, levelOf, matrixRows, matrixStat, pairs, ticks, type ComparisonData, type MatrixData, type MatrixRow, contrastLabel, effectLabel } from "./model";
 
-const ROW_H = 27;
-const HEAD_H = 34;
-const GENE_W = 132;
-const COL_W = 96;
+const ROW_H = 22;
+const HEAD_H = 30;
+const GENE_W = 104;
+const COL_W = 62;
 const clampHeight = (h: number) => Math.max(200, Math.min(Math.max(200, window.innerHeight - 220), Math.round(h)));
 
 export function ComparePanel() {
@@ -162,7 +162,7 @@ export function ComparePanel() {
   const focusLabel = single ? (markers ? level.name : contrastLabel(info)) : level.name;
   const focusColor = swatch(catOf(level));
   const levelRow = levelData && gene ? (levelData.geneIndex.get(gene) ?? null) : null;
-  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel, levelGenes: level.nGenes, effect: effectLabel(info) });
+  const foot = footerText({ matrix, geneRow, col, levelData, levelRow, markers, levelName: focusLabel, levelGenes: level.nGenes, effect: effectLabel(info), has: { effect: !!info.hasEffect, padj: !!info.hasPadj, p: !!info.hasP, pct: !!info.hasPct }, labels: info.levels.map((l) => l.name) });
   return (
     <div className={`compare${sidebarOpen ? " with-sidebar" : ""}`} style={{ height, bottom }}>
       <div className="c-handle" onPointerDown={onHandleDown} title="drag to resize" />
@@ -250,32 +250,63 @@ export function ComparePanel() {
 }
 
 /** The footer under the plot: the table's numbers for the gene in the focused level. */
-function footerText(a: { matrix: MatrixData | null; geneRow: number | null; col: number; levelData: ComparisonData | null; levelRow: number | null; markers: boolean; levelName: string; levelGenes: number; effect: string }): { parts: string[]; title: string } {
-  const { matrix, geneRow, col, levelData, levelRow, markers, levelName, levelGenes, effect } = a;
-  if (!matrix || geneRow == null) return { parts: [], title: "" };
+function footerText(a: {
+  matrix: MatrixData | null;
+  geneRow: number | null;
+  col: number;
+  levelData: ComparisonData | null;
+  levelRow: number | null;
+  markers: boolean;
+  levelName: string;
+  levelGenes: number;
+  effect: string;
+  has: { effect: boolean; padj: boolean; p: boolean; pct: boolean };
+  labels: string[];
+}): { parts: string[]; title: string } {
+  const { matrix, geneRow, col, levelData, levelRow, markers, levelName, levelGenes, effect, has, labels } = a;
+  if (!matrix || geneRow == null || col < 0) return { parts: [], title: "" };
   const k = matrix.levels.length;
-  const at = (name: string): number | null => {
-    const v = matrix.stats[name]?.[geneRow * k + col];
+  const at = (name: string, j = col): number | null => {
+    const v = matrix.stats[name]?.[geneRow * k + j];
     return v == null || Number.isNaN(v) ? null : v;
   };
+  const gene = matrix.genes[geneRow];
+  const present = ["effect", "padj", "p", "pct_in", "rank"].some((n) => at(n) != null);
   const parts: string[] = [];
+  if (!present) {
+    // the gene is not in this level's table: say so, and where it is
+    const elsewhere = matrix.levels.map((_, j) => j).filter((j) => j !== col && ["effect", "padj", "p", "pct_in", "rank"].some((n) => at(n, j) != null));
+    parts.push(`${gene} is not in ${levelName}'s table`);
+    if (elsewhere.length) {
+      const named = elsewhere.slice(0, 3).map((j) => {
+        const r = at("rank", j);
+        const e = at("effect", j);
+        return `${labels[j]}${r != null ? ` (rank ${r})` : e != null ? ` (${effect} ${fmtEffect(e)})` : ""}`;
+      });
+      parts.push(`in ${named.join(", ")}${elsewhere.length > 3 ? ` and ${elsewhere.length - 3} more` : ""}`);
+    }
+    return { parts, title: `${gene}: not among the genes listed for ${levelName}` };
+  }
   const eff = at("effect");
   if (eff != null) parts.push(`${effect} ${fmtEffect(eff)}`);
+  else if (has.effect) parts.push(`${effect} –`);
   const padj = at("padj");
   const p = at("p");
   if (padj != null) parts.push(`padj ${fmtP(padj)}`);
   else if (p != null) parts.push(`p ${fmtP(p)}`);
+  else if (has.padj || has.p) parts.push("padj –");
   const pin = at("pct_in");
   const pout = at("pct_out");
   if (pin != null || pout != null) parts.push(markers ? `${fmtPct(pin)}% of ${levelName} cells express it, ${fmtPct(pout)}% of the rest` : `expressed in ${fmtPct(pin)}% / ${fmtPct(pout)}%`);
+  else if (has.pct) parts.push("% expressing –");
   if (levelData && levelRow != null && levelData.results.mean) {
     const m = levelData.results.mean[levelRow];
     if (m != null) parts.push(`mean ${fmtMean(m)}`);
   }
   const rank = at("rank");
-  if (!parts.length && rank != null) parts.push(`rank ${rank} of ${levelGenes} in ${levelName}`);
-  if (col < 0) return { parts: [], title: "" };
-  return { parts, title: `${matrix.genes[geneRow]} in ${levelName}` };
+  if (rank != null) parts.push(`rank ${rank} of ${levelGenes} in ${levelName}`);
+  if (!has.effect && !has.padj && !has.p && !has.pct) parts.push("the table carries ranks only, no statistics");
+  return { parts, title: `${gene} in ${levelName}` };
 }
 
 /** genes x levels, windowed by rows, scrolling both ways; the gene column stays put, the focused column is lit. */
@@ -314,8 +345,8 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
   const focusCol = matrix.levels.indexOf(focus);
   const tint = (v: number): string | undefined => {
     if (Number.isNaN(v)) return undefined;
-    if (stat === "rank") return `color-mix(in srgb, var(--accent) ${Math.round(8 + 32 * (1 - (v - 1) / nRank))}%, transparent)`;
-    const pct = Math.round(10 + 40 * Math.min(1, Math.abs(v) / maxAbs));
+    if (stat === "rank") return `color-mix(in srgb, var(--accent) ${Math.round(6 + 22 * (1 - (v - 1) / nRank))}%, transparent)`;
+    const pct = Math.round(8 + 26 * Math.min(1, Math.abs(v) / maxAbs));
     return `color-mix(in srgb, var(${v >= 0 ? "--c-up" : "--c-down"}) ${pct}%, transparent)`;
   };
   const detail = (i: number, j: number): string => {
@@ -334,7 +365,7 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
   };
   return (
     <div className="m-scroll" ref={ref} onScroll={(e) => setTop((e.target as HTMLDivElement).scrollTop)}>
-      {focusCol >= 0 && k > 1 && <div className="m-colbg" style={{ left: GENE_W + focusCol * COL_W, height: Math.max(HEAD_H + list.length * ROW_H, h) }} />}
+      {focusCol >= 0 && k > 1 && <div className="m-colbg" style={{ left: GENE_W + focusCol * COL_W, width: COL_W, height: Math.max(HEAD_H + list.length * ROW_H, h) }} />}
       <div className="m-head" style={{ gridTemplateColumns: columns, width }}>
         <span className="m-gene">{stat === "effect" ? `Gene · ${effect}` : "Gene · rank"}</span>
         {matrix.levels.map((lv, j) => (
@@ -362,7 +393,7 @@ function MatrixTable({ matrix, rows: list, stat, gene, focus, desc, onFocus, lab
                 const blank = Number.isNaN(v);
                 return (
                   <span key={lv} className={`m-cell${blank ? " e" : ""}`} style={{ background: tint(v) }} title={detail(r.i, j)}>
-                    {blank ? "" : stat === "rank" ? v : fmtEffect(v)}
+                    {blank ? "·" : stat === "rank" ? v : fmtEffect(v)}
                   </span>
                 );
               })}
