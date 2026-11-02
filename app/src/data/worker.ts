@@ -12,6 +12,8 @@ import { decodeMoleculeTile, type MoleculeTile } from "./moleculeTiles";
 import { decodeShapeTile, type ShapeTile } from "./shapeTiles";
 import { coalesce, indexByKey, tileKey, type TileEntry, type TileIndexBase } from "./tileIndex";
 
+import { fetchRows, openRows, type CellRows, type RowsHandle } from "./rows";
+
 type U8Array = zarr.Array<"uint8", zarr.FetchStore>;
 type Handles = {
   base: string; // .../samples/<id>
@@ -23,6 +25,7 @@ type Handles = {
   obs: zarr.Group<zarr.FetchStore>;
   cat: Map<string, Uint16Array>;
   num: Map<string, Float32Array>;
+  rows?: Promise<RowsHandle>; // the per-cell row store, opened on first use
 };
 
 const samples = new Map<string, Handles>();
@@ -182,6 +185,15 @@ const api = {
     const data = chunk.data as Uint8Array;
     const out = data.byteOffset === 0 && data.byteLength === data.buffer.byteLength ? data : new Uint8Array(data);
     return Comlink.transfer(out, [out.buffer]);
+  },
+
+  /** The stored values of a few cells from the per-cell row store (bundle row indices, any order). */
+  async getRows(sampleId: string, rows: Uint32Array, chunk: number): Promise<CellRows> {
+    const h = samples.get(sampleId);
+    if (!h) throw new Error(`sample ${sampleId} not open`);
+    h.rows ??= zarr.open.v3(zarr.root(new zarr.FetchStore(`${h.base}/rows.zarr`)), { kind: "group" }).then((g) => openRows(g, chunk));
+    const out = await fetchRows(await h.rows, rows);
+    return Comlink.transfer(out, [out.indptr.buffer, out.gene.buffer, out.value.buffer]);
   },
 
   async getCategorical(sampleId: string, field: string): Promise<Uint16Array> {

@@ -17,6 +17,11 @@
       gmax    float32 (nGenes)        value = gmin + u8 / 255 * (gmax - gmin)
       gmin    float32 (nGenes)        0 for non-negative features; -gmax for features with negative values (quantized symmetrically, zero at the centre)
       f16     float16 (nGenes, nObs)  optional; not read by the viewer
+    rows.zarr/                 Zarr v3 group, optional (`expression.rows`): the same codes one cell at a time
+      indptr  uint32  (nObs + 1)      stored values before each row of the store
+      gene    uint16|uint32 (nnz)     kept-gene index (row of u8) of every stored value; chunk 2^20, shard 32 chunks
+      value   uint8   (nnz)           the u8 code of that value; zeros are not stored
+      pos     uint32  (nObs)          position in the store of bundle row i; rows follow a Morton curve over xy
     obs.zarr/                  Zarr v3 group
       xy      float32 (nObs, 2)       microns, sample-local, y down, origin at bbox min
       order   uint32  (nObs)          source row of each bundle row (rows are shuffled once)
@@ -81,6 +86,7 @@ About 3.5 bytes per molecule on Xenium data. `python/src/spatialscape/molecules.
 ## Design notes
 
 - **Gene-major uint8.** Coloring N cells by a gene needs N bytes. One inner chunk per gene means one range request per gene per sample; shards keep file counts small. Quantization to 8 bits is visually lossless; `gmax` restores the scale for tooltips and statistics.
+- **Rows for tests on a selection.** A differential expression test on a lasso needs every gene of a few cells, the opposite access pattern, so a sample may carry the matrix a second time as sparse rows ordered along a space-filling curve: a compact region is a few contiguous runs of rows, fetched with a few range requests. It is a third of the gene-major store for Visium and far less for sparse platforms; `expression.rows: auto` writes it for tissue sections and not for embeddings.
 - **Shuffled rows.** Any prefix of an array is a uniform random subsample, so the viewer draws the first k rows at overview zoom with no extra data.
 - **Dataset-level vocabularies.** Codes are shared across samples and platforms; the same label has the same code and color everywhere.
 - **Images carry their geometry in the manifest** (`pixelSize` µm per level-0 pixel, `translate` µm), independent of NGFF transforms. NGFF 0.4 / zarr v2 is used because that is what the image renderer reads.

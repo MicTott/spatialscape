@@ -85,6 +85,14 @@ class ExprSpec(_Model):
     normalized: Literal["lognorm", "log1p_cp10k", "raw"] | None = None  # as stored by the source, log1p(CP10k) applied by the build, or values kept as they are
 
 
+class RowsInfo(_Model):
+    """`rows.zarr`: the quantized matrix again as sparse rows (one cell at a time), for tests on a selection."""
+
+    nnz: int  # stored values
+    chunk: int = 1 << 20  # values per inner chunk of `gene` and `value`
+    order: Literal["morton"] = "morton"  # rows follow a Z-order curve over the coordinates
+
+
 class PolygonInfo(_Model):
     """Whole-sample polygons of bundles built before cell shapes were tiled (read by the viewer, never written)."""
 
@@ -175,6 +183,7 @@ class Sample(_Model):
     idBlock: int = 65536
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
     tracks: TracksInfo | None = None  # genome tracks (ATAC samples)
+    rows: RowsInfo | None = None  # the per-cell row store, when the sample was built with one
 
     @model_validator(mode="before")
     @classmethod

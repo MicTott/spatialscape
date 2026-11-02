@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from . import __version__
-from .config import DatasetConfig, MicronsSpec, SampleSpec
+from .config import DatasetConfig, MicronsSpec, SampleSpec, rows_wanted
 from .discover import auto_images, auto_segmentations
 from .manifest import FORMAT_VERSION
 
@@ -132,6 +132,7 @@ def sample_fingerprint(spec: SampleSpec, cfg: DatasetConfig, *, sharded: bool) -
         "fields": fields,
         "shard_genes": cfg.shard_genes,
         "sharded": sharded,
+        "rows": rows_wanted(resolved.expression, resolved.kind),
     }
     return json.loads(json.dumps(fp, sort_keys=True, default=str))  # the same shape the sidecar comes back in
 
@@ -142,6 +143,9 @@ def why_stale(old: dict | None, new: dict) -> str | None:
         return "new"
     if old == new:
         return None
+    if "rows" not in old and {**old, "rows": new["rows"]} == new:
+        # a sidecar from before the row store: a sample that wants one is rebuilt to gain it, one that does not stands
+        return "row store added" if new["rows"] else None
     if old.get("recipe") != new["recipe"] or old.get("format") != new["format"]:
         return "format changed"
     if old.get("inputs") != new["inputs"]:

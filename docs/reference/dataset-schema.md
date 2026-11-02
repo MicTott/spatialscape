@@ -53,7 +53,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `path` | path | required | h5ad, AnnData zarr, SpatialData zarr, or an R object (above) |
 | `table` | string | | SpatialData table key |
 | `coords` | string | `obsm/spatial` | or `obs/x,obs/y` |
-| `expression` | `{layer, normalized, keep_f16}` | `X`, `auto`, `false` | `normalized`: `auto`, `lognorm`, `counts` |
+| `expression` | `{layer, normalized, keep_f16, rows}` | `X`, `auto`, `false`, `auto` | `normalized`: `auto`, `lognorm`, `counts`, `raw`. `rows`: write the per-cell row store that tests on a selection read; `auto` = on for tissue sections, off for embeddings |
 | `microns` | one of `already_microns`, `microns_per_unit`, `spot_diameter_fullres`, `spot_spacing`, `scalefactors_json` | inferred | |
 | `transform` | `{flip: none \| x \| y, rotate: 0 \| 90 \| 180 \| 270}` | none | applied to points and images |
 | `fields` | `{field_id: obs_column}` or `{field_id: {column, scale}}` or `auto` | `{}` | `scale` multiplies a numeric column, e.g. `100` to show a ratio as a percent |

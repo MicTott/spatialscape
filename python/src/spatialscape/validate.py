@@ -237,6 +237,27 @@ def validate_local(root: Path) -> list[str]:
                 _ = u8[0, :]  # exercise one chunk read (and the shard index)
         except Exception as e:
             _problem(p, f"{s.id}: expr.zarr unreadable: {e}")
+        if s.rows is not None:
+            try:
+                rg = zarr.open_group(str(d / "rows.zarr"), mode="r")
+                nnz = int(rg["gene"].shape[0])
+                if nnz != s.rows.nnz or int(rg["value"].shape[0]) != nnz:
+                    _problem(p, f"{s.id}: rows.zarr holds {nnz} values, manifest says {s.rows.nnz}")
+                if tuple(rg["indptr"].shape) != (s.nObs + 1,) or tuple(rg["pos"].shape) != (s.nObs,):
+                    _problem(p, f"{s.id}: rows.zarr indptr/pos length != nObs")
+                else:
+                    ptr = np.asarray(rg["indptr"][:])
+                    if int(ptr[-1]) != nnz or (np.diff(ptr.astype(np.int64)) < 0).any():
+                        _problem(p, f"{s.id}: rows.zarr indptr does not end at nnz or is not monotone")
+                    pos = np.asarray(rg["pos"][:])
+                    if s.nObs and (pos.min() != 0 or pos.max() != s.nObs - 1 or len(np.unique(pos)) != s.nObs):
+                        _problem(p, f"{s.id}: rows.zarr pos is not a permutation of the rows")
+                    if nnz:
+                        gi = np.asarray(rg["gene"][: min(nnz, 4096)])
+                        if gi.max() >= s.nGenes:
+                            _problem(p, f"{s.id}: rows.zarr gene index past nGenes")
+            except Exception as e:
+                _problem(p, f"{s.id}: rows.zarr unreadable: {e}")
         genes = json.loads((d / "genes.json").read_text()) if (d / "genes.json").exists() else None
         if genes is None or len(genes) != s.nGenes:
             _problem(p, f"{s.id}: genes.json missing or length != nGenes")

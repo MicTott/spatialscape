@@ -118,6 +118,7 @@ export interface Sample {
   idBlock: number;
   suggestedGene?: string | null; // most variable gene; the dataset default when none is configured
   tracks?: TracksInfo | null; // genome tracks (ATAC samples)
+  rows?: { nnz: number; chunk: number; order: "morton" } | null; // the per-cell row store, when built with one
 }
 export interface TrackSet {
   field: string;

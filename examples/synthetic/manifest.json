@@ -130,9 +130,34 @@
     "bytes": 35322,
     "medianArea": 2724.95
    },
-   "segmentations": [],
+   "molecules": {
+    "path": "molecules",
+    "count": 51505,
+    "genes": 50,
+    "tile": 512,
+    "tiles": 64,
+    "bytes": 221150
+   },
+   "segmentations": [
+    {
+     "path": "segmentations/nucleus/shapes",
+     "cells": 2000,
+     "vertices": 12000,
+     "tile": 1024,
+     "tiles": 21,
+     "bytes": 32641,
+     "medianArea": 824.27,
+     "id": "nucleus",
+     "name": "Nuclei"
+    }
+   ],
    "idBlock": 65536,
-   "suggestedGene": "G049"
+   "suggestedGene": "G049",
+   "rows": {
+    "nnz": 64860,
+    "chunk": 1048576,
+    "order": "morton"
+   }
   },
   {
    "id": "sampleB",
@@ -199,9 +224,22 @@
     "bytes": 49010,
     "medianArea": 2709.85
    },
+   "molecules": {
+    "path": "molecules",
+    "count": 171489,
+    "genes": 50,
+    "tile": 512,
+    "tiles": 66,
+    "bytes": 689200
+   },
    "segmentations": [],
    "idBlock": 65536,
-   "suggestedGene": "G049"
+   "suggestedGene": "G049",
+   "rows": {
+    "nnz": 56862,
+    "chunk": 1048576,
+    "order": "morton"
+   }
   },
   {
    "id": "umapA",

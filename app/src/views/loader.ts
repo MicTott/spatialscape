@@ -68,7 +68,7 @@ export class Loader {
         const smp = c.samplesById.get(id)!;
         store.getState().set({ sampleStatus: { ...store.getState().sampleStatus, [id]: "loading" } });
         try {
-          await c.cache.openSample(url, id, smp.nObs);
+          await c.cache.openSample(url, id, smp.nObs, smp.rows ?? null);
           store.getState().set({ sampleStatus: { ...store.getState().sampleStatus, [id]: "ready" } });
           void this.loadChannels(id);
         } catch (e) {

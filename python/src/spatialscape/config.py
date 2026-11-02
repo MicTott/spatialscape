@@ -57,6 +57,13 @@ class ExpressionSpec(_Model):
     layer: str = "X"
     normalized: Literal["auto", "lognorm", "counts", "raw"] = "auto"  # raw: keep the values as they are (intensities, scores)
     keep_f16: bool = False
+    # the per-cell row store (rows.zarr) that tests on a selection read: "auto" writes it for tissue sections and
+    # leaves it off for embeddings, whose millions of nuclei would double the bundle for a lasso in a UMAP
+    rows: bool | Literal["auto"] = "auto"
+
+
+def rows_wanted(expression: ExpressionSpec, kind: str) -> bool:
+    return expression.rows if isinstance(expression.rows, bool) else kind == "spatial"
 
 
 class ImageChannelSpec(_Model):

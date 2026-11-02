@@ -6,6 +6,8 @@
 import KDBush from "kdbush";
 import * as Comlink from "comlink";
 import type { DataWorkerAPI } from "./worker";
+import type { CellRows } from "./rows";
+import type { Sample } from "./manifest";
 import { ByteLRU } from "./lru";
 
 export interface BinaryAttr<T extends ArrayBufferView> {
@@ -26,6 +28,7 @@ export interface SampleData {
   num: Map<string, Float32Array>;
   numU8: Map<string, Uint8Array>; // continuous obs quantized to [min,max] -> 0..255
   numRange: Map<string, [number, number]>;
+  rows: Sample["rows"]; // the per-cell row store's manifest entry, when the sample has one
   ids: Map<number, string[]>;
 }
 
@@ -62,13 +65,13 @@ export class DataCache {
     return p;
   }
 
-  openSample(datasetUrl: string, id: string, nObs: number): Promise<SampleData> {
+  openSample(datasetUrl: string, id: string, nObs: number, rows: Sample["rows"] = null): Promise<SampleData> {
     const existing = this.samples.get(id);
     if (existing) return Promise.resolve(existing);
-    return this.dedupe(`open:${id}`, () => this.openSampleNow(datasetUrl, id, nObs));
+    return this.dedupe(`open:${id}`, () => this.openSampleNow(datasetUrl, id, nObs, rows));
   }
 
-  private async openSampleNow(datasetUrl: string, id: string, nObs: number): Promise<SampleData> {
+  private async openSampleNow(datasetUrl: string, id: string, nObs: number, rows: Sample["rows"]): Promise<SampleData> {
     const { genes } = await this.worker.openSample(datasetUrl, id);
     const { xy, index } = await this.worker.getXYAndIndex(id);
     if (xy.length / 2 !== nObs) console.warn(`sample ${id}: manifest says ${nObs} cells, obs.zarr holds ${xy.length / 2}; using the arrays`);
@@ -86,6 +89,7 @@ export class DataCache {
       numU8: new Map(),
       numRange: new Map(),
       ids: new Map(),
+      rows,
     };
     this.samples.set(id, sd);
     return sd;
@@ -121,6 +125,14 @@ export class DataCache {
     const arr = await this.dedupe(`gene:${key}`, () => this.worker.getGene(sampleId, gi));
     this.genes.set(key, arr);
     return this.getGeneSync(sampleId, gene)!;
+  }
+
+  /** The stored values of some cells of a sample (bundle row indices), from its row store; null without one. */
+  async getRows(sampleId: string, rows: Uint32Array): Promise<CellRows | null> {
+    const sd = this.samples.get(sampleId);
+    const info = sd?.rows;
+    if (!sd || !info) return null;
+    return this.worker.getRows(sampleId, Comlink.transfer(rows, [rows.buffer]), info.chunk);
   }
 
   gmax(sampleId: string, gene: string): Promise<number> {

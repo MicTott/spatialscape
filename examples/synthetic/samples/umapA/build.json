@@ -25,12 +25,13 @@
   ],
   "format": 1,
   "inputs": {
-   "/Users/michael.totty/Documents/Web/spatialscape/examples/synthetic-src/sampleA.h5ad": {
-    "mtime_ns": 1791394432212709159,
+   "/private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/synth/sampleA.h5ad": {
+    "mtime_ns": 1793639230842564275,
     "size": 937540
    }
   },
   "recipe": 1,
+  "rows": false,
   "shard_genes": 512,
   "sharded": true,
   "spec": {
@@ -38,7 +39,8 @@
    "expression": {
     "keep_f16": false,
     "layer": "X",
-    "normalized": "auto"
+    "normalized": "auto",
+    "rows": "auto"
    },
    "extent": 5000.0,
    "field_scales": {},
@@ -59,7 +61,7 @@
     "spot_spacing": null
    },
    "molecules": null,
-   "path": "/Users/michael.totty/Documents/Web/spatialscape/examples/synthetic-src/sampleA.h5ad",
+   "path": "/private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/synth/sampleA.h5ad",
    "platform": "snrnaseq",
    "point_radius": null,
    "polygons": null,
@@ -74,6 +76,6 @@
    }
   }
  },
- "built": "2026-10-30T16:31:57+00:00",
+ "built": "2026-11-02T17:07:13+00:00",
  "spatialscape": "0.5.0"
 }

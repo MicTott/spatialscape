@@ -18,7 +18,7 @@ import scipy.sparse as sp
 
 from . import __version__
 from .comparisons import ComparisonAction, plan_comparisons, read_info, samples_signature, write_comparison
-from .config import DatasetConfig, FieldSpec, ImageSpec, PolygonSpec, SampleSpec
+from .config import DatasetConfig, FieldSpec, ImageSpec, PolygonSpec, SampleSpec, rows_wanted
 from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, auto_segmentations, infer_field_spec
 from .expression import column_moments, csr_rows, detect_lognorm, get_matrix, log1p_cp10k, write_expression
@@ -56,6 +56,7 @@ from .manifest import (
     Manifest,
     MetaKey,
     MoleculesInfo,
+    RowsInfo,
     Sample,
     SampleImage,
     SegmentationInfo,
@@ -65,6 +66,7 @@ from .molecules import write_molecules
 from .obs import write_obs
 from .polygons import apply_affine, read_polygon_labels, read_polygon_obsm, read_polygon_table
 from .readers import load_sample
+from .rows import write_rows
 from .shapes import write_shapes
 from .vocab import VocabRegistry, load_palette
 
@@ -682,6 +684,11 @@ def build_sample(
             nums[fid] = arr * np.float32(scale) if scale != 1.0 else arr
     ids = [str(s) for s in adata.obs_names[perm]]
     write_obs(out_dir, xy=xy, order=perm.astype(np.uint32), ids=ids, cats=cats, nums=nums)
+    rows_info = None
+    if rows_wanted(spec.expression, spec.kind):
+        log(f"[{spec.id}] writing per-cell rows")
+        rows_info = RowsInfo(**write_rows(M, out_dir, keep=res.keep, gmin=res.gmin, gmax=res.gmax, xy=xy, perm=perm, log=log))
+        log(f"[{spec.id}] rows: {rows_info.nnz:,} stored values")
     tracks_info = None
     if spec.tracks is not None:
         from .tracks import write_tracks
@@ -743,6 +750,7 @@ def build_sample(
         segmentations=seg_infos,
         suggestedGene=suggested,
         tracks=tracks_info,
+        rows=rows_info,
     )
 
 

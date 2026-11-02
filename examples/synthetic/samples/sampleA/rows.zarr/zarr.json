@@ -1,0 +1,9 @@
+{
+  "attributes": {
+    "order": "morton",
+    "chunk": 1048576,
+    "n_genes": 50
+  },
+  "zarr_format": 3,
+  "node_type": "group"
+}
