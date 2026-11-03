@@ -45,7 +45,7 @@ spatialscape serve demo-src/bundles --open       # viewer + data at http://127.0
 
 ## Your own data
 
-From a folder of your project, from a saved R object (`SpatialExperiment` / `SingleCellExperiment` / Seurat as `.rds` or `.rda`, parsed in Python, no R needed) or from AnnData / SpatialData files:
+From a folder of your project: a saved R object (`SpatialExperiment` / `SingleCellExperiment` / Seurat with its Visium slices, as `.rds` or `.rda`, parsed in Python, no R needed), AnnData files, a SpatialData store (its shapes, labels, points and images included) or a spatialproteomics object:
 
 ```bash
 mkdir -p spatialscape && cd spatialscape

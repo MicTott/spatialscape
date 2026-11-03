@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-11-03)
+
+The release before 1.0: the viewer and the readers are feature-complete for it, and 1.0 will be this with the
+format stated as stable, the documentation finished and every app rebuilt. In short:
+
+- **Two windows.** Pin any two sections side by side, each with its own camera, for the same gene across
+  platforms or donors; the pin tool says what a click does.
+- **A test in the browser.** Draw regions, run a Wilcoxon rank-sum test on the cells themselves, per platform,
+  and read the result in the Compare panel; the per-cell row store that makes it fast is part of every bundle.
+- **Every input whole.** SpatialData stores (zarr v2 and v3) with their shapes, labels, points and images;
+  Seurat objects with their Visium slices; spatialproteomics objects; plus the SpatialExperiment, Seurat and
+  AnnData paths from before.
+- **Comparison tables with statistics**, a matrix that shows one statistic at a time, and the ROIs switch.
+
+In detail:
 
 - **SpatialData stores, whole.** A store's table was all that was read; now the store is read element by element, without the spatialdata package, in zarr v2 (spatialdata up to 0.4) and zarr v3 (0.5 and later): coordinates from the centroids of the element the table annotates (shapes or labels, through the table's instance key), cell shapes from polygon elements or traced from labels, the spot size from a circle element's radius, molecules from the points element, every image that reaches the coordinate system placed by its transformation (zarr v3 pyramids are written again for the viewer), and other polygon elements as segmentations to compare with. `region:`, `points:` and `coordinate_system:` on the entry; `init store.zarr` writes the entry with a note on what it found, and guesses Visium from circles and an imaging platform from molecules. `show(sdata)` takes the object itself. The unused `spatialdata` extra is gone.
 - **Seurat Visium slices.** A Seurat object's `VisiumV1` and `VisiumV2` image slots are read: each slice is a sample with its spot coordinates, SpaceRanger's low-resolution H&E as the object keeps it, and the spot diameter from the scale factors, so the microns need no setting; `SlideSeq`, `STARmap` and `FOV` slots give coordinates. The slice is `obs["image"]`, the sample column when the object has no `sample_id`; `init` and `inspect` report such an object as tissue.
