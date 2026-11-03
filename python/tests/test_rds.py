@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 import yaml
@@ -243,3 +244,35 @@ def test_sample_names_that_sanitize_alike_are_refused():
         _folder_names(["A B", "A/B"])
     with pytest.raises(ValueError):
         _folder_names([".."])
+
+
+def test_seurat_visium_slices_are_spatial_samples(tmp_path):
+    """tiny_seurat_visium.rds (fixtures/make_tiny_seurat_visium.R): slice A is a VisiumV1 image (coordinates data
+    frame), slice B a VisiumV2 one (a Centroids boundary); both carry a 40 x 30 px low-resolution H&E and scale
+    factors with a 110 px spot. Cells sit 200 px apart at 0.5 um per pixel."""
+    x = read_experiment(FIX / "tiny_seurat_visium.rds")
+    assert x.class_name == "Seurat" and x.spatial is not None and x.spatial.shape == (24, 2)
+    assert np.isfinite(x.spatial).all()
+    assert list(x.obs["image"].astype(str)[:1]) == ["A"] and list(x.obs["image"].astype(str)[-1:]) == ["B"]
+    np.testing.assert_allclose(x.spatial[:2], [[400, 300], [600, 300]])  # imagecol = x, imagerow = y
+    np.testing.assert_allclose(x.spatial[12:14], [[3400, 300], [3600, 300]])  # the Centroids' coords
+    assert [(i.sample_id, i.image_id, i.scale_factor, i.rgb.shape) for i in x.images] == [("A", "lowres", 0.05, (30, 40, 3)), ("B", "lowres", 0.05, (30, 40, 3))]
+    assert x.spot_diameter == {"A": 110.0, "B": 110.0}
+    # init sees tissue, one sample per slice; the menu builds unedited
+    runner = CliRunner()
+    y = tmp_path / "vis.yaml"
+    r = runner.invoke(app, ["init", str(FIX / "tiny_seurat_visium.rds"), "--id", "vis", "-o", str(y)])
+    assert r.exit_code == 0, r.output
+    text = y.read_text()
+    assert "kind: embedding" not in text and "sample_col: image" in text
+    from spatialscape.build import build_bundle
+    from spatialscape.config import load_config
+
+    out = tmp_path / "bundle"
+    build_bundle(load_config(y), out, log=lambda *_: None)
+    m = json.loads((out / "manifest.json").read_text())
+    by = {s["name"]: s for s in m["samples"]}
+    assert set(by) == {"A (Visium)", "B (Visium)"} and all(s["kind"] == "spatial" and s["nObs"] == 12 for s in by.values())
+    a = by["A (Visium)"]
+    assert a["pointRadius"] == 27.5 and a["bbox"][2] == pytest.approx(300) and a["bbox"][3] == pytest.approx(200)  # 600 px x 0.5 um
+    assert [i["id"] for i in a["images"]] == ["he"] and a["images"][0]["pixelSize"] == pytest.approx(10.0)  # lowres: 0.5 um / 0.05

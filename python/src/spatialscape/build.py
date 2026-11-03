@@ -67,6 +67,7 @@ from .obs import write_obs
 from .polygons import apply_affine, read_polygon_labels, read_polygon_obsm, read_polygon_table
 from .readers import load_sample
 from .rows import write_rows
+from .sdata import resolve_sample
 from .shapes import write_shapes
 from .vocab import VocabRegistry, load_palette
 
@@ -155,6 +156,12 @@ def suggested_default(samples: list[Sample], genes: list[str]) -> str | None:
     return genes[0] if genes else None
 
 
+def _image_translate(frame: _Frame, im: ImageSpec) -> tuple[float, float]:
+    """Where the image's first pixel sits in the sample frame (um): its offset in coordinate units through the micron
+    rule, its offset in microns, and the shift that put the cells' minimum at the origin."""
+    return (float(im.offset[0] * frame.upu - frame.shift[0] + im.translate[0]), float(im.offset[1] * frame.upu - frame.shift[1] + im.translate[1]))
+
+
 @dataclass(frozen=True)
 class _Frame:
     """The sample's frame: source coordinates to microns, flipped and rotated with the sample, and shifted so the
@@ -216,6 +223,11 @@ def _write_cell_shapes(
         log(f"[{spec.id}] polygons {ps.path}")
         pids, px_, py_ = read_polygon_table(ps.path, ps.id_column, ps.x_column, ps.y_column)
     pxy = frame.points(np.column_stack([px_, py_]), ps.affine)
+    if spec.coords.startswith(("shapes/", "labels/")):  # a store element's polygons are keyed by the table's instance column: name them as obs
+        from .sdata import instance_strings
+
+        by_instance = dict(zip(instance_strings(adata), (str(n) for n in adata.obs_names), strict=True))
+        pids = np.asarray([by_instance.get(p, "") for p in pids], dtype=str)
     st = write_shapes(out_dir, ids, xy, pids, pxy, max_vertices=ps.max_vertices, packed=sharded)
     info = ShapesInfo(
         cells=st.cells,
@@ -371,7 +383,7 @@ def _stream_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _Frame,
     hl, wl = _yx(axes, shapes[level])
     h, w = hl // f, wl // f
     pixel_size = frame.upu / im.pixels_per_unit * (max(h0, w0) / max(h, w)) if im.pixel_size == "auto" else float(im.pixel_size)
-    translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
+    translate = _image_translate(frame, im)
     window = None
     if im.crop:
         (y0, y1, x0, x1), translate = crop_window((h, w), pixel_size, translate, bbox)
@@ -407,7 +419,7 @@ def _passthrough_image(spec: SampleSpec, im: ImageSpec, out_dir: Path, frame: _F
     info = ome_zarr_info(im.path)
     assert info is not None
     pixel_size = frame.upu / im.pixels_per_unit if im.pixel_size == "auto" else float(im.pixel_size)
-    translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
+    translate = _image_translate(frame, im)
     nch = info.channels
     names, colors, given = _channel_meta(spec, im, nch, info.dtype, source_names=info.channel_names, source_colors=info.channel_colors, source_windows=info.channel_windows, log=log)
     chans = None
@@ -433,12 +445,14 @@ def _write_images(
     for im in spec.images:
         log(f"[{spec.id}] image {im.path}")
         rgb = im.kind == "rgb"
-        if ome_zarr_info(im.path) is not None:
+        info = ome_zarr_info(im.path)
+        if info is not None:
             moves = _pixel_moves(spec, im)
-            if not moves:
+            if not moves and info.zarr_format == 2:
                 images.append(_passthrough_image(spec, im, out_dir, frame, log=log))
                 continue
-            log(f"[{spec.id}] note: {im.path.name} is an OME-Zarr pyramid but {', '.join(moves)} moves its pixels, so it is read and written again")
+            why = f"{', '.join(moves)} moves its pixels" if moves else "it is zarr v3, which the viewer's image reader does not open yet"
+            log(f"[{spec.id}] note: {im.path.name} is an OME-Zarr pyramid but {why}, so it is read and written again")
         if streamable(im.path) and not _pixel_moves(spec, im, allow_max_size=True):
             try:
                 images.append(_stream_image(spec, im, out_dir, frame, bbox, log=log))
@@ -480,7 +494,7 @@ def _write_images(
             pixel_size = frame.upu / im.pixels_per_unit * ds
         else:
             pixel_size = float(im.pixel_size)
-        translate = (float(-frame.shift[0] + im.translate[0]), float(-frame.shift[1] + im.translate[1]))
+        translate = _image_translate(frame, im)
         if im.crop:
             img, translate = crop_to_points(img, pixel_size, translate, bbox)
             log(f"[{spec.id}] image cropped to the points: {img.shape[2]} x {img.shape[1]} px")
@@ -588,7 +602,10 @@ def build_sample(
     log: Log = print,
 ) -> Sample:
     log(f"[{spec.id}] reading {spec.path}")
+    spec = resolve_sample(spec)  # a SpatialData store: the region's centroids, shapes, points and spot size
     sinput = load_sample(spec)
+    for note in sinput.notes:
+        log(f"[{spec.id}] {note}")
     adata = sinput.adata
     n_obs = adata.n_obs
     meta = resolve_meta(spec, adata)
@@ -657,7 +674,8 @@ def build_sample(
         _c, h, w = read_image_shape(auto_px_images[0].path, rgb=auto_px_images[0].kind == "rgb")
         if auto_px_images[0].transpose:
             h, w = w, h
-        frame_w, frame_h = w / auto_px_images[0].pixels_per_unit, h / auto_px_images[0].pixels_per_unit
+        im0 = auto_px_images[0]
+        frame_w, frame_h = w / im0.pixels_per_unit + im0.offset[0], h / im0.pixels_per_unit + im0.offset[1]
     else:
         frame_w, frame_h = float(coords[:, 0].max()), float(coords[:, 1].max())
     frame = _Frame(frame_w, frame_h, spec.transform.flip, spec.transform.rotate, upu)

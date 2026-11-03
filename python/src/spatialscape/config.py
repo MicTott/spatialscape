@@ -82,6 +82,9 @@ class ImageSpec(_Model):
     # image pixels per coordinate unit (e.g. tissue_hires_scalef when coords are fullres px)
     pixels_per_unit: float = 1.0
     translate: tuple[float, float] = (0.0, 0.0)  # um, applied after everything else
+    # where the image's first pixel sits in the coordinates' own units (a SpatialData translation), converted with the
+    # sample's micron rule; `translate` is the same offset given in microns
+    offset: tuple[float, float] = (0.0, 0.0)
     # the image's own frame against the coordinates, before the sample's `transform`: swap the axes and/or mirror
     # them, for an object whose coordinates were transposed after the image was written (as polygons.affine does for
     # boundaries: transpose = [0, 1, 0, 1, 0, 0] is `transpose: true`; the anti-transpose [0, -1, Y, -1, 0, X] is
@@ -379,8 +382,16 @@ class SampleSpec(_Model):
     kind: SampleKind = "spatial"
     group: str | None = None
     path: Path
-    table: str | None = None  # SpatialData table key
-    coords: str = "obsm/spatial"  # "obsm/<key>" or "obs/<xcol>,obs/<ycol>"
+    # SpatialData stores: the table, the element it annotates (needed when the table annotates several, e.g. one table
+    # over the slides of a run), the points element whose molecules to tile (default: the only one), and the coordinate
+    # system every element is read in
+    table: str | None = None
+    region: str | None = None
+    points: str | bool | None = None  # an element name; false for none; default: the only one
+    coordinate_system: str = "global"
+    # "obsm/<key>", "obs/<xcol>,obs/<ycol>", or in a SpatialData store "shapes/<name>" / "labels/<name>" (the centroids
+    # of the element the table annotates, the default there)
+    coords: str = "obsm/spatial"
     expression: ExpressionSpec = Field(default_factory=ExpressionSpec)
     microns: MicronsSpec = Field(default_factory=MicronsSpec)
     transform: TransformSpec = Field(default_factory=TransformSpec)

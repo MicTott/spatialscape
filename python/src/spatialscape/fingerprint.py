@@ -77,6 +77,9 @@ def resolve_auto_images(spec: SampleSpec) -> SampleSpec:
     """`images: auto` and the micron rule the files next to the sample imply (SpaceRanger scale factors), resolved
     the way build_sample does it. The scale is taken even when the images are listed or switched off (`images: []`),
     so dropping a section's image does not lose its scale."""
+    from .sdata import resolve_sample
+
+    spec = resolve_sample(spec)  # a SpatialData store fills in its region, shapes, points and spot size first
     auto = spec.images == "auto"
     if not auto and spec.microns != MicronsSpec():
         return spec

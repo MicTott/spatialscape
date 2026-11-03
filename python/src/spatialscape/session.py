@@ -490,6 +490,7 @@ def show(
     layer: str = "X",
     normalized: str = "auto",
     name: str | None = None,
+    table: str | None = None,
     height: int = 650,
     port: int | None = None,
     open_browser: bool = False,
@@ -502,7 +503,8 @@ def show(
 ) -> Session:
     """Show an object in the viewer and return a Session (displays inline in notebooks; `.url` elsewhere).
 
-    data: an AnnData, or a path (h5ad / zarr / SpatialData / .rds / .rda / dataset yaml / built bundle).
+    data: an AnnData, a SpatialData object, or a path (h5ad / zarr / SpatialData store / .rds / .rda / dataset yaml /
+    built bundle). table: which table of a SpatialData object or store to show, when it has several.
     color: an obs column or a gene to color by at first. coords: obsm key (default: spatial, else the UMAP-like
     one). sample: obs column that splits the object into one panel per value. fields: obs columns to expose
     besides the ones picked automatically, a {field id: column} map, or "auto" for every usable column.
@@ -522,6 +524,8 @@ def show(
     t0 = time.perf_counter()
     rows: dict[str, np.ndarray] | None = None
     adata = None
+    if hasattr(data, "tables") and hasattr(data, "shapes") and hasattr(data, "write"):  # a SpatialData object
+        data = _spatialdata_path(data, root, log=log)
     if hasattr(data, "obs") and hasattr(data, "X"):  # an AnnData
         from . import readers
 
@@ -551,7 +555,7 @@ def show(
             else:
                 rows = dict(np.load(out / "rows.npz"))
     else:
-        key, out, built = _show_path(Path(str(data)).expanduser(), root, color=color, coords=coords, sample=sample, platform=platform, log=blog)
+        key, out, built = _show_path(Path(str(data)).expanduser(), root, color=color, coords=coords, sample=sample, platform=platform, log=blog, table=table)
     url_root = _ensure_server(root, port=port)
     url = f"{url_root}?d={key}"
     if open_browser:
@@ -567,7 +571,21 @@ def show(
     return session
 
 
-def _show_path(path: Path, root: Path, *, color, coords, sample, platform, log: Log) -> tuple[str, Path, bool]:
+def _spatialdata_path(sdata, root: Path, *, log: Log) -> Path:
+    """The store behind a SpatialData object: the one it was read from when it holds everything in it, else a copy
+    written under the cache (the viewer reads stores, not Python objects)."""
+    p = getattr(sdata, "path", None)
+    if p and Path(p).is_dir():  # read from a store: that store (write your changes to it first)
+        return Path(p)
+    key = hashlib.sha1(repr(sorted(sdata.tables.keys()) + sorted(getattr(sdata, "shapes", {}).keys()) + [str(p)]).encode()).hexdigest()[:12]
+    out = root / f"sdata-{key}.zarr"
+    if not (out / "zarr.json").exists() and not (out / ".zattrs").exists():
+        log(f"writing the SpatialData object to {out} (the viewer reads stores)")
+        sdata.write(out, overwrite=True)
+    return out
+
+
+def _show_path(path: Path, root: Path, *, color, coords, sample, platform, log: Log, table: str | None = None) -> tuple[str, Path, bool]:
     """A file, store, R object, dataset yaml or built bundle: `init`'s menu when needed, then an incremental build
     keyed by the path, so a rebuilt file shows its new contents and an unchanged one is instant."""
     from .build import build_bundle
@@ -595,7 +613,7 @@ def _show_path(path: Path, root: Path, *, color, coords, sample, platform, log: 
     else:
         menu = work / "dataset.yaml"
         if not menu.exists():
-            write_menu([str(path)], out=menu, dataset_id=key, name=path.name, platform=platform, log=log)
+            write_menu([str(path)], out=menu, dataset_id=key, name=path.name, platform=platform, table=table, log=log)
         cfg = load_config(menu)
         if color or coords or sample:
             log("note: color/coords/sample apply to in-memory objects; for files edit the menu yaml the first call wrote: " + str(menu))

@@ -9,7 +9,8 @@ hand (scale, a file that pools several sections, Ensembl ids, images) are on thi
 | R object: `SpatialExperiment` / `SingleCellExperiment` as `.rds` or `.rda` | `path: spe.rds` | parsed in Python, no R needed; converted once into `bundles/.cache/` ([details](#from-r)) |
 | AnnData `.h5ad` | `path: sample.h5ad` | read with `anndata.read_h5ad` |
 | AnnData Zarr (v2 or v3) | `path: sample.zarr` | read with `anndata.read_zarr` |
-| SpatialData Zarr | `path: store.zarr`, `table: <key>` | the table is read as AnnData; coordinates come from its `obsm` |
+| SpatialData store | `path: store.zarr`, `table: <key>` | the table as AnnData; coordinates, cell polygons, spot circles, molecules and images from the store's own elements ([details](#from-spatialdata)) |
+| Seurat object with Visium slices | `path: seurat.rds` | one sample per slice: its coordinates, SpaceRanger's low-resolution H&E and spot size from the image slot ([details](#from-r)) |
 
 Many files of one kind go in as a single `glob:` entry (`glob: visium/*/adata.h5ad`); `init` writes these entries for you.
 
@@ -66,7 +67,12 @@ all of this, including the fragment files a `ChromatinAssay` was built from. Whe
 barcodes (an object pooled from several runs), two columns are added to `obs`, `fragment_run` and
 `fragment_barcode`, so a `tracks:` block can say `sample_column: fragment_run`, `barcode_column: fragment_barcode`
 and list one fragment file per run; `init` writes that block, commented, with the paths as the object recorded
-them. Seurat spatial images (`VisiumV1` and friends) are not read yet; export those as a `SpatialExperiment`.
+them. A Seurat object with spatial image slots is read as tissue: each `VisiumV1` (Seurat 4) or `VisiumV2`
+(Seurat 5) slice becomes one sample from its spot coordinates, the low-resolution H&E the object keeps and its scale
+factors (the spot diameter sets the microns, so nothing needs to be given), and the cells' slice is `obs["image"]`,
+the sample column when the object has no `sample_id`. `SlideSeq`, `STARmap` and `FOV` slots (Xenium and Vizgen
+loaded into Seurat 5) give coordinates without an image. The object's full-resolution scan is never in it; point
+`images:` at the file for detail.
 
 Settings on the entry:
 
@@ -106,14 +112,34 @@ For 10x outputs, `scanpy.read_visium` / `squidpy.read.visium` leave `uns["spatia
 
 ## From SpatialData
 
+A [SpatialData](https://spatialdata.scverse.org) store is read element by element, without the spatialdata package,
+whether it was written as zarr v2 (spatialdata up to 0.4) or zarr v3 (0.5 and later). `spatialscape init store.zarr
+--table <key>` writes the entry and says what it found:
+
 ```yaml
-- id: s1
-  path: sample.zarr
-  table: table            # which table to use
-  coords: obsm/spatial
+- path: xenium.zarr
+  table: table              # the table to draw; `init` lists them when there are several
+  platform: xenium          # guessed: circles mean Visium spots, a points element an imaging platform
+  # SpatialData store: cell polygons from shapes/cell_boundaries; images morphology_focus; molecules from points/transcripts
 ```
 
-Images inside the SpatialData store are not yet discovered automatically; point `images:` at the OME-Zarr inside the store.
+What `build` takes from the store, in the entry's coordinate system (`coordinate_system: global` unless set):
+
+- **Coordinates** from the element the table annotates (its `region`): the centroids of the shapes, or of the
+  labels, matched to the table through its `instance_key` column. `coords:` still accepts `obsm/spatial` when you
+  want the table's own.
+- **Cell shapes** from a polygon element (`polygons:` is filled in), or traced from a labels element.
+- **Spot size** from a circle element's radius, for Visium (`microns:` is filled in).
+- **Molecules** from the points element, with its feature and cell columns (`points:` names one when the store has
+  several; `points: false` leaves them out).
+- **Images**: every image that reaches the coordinate system, placed by its scale and translation (a rotating or
+  shearing transformation is reduced to those, and the image's name says so). A zarr v3 pyramid is written again
+  as the NGFF 0.4 pyramid the viewer reads; a zarr v2 one is copied as it is.
+- **Other polygon elements** (nuclei, another segmentation) as segmentations to compare with.
+
+A table that annotates several elements (one table over the slides of a run) needs `region:` on the entry, one
+entry per element; `init` writes the first and names the others. In a notebook, `show(sdata)` takes the object
+itself: the store it was read from is used, or the object is written to the cache first.
 
 ## From spatialproteomics
 

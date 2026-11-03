@@ -311,6 +311,9 @@ class EntryMenu:
     n_obs: int | None = None
     meta_candidates: list[tuple[str, str]] = field(default_factory=list)  # obs columns constant within a sample: (column, note)
     layer_files: dict[str, str] = field(default_factory=dict)  # yaml key -> path template of a layer table found next to the matrix
+    store_note: str = ""  # a SpatialData store: the elements build will take from it
+    region: str | None = None  # a SpatialData table over several elements: the one this entry shows
+    regions: list[str] = field(default_factory=list)  # ... and the others
 
     @property
     def assumed(self) -> list[str]:
@@ -454,8 +457,8 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
     x = read_experiment(path)
     cols = describe_columns(x.obs)
     assay = next((k for k in ("logcounts", "data") if k in x.assays), next(iter(x.assays)))
-    if x.class_name == "SpatialExperiment" and x.spatial is not None:
-        sample_col = "sample_id"
+    if x.spatial is not None:
+        sample_col = "sample_id" if "sample_id" in x.obs.columns or "image" not in x.obs.columns else "image"  # a Seurat object's slices
         if sample_col in x.obs.columns:
             samples = [str(v) for v in pd.unique(x.obs[sample_col].astype(str))]
             note = f"{x.class_name}, {len(samples)} sample{'s' if len(samples) != 1 else ''}: {_join(samples)} (one sample per {sample_col})"
@@ -517,13 +520,25 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     n_obs = None
     meta_c: list[tuple[str, str]] = []
     layer_files: dict[str, str] = {}
+    store_note = ""
+    region: str | None = None
+    regions: list[str] = []
     if matches:
         layer_files = layer_files_near(Path(matches[0]))
         pk = peek(Path(matches[0]), table)
         cols = describe_columns(pk.obs)
         layers = list(pk.layers)
         n_obs = len(pk.obs)
-        plat, plat_note = _platform_choice(platform, pk.obs, spatial="spatial" in pk.obsm)
+        spatial = "spatial" in pk.obsm
+        store = _store_entry(Path(matches[0]), table)
+        if store is not None:
+            spatial, guess, store_note, region, regions = store
+            layer_files = {}
+            if platform is None and guess:
+                platform, guess_note = guess, f"guessed from the store's {'circles' if guess == 'visium' else 'molecules'}"
+        plat, plat_note = _platform_choice(platform, pk.obs, spatial=spatial)
+        if store is not None and platform and plat == platform and "guess_note" in dir():
+            plat_note = guess_note
         if plat != "snrnaseq":
             sections = sections_in(pk.obs)
         if sections is None and len(matches) > 1:
@@ -546,8 +561,39 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
         source=_rel(pattern, base), source_note=note, r_object=False, embedding=embedding, platform=plat,
         id_tpl=f"{prefix}_{var}", name_tpl=f"{var} ({label})", group_tpl="snRNA-seq" if embedding else var,
         menu=suggest_fields(cols, skip={c for c, _ in meta_c}), samples=names, table=table, platform_note=plat_note, layers=layers, sections=sections, n_obs=n_obs,
-        meta_candidates=meta_c, layer_files=layer_files if plat != "snrnaseq" else {},
+        meta_candidates=meta_c, layer_files=layer_files if plat != "snrnaseq" else {}, store_note=store_note, region=region, regions=regions,
     )
+
+
+def _store_entry(path: Path, table: str | None) -> tuple[bool, str | None, str, str | None, list[str]] | None:
+    """For a SpatialData store: whether the table's region makes it a tissue sample, a platform guess (circles are
+    Visium spots, molecules mean an imaging platform), a note on the elements build takes, and the region(s)."""
+    from .sdata import _shapes_kind, elements, is_spatialdata, table_link_on_disk
+
+    if not is_spatialdata(path):
+        return None
+    els = elements(path)
+    link = table_link_on_disk(path, table)
+    regions = link.region if isinstance(link.region, list) else [link.region] if link.region else []
+    region = regions[0] if regions else None
+    parts: list[str] = []
+    guess: str | None = None
+    kind = None
+    if region in els["shapes"]:
+        kind = _shapes_kind(path, region)
+        parts.append(f"{'cell polygons' if kind == 'polygon' else 'spot circles' if kind == 'circle' else 'points'} from shapes/{region}")
+        if kind == "circle":
+            guess = "visium"
+    elif region in els["labels"]:
+        parts.append(f"cell outlines traced from labels/{region}")
+    if els["images"]:
+        parts.append(f"image{'s' if len(els['images']) > 1 else ''} {', '.join(els['images'])}")
+    if els["points"]:
+        parts.append(f"molecules from points/{els['points'][0]}" + (f" (also: {', '.join(els['points'][1:])}; set `points:`)" if len(els["points"]) > 1 else ""))
+        guess = guess or "xenium"
+    spatial = region is not None and (region in els["shapes"] or region in els["labels"])
+    note = ("SpatialData store: " + "; ".join(parts)) if parts else "SpatialData store"
+    return spatial, guess, note, region, regions[1:] if len(regions) > 1 else []
 
 
 # ---------------------------------------------------------------- rendering
@@ -582,8 +628,12 @@ def _entry_lines(e: EntryMenu) -> list[str]:
         L.append("    kind: embedding")
         if not e.r_object:
             L.append(_pad("    coords: obsm/X_umap", "the 2-D embedding to draw"))
+    if e.store_note:
+        L.append(f"    # {e.store_note}")
     if e.table:
         L.append(f"    table: {_ystr(e.table)}")
+    if e.regions:
+        L.append(_pad(f"    region: {_ystr(e.region or '')}", f"the table annotates several elements; copy this entry for {_join(e.regions, 4)}"))
     if e.r_object:
         others = [a for a in e.assays if a != e.assay]
         L.append(_pad(f"    assay: {_ystr(e.assay or 'logcounts')}", f"drawn as expression; also in the object: {', '.join(others)}" if others else "drawn as expression"))
@@ -600,7 +650,7 @@ def _entry_lines(e: EntryMenu) -> list[str]:
     notes = {key: note for _name, (key, _what, note) in LAYER_FILES.items()}
     for key, tpl in e.layer_files.items():
         L.append(_pad(f"    {key}: {{ path: {_ystr(tpl)} }}", notes[key]))
-    if not e.layer_files and not e.r_object and not e.embedding and e.platform in IMAGING_PLATFORMS:
+    if not e.layer_files and not e.r_object and not e.embedding and not e.store_note and e.platform in IMAGING_PLATFORMS:
         L.append(_pad("    # polygons: { path: cell_boundaries.parquet, id_column: cell_id, x_column: vertex_x, y_column: vertex_y }", "cell shapes from a long table (Parquet, CSV or TSV)"))
         L.append(_pad("    # molecules: { path: transcripts.parquet, feature_column: feature_name, x_column: x_location, y_column: y_location }", "transcripts; column names per platform in the imaging-based guide"))
     m = e.menu

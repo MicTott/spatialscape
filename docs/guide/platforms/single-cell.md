@@ -63,7 +63,8 @@ and `layout: { columns: 3 }` lines them up:
 A Seurat object (v3 to v5) works like an SCE: the gene assay is drawn as expression (`assay:` picks `data` or
 `counts`), every other assay becomes a set of features next to the genes (`peak: chr1-100-200` for a Signac
 `ChromatinAssay`, `motif:` for chromVAR, `activity:` for gene activity), `meta.data` is `obs`, and `embedding:`
-names a reduction (`wnn.umap`, `umap.rna`). `spatialscape inspect x.rds` lists all of it.
+names a reduction (`wnn.umap`, `umap.rna`). `spatialscape inspect x.rds` lists all of it. An object with Visium
+image slots is tissue, not an embedding: see [Where your data comes from](../preparing-data#from-r).
 
 ## Genome tracks (ATAC and multiome)
 

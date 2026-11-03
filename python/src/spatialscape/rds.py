@@ -88,6 +88,7 @@ class RExperiment:
     feature_sets: list[RFeatureSet] = field(default_factory=list)  # Seurat: the other assays
     fragments: list[RFragments] = field(default_factory=list)  # Seurat: fragment files of a ChromatinAssay
     assay_name: str | None = None  # Seurat: the assay whose layers `assays` holds
+    spot_diameter: dict[str, float] = field(default_factory=dict)  # Seurat Visium: spot diameter in coordinate units, per slice
     notes: list[str] = field(default_factory=list)  # what was left out, for the build log
 
     @property
@@ -506,12 +507,76 @@ def _read_seurat(root: Any, path: Path) -> RExperiment:
             pos = {c: i for i, c in enumerate(rows)}
             emb = emb[[pos[c] for c in cells]] if all(c in pos for c in cells) else emb
         reduced[name] = emb
-    if not _is_null(a.get("images")) and a["images"].get("data"):
-        notes.append("Seurat spatial images are not read yet; export a SpatialExperiment for spatial samples")
+    spatial, images, slice_of, spots, img_notes = _seurat_images(a.get("images"), cells)
+    notes += img_notes
+    if slice_of is not None:
+        obs["image"] = pd.Categorical(slice_of)
     return RExperiment(
-        class_name="Seurat", assays=players, obs=obs, var=pvar, spatial=None, reduced_dims=reduced, images=[],
-        feature_sets=sets, fragments=fragments, assay_name=primary, notes=notes,
+        class_name="Seurat", assays=players, obs=obs, var=pvar, spatial=spatial, reduced_dims=reduced, images=images,
+        feature_sets=sets, fragments=fragments, assay_name=primary, notes=notes, spot_diameter=spots,
     )
+
+
+def _seurat_images(images_obj: Any, cells: list[str]) -> tuple[np.ndarray | None, list[RImage], np.ndarray | None, dict[str, float], list[str]]:
+    """Seurat's spatial image slots: per cell, coordinates in its slice's full-resolution pixel frame and the slice's
+    name; per slice, SpaceRanger's low-resolution H&E (VisiumV1 and VisiumV2 keep that array) with its scale factor,
+    and the spot diameter in pixels. VisiumV1 (Seurat 4): a `coordinates` data frame with imagecol = x, imagerow = y.
+    VisiumV2 and FOV (Seurat 5, Visium, Xenium, Vizgen): a Centroids boundary. SlideSeq and STARmap: a coordinates
+    data frame with x and y columns. Cells of no slice get NaN coordinates."""
+    slices = _named_list(images_obj)
+    if not slices:
+        return None, [], None, {}, []
+    pos = {c: i for i, c in enumerate(cells)}
+    xy = np.full((len(cells), 2), np.nan)
+    which = np.full(len(cells), None, dtype=object)
+    images: list[RImage] = []
+    spots: dict[str, float] = {}
+    notes: list[str] = []
+    for name, img in slices.items():
+        cls = _cls(img) or "?"
+        ia = _attrs(img)
+        ids: list[str | None] = []
+        cxy: np.ndarray | None = None
+        radius: float | None = None
+        rn, cols = _r_dataframe(ia.get("coordinates")) if "coordinates" in ia else (None, {})
+        xcol = next((k for k in ("imagecol", "x", "xcoord") if k in cols), None)
+        ycol = next((k for k in ("imagerow", "y", "ycoord") if k in cols), None)
+        if rn and xcol and ycol:
+            ids = list(rn)
+            cxy = np.column_stack([np.asarray(cols[xcol]["data"], dtype=np.float64), np.asarray(cols[ycol]["data"], dtype=np.float64)])
+        elif "boundaries" in ia:
+            bounds = _named_list(ia["boundaries"])
+            cent = bounds.get("centroids") or next((v for v in bounds.values() if _cls(v) == "Centroids"), None)
+            ca = _attrs(cent) if cent is not None else {}
+            m = _dense(ca.get("coords"))
+            ids = _strings(ca.get("cells"))
+            if m is not None and ids and m.shape[0] == len(ids):
+                cxy = m[:, :2]
+                r = _attrs(ca.get("radius")) is not None and ca["radius"].get("data")
+                radius = float(np.asarray(r)[0]) if r is not None and len(np.asarray(r)) else None
+        if cxy is None or len(ids) != len(cxy):
+            notes.append(f"image {name!r} ({cls}): no cell coordinates found, so its cells have no position")
+            continue
+        for k, c in enumerate(ids):
+            i = pos.get(str(c))
+            if i is not None:
+                xy[i] = cxy[k]
+                which[i] = name
+        sf: dict[str, float] = {}
+        for k, v in _named_list(ia.get("scale.factors")).items():
+            vals = np.asarray(v.get("data", []), dtype=np.float64) if isinstance(v, dict) else np.asarray([])
+            if vals.size and np.isfinite(vals[0]):
+                sf[k] = float(vals[0])
+        spot = sf.get("spot") or (2 * radius if radius else None)
+        if spot:
+            spots[name] = spot
+        arr = _dense(ia.get("image"))
+        if arr is not None and arr.ndim == 3 and arr.shape[2] >= 3:
+            rgb = np.clip(arr[:, :, :3] * (255.0 if arr.max() <= 1.0 else 1.0), 0, 255).astype(np.uint8)
+            images.append(RImage(sample_id=name, image_id="lowres", scale_factor=sf.get("lowres", 1.0), rgb=rgb))
+    if not np.isfinite(xy).any():
+        return None, images, None, spots, notes
+    return xy, images, which, spots, notes
 
 
 # ---------------------------------------------------------------- public API

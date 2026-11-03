@@ -142,6 +142,9 @@ def source_channel_names(path: Path) -> list[str] | None:
     path = Path(path)
     if path.suffix.lower() in TIFF_SUFFIXES:
         return ome_channel_names(path)
+    info = ome_zarr_info(path)
+    if info is not None:  # an OME-Zarr pyramid written again (zarr v3, or a setting that moves pixels): its omero labels
+        return info.channel_names
     if not is_zarr_array(path):
         return None
     arr = zarr.open_array(str(path), mode="r")

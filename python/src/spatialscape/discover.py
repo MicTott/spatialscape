@@ -79,6 +79,10 @@ def shared_image(png: Path, limit: int = 64) -> bool:
 
 def auto_images(sample: SampleSpec) -> tuple[list[ImageSpec], MicronsSpec | None]:
     """Images next to the sample path. Returns (images, microns override or None)."""
+    from .sdata import is_spatialdata, store_images
+
+    if is_spatialdata(sample.path):  # the store's own images, in the sample's coordinate system
+        return (store_images(sample) if sample.kind == "spatial" else []), None
     d = Path(sample.path)
     d = d if d.is_dir() and not (d / ".zattrs").exists() and not (d / "zarr.json").exists() else d.parent
     if sample.kind != "spatial":
@@ -132,6 +136,11 @@ def auto_segmentations(sample: SampleSpec) -> list[SegmentationSpec]:
     found next to the polygons' cell_boundaries.parquet (the same run, the same frame)."""
     if isinstance(sample.segmentations, list):
         return sample.segmentations
+    from .sdata import is_spatialdata, store_segmentations
+
+    if is_spatialdata(sample.path):  # the store's other polygon elements
+        region = sample.coords.split("/", 1)[1] if sample.coords.startswith(("shapes/", "labels/")) else sample.region
+        return store_segmentations(sample, region) if sample.kind == "spatial" else []
     p = sample.polygons.path if sample.polygons is not None else None
     if p is not None and p.name == "cell_boundaries.parquet" and (p.with_name("nucleus_boundaries.parquet")).is_file():
         return [SegmentationSpec(id="nucleus", name="Nuclei", path=p.with_name("nucleus_boundaries.parquet"))]

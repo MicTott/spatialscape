@@ -51,8 +51,11 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `kind` | `spatial` or `embedding` | `spatial` | |
 | `group` | string | | donor or batch label |
 | `path` | path | required | h5ad, AnnData zarr, SpatialData zarr, or an R object (above) |
-| `table` | string | | SpatialData table key |
-| `coords` | string | `obsm/spatial` | or `obs/x,obs/y` |
+| `table` | string | | SpatialData store: the table to draw |
+| `region` | string | the table's | SpatialData store: the element the table annotates, when it annotates several |
+| `points` | string, `false` | the only one | SpatialData store: the points element tiled as molecules; `false` for none |
+| `coordinate_system` | string | `global` | SpatialData store: the coordinate system every element is read in |
+| `coords` | string | `obsm/spatial` | or `obs/x,obs/y`; in a store `shapes/<name>` or `labels/<name>` (the element's centroids, the default there) |
 | `expression` | `{layer, normalized, keep_f16, rows}` | `X`, `auto`, `false`, `auto` | `normalized`: `auto`, `lognorm`, `counts`, `raw`. `rows`: write the per-cell row store that tests on a selection read; `auto` = on for tissue sections, off for embeddings |
 | `microns` | one of `already_microns`, `microns_per_unit`, `spot_diameter_fullres`, `spot_spacing`, `scalefactors_json` | inferred | |
 | `transform` | `{flip: none \| x \| y, rotate: 0 \| 90 \| 180 \| 270}` | none | applied to points and images |
@@ -79,6 +82,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `pixel_size` | µm per level-0 pixel, or `auto` | `auto` |
 | `pixels_per_unit` | image pixels per coordinate unit | `1.0` |
 | `translate` | `[x, y]` µm | `[0, 0]` |
+| `offset` | `[x, y]` in coordinate units | `[0, 0]` | where the image's first pixel sits, converted by the sample's micron rule (a SpatialData translation) |
 | `transpose`, `flip` | bool, `x`/`y`/`xy` | `false`, none | the image's own frame against the coordinates, before the sample's `transform`: for an object whose coordinates were transposed after the image was written. `polygons.affine` `[0, 1, 0, 1, 0, 0]` is `transpose: true`; `[0, -1, Y, -1, 0, X]` is `transpose: true, flip: xy` with `translate` taking up `Y - height`, `X - width` |
 | `channels` | list of `{name, color, window}` | |
 | `default_opacity` | 0..1 | `1` |

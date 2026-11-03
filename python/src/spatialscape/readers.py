@@ -19,6 +19,7 @@ class SampleInput:
     gene_names: np.ndarray  # (n_vars,) str
     name_column: str | None = None  # var column the names came from (symbols for an Ensembl-indexed object)
     uns: dict[str, Any] = field(default_factory=dict)
+    notes: list[str] = field(default_factory=list)  # what the reader decided on its own, for the build log
 
 
 MEMORY: dict[str, ad.AnnData] = {}  # objects handed to the build without a file (`spatialscape.show(adata)`); path "memory:<key>"
@@ -46,10 +47,11 @@ def read_anndata(path: Path, table: str | None = None, *, layer: str | None = No
     if not path.is_dir():
         raise FileNotFoundError(path)
     from .proteomics import is_spatialproteomics, read_spatialproteomics
+    from .sdata import is_spatialdata, table_dir
 
     if is_spatialproteomics(path):  # a multiplexed-imaging object: intensities, cell table and centroids
         return read_spatialproteomics(path)
-    target = _table_dir(path, table) if (path / "tables").is_dir() else path  # SpatialData store or AnnData Zarr
+    target = table_dir(path, table) if is_spatialdata(path) else path  # SpatialData store or AnnData Zarr
     if layer is None:
         return ad.read_zarr(target)
     import zarr
@@ -131,7 +133,8 @@ def gene_names(adata: ad.AnnData, column: str | None) -> np.ndarray:
 
 
 def load_sample(spec: SampleSpec) -> SampleInput:
-    wanted = [spec.coords[len("obsm/") :]] if spec.coords.startswith("obsm/") else []
+    notes: list[str] = []
+    wanted = [spec.coords[len("obsm/") :]] if spec.coords.startswith("obsm/") else ["spatial"]
     if spec.polygons is not None and spec.polygons.obsm:
         wanted.append(spec.polygons.obsm)
     adata = read_anndata(spec.path, spec.table, layer=spec.expression.layer, obsm_keys=wanted)
@@ -143,12 +146,30 @@ def load_sample(spec: SampleSpec) -> SampleInput:
         if not keep.any():
             raise ValueError(f"sample {spec.id}: subset {col} in {spec.subset.values} matches no observations")
         adata = adata[keep].copy()
-    coords = get_coords(adata, spec.coords)
+    if spec.coords.startswith(("shapes/", "labels/")):  # a SpatialData element's centroids, matched through the table's instance key
+        from .sdata import is_spatialdata, region_centroids, table_link
+
+        if not is_spatialdata(spec.path):
+            raise ValueError(f"sample {spec.id}: coords {spec.coords!r} name a SpatialData element, but {spec.path} is not a SpatialData store")
+        coords, has = region_centroids(Path(spec.path), spec.coords, adata, table_link(adata).instance_key, spec.coordinate_system)
+        if not has.all():
+            n_missing = int((~has).sum())
+            if "spatial" in adata.obsm:  # the table's own coordinates stand in for cells the element lacks (a cell without a mask pixel)
+                own = np.asarray(adata.obsm["spatial"])[:, :2].astype(np.float64)
+                coords[~has] = own[~has]
+                notes.append(f"{n_missing:,} of {adata.n_obs:,} rows have no instance in {spec.coords}; their obsm/spatial coordinates are used")
+            else:
+                adata = adata[has].copy()
+                coords = coords[has]
+                notes.append(f"{n_missing:,} of {len(has):,} rows have no instance in {spec.coords} and are left out")
+        adata.obsm["spatial"] = coords
+    else:
+        coords = get_coords(adata, spec.coords)
     if coords.shape[0] != adata.n_obs:
         raise ValueError("coords length does not match n_obs")
     uns = dict(adata.uns) if adata.uns is not None else {}
     name_col = spec.gene_column or symbol_column(adata)
-    return SampleInput(adata=adata, coords=coords, gene_names=gene_names(adata, name_col), uns=uns, name_column=name_col)
+    return SampleInput(adata=adata, coords=coords, gene_names=gene_names(adata, name_col), uns=uns, name_column=name_col, notes=notes)
 
 
 @dataclass
@@ -159,16 +180,6 @@ class Peek:
     obsm: list[str]
     layers: list[str]
     n_vars: int
-
-
-def _table_dir(path: Path, table: str | None) -> Path:
-    tables = path / "tables"
-    if table is None:
-        keys = sorted(p.name for p in tables.iterdir() if p.is_dir())
-        if len(keys) != 1:
-            raise ValueError(f"SpatialData store has tables {keys}; set `table:`")
-        table = keys[0]
-    return tables / table
 
 
 def _peek_group(g, read_elem) -> Peek:
@@ -196,9 +207,10 @@ def peek(path: Path, table: str | None = None) -> Peek:
     import zarr
 
     from .proteomics import is_spatialproteomics, read_obs
+    from .sdata import is_spatialdata, table_dir
 
     if is_spatialproteomics(path):
         obs, _colors = read_obs(path)
         return Peek(obs=obs, obsm=["spatial"], layers=[], n_vars=int(zarr.open_group(str(path), mode="r")["channels"].shape[0]))
-    target = _table_dir(path, table) if (path / "tables").is_dir() else path
+    target = table_dir(path, table) if is_spatialdata(path) else path
     return _peek_group(zarr.open_group(str(target), mode="r"), read_elem)

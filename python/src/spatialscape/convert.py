@@ -159,6 +159,9 @@ def _write_image(img: RImage, dest: Path) -> bool:
 
 
 def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, log: Log) -> list[str]:
+    if sample_col not in x.obs.columns and "image" in x.obs.columns and x.class_name == "Seurat":
+        log(f"  sample column {sample_col!r} is not in meta.data; using the Seurat slice (`image`) each cell belongs to")
+        sample_col = "image"
     if sample_col not in x.obs.columns:
         raise KeyError(f"sample column {sample_col!r} not in colData; available: {', '.join(x.obs.columns)}")
     sample_values = x.obs[sample_col].astype(str).to_numpy()
@@ -178,7 +181,9 @@ def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, lo
             else:
                 log(f"  warning: image {img.image_id!r} of sample {s} could not be written ({img.path or 'no pixels in the object'})")
         finite = coords[np.isfinite(coords).all(axis=1)]
-        if len(finite) > 1:  # Visium rule: neighbouring spots are 100 um apart, a spot is 55 um wide
+        if s in x.spot_diameter:  # the object says how wide a spot is in its pixels (Seurat scale.factors$spot)
+            sf["spot_diameter_fullres"] = float(x.spot_diameter[s])
+        elif len(finite) > 1:  # Visium rule: neighbouring spots are 100 um apart, a spot is 55 um wide
             from scipy.spatial import cKDTree
 
             nn = cKDTree(finite).query(finite, k=2)[0][:, 1]
@@ -221,7 +226,7 @@ def write_cache(entry: RObjectEntry, cache_root: Path, *, log: Log = print) -> d
     tmp.mkdir(parents=True)
     log(f"reading {entry.path} (the whole object is parsed; about as long as loading it in R)")
     x = read_experiment(entry.path, object_name=entry.object)
-    spatial = x.class_name == "SpatialExperiment" and x.spatial is not None
+    spatial = x.spatial is not None  # an SPE's spatialCoords, or a Seurat object's slices
     what = f"{x.class_name} ({x.assay_name})" if x.assay_name else x.class_name
     log(f"  {what}: {x.n_vars} genes x {x.n_obs} cells, assays {', '.join(x.assays)}" + (f", {len(x.images)} image(s)" if x.images else ""))
     for fs in x.feature_sets:

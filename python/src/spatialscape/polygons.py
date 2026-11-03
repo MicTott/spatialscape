@@ -13,6 +13,10 @@ def read_polygon_table(path: Path, id_col: str, x_col: str, y_col: str) -> tuple
     from .tables import read_columns, table_columns
 
     present = table_columns(path)
+    if "geometry" in present and not {x_col, y_col} <= set(present):  # GeoParquet (a SpatialData shapes element): WKB polygons
+        from .sdata import read_shapes_file
+
+        return read_shapes_file(path).polygons or (np.array([], dtype=str), np.array([]), np.array([]))
     missing = [c for c in (id_col, x_col, y_col) if c not in present]
     if missing:
         raise KeyError(f"{path}: column{'s' if len(missing) > 1 else ''} {', '.join(repr(c) for c in missing)} not found; columns are {sorted(present)}")

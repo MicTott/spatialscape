@@ -6,7 +6,8 @@ on the image, with spatial domains as colours.
 
 ## The minimum
 
-A SpaceRanger-style folder, an AnnData file or a `SpatialExperiment` saved from R:
+A SpaceRanger-style folder, an AnnData file, a `SpatialExperiment` or a Seurat object with Visium slices saved from
+R, or a SpatialData store:
 
 ```bash
 spatialscape init analysis/spe_visium.rds --id vis         # one sample per sample_id
