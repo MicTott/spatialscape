@@ -27,6 +27,7 @@ Log = Callable[[str], None]
 
 PLATFORM_LABEL = {"visium": "Visium", "visium_hd": "Visium HD", "xenium": "Xenium", "merfish": "MERFISH", "codex": "CODEX", "snrnaseq": "snRNA-seq", "other": "Sample"}
 PLATFORM_PREFIX = {"visium": "vis", "visium_hd": "hd", "xenium": "xen", "merfish": "mer", "codex": "cdx", "snrnaseq": "sn", "other": "smp"}
+EMBEDDING_RE = re.compile(r"umap|tsne|t-sne|embedding|draw_graph", re.I)
 GENERIC_STORE_NAMES = {"adata", "data", "sample", "outs", "table", "sdata", "spe", "sce"}
 # tables an imaging platform writes next to its matrix (Xenium Ranger names): the yaml key, what it gives, the cost
 LAYER_FILES = {
@@ -316,6 +317,12 @@ class EntryMenu:
     regions: list[str] = field(default_factory=list)  # ... and the others
     layer: str | None = None  # files: the expression layer to draw instead of X (the Create page's choice)
     meta_chosen: list[str] = field(default_factory=list)  # meta candidates switched on (the Create page's choice)
+    # what the Create page says in words: the object's class, its gene count, every described column (for ranges and
+    # level names), and what else was found in or next to the object: (present, title, detail)
+    object_class: str = ""
+    n_vars: int | None = None
+    columns: list[Column] = field(default_factory=list)
+    found: list[tuple[bool, str, str]] = field(default_factory=list)
 
     @property
     def assumed(self) -> list[str]:
@@ -475,11 +482,25 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
         plat, plat_note = _platform_choice(platform, x.obs, spatial=True)
         prefix, label = PLATFORM_PREFIX.get(plat, plat[:3]), PLATFORM_LABEL.get(plat, plat)
         meta_c = constant_columns(x.obs, sample_col) if len(samples) > 1 else []
+        with_image = {i.sample_id for i in x.images if i.rgb is not None or i.path}
+        n_s = max(len(samples), 1)
+        found: list[tuple[bool, str, str]] = []
+        if with_image:
+            lowres = all(i.image_id == "lowres" for i in x.images)
+            found.append((True, "Image for each section" if len(with_image) >= n_s else f"Images for {len(with_image)} of {n_s} sections", "SpaceRanger's low-resolution image; point `images:` at the full scans for detail" if lowres else "as stored in the object"))
+        else:
+            found.append((False, "Images", "none in the object; add them in the yaml with `images:`"))
+        if plat == "visium":
+            found.append((True, "Spot size and scale", "55 µm spots, 100 µm apart" + (" (from the object's scale factors)" if x.spot_diameter else " (from the spot spacing)")))
+            found.append((False, "Cell boundaries", "not in a Visium object"))
+        elif plat in ("xenium", "merfish"):
+            found.append((True, "Coordinates in microns", "as the instrument wrote them"))
         return EntryMenu(
             source=_rel(path, base), source_note=note, r_object=True, embedding=False, platform=plat,
             id_tpl=f"{prefix}_{{name}}", name_tpl=f"{{name}} ({label})", group_tpl="{name}",
             menu=suggest_fields(cols, skip={sample_col, *(c for c, _ in meta_c)}), samples=[_safe(s) for s in samples],
             assay=assay, assays=list(x.assays), sample_col=sample_col, platform_note=plat_note, n_obs=x.n_obs, meta_candidates=meta_c,
+            object_class=x.class_name, n_vars=x.n_vars, columns=cols, found=found,
         )
     from .convert import pick_embedding
 
@@ -494,6 +515,8 @@ def _r_entry(path: Path, platform: str | None, base: Path, log: Log) -> EntryMen
         menu=suggest_fields(cols), samples=[stem], assay=assay, assays=list(x.assays),
         embedding_key=emb, embeddings=list(x.reduced_dims), fragments={f.run: f.path for f in x.fragments},
         platform_note="no spatialCoords in the object", n_obs=x.n_obs,
+        object_class=x.class_name, n_vars=x.n_vars, columns=cols,
+        found=[(emb is not None, f"Embedding {emb}" if emb else "Embedding", "drawn in place of a tissue section" if emb else "none found; set `embedding:` in the yaml"), *[(True, f"{fs.name} as features", f"shown next to the genes as `{fs.prefix.strip()} ...`") for fs in x.feature_sets]],
     )
 
 
@@ -529,6 +552,9 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
     store_note = ""
     region: str | None = None
     regions: list[str] = []
+    object_class = ""
+    n_vars: int | None = None
+    found: list[tuple[bool, str, str]] = []
     if matches:
         layer_files = layer_files_near(Path(matches[0]))
         pk = peek(Path(matches[0]), table)
@@ -545,6 +571,10 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
         plat, plat_note = _platform_choice(platform, pk.obs, spatial=spatial)
         if store is not None and platform and plat == platform and "guess_note" in dir():
             plat_note = guess_note
+        n_vars = pk.n_vars
+        first = Path(matches[0])
+        object_class = "SpatialData store" if store is not None else "AnnData" if first.suffix == ".h5ad" or first.is_dir() else first.suffix.lstrip(".")
+        found = _found_near(first, plat, store_note, layer_files, pk.obsm)
         if plat != "snrnaseq":
             sections = sections_in(pk.obs)
         if sections is None and len(matches) > 1:
@@ -568,7 +598,35 @@ def _glob_entry(pattern: str, platform: str | None, table: str | None, base: Pat
         id_tpl=f"{prefix}_{var}", name_tpl=f"{var} ({label})", group_tpl="snRNA-seq" if embedding else var,
         menu=suggest_fields(cols, skip={c for c, _ in meta_c}), samples=names, table=table, platform_note=plat_note, layers=layers, sections=sections, n_obs=n_obs,
         meta_candidates=meta_c, layer_files=layer_files if plat != "snrnaseq" else {}, store_note=store_note, region=region, regions=regions,
+        object_class=object_class, n_vars=n_vars, columns=cols, found=found,
     )
+
+
+def _found_near(first: Path, plat: str, store_note: str, layer_files: dict[str, str], obsm: list[str]) -> list[tuple[bool, str, str]]:
+    """What else a file sample brings: the store's elements, tables found next to the matrix, images next to it."""
+    out: list[tuple[bool, str, str]] = []
+    if plat == "snrnaseq":
+        emb = next((k for k in obsm if EMBEDDING_RE.search(k)), None)
+        return [(emb is not None, f"Embedding {emb}" if emb else "Embedding", "drawn in place of a tissue section" if emb else "none found in obsm")]
+    if store_note:
+        for part in store_note.split(": ", 1)[-1].split("; "):
+            out.append((True, part[:1].upper() + part[1:], "from the store"))
+        return out
+    names = {key: what for _name, (key, what, _note) in LAYER_FILES.items()}
+    for key, tpl in layer_files.items():
+        out.append((True, names.get(key, key), tpl.replace("{dir}", "next to the matrix")))
+    try:
+        from .config import SampleSpec
+        from .discover import auto_images
+
+        imgs, _ = auto_images(SampleSpec(id="probe", platform=plat, path=first))  # type: ignore[arg-type]
+        if imgs:
+            out.append((True, f"Image: {imgs[0].name}", imgs[0].path.name))
+        else:
+            out.append((False, "Images", "none found next to the data; add them in the yaml with `images:`"))
+    except Exception:  # a probe, never a failure
+        pass
+    return out
 
 
 def _store_entry(path: Path, table: str | None) -> tuple[bool, str | None, str, str | None, list[str]] | None:

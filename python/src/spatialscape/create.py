@@ -118,25 +118,33 @@ class Inspection:
 
 def _column_rows(e) -> list[dict[str, Any]]:
     """The annotation choices of one entry: mapped columns on, alternatives and the rest off, each with its id,
-    kind and note; the page ticks and renames them."""
+    kind, a note, and what the page needs to describe it in words (level names, ranges, missing values)."""
     from .init import field_id
 
     m = e.menu
+    detail = {c.name: c for c in getattr(e, "columns", [])}
+
+    def describe(col: str) -> dict[str, Any]:
+        c = detail.get(col)
+        if c is None:
+            return {"levels": 0, "examples": [], "lo": None, "hi": None, "named": True, "na": 0}
+        return {"levels": c.levels, "examples": list(c.examples), "lo": c.lo, "hi": c.hi, "named": c.named, "na": c.na}
+
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     for fid, v in m.mapped.items():
         col = v if isinstance(v, str) else v["column"]
-        rows.append({"id": fid, "column": col, "kind": m.kinds.get(fid, "categorical"), "note": m.notes.get(fid, ""), "on": True, "scale": None if isinstance(v, str) else v.get("scale")})
+        rows.append({"id": fid, "column": col, "kind": m.kinds.get(fid, "categorical"), "note": "", "on": True, "scale": None if isinstance(v, str) else v.get("scale"), **describe(col)})
         seen.add(col)
     for fid, c in m.alternatives:
         if c.name in seen:
             continue
-        rows.append({"id": field_id(c.name), "column": c.name, "kind": "continuous" if c.kind == "numeric" else "categorical", "note": f"alternative for {fid}; {c.note}", "on": False, "scale": None})
+        rows.append({"id": field_id(c.name), "column": c.name, "kind": "continuous" if c.kind == "numeric" else "categorical", "note": f"another candidate for {fid}", "on": False, "scale": None, **describe(c.name)})
         seen.add(c.name)
     for c in m.unmapped:
         if c.name in seen:
             continue
-        rows.append({"id": field_id(c.name), "column": c.name, "kind": "continuous" if c.kind == "numeric" else "categorical", "note": c.note, "on": False, "scale": None})
+        rows.append({"id": field_id(c.name), "column": c.name, "kind": "continuous" if c.kind == "numeric" else "categorical", "note": "", "on": False, "scale": None, **describe(c.name)})
         seen.add(c.name)
     return rows
 
@@ -168,6 +176,9 @@ def describe_entry(e) -> dict[str, Any]:
         "columns": _column_rows(e),
         "meta": [{"column": c, "note": note, "on": False} for c, note in e.meta_candidates],
         "skipped": e.menu.skipped,
+        "object_class": e.object_class,
+        "n_vars": e.n_vars,
+        "found": [{"present": p, "title": t, "detail": d} for p, t, d in e.found],
     }
 
 

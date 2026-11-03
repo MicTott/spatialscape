@@ -31,6 +31,17 @@ export interface ColumnRow {
   note: string;
   on: boolean;
   scale: number | null;
+  levels: number;
+  examples: string[];
+  lo: number | null;
+  hi: number | null;
+  named: boolean; // categories are words rather than bare numbers
+  na: number;
+}
+export interface Found {
+  present: boolean;
+  title: string;
+  detail: string;
 }
 export interface EntryInfo {
   source: string;
@@ -58,6 +69,9 @@ export interface EntryInfo {
   columns: ColumnRow[];
   meta: { column: string; note: string; on: boolean }[];
   skipped: string[];
+  object_class: string;
+  n_vars: number | null;
+  found: Found[];
 }
 export interface ComparisonInfo {
   source: string;
