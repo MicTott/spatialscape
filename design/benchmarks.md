@@ -23,13 +23,13 @@ Fixed set, each with a provenance block (source URL or accession, file checksums
 |---|---|---|---|---|---|
 | synthetic | the committed example, every feature on | 6,800 | 50 | 1.2 M synthetic | 1 small |
 | amygdala | the paper's atlas: 3 platforms, 16 sections, 2 references | 1.56 M | 35 k | 46–117 M per Xenium section, 4 sections | H&E and DAPI |
-| atera | one whole-transcriptome Xenium section | 0.3 M | 18 k | ~250 M | DAPI, 0.425 µm |
-| allen | the whole-brain embedding: the largest matrix | 4 M | 1.1 k | none | none |
+| atera | two whole-transcriptome Xenium Prime sections (breast, cervical), 18 k genes: the transcript story | 888 k | 18 k | 1.66 B (624 M + 1,040 M), 5.7 GB of tiles | DAPI at 0.2125 µm, full resolution |
+| abc-atlas | 59 MERFISH sections and the whole-brain nuclei sample on Allen's UMAP: the largest matrix (18.7 B stored values) | 8.05 M | 1.1 k | none | none |
 | habenula | multiome with tracks: the genome panel | 375 k | 35 k | none | H&E |
-| transcripts-1B | a dataset whose transcript coordinates pass 10⁹: several Xenium Prime sections, or a public MERSCOPE whole-brain run (candidates: 10x Xenium Prime 5K mouse brain series; Vizgen MERFISH mouse brain receptor map) | TBD | TBD | > 1 B | yes |
 
-The last row is the one the "billions of transcripts" claim rests on. It does not exist as a bundle yet; building
-it is part of this work, and until it is built the claim is removed from the README.
+Atera is the row the "billions of transcripts" claim rests on, and it is already built on JHPCE (25 GB, 50 min on a
+128 GB job). What is missing is not the dataset but the measured viewer rows for it: what is fetched and drawn at
+each zoom, and the frame times, on a named machine. The claim goes back into the README with those numbers.
 
 ## 1. Build
 
@@ -97,7 +97,7 @@ script on the real ones:
 ## Order of work
 
 1. The fidelity scripts first, on synthetic and amygdala; they are also the regression tests the review asked for.
-2. Build and viewer tables on the laptop for synthetic, amygdala and atera.
-3. Build transcripts-1B; its build and viewer rows.
-4. The comparison tools on the amygdala sections.
-5. Publish the tables and the scripts; put the README sentence back with its numbers and a link.
+2. Build and viewer tables on the laptop for synthetic and amygdala; viewer rows for atera and abc-atlas against the
+   JHPCE-served bundles (their build rows come from the existing job logs, re-run once with the timing wrapper).
+3. The comparison tools on the amygdala sections.
+4. Publish the tables and the scripts; put the README sentence back with its numbers and a link.
