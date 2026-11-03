@@ -93,6 +93,17 @@ Every command prints the paths it wrote and the next command to run.
 
 ## Goal 2: your own data, on your machine
 
+::: tip In the browser instead of the terminal
+`spatialscape create` opens a page that does the three steps below with buttons: browse to an object or a folder
+on this machine, see what was found (cells, samples, annotations with their levels, expression layers, images,
+boundary and transcript files, the platform guess and why), tick what to show and name it, build, open. The page
+writes the same `dataset.yaml` as `init` next to the bundle and shows it as you choose, so the file is what you
+edit later. Nothing is uploaded: the page reads paths on the machine the server runs on. On a cluster, start it on
+a compute node and forward the port, as you would for RStudio Server.
+:::
+
+![The Create page's review step: a Seurat object with two Visium slices and an snRNA-seq reference read in, annotations ticked, the dataset yaml the choices make on the right](/screenshots/create-review.jpg)
+
 Work inside a folder of your project that is yours to fill (the `spatialscape/` folder above): every
 command writes next to the yaml it read, and the data it points at can live anywhere.
 

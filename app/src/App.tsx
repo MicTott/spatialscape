@@ -7,6 +7,7 @@ import { Sidebar } from "./ui/Sidebar";
 import { Tooltip } from "./ui/Tooltip";
 import { StatusBar } from "./ui/StatusBar";
 import { Landing, resolveDataset } from "./ui/Landing";
+import { CreatePage } from "./create/CreatePage";
 import { PlatformBar } from "./ui/PlatformBar";
 import { PaneDividers } from "./ui/PaneDividers";
 import { PaneHeaders } from "./ui/PaneHeaders";
@@ -20,6 +21,8 @@ import { GenomePanel } from "./genome/GenomePanel";
 import { ComparePanel } from "./compare/ComparePanel";
 import { useRegistry } from "./ui/registry";
 
+
+const CREATE_MODE = typeof location !== "undefined" && new URLSearchParams(location.search).has("create");
 
 export function App() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -70,7 +73,7 @@ export function App() {
       </div>
       <GenomePanel />
       <ComparePanel />
-      {status === "idle" && !datasetUrl && <Landing />}
+      {status === "idle" && !datasetUrl && (CREATE_MODE ? <CreatePage /> : <Landing />)}
       {status === "error" && (
         <div className="overlay error">
           <h2>Could not load dataset</h2>

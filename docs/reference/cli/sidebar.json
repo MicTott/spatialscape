@@ -28,6 +28,10 @@
     "link": "/reference/cli/validate"
   },
   {
+    "text": "create",
+    "link": "/reference/cli/create"
+  },
+  {
     "text": "thumbnails",
     "link": "/reference/cli/thumbnails"
   },

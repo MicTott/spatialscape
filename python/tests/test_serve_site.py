@@ -187,7 +187,7 @@ def test_serve_skips_a_busy_default_port(bundle, fake_app, monkeypatch, capsys):
         def serve_forever(self):
             raise KeyboardInterrupt
 
-    def fake_make_server(directory, port=8787, host="127.0.0.1", app_dir=None):
+    def fake_make_server(directory, port=8787, host="127.0.0.1", app_dir=None, **_kw):
         started["port"] = port
         return _Fake()
 

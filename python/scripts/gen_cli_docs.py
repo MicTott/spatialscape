@@ -53,6 +53,11 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
         ("Before upload", "spatialscape validate bundles/dlpfc"),
         ("After upload", "spatialscape validate https://data.example.org/dlpfc"),
     ],
+    "create": [
+        ("Make datasets in the browser from data on this machine; yamls and bundles go into the current folder", "spatialscape create"),
+        ("A project folder of its own, on another port", "spatialscape create ~/spatialscape-projects --port 8790"),
+        ("On a cluster: a compute node, then forward the port from your laptop", "srun --pty --mem=16G bash\nspatialscape create /path/to/project --no-open\n# on the laptop: ssh -L 8787:127.0.0.1:8787 user@that-node"),
+    ],
     "thumbnails": [("Lead with a particular section", "spatialscape thumbnails bundles/dlpfc --hero vis_Br8325")],
     "synth": [("Make inputs, build them, serve them", "spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml && spatialscape serve demo-src/bundles --open")],
 }
@@ -60,6 +65,7 @@ RELATED: dict[str, list[str]] = {
     "init": ["build", "inspect"],
     "build": ["serve", "validate", "site build"],
     "serve": ["build", "site build"],
+    "create": ["init", "build", "serve"],
     "site init": ["site build"],
     "site build": ["site init", "serve", "build"],
     "inspect": ["init"],
@@ -71,6 +77,7 @@ GUIDE_LINKS: dict[str, tuple[str, str]] = {
     "init": ("Writing dataset.yaml", "/guide/dataset-yaml"),
     "build": ("Building and validating", "/guide/building"),
     "serve": ("Getting started", "/guide/getting-started"),
+    "create": ("Getting started", "/guide/getting-started#goal-2-your-own-data-on-your-machine"),
     "site init": ("The gallery: site.yaml", "/guide/registry"),
     "site build": ("Publish your own site", "/guide/publish"),
     "inspect": ("Where your data comes from", "/guide/preparing-data"),

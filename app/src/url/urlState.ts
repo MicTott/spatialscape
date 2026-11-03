@@ -215,7 +215,9 @@ export function bindUrl(): () => void {
   let last = "";
   const write = () => {
     timer = null;
-    const qs = serialize(store.getState());
+    const s = store.getState();
+    if (!s.datasetUrl && new URLSearchParams(location.search).has("create")) return; // the Create page keeps its own address until a dataset opens
+    const qs = serialize(s);
     if (qs === last) return;
     try {
       history.replaceState(null, "", `${location.pathname}?${qs}${location.hash}`);

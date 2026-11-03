@@ -8,6 +8,7 @@ export { resolveDataset } from "./registry";
 export function Landing() {
   const [url, setUrl] = useState("");
   const reg = useRegistry();
+  const canCreate = !!(reg as ({ create?: string } & object) | null)?.create; // `spatialscape create` is serving this page
   const go = (u: string) => {
     const clean = u.trim().replace(/\/manifest\.json$/, "");
     if (!clean) return;
@@ -27,6 +28,11 @@ export function Landing() {
         >
           <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="open any bundle: https://host/path/to/bundle  or  http://127.0.0.1:8787/amygdala" />
           <button type="submit">Open</button>
+          {canCreate && (
+            <a className="btn create-link" href="?create" title="make a new dataset from data on this machine">
+              Create
+            </a>
+          )}
         </form>
       </header>
       {reg && (

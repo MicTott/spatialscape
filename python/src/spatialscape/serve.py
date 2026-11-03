@@ -34,6 +34,7 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
     app_dir: Path | None = None
     data_dir: Path
     session: bool = False  # `spatialscape.show()`: answers /_api/ping and stores the viewer's lasso selections and regions
+    create: object | None = None  # `spatialscape create`: a create.CreateService answering /_api/create/* for the Create page
     _selections: dict[str, dict] = {}
     _regions: dict[str, dict] = {}
     _registry_cache: tuple[float, bytes] | None = None
@@ -84,10 +85,40 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
         if self._is_registry_request():
             self._send_registry(head=False)
             return
+        if self.create is not None and self.path.startswith("/_api/create/"):
+            self._create_request("GET")
+            return
         if self.session and self.path.startswith("/_api/"):
             self._api_get()
             return
         super().do_GET()
+
+    def _create_request(self, method: str) -> None:
+        """The Create page's API (create.py): local pages only, JSON in and out."""
+        from .create import dumps, handle
+
+        if not self._post_allowed():
+            self.send_error(403, "the Create page talks to its own server only")
+            return
+        route, _, query = self.path.partition("?")
+        params = {k: v[0] for k, v in urllib.parse.parse_qs(query).items()}
+        body = None
+        if method == "POST":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(n) or b"{}")
+                if not isinstance(body, dict):
+                    raise ValueError("body must be a JSON object")
+            except (ValueError, TypeError):
+                self.send_error(400)
+                return
+        status, doc = handle(self.create, method, route[len("/_api/create/") :], params, body)  # type: ignore[arg-type]
+        payload = dumps(doc)
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def _post_allowed(self) -> bool:
         """State-changing requests come from the viewer this server serves (same origin, or no Origin at all from a
@@ -100,6 +131,9 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         route = self.path.split("?", 1)[0]
+        if self.create is not None and route.startswith("/_api/create/"):
+            self._create_request("POST")
+            return
         if not (self.session and route in ("/_api/selection", "/_api/regions")):
             self.send_error(405)
             return
@@ -184,6 +218,9 @@ class RangeCORSHandler(SimpleHTTPRequestHandler):
             )
             if self.session:
                 doc["api"] = "/_api"  # the viewer posts lasso selections and regions here (spatialscape.show)
+            if self.create is not None:
+                doc["create"] = "/_api/create"  # the gallery shows its Create button and the page finds its backend here
+                doc["intro"] = f"Bundles in {self.data_dir}. Create makes a new one from data on {self.create.ping()['host']}."  # type: ignore[attr-defined]
             body = json.dumps(doc).encode()
             cls._registry_cache = (now, body)
             return body
@@ -240,16 +277,17 @@ class _LimitedFile:
         self.f.close()
 
 
-def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_dir: Path | None = None, session: bool = False) -> ThreadingHTTPServer:
+def make_server(directory: Path, port: int = 8787, host: str = "127.0.0.1", app_dir: Path | None = None, session: bool = False, create: object | None = None) -> ThreadingHTTPServer:
     """A ready-to-run server. `app_dir=None` means: use the packaged viewer unless `directory` is itself a built site.
-    `session=True` adds the /_api routes `spatialscape.show()` uses to read lasso selections back."""
+    `session=True` adds the /_api routes `spatialscape.show()` uses to read lasso selections back; `create` (a
+    create.CreateService) adds the Create page's routes."""
     directory = Path(directory).resolve()
     if (directory / "index.html").exists():
         app_dir = None  # a built site: serve it as-is
     elif app_dir is None:
         app_dir = packaged_app_dir()
     extensions = {**SimpleHTTPRequestHandler.extensions_map, ".json": "application/json", ".bw": "application/octet-stream", ".bed": "text/plain", "": "application/octet-stream"}
-    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "_selections": {}, "_regions": {}, "extensions_map": extensions})
+    handler = type("Handler", (RangeCORSHandler,), {"app_dir": app_dir, "data_dir": directory, "session": session, "create": create, "_selections": {}, "_regions": {}, "extensions_map": extensions})
     factory = partial(handler, directory=str(directory))
     return ThreadingHTTPServer((host, port), factory)
 
@@ -261,8 +299,9 @@ def _port_free(host: str, port: int) -> bool:
         return sock.connect_ex((host, port)) != 0
 
 
-def serve(directory: Path, port: int = 8787, host: str = "127.0.0.1", open_browser: bool = False, port_chosen: bool = False) -> None:
-    """Start the server. With the default port, a busy port is skipped to the next free one; an explicit `--port` is honoured or refused."""
+def serve(directory: Path, port: int = 8787, host: str = "127.0.0.1", open_browser: bool = False, port_chosen: bool = False, create: object | None = None) -> None:
+    """Start the server. With the default port, a busy port is skipped to the next free one; an explicit `--port` is
+    honoured or refused. With `create`, the Create page is on and the browser opens on it."""
     if not _port_free(host, port):
         if port_chosen:
             raise OSError(f"port {port} is already in use; stop that server or pass another --port")
@@ -272,12 +311,17 @@ def serve(directory: Path, port: int = 8787, host: str = "127.0.0.1", open_brows
         if not _port_free(host, port):
             raise OSError(f"ports {wanted}-{port} are all in use; pass --port")
         print(f"port {wanted} is in use; using {port}", flush=True)
-    httpd = make_server(directory, port=port, host=host)
+    httpd = make_server(directory, port=port, host=host, create=create)
     handler_cls = httpd.RequestHandlerClass.func  # type: ignore[attr-defined]
-    url = f"http://{host}:{port}/"
+    url = f"http://{host}:{port}/" + ("?create" if create is not None else "")
     directory = Path(directory).resolve()
     n = len(find_bundles(directory))
-    if handler_cls.app_dir is not None:
+    if create is not None:
+        print(f"Create page + viewer; {n} bundle(s) in {directory}\n  open {url}   (Ctrl-C stops the server)", flush=True)
+        guard = create.ping().get("guard")  # type: ignore[attr-defined]
+        if guard:
+            print(f"  note: {guard}", flush=True)
+    elif handler_cls.app_dir is not None:
         print(f"viewer + {n} bundle(s) from {directory}\n  open {url}   (Ctrl-C stops the server)", flush=True)
     elif (directory / "index.html").exists():
         print(f"serving site {directory}\n  open {url}   (Ctrl-C stops the server)", flush=True)

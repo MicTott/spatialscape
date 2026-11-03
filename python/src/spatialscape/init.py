@@ -314,6 +314,8 @@ class EntryMenu:
     store_note: str = ""  # a SpatialData store: the elements build will take from it
     region: str | None = None  # a SpatialData table over several elements: the one this entry shows
     regions: list[str] = field(default_factory=list)  # ... and the others
+    layer: str | None = None  # files: the expression layer to draw instead of X (the Create page's choice)
+    meta_chosen: list[str] = field(default_factory=list)  # meta candidates switched on (the Create page's choice)
 
     @property
     def assumed(self) -> list[str]:
@@ -441,7 +443,11 @@ def _safe(name: str) -> str:
 
 
 def _rel(path: str | Path, base: Path) -> str:
-    return os.path.relpath(os.path.abspath(os.path.expanduser(str(path))), base)
+    """The path as the yaml will carry it: relative to the yaml's folder when the data sits near it, absolute
+    when relative would mean climbing more than three folders (a project in one place, data in another)."""
+    absolute = os.path.abspath(os.path.expanduser(str(path)))
+    rel = os.path.relpath(absolute, base)
+    return absolute if rel.startswith("../../../../") else rel
 
 
 def _join(names: list[str], k: int = 6) -> str:
@@ -632,6 +638,8 @@ def _entry_lines(e: EntryMenu) -> list[str]:
         L.append(f"    # {e.store_note}")
     if e.table:
         L.append(f"    table: {_ystr(e.table)}")
+    if e.layer and not e.r_object:
+        L.append(_pad(f"    expression: {{ layer: {_ystr(e.layer)} }}", "drawn as expression instead of X"))
     if e.regions:
         L.append(_pad(f"    region: {_ystr(e.region or '')}", f"the table annotates several elements; copy this entry for {_join(e.regions, 4)}"))
     if e.r_object:
@@ -667,10 +675,14 @@ def _entry_lines(e: EntryMenu) -> list[str]:
         L.append(_pad("    # fields:", "uncomment this line and the columns to show as annotations"))
         for c in m.unmapped:
             L.append(_pad(f"    #   {field_id(c.name)}: {_ystr(c.name)}", c.note))
-    if e.meta_candidates:
-        inner = ", ".join(f"{field_id(c)}: {{ column: {_ystr(c)} }}" for c, _ in e.meta_candidates[:4])
+    if e.meta_chosen:
+        inner = ", ".join(f"{field_id(c)}: {{ column: {_ystr(c)} }}" for c in e.meta_chosen)
+        L.append(_pad(f"    meta: {{ {inner} }}", "sample-level properties (one value per sample); the viewer splits the canvas by them"))
+    rest = [(c, n) for c, n in e.meta_candidates if c not in e.meta_chosen]
+    if rest:
+        inner = ", ".join(f"{field_id(c)}: {{ column: {_ystr(c)} }}" for c, _ in rest[:4])
         L.append(_pad(f"    # meta: {{ {inner} }}", "sample-level properties (one value per sample); the viewer splits the canvas by them"))
-        for c, note in e.meta_candidates:
+        for c, note in rest:
             L.append(f"    #   {field_id(c)}: {note}")
     if m.skipped:
         L.append(f"    # not listed: {', '.join(m.skipped)} (ids and layout columns)")
@@ -697,7 +709,10 @@ def _pretty(fid: str) -> str:
     return s[:1].upper() + s[1:]
 
 
-def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu], comparisons: list[ComparisonMenu] | None = None) -> str:
+def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu], comparisons: list[ComparisonMenu] | None = None, names: dict[str, str] | None = None) -> str:
+    """The yaml: dataset settings, the field declarations the entries' menus imply (`names` overrides their display
+    names), sample metadata keys, the entries, the comparisons."""
+    names = names or {}
     fields: dict[str, str] = {}
     for e in entries:
         for fid, kind in e.menu.kinds.items():
@@ -724,22 +739,29 @@ def render_dataset_yaml(*, dataset_id: str, name: str, entries: list[EntryMenu],
             "# file), aliases (merge spellings: { AI: IA }) or categories (a fixed order) to an entry when you need them.",
             "fields:",
         ]
-        L += [f"  - {{ id: {fid}, name: {_ystr(_pretty(fid))}, type: {kind} }}" for fid, kind in fields.items()]
+        L += [f"  - {{ id: {fid}, name: {_ystr(names.get(fid) or _pretty(fid))}, type: {kind} }}" for fid, kind in fields.items()]
     else:
         L += [
             "# Annotation names, once some columns are mapped under samples below:",
             "# fields:",
             "#   - { id: domain, name: Spatial domain, type: categorical, palette_key: domain }",
         ]
+    chosen: dict[str, None] = {}
     cands: dict[str, None] = {}
     for e in entries:
+        for c in e.meta_chosen:
+            chosen.setdefault(field_id(c), None)
         for c, _ in e.meta_candidates:
-            cands.setdefault(field_id(c), None)
+            if c not in e.meta_chosen:
+                cands.setdefault(field_id(c), None)
+    if chosen:
+        L += ["# Sample metadata keys: the viewer splits the canvas by them and comparisons link replicates through them", "meta:"]
+        L += [f"  - {{ id: {k}, name: {_ystr(names.get(k) or _pretty(k))} }}" for k in chosen]
     if cands:
         L += [
             "# Sample metadata keys (names and level order), once `meta:` is set under samples below:",
             "# meta:",
-            *[f"#   - {{ id: {k}, name: {_ystr(_pretty(k))} }}" for k in cands],
+            *[f"#   - {{ id: {k}, name: {_ystr(_pretty(k))} }}" for k in cands if k not in chosen],
         ]
     L += ["", "samples:"]
     for e in entries:
@@ -757,6 +779,7 @@ class MenuResult:
     out: Path
     dataset_id: str
     entries: list[EntryMenu]
+    name: str = ""
     comparisons: list[ComparisonMenu] = field(default_factory=list)
 
     @property
@@ -802,13 +825,22 @@ def write_menu(
     table: str | None = None,
     log: Log = print,
 ) -> MenuResult:
+    dataset_id = dataset_id or default_id(paths[0])
+    out = (Path(out) if out is not None else Path(f"{dataset_id}.yaml")).expanduser()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    r = build_menu(paths, base=out.parent.resolve(), dataset_id=dataset_id, name=name, platform=platform, table=table, log=log)
+    out.write_text(render_dataset_yaml(dataset_id=r.dataset_id, name=r.name, entries=r.entries, comparisons=r.comparisons))
+    return MenuResult(out=out, dataset_id=r.dataset_id, name=r.name, entries=r.entries, comparisons=r.comparisons)
+
+
+def build_menu(paths: list[str], *, base: Path, dataset_id: str | None = None, name: str | None = None, platform: str | None = None, table: str | None = None, log: Log = print) -> MenuResult:
+    """The menu itself, without writing it: one entry per object or glob, one comparison per results table, with
+    sources written relative to `base` (where the yaml will live)."""
     if platform is not None and platform not in PLATFORM_LABEL:
         raise ValueError(f"unknown platform {platform!r}; one of {', '.join(PLATFORM_LABEL)}")
     dataset_id = dataset_id or default_id(paths[0])
     name = name or (dataset_id.replace("_", " ")[:1].upper() + dataset_id.replace("_", " ")[1:])
-    out = (Path(out) if out is not None else Path(f"{dataset_id}.yaml")).expanduser()
-    out.parent.mkdir(parents=True, exist_ok=True)
-    base = out.parent.resolve()
+    base = Path(base).resolve()
     entries: list[EntryMenu] = []
     comparisons: list[ComparisonMenu] = []
     for p in paths:
@@ -826,5 +858,4 @@ def write_menu(
             entries.append(_glob_entry(p, platform, table, base, log))
     if not entries:
         raise ValueError("init needs at least one sample source (an R object or a glob of files) besides results tables")
-    out.write_text(render_dataset_yaml(dataset_id=dataset_id, name=name, entries=entries, comparisons=comparisons))
-    return MenuResult(out=out, dataset_id=dataset_id, entries=entries, comparisons=comparisons)
+    return MenuResult(out=base / f"{dataset_id}.yaml", dataset_id=dataset_id, name=name, entries=entries, comparisons=comparisons)

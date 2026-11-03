@@ -241,6 +241,30 @@ def serve(
     _serve(directory.resolve(), port=port or 8787, host=host, open_browser=open_browser, port_chosen=port is not None)
 
 
+@app.command()
+def create(
+    project: Path = typer.Argument(".", help="Project folder: the dataset yamls the page writes go here, the bundles into `bundles/` inside it."),
+    port: int | None = typer.Option(None, "--port", help="TCP port. Default 8787, or the next free port when that one is busy."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Interface to bind."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the Create page in the default browser once the server is up."),
+):
+    """Make a dataset from data on this machine, in the browser: pick an object or folder, see what it holds,
+    tick what to show, build, open.
+
+    The page is `init`, `build` and `serve` with buttons: it browses this machine's files by path (nothing is
+    uploaded), writes the dataset yaml to PROJECT/<id>.yaml exactly as `init` would, builds into
+    PROJECT/bundles/<id>, and lists the result in the gallery it serves. Edit the yaml and run `build` later to
+    change the dataset; the page keeps no state of its own. On a cluster, run it on a compute node and forward
+    the port, as you would for RStudio Server or Jupyter.
+    """
+    from .create import CreateService
+    from .serve import serve as _serve
+
+    project = project.expanduser().resolve()
+    (project / "bundles").mkdir(parents=True, exist_ok=True)
+    _serve(project / "bundles", port=port or 8787, host=host, open_browser=open_browser, port_chosen=port is not None, create=CreateService(project))
+
+
 site_app = typer.Typer(help="The gallery: describe it in `site.yaml`, build it into a folder you can upload.", no_args_is_help=True)
 app.add_typer(site_app, name="site")
 
