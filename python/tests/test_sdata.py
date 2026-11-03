@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from spatialscape import sdata as S
@@ -72,7 +73,11 @@ def test_rows_without_an_instance_fall_back_or_drop():
     xy, has = S.region_centroids(store, "shapes/cells", a, "cell_id", "global")
     assert list(has[:4]) == [False, False, False, True] and np.isnan(xy[0, 0]) and np.isfinite(xy[3]).all()
     # through load_sample: a table without obsm/spatial drops the rows and says so; one with it uses them
-    a.strings_to_categoricals()  # older anndata refuses to write pandas string columns
+    # anndata < 0.13 refuses to write pandas' nullable string arrays: plain object strings for the names and columns
+    a.strings_to_categoricals()
+    a.obs.index = pd.Index(np.asarray(a.obs_names, dtype=object))
+    a.var.index = pd.Index(np.asarray(a.var_names, dtype=object))
+    a.obs["cell_id"] = np.asarray(a.obs["cell_id"].astype(str), dtype=object)
     a.write_zarr(store.parent / "_tmp_table.zarr")
     try:
         spec = SampleSpec(id="t", path=store.parent / "_tmp_table.zarr", platform="xenium", coords="shapes/cells")
