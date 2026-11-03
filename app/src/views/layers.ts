@@ -1,4 +1,5 @@
 /** Builds the deck.gl layer list from the store state and the caches. Nothing here mutates state. */
+import { valueMapping } from "../layers/colorModule";
 import { PathLayer, TextLayer } from "@deck.gl/layers";
 import type { SampleData } from "../data/cache";
 import { fieldById, type CategoricalField } from "../data/manifest";
@@ -155,11 +156,19 @@ export class LayerBuilder {
         const inputs = this.inputsFor(sd, s);
         const hasData = baseMode === 1 ? !!inputs.cat : baseMode === 3 ? !!(inputs.value || inputs.value2) : !!inputs.value;
         const mode: 0 | 1 | 2 | 3 = hasData || !s.color ? baseMode : 2; // 2 = feature not measured on this sample
-        // gene columns are quantized against each sample's own max; rescale to the shared max unless per-sample was asked for
+        // gene columns are quantized against each sample's own range (0..max, or -max..max for a signed feature);
+        // map each onto the shared range, symmetric around zero when any sample is signed, unless per-sample was asked for
         let valueScale = 1;
-        if (mode === 0 && s.color?.kind === "gene" && !s.scalePerSample && s.geneMax > 0) {
-          const g = c.geneGmax.get(`${id}:${s.color.gene}`);
-          if (g !== undefined) valueScale = g / s.geneMax;
+        let valueOffset = 0;
+        let valueCenter = 0;
+        if (mode === 0 && s.color?.kind === "gene") {
+          const key = `${id}:${s.color.gene}`;
+          const gmaxS = c.geneGmax.get(key);
+          const gminS = c.geneGmin.get(key) ?? 0;
+          const m = valueMapping(gminS, gmaxS ?? 0, !s.scalePerSample && gmaxS !== undefined ? s.geneMax : 0, signed);
+          valueScale = m.scale;
+          valueOffset = m.offset;
+          valueCenter = m.center;
         }
         const fs = c.visibility.filterState(sd, s, sharedFilter);
         // "ok": the sample's bytes against thresholds in its own units; "unmeasured": a range no byte can meet
@@ -172,7 +181,8 @@ export class LayerBuilder {
             vmax: s.vrange[1],
             hideZeros: s.hideZeros,
             valueScale,
-            valueCenter: signed ? 0.5 : 0,
+            valueOffset,
+            valueCenter,
             filterOn,
             filterMin: fs.state === "ok" ? fs.lo / 255 : 2,
             filterMax: fs.state === "ok" ? fs.hi / 255 : 3,

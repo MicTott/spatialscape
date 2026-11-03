@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 # Export the BLA cross-species snRNA-seq objects (public per-species SCEs) to h5ad, adding one joint
 # donor-corrected UMAP per species: donor-blocked HVGs -> 50 PCs -> Harmony (subject) -> UMAP.
-# The objects' own `umap` was computed separately per broad class and overlaid, so it is not used.
+# The objects' own `umap` was computed separately per broad class and overlaid; it is kept as obsm/X_umap_class
+# (examples/bla.yaml draws it) and the joint Harmony UMAP below is written as obsm/X_umap.
 suppressPackageStartupMessages({ library(SingleCellExperiment); library(scran); library(scater); library(harmony); library(uwot); library(BiocSingular); library(zellkonverter) })
 script_dir <- dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])))
 src <- file.path(dirname(script_dir), "bla-src")  # examples/bla-src, next to this script's folder
@@ -26,6 +27,7 @@ for (sp in c("human", "baboon", "macaque")) {
   for (n in c("Sample", "subject", "species", "subregion", "dv_axis", "sex", "broad_celltype", "fine_celltype")) if (n %in% colnames(cd)) cd[[n]] <- factor(as.character(cd[[n]]))
   o <- SingleCellExperiment(assays = list(X = assay(sce, "logcounts")), colData = cd,
                             rowData = DataFrame(gene_name = rownames(sce), row.names = rownames(sce)))
+  if ("umap" %in% reducedDimNames(o)) reducedDimNames(o)[reducedDimNames(o) == "umap"] <- "X_umap_class"
   reducedDim(o, "X_umap") <- unname(um)
   writeH5AD(o, file.path(src, sprintf("sce_%s.h5ad", sp)), X_name = "X")
   cat(sprintf("   wrote sce_%s.h5ad\n", sp))

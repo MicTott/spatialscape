@@ -72,6 +72,7 @@ def test_rows_without_an_instance_fall_back_or_drop():
     xy, has = S.region_centroids(store, "shapes/cells", a, "cell_id", "global")
     assert list(has[:4]) == [False, False, False, True] and np.isnan(xy[0, 0]) and np.isfinite(xy[3]).all()
     # through load_sample: a table without obsm/spatial drops the rows and says so; one with it uses them
+    a.strings_to_categoricals()  # older anndata refuses to write pandas string columns
     a.write_zarr(store.parent / "_tmp_table.zarr")
     try:
         spec = SampleSpec(id="t", path=store.parent / "_tmp_table.zarr", platform="xenium", coords="shapes/cells")

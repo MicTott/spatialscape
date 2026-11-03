@@ -15,10 +15,23 @@ export interface CellColorProps {
   filterMin: number;
   filterMax: number;
   hideZeros: boolean;
-  valueScale: number; // multiplies the unorm value before vmin/vmax mapping (per-sample max -> shared scale)
-  valueCenter: number; // the value the scale pivots on: 0, or 0.5 for signed features quantized symmetrically around zero
+  valueScale: number; // the unorm value is mapped onto the shared scale as value * valueScale + valueOffset
+  valueOffset: number; // (per-sample min - shared min) / shared span: 0 for a non-negative sample on a non-negative scale
+  valueCenter: number; // where this sample's zero sits in its own unorm range: 0, or 0.5 for a feature quantized symmetrically around zero
   lut: Uint8Array | null; // 256*4 RGBA (mode 0) or BLEND_SIZE*BLEND_SIZE*4 (mode 3)
   catColors: Uint8Array | null; // N*4 RGBA (alpha 0 = hidden)
+}
+
+/** How one sample's unorm8 codes map onto the shared colour scale: t = code * scale + offset. A sample's codes span
+ *  its own range [gmin, gmax] (gmin = 0, or -gmax for a feature quantized symmetrically around zero); the shared range
+ *  is [0, sharedMax], or [-sharedMax, sharedMax] when any sample on screen is signed, so zero lands at the same place
+ *  for every sample. `center` is where the sample's own zero sits in its codes (the hide-zeros test). */
+export function valueMapping(gminS: number, gmaxS: number, sharedMax: number, signed: boolean): { scale: number; offset: number; center: number } {
+  const center = gminS < 0 ? 0.5 : 0;
+  if (!(sharedMax > 0)) return { scale: 1, offset: 0, center };
+  const lo = signed ? -sharedMax : 0;
+  const span = sharedMax - lo;
+  return { scale: (gmaxS - gminS) / span, offset: (gminS - lo) / span, center };
 }
 
 const uniformBlock = /* glsl */ `
@@ -32,6 +45,7 @@ uniform sscapeUniforms {
   float hideZeros;
   float catCount;
   float valueScale;
+  float valueOffset;
   float valueCenter;
 } sscape;
 `;
@@ -44,8 +58,8 @@ uniform sampler2D catTexture;
 vec4 sscape_cellColor(float value, float value2, float category, float filterValue, out bool drop) {
   vec4 sc;
   drop = false;
-  float v1 = (value - sscape.valueCenter) * sscape.valueScale + sscape.valueCenter;
-  float v2 = (value2 - sscape.valueCenter) * sscape.valueScale + sscape.valueCenter;
+  float v1 = value * sscape.valueScale + sscape.valueOffset;
+  float v2 = value2 * sscape.valueScale + sscape.valueOffset;
   if (sscape.mode > 2.5) {
     float ta = clamp((v1 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
     float tb = clamp((v2 - sscape.vmin) / max(sscape.vmax - sscape.vmin, 1e-6), 0.0, 1.0);
@@ -82,6 +96,7 @@ export const cellColorModule = {
     hideZeros: "f32",
     catCount: "f32",
     valueScale: "f32",
+    valueOffset: "f32",
     valueCenter: "f32",
   },
 } as const;
@@ -95,6 +110,7 @@ export const cellColorDefaultProps = {
   filterMax: 1,
   hideZeros: false,
   valueScale: 1,
+  valueOffset: 0,
   valueCenter: 0,
   lut: { type: "object", value: null, compare: false },
   catColors: { type: "object", value: null, compare: false },

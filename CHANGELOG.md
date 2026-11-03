@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Correctness fixes from an outside review of 0.6.0:
+
+- **A test compares a gene only among the cells that measured it.** Sections whose panel lacks the gene used to enter its test as zeros, so a gene present in one section's panel and absent from another's could come out "differentially expressed" between regions that merely sat on different panels. Each gene's cell counts, fractions and rank-sum test now use the sections that measured it, and a gene with no measuring section on one side is not tested.
+- **A measured gene with no counts is not "unmeasured".** The build leaves all-zero features out of the stored matrix; they are now listed in `zero_genes.json` beside `genes.json` and counted in the manifest (`nZeroGenes`), so the viewer draws them as zero instead of grey, gene-set scores and filters treat them as measured, and the test counts their cells as zeros. Bundles built before carry no list; rebuild to get it.
+- **Fold changes on the scale the bundle stores.** The browser test un-logs values with `expm1` only for samples stored log-normalised; raw values (`normalized: raw`, intensities) are averaged as they are, a level that mixes the two scales is left out and named, and the ⓘ says which was used.
+- **Every section on the shared colour scale by its own range.** A feature signed in one section (quantised around zero) and non-negative in another used a single midpoint, which put the non-negative section's values on the wrong part of the scale; each section now maps onto the shared range through its own minimum and maximum.
+- **A SpatialData image the viewer cannot place is refused**, not approximated: a rotation, shear, mirror or unequal axis scale in its transformation stops the build with the matrix and the `spatialdata.transform` call that fixes it.
+- **One bigWig cannot stand for a merged label.** When the vocabulary merges several raw labels into one category and each has its own exported bigWig, the build refuses instead of showing the first file as the merged population; a file named for the category itself is taken as the aggregate.
+- The cross-species BLA recipe keeps the objects' own per-class UMAP under the name the yaml draws (`X_umap_class`); `CITATION.cff` carries the released version; the README's performance sentence says what sets the frame time instead of quoting a number without a protocol.
+
 ## 0.6.0 (2026-11-03)
 
 The release before 1.0: the viewer and the readers are feature-complete for it, and 1.0 will be this with the

@@ -665,6 +665,12 @@ def build_sample(
         log(f"[{spec.id}] {n_dropped} all-zero feature{'s' if n_dropped != 1 else ''} left out ({len(genes)} kept)")
     with open(out_dir / "genes.json", "w") as fh:
         json.dump(genes, fh, separators=(",", ":"))
+    # features the sample measured and found zero everywhere: not stored, but part of its panel (the viewer draws
+    # them as zero rather than "not measured", and a test counts their cells as zeros)
+    zero_genes = [str(g) for g in sinput.gene_names[~res.keep]]
+    if zero_genes:
+        with open(out_dir / "zero_genes.json", "w") as fh:
+            json.dump(zero_genes, fh, separators=(",", ":"))
     suggested = most_variable_gene(M, res.keep, genes, seed=spec.seed)
 
     # --- geometry ---------------------------------------------------------
@@ -752,6 +758,7 @@ def build_sample(
         meta=meta,
         nObs=n_obs,
         nGenes=len(genes),
+        nZeroGenes=len(zero_genes),
         bbox=bbox,
         pointRadius=radius,
         expr=ExprSpec(
@@ -812,6 +819,10 @@ def gene_union(out: Path, samples: list[Sample]) -> set[str]:
     for s in samples:
         with open(out / "samples" / s.id / "genes.json") as fh:
             union.update(json.load(fh))
+        zero = out / "samples" / s.id / "zero_genes.json"
+        if zero.exists():  # measured, zero everywhere: still a feature of the dataset (it colours as zero)
+            with open(zero) as fh:
+                union.update(json.load(fh))
     return union
 
 

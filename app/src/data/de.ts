@@ -1,17 +1,27 @@
 /**
  * Differential expression on single cells, computed in the browser from the per-cell row store: a two-sided
  * Wilcoxon rank-sum test per gene (tie-corrected normal approximation with continuity correction, as scipy's
- * asymptotic Mann-Whitney), the AUROC it implies, the log2 fold change of mean expression on the expm1 scale with
- * a pseudocount of 1, the fraction of cells expressing in each group, Benjamini-Hochberg over the genes tested,
- * and how many sections agree with the pooled direction. Pure functions: the worker feeds them CSR blocks.
+ * asymptotic Mann-Whitney), the AUROC it implies, the log2 fold change of mean expression with a pseudocount of 1,
+ * the fraction of cells expressing in each group, Benjamini-Hochberg over the genes tested, and how many sections
+ * agree with the pooled direction.
+ *
+ * A gene is compared only among the cells of the sections that measured it: a section whose panel lacks the gene
+ * contributes no cells to that gene's test, and a section that measured it and found no counts contributes zeros.
+ * Means are taken on the expression scale the bundle records: values stored log-normalised (log1p) are
+ * un-logged with expm1 first; raw values (intensities, `normalized: raw`) are averaged as they are.
+ * Pure functions: the worker feeds them CSR blocks.
  */
 import type { CellRows } from "./rows";
+
+/** How a sample's values are stored: natural-log normalised (log1p; Seurat, scanpy, scran) or as they are. */
+export type ValueScale = "log" | "raw";
 
 /** The cells of one sample on one side of a contrast, as rows of the row store (bundle row indices). */
 export interface DePart {
   sample: string;
   rows: Uint32Array;
   chunk: number; // the sample's row-store chunk (values per inner chunk)
+  values: ValueScale;
 }
 export interface DeLevelRequest {
   id: string;
@@ -31,7 +41,7 @@ export interface DeProgress {
 }
 export interface DeLevelResult {
   id: string;
-  nA: number;
+  nA: number; // cells on each side, all sections
   nB: number;
   perSample: { sample: string; nA: number; nB: number }[]; // cells used after the cap
   nSections: number; // sections with at least MIN_CELLS cells on both sides: the denominator of `agree`
@@ -43,6 +53,8 @@ export interface DeLevelResult {
   pctOut: Float32Array;
   auc: Float32Array;
   agree: Float32Array; // sections whose own log2FC has the pooled sign
+  cellsIn: Float32Array; // cells of sections measuring the gene, per side: the denominators of pctIn / pctOut
+  cellsOut: Float32Array;
 }
 
 export const MIN_CELLS = 3; // a side (or a section's side) with fewer cells is not tested
@@ -168,29 +180,45 @@ export interface DeBlock {
   rows: CellRows;
   geneMap: Int32Array; // the sample's gene index -> index in the request's genes, -1 to skip
   scale: Float32Array; // per sample gene: gmax / 255 (a code times it is the value)
+  zeroGenes: Int32Array; // request genes the sample measured and found zero everywhere (not in its stored panel)
 }
 
-/** The test of one level from its decoded blocks. */
-export function testLevel(id: string, blocks: DeBlock[], nGenes: number, minPct: number): DeLevelResult {
+/** The test of one level from its decoded blocks. `values` is the scale every block's sample stores. */
+export function testLevel(id: string, blocks: DeBlock[], nGenes: number, minPct: number, values: ValueScale = "log"): DeLevelResult {
   const sections = [...new Set(blocks.map((b) => b.sample))];
   const secOf = new Map(sections.map((s, k) => [s, k]));
   const nSec = sections.length;
   const nCells = new Float64Array(nSec * 2); // per section and side
-  const sumExp = new Float64Array(nGenes * nSec * 2); // per gene, section, side: sum of expm1(value)
+  const measuredSec = new Uint8Array(nGenes * nSec); // 1 where the section's panel has the gene (stored or all zero)
+  const sumF = new Float64Array(nGenes * nSec * 2); // per gene, section, side: sum of the un-logged (or raw) values
   const cnt = new Uint32Array(nGenes * 2); // nonzero cells per gene and side
-  const measured = new Uint8Array(nGenes);
   let nA = 0;
   let nB = 0;
+  const unlog = values === "log" ? Math.expm1 : (v: number) => v;
   for (const bl of blocks) {
     const n = bl.rows.indptr.length - 1;
-    nCells[secOf.get(bl.sample)! * 2 + bl.side] += n;
+    const sec = secOf.get(bl.sample)!;
+    nCells[sec * 2 + bl.side] += n;
     if (bl.side === 0) nA += n;
     else nB += n;
-    for (let g = 0; g < bl.geneMap.length; g++) if (bl.geneMap[g] >= 0) measured[bl.geneMap[g]] = 1;
+    for (let g = 0; g < bl.geneMap.length; g++) if (bl.geneMap[g] >= 0) measuredSec[bl.geneMap[g] * nSec + sec] = 1;
+    for (let k = 0; k < bl.zeroGenes.length; k++) measuredSec[bl.zeroGenes[k] * nSec + sec] = 1;
     const gene = bl.rows.gene;
     for (let k = 0; k < gene.length; k++) {
       const gi = bl.geneMap[gene[k]];
       if (gi >= 0) cnt[gi * 2 + bl.side]++;
+    }
+  }
+  // per gene and side, the cells of the sections that measured it: the test's n and the fraction's denominator
+  const measured = new Uint8Array(nGenes);
+  const cellsIn = new Float32Array(nGenes);
+  const cellsOut = new Float32Array(nGenes);
+  for (let g = 0; g < nGenes; g++) {
+    for (let s = 0; s < nSec; s++) {
+      if (!measuredSec[g * nSec + s]) continue;
+      measured[g] = 1;
+      cellsIn[g] += nCells[s * 2];
+      cellsOut[g] += nCells[s * 2 + 1];
     }
   }
   // lay the nonzero values out per gene: a's then b's
@@ -211,7 +239,7 @@ export function testLevel(id: string, blocks: DeBlock[], nGenes: number, minPct:
         if (gi < 0) continue;
         const v = value[k] * bl.scale[gene[k]];
         vals[cursor[gi * 2 + bl.side]++] = v;
-        sumExp[(gi * nSec + sec) * 2 + bl.side] += Math.expm1(v);
+        sumF[(gi * nSec + sec) * 2 + bl.side] += unlog(v);
       }
     }
   }
@@ -221,38 +249,40 @@ export function testLevel(id: string, blocks: DeBlock[], nGenes: number, minPct:
   const pctOut = new Float32Array(nGenes).fill(NaN);
   const auc = new Float32Array(nGenes).fill(NaN);
   const agree = new Float32Array(nGenes).fill(NaN);
-  const secOk: number[] = [];
-  for (let s = 0; s < nSec; s++) if (nCells[s * 2] >= MIN_CELLS && nCells[s * 2 + 1] >= MIN_CELLS) secOk.push(s);
-  const enough = nA >= MIN_CELLS && nB >= MIN_CELLS;
+  const secBoth: number[] = [];
+  for (let s = 0; s < nSec; s++) if (nCells[s * 2] >= MIN_CELLS && nCells[s * 2 + 1] >= MIN_CELLS) secBoth.push(s);
   const lfc = (sa: number, na: number, sb: number, nb: number) => Math.log2((sa / na + 1) / (sb / nb + 1));
   for (let g = 0; g < nGenes; g++) {
     if (!measured[g]) continue;
     const cA = cnt[g * 2];
     const cB = cnt[g * 2 + 1];
-    pctIn[g] = nA ? cA / nA : NaN;
-    pctOut[g] = nB ? cB / nB : NaN;
+    const na = cellsIn[g];
+    const nb = cellsOut[g];
+    pctIn[g] = na ? cA / na : NaN;
+    pctOut[g] = nb ? cB / nb : NaN;
+    if (!na || !nb) continue; // one side has no section measuring the gene: no comparison
     let sA = 0;
     let sB = 0;
     for (let s = 0; s < nSec; s++) {
-      sA += sumExp[(g * nSec + s) * 2];
-      sB += sumExp[(g * nSec + s) * 2 + 1];
+      sA += sumF[(g * nSec + s) * 2];
+      sB += sumF[(g * nSec + s) * 2 + 1];
     }
-    if (!nA || !nB) continue;
-    const e = lfc(sA, nA, sB, nB);
+    const e = lfc(sA, na, sB, nb);
     effect[g] = e;
-    if (secOk.length) {
+    const own = secBoth.filter((s) => measuredSec[g * nSec + s]);
+    if (own.length) {
       let k = 0;
-      for (const s of secOk) {
-        const es = lfc(sumExp[(g * nSec + s) * 2], nCells[s * 2], sumExp[(g * nSec + s) * 2 + 1], nCells[s * 2 + 1]);
+      for (const s of own) {
+        const es = lfc(sumF[(g * nSec + s) * 2], nCells[s * 2], sumF[(g * nSec + s) * 2 + 1], nCells[s * 2 + 1]);
         if (es !== 0 && Math.sign(es) === Math.sign(e)) k++;
       }
       agree[g] = k;
     }
-    if (!enough || Math.max(pctIn[g], pctOut[g]) < minPct) continue;
-    const r = rankSum(vals.subarray(off[g * 2], off[g * 2 + 1]), vals.subarray(off[g * 2 + 1], off[g * 2 + 2]), nA, nB);
+    if (na < MIN_CELLS || nb < MIN_CELLS || Math.max(pctIn[g], pctOut[g]) < minPct) continue;
+    const r = rankSum(vals.subarray(off[g * 2], off[g * 2 + 1]), vals.subarray(off[g * 2 + 1], off[g * 2 + 2]), na, nb);
     auc[g] = r.auc;
     p[g] = r.p;
   }
   const perSample = sections.map((sample, s) => ({ sample, nA: nCells[s * 2], nB: nCells[s * 2 + 1] }));
-  return { id, nA, nB, perSample, nSections: secOk.length, measured, effect, p, padj: benjaminiHochberg(p), pctIn, pctOut, auc, agree };
+  return { id, nA, nB, perSample, nSections: secBoth.length, measured, effect, p, padj: benjaminiHochberg(p), pctIn, pctOut, auc, agree, cellsIn, cellsOut };
 }

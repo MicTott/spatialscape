@@ -1,4 +1,5 @@
 /** Dataset loading: manifest, per-sample open, and the arrays the current color / filter / group need. */
+import { measures } from "../data/cache";
 import { assertManifest, fieldById, type Manifest } from "../data/manifest";
 import { store, type ColorSpec, type FilterSpec, type ViewerState } from "../store/store";
 import type { ViewerController } from "./ViewerController";
@@ -68,7 +69,7 @@ export class Loader {
         const smp = c.samplesById.get(id)!;
         store.getState().set({ sampleStatus: { ...store.getState().sampleStatus, [id]: "loading" } });
         try {
-          await c.cache.openSample(url, id, smp.nObs, smp.rows ?? null);
+          await c.cache.openSample(url, id, smp.nObs, smp.rows ?? null, smp.nZeroGenes ?? 0);
           store.getState().set({ sampleStatus: { ...store.getState().sampleStatus, [id]: "ready" } });
           void this.loadChannels(id);
         } catch (e) {
@@ -109,7 +110,7 @@ export class Loader {
       for (const spec of wanted) {
         if (!spec) continue;
         if (spec.kind === "blend") {
-          for (const g of [...spec.a, ...spec.b]) if (!c.cache.getGeneSync(id, g) && sd.geneIndex.has(g)) need(c.cache.getGene(id, g));
+          for (const g of [...spec.a, ...spec.b]) if (!c.cache.getGeneSync(id, g) && measures(sd, g)) need(c.cache.getGene(id, g));
           continue;
         }
         if (spec.kind === "category") {
@@ -117,7 +118,7 @@ export class Loader {
           continue;
         }
         if (spec.kind === "gene") {
-          if (!c.cache.getGeneSync(id, spec.gene) && sd.geneIndex.has(spec.gene)) need(c.cache.getGene(id, spec.gene));
+          if (!c.cache.getGeneSync(id, spec.gene) && measures(sd, spec.gene)) need(c.cache.getGene(id, spec.gene));
         } else {
           const f = c.manifest && fieldById(c.manifest, spec.field);
           if (!f || !smp?.fields.includes(spec.field)) continue;

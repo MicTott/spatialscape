@@ -157,7 +157,8 @@
     "nnz": 64860,
     "chunk": 1048576,
     "order": "morton"
-   }
+   },
+   "nZeroGenes": 0
   },
   {
    "id": "sampleB",
@@ -239,7 +240,8 @@
     "nnz": 56862,
     "chunk": 1048576,
     "order": "morton"
-   }
+   },
+   "nZeroGenes": 0
   },
   {
    "id": "umapA",
@@ -282,7 +284,8 @@
    "images": [],
    "segmentations": [],
    "idBlock": 65536,
-   "suggestedGene": "G049"
+   "suggestedGene": "G049",
+   "nZeroGenes": 0
   }
  ],
  "meta": [],

@@ -132,9 +132,11 @@ What `build` takes from the store, in the entry's coordinate system (`coordinate
 - **Spot size** from a circle element's radius, for Visium (`microns:` is filled in).
 - **Molecules** from the points element, with its feature and cell columns (`points:` names one when the store has
   several; `points: false` leaves them out).
-- **Images**: every image that reaches the coordinate system, placed by its scale and translation (a rotating or
-  shearing transformation is reduced to those, and the image's name says so). A zarr v3 pyramid is written again
-  as the NGFF 0.4 pyramid the viewer reads; a zarr v2 one is copied as it is.
+- **Images**: every image that reaches the coordinate system, placed by its scale and translation. The viewer
+  places an image by one pixel size and an offset, so an image whose transformation rotates, shears, mirrors or
+  scales the axes differently is refused with a message rather than placed wrongly: rasterise it into the
+  coordinate system first (`spatialdata.transform`) or leave it out with `images: []`. A zarr v3 pyramid is
+  written again as the NGFF 0.4 pyramid the viewer reads; a zarr v2 one is copied as it is.
 - **Other polygon elements** (nuclei, another segmentation) as segmentations to compare with.
 
 A table that annotates several elements (one table over the slides of a run) needs `region:` on the entry, one

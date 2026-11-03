@@ -26,6 +26,7 @@ type Handles = {
   obs: zarr.Group<zarr.FetchStore>;
   cat: Map<string, Uint16Array>;
   num: Map<string, Float32Array>;
+  zero: Set<string>; // features the sample measured and found zero everywhere (zero_genes.json): measured, not stored
   rows?: Promise<RowsHandle>; // the per-cell row store, opened on first use
 };
 
@@ -119,18 +120,19 @@ async function fetchJSON<T>(url: string): Promise<T> {
 }
 
 const api = {
-  async openSample(datasetUrl: string, sampleId: string): Promise<{ nGenes: number; genes: string[] }> {
+  async openSample(datasetUrl: string, sampleId: string, nZeroGenes = 0): Promise<{ nGenes: number; genes: string[]; zeroGenes: string[] }> {
     return dedupe(`open:${sampleId}`, async () => {
       const existing = samples.get(sampleId);
-      if (existing) return { nGenes: existing.genes.length, genes: existing.genes };
+      if (existing) return { nGenes: existing.genes.length, genes: existing.genes, zeroGenes: [...existing.zero] };
       const base = `${datasetUrl.replace(/\/$/, "")}/samples/${sampleId}`;
       const exprStore = new zarr.FetchStore(`${base}/expr.zarr`);
       const exprRoot = zarr.root(exprStore);
-      const [u8, gmaxArr, genes, obs] = await Promise.all([
+      const [u8, gmaxArr, genes, obs, zeroGenes] = await Promise.all([
         zarr.open.v3(exprRoot.resolve("u8"), { kind: "array" }) as Promise<U8Array>,
         zarr.open.v3(exprRoot.resolve("gmax"), { kind: "array" }),
         fetchJSON<string[]>(`${base}/genes.json`),
         zarr.open.v3(zarr.root(new zarr.FetchStore(`${base}/obs.zarr`)), { kind: "group" }),
+        nZeroGenes > 0 ? fetchJSON<string[]>(`${base}/zero_genes.json`) : Promise.resolve([] as string[]),
       ]);
       const gmaxChunk = await zarr.get(gmaxArr as zarr.Array<"float32", zarr.FetchStore>);
       let gmin = new Float32Array((gmaxChunk.data as Float32Array).length);
@@ -153,9 +155,10 @@ const api = {
         obs: obs as zarr.Group<zarr.FetchStore>,
         cat: new Map(),
         num: new Map(),
+        zero: new Set(zeroGenes),
       };
       samples.set(sampleId, h);
-      return { nGenes: genes.length, genes };
+      return { nGenes: genes.length, genes, zeroGenes };
     });
   },
 
@@ -216,6 +219,9 @@ const api = {
     const transfer: ArrayBuffer[] = [];
     for (const level of req.levels) {
       const blocks: DeBlock[] = [];
+      const scales = new Set([...level.a, ...level.b].map((p) => p.values));
+      if (scales.size > 1) throw new Error(`level ${level.id}: its sections store expression on different scales (log-normalised and raw), which cannot be compared in one test`);
+      const values = [...scales][0] ?? "log";
       for (const side of [0, 1] as const) {
         const parts: DePart[] = side === 0 ? level.a : level.b;
         const withBlocks = await Promise.all(
@@ -239,14 +245,15 @@ const api = {
             geneMap[g] = h.gmin[g] < 0 ? -1 : (geneAt.get(h.genes[g]) ?? -1);
             scale[g] = h.gmax[g] / 255;
           }
-          blocks.push({ sample: part.sample, side, rows, geneMap, scale });
+          const zeroGenes = Int32Array.from([...h.zero].map((g) => geneAt.get(g)).filter((i): i is number => i !== undefined));
+          blocks.push({ sample: part.sample, side, rows, geneMap, scale, zeroGenes });
         }
       }
       check();
       progress({ level: level.id, text: "testing" });
-      const r = testLevel(level.id, blocks, req.genes.length, req.minPct);
+      const r = testLevel(level.id, blocks, req.genes.length, req.minPct, values);
       out.push(r);
-      for (const arr of [r.measured, r.effect, r.p, r.padj, r.pctIn, r.pctOut, r.auc, r.agree]) transfer.push(arr.buffer as ArrayBuffer);
+      for (const arr of [r.measured, r.effect, r.p, r.padj, r.pctIn, r.pctOut, r.auc, r.agree, r.cellsIn, r.cellsOut]) transfer.push(arr.buffer as ArrayBuffer);
     }
     return Comlink.transfer(out, transfer);
   },

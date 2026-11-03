@@ -12,6 +12,8 @@
   samples/<sampleId>/
     build.json                 fingerprint of the inputs and settings this sample was built from (incremental builds)
     genes.json                 gene order of the expression rows for this sample
+    zero_genes.json            features the sample measured and found zero everywhere: part of its panel, not stored
+                               (manifest samples[].nZeroGenes counts them; the viewer draws them as zero, a test counts their cells)
     expr.zarr/                 Zarr v3 group
       u8      uint8   (nGenes, nObs)  chunk (1, nObs), shard (shardGenes, nObs), zstd
       gmax    float32 (nGenes)        value = gmin + u8 / 255 * (gmax - gmin)

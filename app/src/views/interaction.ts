@@ -1,6 +1,6 @@
 /** Pointer and keyboard handling: hover (KDBush lookup + tooltip rows), click/double-click, lasso gestures, shortcuts. */
 import { Matrix4 } from "@math.gl/core";
-import type { SampleData } from "../data/cache";
+import { measures, type SampleData } from "../data/cache";
 import { drawCount } from "./lod";
 import { pointScaleFor } from "./panes";
 import { nextPinSide, pinSection } from "./pins";
@@ -141,7 +141,7 @@ export class Interaction {
     const smp = c.samplesById.get(sd.id)!;
     const geneRow = (gene: string, prefix = "") => {
       const label = this.featureLabel(gene);
-      if (!sd.geneIndex.has(gene)) return rows.push({ label: prefix + label, value: "not measured" });
+      if (!measures(sd, gene)) return rows.push({ label: prefix + label, value: "not measured" });
       const a = c.cache.getGeneSync(sd.id, gene);
       const gmax = c.geneGmax.get(`${sd.id}:${gene}`);
       const gmin = c.geneGmin.get(`${sd.id}:${gene}`) ?? 0;

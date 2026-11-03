@@ -5,7 +5,7 @@
  *  shared value range (the drawn samples' lowest minimum to highest maximum, like the colour scale), so the same
  *  expression value passes in every sample; a sample that does not measure the filter's gene or field shows no
  *  cells while the filter is on, and the filter panel says how many that is. */
-import type { SampleData } from "../data/cache";
+import { measures, type SampleData } from "../data/cache";
 import type { ViewerState } from "../store/store";
 import { filterRange } from "./types";
 import type { ViewerController } from "./ViewerController";
@@ -61,7 +61,7 @@ export class Visibility {
     const f = s.filter;
     if (!f) return { state: "none" };
     const smp = this.c.samplesById.get(sd.id);
-    if (f.kind === "gene" ? !sd.geneIndex.has(f.gene) : !smp?.fields.includes(f.field)) return { state: "unmeasured" };
+    if (f.kind === "gene" ? !measures(sd, f.gene) : !smp?.fields.includes(f.field)) return { state: "unmeasured" };
     const values = this.c.stats.filterAttr(sd, f)?.value;
     if (!values) return { state: "loading" };
     const [a, b] = filterRange(f);

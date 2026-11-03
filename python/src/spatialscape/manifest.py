@@ -184,6 +184,7 @@ class Sample(_Model):
     suggestedGene: str | None = None  # most variable gene in this sample; the dataset's default when none is configured
     tracks: TracksInfo | None = None  # genome tracks (ATAC samples)
     rows: RowsInfo | None = None  # the per-cell row store, when the sample was built with one
+    nZeroGenes: int = 0  # features measured and zero everywhere: listed in zero_genes.json beside genes.json, not stored
 
     @model_validator(mode="before")
     @classmethod

@@ -263,6 +263,12 @@ def validate_local(root: Path) -> list[str]:
         genes = json.loads((d / "genes.json").read_text()) if (d / "genes.json").exists() else None
         if genes is None or len(genes) != s.nGenes:
             _problem(p, f"{s.id}: genes.json missing or length != nGenes")
+        if s.nZeroGenes:
+            zero = json.loads((d / "zero_genes.json").read_text()) if (d / "zero_genes.json").exists() else None
+            if zero is None or len(zero) != s.nZeroGenes:
+                _problem(p, f"{s.id}: zero_genes.json missing or length != nZeroGenes")
+            elif genes is not None and set(zero) & set(genes):
+                _problem(p, f"{s.id}: zero_genes.json lists stored genes")
         try:
             og = zarr.open_group(str(d / "obs.zarr"), mode="r")
             if tuple(og["xy"].shape) != (s.nObs, 2):

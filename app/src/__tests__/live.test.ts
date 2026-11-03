@@ -6,7 +6,7 @@ import type { RegionGroup } from "../store/store";
 const g = (id: string, name: string): RegionGroup => ({ id, name, color: "#000000", polygons: [{ id: "p", seq: 1, sample: "x", view: "spatial", local: [] }] });
 const groups = [g("a", "Inner"), g("b", "Outer"), g("c", "Empty")];
 // codes: 0 = Inner, 1 = Outer, 3 = none
-const sample = (id: string, platform: string, codes: number[], chunk: number | null = 1024): PlanSample => ({ id, name: id, platform, embedding: false, codes: Uint16Array.from(codes), chunk });
+const sample = (id: string, platform: string, codes: number[], chunk: number | null = 1024): PlanSample => ({ id, name: id, platform, embedding: false, codes: Uint16Array.from(codes), chunk, values: "log" });
 const vis1 = sample("vis1", "visium", [0, 0, 0, 0, 1, 1, 1, 3, 3, 3]);
 const vis2 = sample("vis2", "visium", [3, 3, 3, 3, 3, 3]);
 const hd = sample("hd", "visium_hd", [0, 0, 0, 1, 1, 1, 3]);
@@ -55,6 +55,7 @@ describe("assemble", () => {
       id, nA: 4, nB: 3, perSample: [{ sample: "s", nA: 4, nB: 3 }], nSections,
       measured: Uint8Array.from(measured), effect: Float32Array.from(effect), p: Float32Array.from(p), padj: Float32Array.from(p.map((v) => v * 2)),
       pctIn: Float32Array.from([1, 0.5, NaN]), pctOut: Float32Array.from([0, 0.5, NaN]), auc: Float32Array.from([1, 0.5, NaN]), agree: Float32Array.from([1, 0, NaN]),
+      cellsIn: Float32Array.from([4, 4, 0]), cellsOut: Float32Array.from([3, 3, 0]),
     });
     const results = [level("0:visium", [1, 1, 0], [2, 0, NaN], [0.001, 1, NaN], 1), level("0:visium_hd", [1, 0, 0], [1.5, NaN, NaN], [0.01, NaN, NaN], 1)];
     const { info, matrix } = assemble(plan, results, genes, "regions", { mode: "pair", scope: "drawn", cap: 3000 }, "ds");

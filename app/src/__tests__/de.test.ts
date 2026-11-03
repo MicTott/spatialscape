@@ -85,11 +85,12 @@ describe("level test", () => {
     const geneMap = Int32Array.from([0, 1, 2, -1]);
     const aRows = (seed: number) => Array.from({ length: 6 }, (_, i) => [200 + ((i * 7 + seed) % 50), 100, i === 0 && seed === 1 ? 50 : 0, 9]);
     const bRows = () => Array.from({ length: 6 }, () => [0, 100, 0, 9]);
+    const none = new Int32Array(0);
     const blocks: DeBlock[] = [
-      { sample: "s1", side: 0, rows: csr(aRows(1)), geneMap, scale },
-      { sample: "s1", side: 1, rows: csr(bRows()), geneMap, scale },
-      { sample: "s2", side: 0, rows: csr(aRows(3)), geneMap, scale },
-      { sample: "s2", side: 1, rows: csr(bRows()), geneMap, scale },
+      { sample: "s1", side: 0, rows: csr(aRows(1)), geneMap, scale, zeroGenes: none },
+      { sample: "s1", side: 1, rows: csr(bRows()), geneMap, scale, zeroGenes: none },
+      { sample: "s2", side: 0, rows: csr(aRows(3)), geneMap, scale, zeroGenes: none },
+      { sample: "s2", side: 1, rows: csr(bRows()), geneMap, scale, zeroGenes: none },
     ];
     const r = testLevel("L", blocks, 4, 0.1);
     expect([r.nA, r.nB, r.nSections]).toEqual([12, 12, 2]);
@@ -110,5 +111,56 @@ describe("level test", () => {
       ["s1", 6, 6],
       ["s2", 6, 6],
     ]);
+    expect([r.cellsIn[0], r.cellsOut[0]]).toEqual([12, 12]);
+  });
+
+  it("compares a gene only among the cells of the sections that measured it", () => {
+    // gene 0 is on s1's panel only; s2's cells must not enter its test as zeros
+    const scale = Float32Array.from([1 / 255, 1 / 255]);
+    const none = new Int32Array(0);
+    const s1 = Int32Array.from([0, 1]);
+    const s2 = Int32Array.from([-1, 1]); // s2 stores gene 1 at local index 1; local 0 is some other feature
+    const a1 = csr(Array.from({ length: 5 }, (_, i) => [200 + i, 50]));
+    const b1 = csr(Array.from({ length: 5 }, () => [0, 50]));
+    const b2 = csr(Array.from({ length: 20 }, () => [0, 50])); // 20 cells of a section without gene 0
+    const r = testLevel("L", [
+      { sample: "s1", side: 0, rows: a1, geneMap: s1, scale, zeroGenes: none },
+      { sample: "s1", side: 1, rows: b1, geneMap: s1, scale, zeroGenes: none },
+      { sample: "s2", side: 1, rows: b2, geneMap: s2, scale, zeroGenes: none },
+    ], 2, 0.1);
+    expect([r.cellsIn[0], r.cellsOut[0]]).toEqual([5, 5]); // s2's 20 cells are not in gene 0's denominators
+    expect(r.pctOut[0]).toBe(0);
+    expect([r.cellsIn[1], r.cellsOut[1]]).toEqual([5, 25]);
+    // a gene measured nowhere on one side is not tested at all
+    const r2 = testLevel("L", [
+      { sample: "s1", side: 0, rows: a1, geneMap: s1, scale, zeroGenes: none },
+      { sample: "s2", side: 1, rows: b2, geneMap: s2, scale, zeroGenes: none },
+    ], 2, 0.1);
+    expect(Number.isNaN(r2.p[0])).toBe(true);
+    expect(Number.isNaN(r2.effect[0])).toBe(true);
+    expect(r2.measured[0]).toBe(1);
+    // ... but a section that measured the gene and found zero everywhere contributes its cells as zeros
+    const r3 = testLevel("L", [
+      { sample: "s1", side: 0, rows: a1, geneMap: s1, scale, zeroGenes: none },
+      { sample: "s2", side: 1, rows: b2, geneMap: s2, scale, zeroGenes: Int32Array.from([0]) },
+    ], 2, 0.1);
+    expect([r3.cellsIn[0], r3.cellsOut[0]]).toEqual([5, 20]);
+    expect(r3.p[0]).toBeLessThan(0.001);
+  });
+
+  it("takes means on the scale the bundle stores: expm1 for log-normalised values, as they are for raw", () => {
+    const scale = Float32Array.from([10 / 255]); // code 255 -> 10, code 26 -> 1.02
+    const geneMap = Int32Array.from([0]);
+    const none = new Int32Array(0);
+    const a = csr(Array.from({ length: 4 }, () => [255]));
+    const b = csr(Array.from({ length: 4 }, () => [26]));
+    const blocks: DeBlock[] = [
+      { sample: "s", side: 0, rows: a, geneMap, scale, zeroGenes: none },
+      { sample: "s", side: 1, rows: b, geneMap, scale, zeroGenes: none },
+    ];
+    const raw = testLevel("L", blocks, 1, 0.1, "raw");
+    expect(raw.effect[0]).toBeCloseTo(Math.log2(11 / (26 / 255 * 10 + 1)), 3);
+    const log = testLevel("L", blocks, 1, 0.1, "log");
+    expect(log.effect[0]).toBeCloseTo(Math.log2((Math.expm1(10) + 1) / (Math.expm1(26 / 255 * 10) + 1)), 3);
   });
 });

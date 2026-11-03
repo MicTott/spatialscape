@@ -602,11 +602,19 @@ def store_images(spec) -> list:
     out = []
     for info in image_infos(Path(spec.path), spec.coordinate_system):
         a = info.affine
-        sx, sy = float(np.hypot(a[0, 0], a[1, 0])), float(np.hypot(a[0, 1], a[1, 1]))
+        sx, sy = float(a[0, 0]), float(a[1, 1])
+        if not is_scale_translation(a) or abs(sx - sy) > 1e-6 * max(abs(sx), abs(sy)):
+            # the viewer places an image by one pixel size and an offset; a rotation, shear, mirror or unequal axis
+            # scale would put it in the wrong place, so it is refused rather than approximated
+            m = np.round(a[:2, :2], 6).tolist()
+            raise ValueError(
+                f"sample {spec.id}: image {info.name!r} reaches coordinate system {spec.coordinate_system!r} through a transformation the viewer "
+                f"cannot place (matrix {m}: a rotation, shear, mirror or unequal axis scale). Rasterise it into that coordinate system first "
+                f"(spatialdata.transform(sdata.images[{info.name!r}], to_coordinate_system={spec.coordinate_system!r}), then save) "
+                f"or set `images: []` on the entry to leave it out"
+            )
         rgb = info.channels == 3 and np.dtype(info.dtype) == np.uint8
         out.append(ImageSpec(id=_image_id(info.name), name=info.name, path=info.path, kind="rgb" if rgb else "multichannel", pixel_size="auto", pixels_per_unit=1.0 / sx if sx else 1.0, offset=(float(a[0, 2]), float(a[1, 2]))))
-        if not is_scale_translation(a) or abs(sx - sy) > 1e-6 * max(sx, sy):
-            out[-1] = out[-1].model_copy(update={"name": f"{info.name} (placed by scale and offset only)"})
     return out
 
 

@@ -29,7 +29,13 @@ export interface SampleData {
   numU8: Map<string, Uint8Array>; // continuous obs quantized to [min,max] -> 0..255
   numRange: Map<string, [number, number]>;
   rows: Sample["rows"]; // the per-cell row store's manifest entry, when the sample has one
+  zeroGenes: Set<string>; // features the sample measured and found zero everywhere: not stored, but not "unmeasured" either
   ids: Map<number, string[]>;
+}
+
+/** Whether a sample measured a feature: it is in its stored panel, or among the all-zero features the build left out. */
+export function measures(sd: SampleData, gene: string): boolean {
+  return sd.geneIndex.has(gene) || sd.zeroGenes.has(gene);
 }
 
 export const GENE_BUDGET_BYTES = 192 * 1024 * 1024;
@@ -65,14 +71,14 @@ export class DataCache {
     return p;
   }
 
-  openSample(datasetUrl: string, id: string, nObs: number, rows: Sample["rows"] = null): Promise<SampleData> {
+  openSample(datasetUrl: string, id: string, nObs: number, rows: Sample["rows"] = null, nZeroGenes = 0): Promise<SampleData> {
     const existing = this.samples.get(id);
     if (existing) return Promise.resolve(existing);
-    return this.dedupe(`open:${id}`, () => this.openSampleNow(datasetUrl, id, nObs, rows));
+    return this.dedupe(`open:${id}`, () => this.openSampleNow(datasetUrl, id, nObs, rows, nZeroGenes));
   }
 
-  private async openSampleNow(datasetUrl: string, id: string, nObs: number, rows: Sample["rows"]): Promise<SampleData> {
-    const { genes } = await this.worker.openSample(datasetUrl, id);
+  private async openSampleNow(datasetUrl: string, id: string, nObs: number, rows: Sample["rows"], nZeroGenes: number): Promise<SampleData> {
+    const { genes, zeroGenes } = await this.worker.openSample(datasetUrl, id, nZeroGenes);
     const { xy, index } = await this.worker.getXYAndIndex(id);
     if (xy.length / 2 !== nObs) console.warn(`sample ${id}: manifest says ${nObs} cells, obs.zarr holds ${xy.length / 2}; using the arrays`);
     const sd: SampleData = {
@@ -90,6 +96,7 @@ export class DataCache {
       numRange: new Map(),
       ids: new Map(),
       rows,
+      zeroGenes: new Set(zeroGenes),
     };
     this.samples.set(id, sd);
     return sd;
@@ -120,8 +127,12 @@ export class DataCache {
     const sd = this.samples.get(sampleId);
     if (!sd) return null;
     const gi = sd.geneIndex.get(gene);
-    if (gi === undefined) return null; // gene not on this sample's panel
     const key = this.geneKey(sampleId, gene);
+    if (gi === undefined) {
+      if (!sd.zeroGenes.has(gene)) return null; // gene not on this sample's panel
+      this.genes.set(key, new Uint8Array(sd.nObs)); // measured, zero everywhere: a column of zeros, never fetched
+      return this.getGeneSync(sampleId, gene)!;
+    }
     const arr = await this.dedupe(`gene:${key}`, () => this.worker.getGene(sampleId, gi));
     this.genes.set(key, arr);
     return this.getGeneSync(sampleId, gene)!;

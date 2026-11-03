@@ -1,5 +1,5 @@
 /** Gene-set scores for two-channel blending: per cell, the mean log-normalized expression of the set's genes. */
-import type { BinaryAttr, SampleData } from "../data/cache";
+import { measures, type BinaryAttr, type SampleData } from "../data/cache";
 import type { ViewerController } from "./ViewerController";
 
 /**
@@ -53,7 +53,7 @@ export class Blend {
   }
 
   attr(sd: SampleData, genes: string[]): BinaryAttr<Uint8Array> | undefined {
-    const present = genes.filter((g) => sd.geneIndex.has(g));
+    const present = genes.filter((g) => measures(sd, g));
     if (!present.length) return undefined;
     const cols: Uint8Array[] = [];
     const gmax: number[] = [];
@@ -91,6 +91,6 @@ export class Blend {
 
   /** How many of the requested genes exist on a sample's panel (for the UI). */
   coverage(sd: SampleData, genes: string[]): number {
-    return genes.filter((g) => sd.geneIndex.has(g)).length;
+    return genes.filter((g) => measures(sd, g)).length;
   }
 }

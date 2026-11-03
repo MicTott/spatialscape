@@ -403,13 +403,27 @@ def _detect_bin(bw) -> int:
 
 
 def _bigwig_for(src: str | dict, label: str, aliases: dict[str, str]) -> Path | None:
-    """The exported file for a category: by its label, else by any raw label the vocabulary maps onto it."""
-    names = [label] + [raw for raw, canon in aliases.items() if canon == label and raw != label]
-    for name in names:
-        p = Path(src[name]) if isinstance(src, dict) and name in src else Path(str(src).replace("{label}", name)) if not isinstance(src, dict) else None
-        if p is not None and p.is_file():
-            return p
-    return None
+    """The exported file for a category: the one named for the label itself, else the one raw label the vocabulary
+    maps onto it. A label that merges several raw labels, each with its own file, is refused: showing one of them
+    as the merged population would be wrong, and summing bigWigs needs a normalisation policy this build does not
+    have, so aggregate them upstream and name the result for the label."""
+
+    def candidate(name: str) -> Path | None:
+        if isinstance(src, dict):
+            return Path(src[name]) if name in src else None
+        return Path(str(src).replace("{label}", name))
+
+    own = candidate(label)
+    if own is not None and own.is_file():
+        return own
+    raws = [raw for raw, canon in aliases.items() if canon == label and raw != label]
+    found = [(raw, p) for raw in raws if (p := candidate(raw)) is not None and p.is_file()]
+    if len(found) > 1:
+        raise ValueError(
+            f"tracks.bigwigs: category {label!r} merges {', '.join(r for r, _ in found)}, each with its own bigWig "
+            f"({', '.join(p.name for _, p in found)}); aggregate them into one file for {label!r} first (one track cannot stand for the merged population)"
+        )
+    return found[0][1] if found else None
 
 
 def _copy_bigwigs(

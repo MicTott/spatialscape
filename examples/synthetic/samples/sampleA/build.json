@@ -51,6 +51,7 @@
   "shard_genes": 512,
   "sharded": true,
   "spec": {
+   "coordinate_system": "global",
    "coords": "obsm/spatial",
    "expression": {
     "keep_f16": false,
@@ -78,6 +79,10 @@
      "mask_margin": 150.0,
      "max_size": null,
      "name": "H&E",
+     "offset": [
+      0.0,
+      0.0
+     ],
      "path": "/private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/synth/sampleA.png",
      "pixel_size": "auto",
      "pixels_per_unit": 1.0,
@@ -112,6 +117,7 @@
    "path": "/private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/synth/sampleA.h5ad",
    "platform": "visium",
    "point_radius": null,
+   "points": null,
    "polygons": {
     "affine": null,
     "id_column": "cell_id",
@@ -122,6 +128,7 @@
     "x_column": "vertex_x",
     "y_column": "vertex_y"
    },
+   "region": null,
    "seed": 7,
    "segmentations": [
     {
@@ -145,6 +152,6 @@
    }
   }
  },
- "built": "2026-11-02T17:20:59+00:00",
- "spatialscape": "0.5.0"
+ "built": "2026-11-03T20:31:53+00:00",
+ "spatialscape": "0.6.0"
 }

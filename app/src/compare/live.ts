@@ -5,7 +5,7 @@
  * tested against each other; otherwise each group against the rest of the drawn sections, or of every section.
  */
 import * as Comlink from "comlink";
-import { MIN_CELLS, type DeLevelRequest, type DeLevelResult, type DePart, type DeProgress } from "../data/de";
+import { MIN_CELLS, type DeLevelRequest, type DeLevelResult, type DePart, type DeProgress, type ValueScale } from "../data/de";
 import { platformLabel, type ComparisonInfo, type LevelInfo } from "../data/manifest";
 import { store, type RegionGroup } from "../store/store";
 import type { ViewerController } from "../views/ViewerController";
@@ -30,6 +30,7 @@ export interface PlanSample {
   embedding: boolean;
   codes: Uint16Array | null; // the regions field: group index per cell, groups.length for none
   chunk: number | null; // the row store's chunk, null without one
+  values: ValueScale; // how the sample stores expression: log-normalised, or raw values kept as they are
 }
 export interface PlannedLevel {
   req: DeLevelRequest;
@@ -76,7 +77,7 @@ export function planTest(groups: RegionGroup[], samples: PlanSample[], opts: Tes
     if (!by) return null;
     const rows: number[] = [];
     for (const [c, list] of by) if (pick(c)) for (const i of list) rows.push(i);
-    return rows.length ? { sample: s.id, rows: Uint32Array.from(rows), chunk: s.chunk! } : null;
+    return rows.length ? { sample: s.id, rows: Uint32Array.from(rows), chunk: s.chunk!, values: s.values } : null;
   };
   const contrasts: { name: string; group: string | null; a: (s: PlanSample) => DePart | null; b: (s: PlanSample) => DePart | null }[] =
     opts.mode === "pair"
@@ -96,6 +97,10 @@ export function planTest(groups: RegionGroup[], samples: PlanSample[], opts: Tes
       const b = of.map(ct.b).filter((p): p is DePart => !!p);
       const count = (ps: DePart[]) => ps.reduce((k, p) => k + p.rows.length, 0);
       if (count(a) < MIN_CELLS || count(b) < MIN_CELLS) continue;
+      if (new Set([...a, ...b].map((p) => p.values)).size > 1) {
+        skipped.push(`${platformLabel(platform)} (its sections store expression on different scales)`);
+        continue;
+      }
       const manyPlatforms = platforms.length > 1;
       const name = contrasts.length > 1 ? (manyPlatforms ? `${ct.group} · ${platformLabel(platform)}` : ct.group!) : manyPlatforms ? platformLabel(platform) : ct.name;
       levels.push({ req: { id: `${ci}:${platform}`, a, b }, name, group: ct.group, platform });
@@ -119,7 +124,7 @@ export async function runRegionTest(c: ViewerController, opts: TestOptions): Pro
   // in manifest order, so the platforms (the columns) come out the same every run
   const samples: PlanSample[] = m.samples.flatMap((smp) => {
     const sd = c.cache.samples.get(smp.id);
-    return sd ? [{ id: sd.id, name: smp.name, platform: smp.platform, embedding: smp.kind === "embedding", codes: sd.cat.get(field) ?? null, chunk: sd.rows?.chunk ?? null }] : [];
+    return sd ? [{ id: sd.id, name: smp.name, platform: smp.platform, embedding: smp.kind === "embedding", codes: sd.cat.get(field) ?? null, chunk: sd.rows?.chunk ?? null, values: smp.expr.normalized === "raw" ? "raw" : "log" }] : [];
   });
   const plan = planTest(s.regions.groups, samples, opts);
   if ("problem" in plan) {
@@ -193,8 +198,9 @@ export function assemble(plan: TestPlan, results: DeLevelResult[], genes: string
     return `${l.name}: ${fmt(r.nA)} vs ${fmt(r.nB)} cells (${per})`;
   });
   const rest = markers ? ` The rest is every other cell of ${opts.scope === "all" ? "every section" : "the sections drawn on"}.` : "";
+  const raw = plan.levels.some((l) => [...l.req.a, ...l.req.b].some((p) => p.values === "raw"));
   const description = [
-    `Wilcoxon rank-sum test on single cells, two-sided and tie-corrected; log2FC of the mean expression on the expm1 scale with a pseudocount of 1; % expressing per side; BH over genes expressed in at least 10% of either side; at most ${fmt(opts.cap)} cells a side, taken as whole blocks of the row store. Sections agreeing: those with ${MIN_CELLS}+ cells on both sides whose own log2FC has the same sign.${rest}`,
+    `Wilcoxon rank-sum test on single cells, two-sided and tie-corrected; log2FC of the mean expression ${raw ? "of the stored values" : "after undoing the log (expm1)"} with a pseudocount of 1; % expressing per side; BH over genes expressed in at least 10% of either side; at most ${fmt(opts.cap)} cells a side, taken as whole blocks of the row store. A gene is compared among the cells of the sections that measured it: a section whose panel lacks it contributes no cells, one that measured it and found no counts contributes zeros. Sections agreeing: those with ${MIN_CELLS}+ cells on both sides whose own log2FC has the same sign.${rest}`,
     ...cells,
   ].join("\n");
   const name = markers ? (plan.groups.length === 1 ? `${plan.groups[0].name} vs rest` : "each region vs rest") : `${plan.groups[0].name} vs ${plan.groups[1].name}`;
