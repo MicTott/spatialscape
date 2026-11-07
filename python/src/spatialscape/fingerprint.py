@@ -22,7 +22,9 @@ from .manifest import FORMAT_VERSION
 
 IMAGE_RECIPE = 2  # bump when images are written differently; rebuilds only samples that have one (2: empty chunks written)
 
-BUILD_RECIPE = 1  # bump when build_sample writes something different for the same inputs and settings
+# bump when build_sample writes something different for the same inputs and settings
+# 2: zero_genes.json is written (0.6.0 added it without a bump), molecule positions are rounded before tiling
+BUILD_RECIPE = 2
 SIDECAR = "build.json"
 
 

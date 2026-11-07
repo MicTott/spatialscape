@@ -89,3 +89,24 @@ def test_missing_required_column_is_a_clear_error(tmp_path):
     make_synthetic(tmp_path / "src", n_cells=50, n_genes=4)
     with pytest.raises(KeyError, match="column 'gene' \\(feature\\) not found"):
         M.write_molecules(tmp_path / "out", tmp_path / "src" / "sampleA.transcripts.parquet", to_frame=lambda a: a, columns={"feature": "gene"})
+
+
+def test_positions_are_rounded_before_tiling(tmp_path):
+    """A molecule within half a grid unit of a tile's far edge rounds into the next tile, so every decoded position
+    is the rounded source position: never one unit off at a tile boundary."""
+    import pyarrow as pa
+
+    rng = np.random.default_rng(3)
+    n = 20000
+    # positions spread over two tiles' worth of space, with many right at the 512 um edge of the first tile
+    x = np.concatenate([rng.uniform(0, 1000, n - 2000), 512 - M.GRID * rng.uniform(0, 0.49, 1000), 512 + M.GRID * rng.uniform(0, 0.49, 1000)])
+    y = rng.uniform(0, 1000, n)
+    t = pa.table({"feature_name": np.array(["G1"] * n), "x_location": x, "y_location": y, "qv": np.full(n, 40.0)})
+    pq.write_table(t, tmp_path / "tx.parquet")
+    M.write_molecules(tmp_path / "out", tmp_path / "tx.parquet", to_frame=lambda a: a)
+    _names, _gene, xy, _flags = M.read_molecules(tmp_path / "out")
+    assert len(xy) == n
+    src = np.rint(np.column_stack([x, y]) / M.GRID) * M.GRID  # the rounded source positions, as a multiset
+    order_s = np.lexsort((src[:, 1], src[:, 0]))
+    order_b = np.lexsort((xy[:, 1], xy[:, 0]))
+    assert np.abs(xy[order_b] - src[order_s]).max() < 1e-9  # exactly those, edge molecules included

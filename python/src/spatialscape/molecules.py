@@ -281,21 +281,25 @@ def write_molecules(
     limit = read_limit_bytes()
     if need > limit:
         raise MemoryError(f"{path}: {total:,} molecules need about {need / 2**30:.1f} GB to tile, more than this build allows ({limit / 2**30:.1f} GB); raise min_qv or build on a larger machine")
-    nx = math.floor((hi[0] - origin[0]) / tile) + 1 if total else 0
-    ny = math.floor((hi[1] - origin[1]) / tile) + 1 if total else 0
+    # tiles cover the rounded extent: the far edge, rounded onto the grid, may fall in one more tile than floor says
+    units_per_tile = round(tile / GRID)
+    nx = int(round((hi[0] - origin[0]) / GRID) // units_per_tile) + 1 if total else 0
+    ny = int(round((hi[1] - origin[1]) / GRID) // units_per_tile) + 1 if total else 0
     log(f"molecules: {total:,} rows at or above Q{min_qv:g} (controls still among them); {tile} um tiles over a {nx} x {ny} grid")
 
     # pass 2: collect per tile
     buckets: dict[int, list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]] = {}
-    units_per_tile = round(tile / GRID)
     for xy, gene, flags in rd.chunks(light=False):
         if not len(xy):
             continue
-        rel = xy - origin
-        ij = np.floor(rel / tile).astype(np.int64)
+        # round to the grid first, then split into tiles: a molecule within half a unit of a tile's far edge belongs
+        # to the next tile, so every stored position is the rounded one, never clipped back by a unit at the edge
+        q_all = np.rint((xy - origin) / GRID).astype(np.int64)
+        ij = q_all // units_per_tile
+        ij[:, 0] = np.clip(ij[:, 0], 0, nx - 1)
+        ij[:, 1] = np.clip(ij[:, 1], 0, ny - 1)
         tid = ij[:, 1] * nx + ij[:, 0]
-        q = np.rint((rel - ij * tile) / GRID).astype(np.int64)
-        q = np.clip(q, 0, units_per_tile - 1).astype(np.uint16)
+        q = np.clip(q_all - ij * units_per_tile, 0, units_per_tile - 1).astype(np.uint16)
         order = np.argsort(tid, kind="stable")
         tid_s = tid[order]
         bounds = np.flatnonzero(np.diff(tid_s)) + 1

@@ -18,6 +18,9 @@
       u8      uint8   (nGenes, nObs)  chunk (1, nObs), shard (shardGenes, nObs), zstd
       gmax    float32 (nGenes)        value = gmin + u8 / 255 * (gmax - gmin)
       gmin    float32 (nGenes)        0 for non-negative features; -gmax for features with negative values (quantized symmetrically, zero at the centre)
+                                      precision: a value is within (gmax - gmin) / 510 of the source, except a positive value under
+                                      half a step, stored as code 1 so an expressed cell never draws as zero; zeros are exact
+                                      (checked by `python -m spatialscape.fidelity`, see benchmarks/)
       f16     float16 (nGenes, nObs)  optional; not read by the viewer
     rows.zarr/                 Zarr v3 group, optional (`expression.rows`): the same codes one cell at a time
       indptr  uint32  (nObs + 1)      stored values before each row of the store

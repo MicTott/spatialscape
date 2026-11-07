@@ -1,4 +1,7 @@
 /** window.__sscape test/automation hooks (dev + e2e builds). */
+import { loadMatrix } from "./compare/data";
+import { runRegionTest, type TestOptions } from "./compare/live";
+import type { MatrixData } from "./compare/model";
 import { store, type ViewerState } from "./store/store";
 import type { GenomeView } from "./genome/GenomeView";
 import type { ViewerController } from "./views/ViewerController";
@@ -14,6 +17,8 @@ declare global {
       setGene: (gene: string) => Promise<number>;
       getState: () => ViewerState;
       pixelProbe: () => Promise<{ nonBackground: number; total: number }>;
+      regionTest: (opts: TestOptions) => Promise<void>; // the region test, as the panel's button runs it
+      liveMatrix: () => Promise<MatrixData> | null; // its result, as the Compare panel reads it
     };
   }
 }
@@ -48,5 +53,11 @@ export function installTestHooks(controller: ViewerController) {
       return controller.whenIdle().then(() => performance.now() - t0);
     },
     pixelProbe: () => controller.pixelProbe(),
+    regionTest: (opts) => runRegionTest(controller, opts),
+    liveMatrix: () => {
+      const live = controller.regions.live;
+      const url = store.getState().datasetUrl;
+      return live && url ? loadMatrix(url, live) : null;
+    },
   };
 }

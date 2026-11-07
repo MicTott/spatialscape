@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+**Fidelity checks.** `python -m spatialscape.fidelity bundle dataset.yaml bundles/<id>` reads a built bundle back and
+measures it against the source: dequantised expression within half a code step of the normalised values with zeros
+exact, the row store equal to the gene-major codes, positions within float32 of the source coordinates through
+the frame transform, shape vertices within half the 0.1 µm grid, molecules matched to the source table in count and
+position. The viewer's own computations are checked in the browser (`npx playwright test fidelity`): regions drawn
+through the store select exactly the cells an offline point-in-polygon selects, and the region test's statistics
+match scipy's asymptotic Mann-Whitney on the row store to float32 precision. Both run in CI on the synthetic
+dataset; `benchmarks/` says how to run them on a real bundle and keeps the reports.
+
+The first run on the amygdala bundle found one thing: a molecule within half a grid unit of a tile's far edge was
+clipped back by one unit (16 nm, 0.01% of molecules) instead of rounding into the next tile. Positions are now
+rounded before tiling, so every stored molecule sits on the rounded source position. The build recipe is bumped to
+2 (this, and `zero_genes.json`, which 0.6.0 added without one), so the next `build` of an existing bundle rebuilds
+every sample once.
+
 Correctness fixes from an outside review of 0.6.0:
 
 - **A test compares a gene only among the cells that measured it.** Sections whose panel lacks the gene used to enter its test as zeros, so a gene present in one section's panel and absent from another's could come out "differentially expressed" between regions that merely sat on different panels. Each gene's cell counts, fractions and rank-sum test now use the sections that measured it, and a gene with no measuring section on one side is not tested.

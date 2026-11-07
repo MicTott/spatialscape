@@ -80,6 +80,10 @@ where the workflow differs, not a feature checklist.
 
 ## 3. Fidelity
 
+Done: `python -m spatialscape.fidelity` (the package), `python/tests/test_fidelity.py` (CI, synthetic) and
+`app/e2e/fidelity.spec.ts` (the browser's lasso and region test); see `benchmarks/README.md` for the bounds and
+`benchmarks/results/` for the reports on real bundles. The rare-population check is not written yet.
+
 Offline computation in Python against the same bundle, as tests that run in CI on the synthetic dataset and as a
 script on the real ones:
 
