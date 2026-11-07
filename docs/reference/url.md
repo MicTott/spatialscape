@@ -27,6 +27,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |
 | `hs` | hidden samples | `hs=vis_Br2743` |
+| `rot` | sections turned on screen, `id:degrees` clockwise (90, 180 or 270), comma-separated | `rot=mouse_20um:90` |
 | `ps` | point size multiplier, spatial view | `ps=1.5` |
 | `pse` | point size multiplier, embedding view | `pse=0.5` |
 | `psg` | point size multipliers of the group panes in pane order, empty where a pane follows `ps` | `psg=,1.50` |

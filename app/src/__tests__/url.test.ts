@@ -25,6 +25,21 @@ describe("url state", () => {
     expect(q.has("ms")).toBe(false);
   });
 
+  it("round-trips the sections turned on screen, colons in ids included, and drops the unturned", () => {
+    const s = { ...store.getState(), rotations: { a: 90, "x:y": 270, z: 0 } } as ViewerState;
+    const qs = serialize(s);
+    expect(new URLSearchParams(qs).get("rot")).toBe("a:90,x:y:270");
+    const g = globalThis as any;
+    const saved = g.window;
+    g.window = { location: { search: `?${qs}&rot=a:90,x:y:270,bad:45` } };
+    try {
+      expect(readUrl().rotations).toEqual({ a: 90, "x:y": 270 });
+    } finally {
+      g.window = saved;
+    }
+    expect(new URLSearchParams(serialize({ ...store.getState(), rotations: {} } as ViewerState)).has("rot")).toBe(false);
+  });
+
   it("round-trips the group split, its cameras and the scale lock", () => {
     const s = {
       ...store.getState(),

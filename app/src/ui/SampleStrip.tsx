@@ -73,6 +73,7 @@ export function SampleStrip() {
 
 function SampleRow({ id, s, focus, selected, status }: { id: string; s: Sample; focus: string | null; selected: string | null; status?: string }) {
   const st = store.getState();
+  const rotation = useViewer((v) => v.rotations[id] ?? 0);
   const hidden = st.hiddenSamples.includes(id) || (!!st.platforms && s.kind !== "embedding" && !st.platforms.includes(s.platform));
   const cls = [id === focus ? "focus" : "", id === selected ? "sel" : "", status ?? "", hidden ? "hidden" : ""].join(" ");
   return (
@@ -81,8 +82,14 @@ function SampleRow({ id, s, focus, selected, status }: { id: string; s: Sample; 
         <span className="s-name">{s.name}</span>
         <span className="s-meta">
           {s.platform} · {s.nObs.toLocaleString()}
+          {rotation ? ` · turned ${rotation}°` : ""}
         </span>
       </button>
+      {s.kind !== "embedding" && (
+        <button className="focus-btn" disabled={hidden} onClick={() => st.rotateSample(id)} title={rotation ? `turned ${rotation}° clockwise · click for another 90°` : "turn 90° clockwise"}>
+          ↻
+        </button>
+      )}
       <button className="focus-btn" disabled={hidden} onClick={() => st.setFocus(id === focus ? null : id)} title={id === focus ? "back to all" : "focus"}>
         {id === focus ? "⤢" : "⤡"}
       </button>

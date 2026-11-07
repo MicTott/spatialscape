@@ -164,6 +164,8 @@ export interface ViewerState {
   filter: FilterSpec | null;
   hiddenCategories: Record<string, number[]>;
   hiddenSamples: string[];
+  /** sections turned on screen: degrees clockwise (90, 180 or 270) by sample id; absent means as built */
+  rotations: Record<string, number>;
   layoutMode: LayoutMode;
   focus: string | null;
   selected: string | null;
@@ -197,6 +199,8 @@ export interface ViewerState {
   setFilter: (f: FilterSpec | null) => void;
   toggleCategory: (field: string, code: number) => void;
   setHiddenCategories: (field: string, codes: number[]) => void;
+  /** turn a section another 90° clockwise on screen (four clicks bring it back) */
+  rotateSample: (id: string) => void;
   setFocus: (id: string | null) => void;
   toggleSample: (id: string) => void;
   addRegionGroup: (name?: string) => string;
@@ -262,6 +266,7 @@ export const store = createStore<ViewerState>((set, get) => ({
   filter: null,
   hiddenCategories: {},
   hiddenSamples: [],
+  rotations: {},
   layoutMode: DEFAULTS.layoutMode,
   features: null,
   platforms: null,
@@ -380,6 +385,13 @@ export const store = createStore<ViewerState>((set, get) => ({
     if (cur.has(id)) cur.delete(id);
     else cur.add(id);
     set({ hiddenSamples: [...cur] });
+  },
+  rotateSample: (id) => {
+    const r = { ...get().rotations };
+    const next = ((r[id] ?? 0) + 90) % 360;
+    if (next) r[id] = next;
+    else delete r[id];
+    set({ rotations: r });
   },
 }));
 

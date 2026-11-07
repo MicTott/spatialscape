@@ -87,3 +87,23 @@ describe("image footprints", () => {
     expect(L.cell[0]).toBeCloseTo(8800 * 1.2);
   });
 });
+
+describe("rotation", () => {
+  it("turns a sample about its centre: a 90° turn swaps its footprint and sends the top-left corner top-right", () => {
+    const samples = [mk("a", 100, 50), mk("b", 100, 50)];
+    const L = computeLayout(samples, ["a", "b"], "strip", 0, 1, new Set(), null, { b: 90 });
+    const a = L.placements.get("a")!;
+    const b = L.placements.get("b")!;
+    expect(a.worldBbox[2] - a.worldBbox[0]).toBeCloseTo(100);
+    expect(b.worldBbox[2] - b.worldBbox[0]).toBeCloseTo(50);
+    expect(b.worldBbox[3] - b.worldBbox[1]).toBeCloseTo(100);
+    expect(intersects(a.worldBbox, b.worldBbox)).toBe(false);
+    const p = b.modelMatrix.transformAsPoint([0, 0, 0]); // clockwise on the y-down canvas
+    expect(p[0]).toBeCloseTo(b.worldBbox[2]);
+    expect(p[1]).toBeCloseTo(b.worldBbox[1]);
+    const half = computeLayout(samples, ["a", "b"], "strip", 0, 1, new Set(), null, { b: 180 }).placements.get("b")!;
+    const q = half.modelMatrix.transformAsPoint([0, 0, 0]);
+    expect(q[0]).toBeCloseTo(half.worldBbox[2]);
+    expect(q[1]).toBeCloseTo(half.worldBbox[3]);
+  });
+});

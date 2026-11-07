@@ -282,7 +282,7 @@ export class ViewerController {
     if (s.sampleStatus !== prev.sampleStatus && s.regions.groups.length) {
       for (const [id, st] of Object.entries(s.sampleStatus)) if (st === "ready" && prev.sampleStatus[id] !== "ready") this.regions.recompute(id);
     }
-    if (s.layoutMode !== prev.layoutMode || s.hiddenSamples !== prev.hiddenSamples || s.platforms !== prev.platforms) {
+    if (s.layoutMode !== prev.layoutMode || s.hiddenSamples !== prev.hiddenSamples || s.platforms !== prev.platforms || s.rotations !== prev.rotations) {
       this.publishPanes();
       this.relayoutAll(true);
       if (s.color?.kind === "field") this.stats.updateCategoryCounts(s.color.field);
@@ -343,7 +343,7 @@ export class ViewerController {
     if (!this.manifest || !pane || !this.rects[view]) return;
     const s = store.getState();
     const [w, h] = this.viewSize(view);
-    this.layouts[view] = computeLayout(pane.samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenBase(s), columns ?? this.manifest.layout.columns);
+    this.layouts[view] = computeLayout(pane.samples, this.manifest.layout.order, s.layoutMode, this.manifest.layout.gutterFraction, w / h, this.hiddenBase(s), columns ?? this.manifest.layout.columns, s.rotations);
     this.selection.onRelayout(view);
     const focusHere = s.focus && this.viewOf(s.focus) === view;
     if (focusHere && this.layouts[view]!.placements.has(s.focus!)) this.focusSample(s.focus!, animate);

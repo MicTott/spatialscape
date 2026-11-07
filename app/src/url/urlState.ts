@@ -71,6 +71,15 @@ export function readUrl(): Partial<ViewerState> {
   if (q.get("l") === "strip" || q.get("l") === "grid") out.layoutMode = q.get("l") as "strip" | "grid";
   if (q.get("s")) out.focus = q.get("s");
   if (q.get("hs")) out.hiddenSamples = q.get("hs")!.split(",").filter(Boolean);
+  if (q.get("rot")) {
+    const rotations: Record<string, number> = {};
+    for (const e of q.get("rot")!.split(",")) {
+      const i = e.lastIndexOf(":"); // sample ids may contain colons
+      const deg = i > 0 ? num(e.slice(i + 1), 0) : 0;
+      if (deg === 90 || deg === 180 || deg === 270) rotations[e.slice(0, i)] = deg;
+    }
+    out.rotations = rotations;
+  }
   if (q.get("sps") === "1") out.scalePerSample = true;
   else if (q.get("sps") === "0") out.scalePerSample = false;
   if (q.get("debug") === "1") out.debug = true;
@@ -173,6 +182,11 @@ export function serialize(s: ViewerState): string {
   if (s.activeChannels) q.set("ch", s.activeChannels.join("|"));
   if (s.layoutMode !== DEFAULTS.layoutMode) q.set("l", s.layoutMode);
   if (s.hiddenSamples.length) q.set("hs", s.hiddenSamples.join(","));
+  const rot = Object.entries(s.rotations)
+    .filter(([, deg]) => deg)
+    .map(([id, deg]) => `${id}:${deg}`)
+    .join(",");
+  if (rot) q.set("rot", rot);
   if (s.scalePerSample) q.set("sps", "1");
   if (s.debug) q.set("debug", "1");
   if (s.pointScale.spatial !== 1) q.set("ps", s.pointScale.spatial.toFixed(2));

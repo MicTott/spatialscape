@@ -41,10 +41,8 @@ export function footprint(s: Sample): [number, number, number, number] {
   return [x0, y0, x1, y1];
 }
 
-/** bbox of a sample (points and images) after its toDataset affine. */
-export function datasetBbox(s: Sample): [number, number, number, number] {
-  const m = affine3to4(s.toDataset);
-  const [x0, y0, x1, y1] = footprint(s);
+function transformedBbox(fp: [number, number, number, number], m: Matrix4): [number, number, number, number] {
+  const [x0, y0, x1, y1] = fp;
   const pts = [
     [x0, y0],
     [x1, y0],
@@ -56,6 +54,26 @@ export function datasetBbox(s: Sample): [number, number, number, number] {
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 }
 
+/** A sample's matrix before placement: its toDataset affine, then the on-screen rotation (degrees clockwise on
+ * the y-down canvas, multiples of 90) about the centre of its footprint. */
+export function sampleMatrix(s: Sample, rotate = 0): Matrix4 {
+  const m = affine3to4(s.toDataset);
+  if (!rotate) return m;
+  const [x0, y0, x1, y1] = transformedBbox(footprint(s), m);
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  return new Matrix4()
+    .translate([cx, cy, 0])
+    .rotateZ((rotate * Math.PI) / 180)
+    .translate([-cx, -cy, 0])
+    .multiplyRight(m);
+}
+
+/** bbox of a sample (points and images) after its toDataset affine and its on-screen rotation. */
+export function datasetBbox(s: Sample, rotate = 0): [number, number, number, number] {
+  return transformedBbox(footprint(s), sampleMatrix(s, rotate));
+}
+
 export function computeLayout(
   samples: Sample[],
   order: string[],
@@ -64,11 +82,12 @@ export function computeLayout(
   viewportAspect: number,
   hidden: ReadonlySet<string> = new Set(),
   columns?: number | null,
+  rotations: Readonly<Record<string, number>> = {},
 ): LayoutResult {
   const byId = new Map(samples.map((s) => [s.id, s]));
   const ids = order.filter((id) => byId.has(id) && !hidden.has(id));
   for (const s of samples) if (!ids.includes(s.id) && !hidden.has(s.id)) ids.push(s.id);
-  const bboxes = new Map(ids.map((id) => [id, datasetBbox(byId.get(id)!)]));
+  const bboxes = new Map(ids.map((id) => [id, datasetBbox(byId.get(id)!, rotations[id] ?? 0)]));
   let maxW = 1;
   let maxH = 1;
   for (const b of bboxes.values()) {
@@ -89,7 +108,7 @@ export function computeLayout(
     // center each sample inside its cell
     const ox = col * cellW + (cellW - (b[2] - b[0])) / 2 - b[0];
     const oy = row * cellH + (cellH - (b[3] - b[1])) / 2 - b[1];
-    const modelMatrix = new Matrix4().translate([ox, oy, 0]).multiplyRight(affine3to4(byId.get(id)!.toDataset));
+    const modelMatrix = new Matrix4().translate([ox, oy, 0]).multiplyRight(sampleMatrix(byId.get(id)!, rotations[id] ?? 0));
     placements.set(id, {
       sampleId: id,
       offset: [ox, oy],

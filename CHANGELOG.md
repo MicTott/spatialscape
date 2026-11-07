@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Turn a section in the viewer.** The ↻ button on a section in the sample list turns it 90° clockwise on screen,
+points, image, shapes and molecules together; the layout re-fits around the turned footprint, the lasso and the
+regions follow, and the link carries it (`rot=<id>:90`). It is a view setting, like hiding a section: the bundle is
+untouched, and `transform: { rotate }` in the dataset yaml remains the way to make an orientation permanent.
+
 **Format 1 is final.** The bundle format page now opens with what that means: every listed file, array, dtype,
 encoding and precision keeps its meaning; changes within format 1 only add optional files or keys, which readers
 ignore when unknown; a breaking change would bump `formatVersion`, which the viewer refuses when unknown. The page
