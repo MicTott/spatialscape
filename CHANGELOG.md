@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Format 1 is final.** The bundle format page now opens with what that means: every listed file, array, dtype,
+encoding and precision keeps its meaning; changes within format 1 only add optional files or keys, which readers
+ignore when unknown; a breaking change would bump `formatVersion`, which the viewer refuses when unknown. The page
+names what is required and what is optional, states that `spatialscape validate` is the conformance check and the
+Python decoders are the specification where a reader could disagree, and records that bundles built before 0.6
+still open.
+
 **Fidelity checks.** `python -m spatialscape.fidelity bundle dataset.yaml bundles/<id>` reads a built bundle back and
 measures it against the source: dequantised expression within half a code step of the normalised values with zeros
 exact, the row store equal to the gene-major codes, positions within float32 of the source coordinates through

@@ -1,8 +1,8 @@
 # `spatialscape validate`
 
-Check a bundle on disk or over HTTP.
+Check a bundle on disk or over HTTP: the conformance check for the bundle format.
 
-Locally: the manifest parses, every array has the expected shape and gene-major chunking, categorical codes fit their vocabularies, id blocks, polygon files and images are consistent. For a URL: the manifest is fetched with CORS headers present, and one expression chunk is requested with a `Range` header expecting `206 Partial Content`. Exits with status 1 when problems are found.
+Locally: the manifest parses, every array has the shape, dtype and gene-major chunking the format states, categorical codes fit their vocabularies, the row store and the zero-gene list match their manifest entries, shape and molecule tile indices decode, id blocks and images are consistent. For a URL: the manifest is fetched with CORS headers present, and one expression chunk is requested with a `Range` header expecting `206 Partial Content`. Exits with status 1 when problems are found. `build` runs the same checks at its end.
 
 ## Usage
 

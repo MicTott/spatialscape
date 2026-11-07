@@ -2,6 +2,29 @@
 
 `formatVersion: 1`. A bundle is a directory of static files; everything is addressable by URL with plain `GET` and `Range` requests.
 
+## Stability
+
+Format 1 is final. Everything this page lists, every file, array, shape, dtype, encoding and precision, keeps its
+meaning: a bundle built today opens in every later viewer, and a reader written against this page keeps reading
+bundles built later.
+
+- **Changes within format 1 only add.** A new optional file or manifest key may appear; a reader ignores keys it
+  does not know, and nothing listed here changes meaning. A change that would break a reader bumps `formatVersion`
+  to 2, and the viewer refuses a version it does not know.
+- **Required and optional.** Required: `manifest.json`, `genes.json`, `features.json`, and per sample `genes.json`,
+  `expr.zarr/{u8, gmax, gmin}`, `obs.zarr/{xy, order, cat, num}` and `ids/`. Optional, each announced by its manifest
+  entry: `rows.zarr`, `zero_genes.json`, `f16`, images, `shapes`, `segmentations/`, `molecules`, `tracks/`,
+  `comparisons/`, `thumbnail.png`. `build.json` and `build-info.json` are build aids, not part of the format: a
+  reader never needs them and an upload may leave them out. Bundles built before 0.6 have no row store and no
+  zero-gene list and may carry whole-sample `polygons` files instead of shape tiles; the viewer still reads them.
+- **Conformance.** `spatialscape validate <bundle | url>` checks a bundle against this page: shapes and dtypes,
+  gene-major chunking, codes within their vocabularies, tile indices that decode, id blocks, the row store, the
+  zero-gene list, images, and over HTTP the CORS and `Range` behaviour a static host must provide. `python -m
+  spatialscape.fidelity` measures a bundle against the data it was built from, to the precision stated below.
+- **Reference decoders.** `python/src/spatialscape/{expression, rows, obs, shapes, molecules}.py` write and read
+  back every store; `app/src/data/{worker, rows, shapeTiles, moleculeTiles}.ts` are the viewer's readers. Where the
+  two could disagree, the Python decoder is the specification.
+
 ```
 <dataset>/
   manifest.json                dataset description (python: manifest.py, app: data/manifest.ts)
