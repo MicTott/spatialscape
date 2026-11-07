@@ -43,6 +43,14 @@ in `test_reference_test_is_scipy_on_the_dequantised_rows`: on log1p(CP10k) data 
 hundredths and no gene crosses 0.05; values under half a code step tie at code 1, which makes the test slightly
 conservative where a gene has many such values.
 
+### Results so far
+
+- `results/fidelity-amygdala.json` (2026-11-06, commit afd9a44, laptop): xen_Br9192 (267,091 cells, 200 genes, every
+  ring, 20 genes of molecules), vis_Br9280, hd_Br9280_CeA and sn_totty against the Vitessce-era AnnData stores and the
+  5 µm Xenium outputs. Every bound holds: expression within half a code step with zeros exact, rows equal to the
+  gene-major codes, positions within 1e-3 µm, shape vertices within 0.05 µm, molecules within the 1/64 µm grid, the
+  zero-gene lists complete. The run before the rebuild found the tile-edge rounding described in the changelog.
+
 ## Build and viewer tables
 
 Not run yet; see the protocol.
