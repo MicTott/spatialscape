@@ -13,7 +13,7 @@ The **spatial view** holds every section as a grid or a strip, at true physical 
 | Back to all samples | `Esc`, or "show all" |
 | Fit to view | `f` |
 | Hide samples from the layout | the top bar's platform buttons, or `hs=<id>` in the link |
-| Turn a section on screen | the ↻ button in the sample list, 90° clockwise per click; it is kept in the link, and `transform: { rotate }` in the dataset yaml makes it permanent |
+| Turn a section on screen | click the section, then the ↻ tool in the top bar (or the ↻ on its row in the sample list): 90° clockwise per click, kept in the link; `transform: { rotate }` in the dataset yaml makes it permanent |
 | Show one platform | the top bar: All / Visium / Xenium …; shift-click toggles |
 | Grid vs strip | Display → Grid / Strip |
 | Cluster names on the embedding | Display → label clusters in the embedding |

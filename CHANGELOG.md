@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-**Turn a section in the viewer.** The ↻ button on a section in the sample list turns it 90° clockwise on screen,
+**Turn a section in the viewer.** The ↻ tool in the top bar turns the clicked (or focused) section 90° clockwise
+on screen, as does the ↻ on its row in the sample list:
 points, image, shapes and molecules together; the layout re-fits around the turned footprint, the lasso and the
 regions follow, and the link carries it (`rot=<id>:90`). It is a view setting, like hiding a section: the bundle is
 untouched, and `transform: { rotate }` in the dataset yaml remains the way to make an orientation permanent.

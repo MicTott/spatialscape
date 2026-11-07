@@ -17,7 +17,12 @@ export function PlatformBar() {
   const matchScale = useViewer((s) => s.matchScale);
   const linkPins = useViewer((s) => s.linkPins);
   const pins = useViewer((s) => s.pins);
+  const selected = useViewer((s) => s.selected);
+  const focus = useViewer((s) => s.focus);
   if (!manifest) return null;
+  // the turn button acts on the clicked section, or the focused one
+  const turnId = [selected, focus].find((id) => id && manifest.samples.some((x) => x.id === id && x.kind !== "embedding")) ?? null;
+  const turnName = turnId ? manifest.samples.find((x) => x.id === turnId)!.name : null;
   const keys = splitKeys(manifest);
   const pinned = anyPinned(pins);
   const left = splitBy || pinned ? unassignedSamples(manifest, splitBy, pins).length : 0;
@@ -54,6 +59,15 @@ export function PlatformBar() {
           c.fitAllPanes(true);
         }}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" /><circle cx="12" cy="12" r="2" /></svg>
+        </button>
+        <button
+          className="canvas-tool"
+          disabled={!turnId}
+          aria-label="Turn the selected section 90° clockwise"
+          title={turnId ? `Turn "${turnName}" 90° clockwise` : "Turn a section 90° clockwise: click a section first"}
+          onClick={() => turnId && store.getState().rotateSample(turnId)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 3.5v4h-4" /></svg>
         </button>
       </span>
       {present.length >= 2 && (
