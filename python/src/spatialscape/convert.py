@@ -35,7 +35,7 @@ from .config import DatasetConfig, RObjectEntry, _merged_entry, config_from_raw
 from .rds import RExperiment, RImage, read_experiment
 
 Log = Callable[[str], None]
-CONVERT_VERSION = 3  # bump when the cache layout or its contents change for the same object (3: feature names from the assay dimnames)
+CONVERT_VERSION = 4  # bump when the cache layout or its contents change for the same object (4: images behind a URL are fetched)
 VISIUM_SPOT_UM = 55.0
 VISIUM_SPACING_UM = 100.0
 EMBEDDING_PREFERENCE = ("UMAP", "umap", "X_umap", "UMAP-HARMONY", "UMAP_HARMONY", "UMAP.HARMONY")
@@ -149,13 +149,19 @@ def _write_image(img: RImage, dest: Path) -> bool:
     if img.rgb is not None:
         iio.imwrite(dest, img.rgb)
         return True
-    if img.path and Path(img.path).exists():
+    if img.path and str(img.path).startswith(("http://", "https://")):  # RemoteSpatialImage: fetched once, kept in the cache
+        import urllib.request
+
+        with urllib.request.urlopen(str(img.path), timeout=120) as r:
+            arr = np.asarray(iio.imread(r.read()))
+    elif img.path and Path(img.path).exists():
         arr = np.asarray(iio.imread(img.path))
-        if arr.ndim == 2:  # grayscale: three equal planes, never a 3-pixel-wide slice
-            arr = np.stack([arr, arr, arr], axis=-1)
-        iio.imwrite(dest, arr[..., :3])
-        return True
-    return False
+    else:
+        return False
+    if arr.ndim == 2:  # grayscale: three equal planes, never a 3-pixel-wide slice
+        arr = np.stack([arr, arr, arr], axis=-1)
+    iio.imwrite(dest, arr[..., :3])
+    return True
 
 
 def _write_spatial(x: RExperiment, out: Path, *, assay: str, sample_col: str, log: Log) -> list[str]:

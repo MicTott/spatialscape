@@ -276,3 +276,38 @@ def test_seurat_visium_slices_are_spatial_samples(tmp_path):
     a = by["A (Visium)"]
     assert a["pointRadius"] == 27.5 and a["bbox"][2] == pytest.approx(300) and a["bbox"][3] == pytest.approx(200)  # 600 px x 0.5 um
     assert [i["id"] for i in a["images"]] == ["he"] and a["images"][0]["pixelSize"] == pytest.approx(10.0)  # lowres: 0.5 um / 0.05
+
+
+def test_remote_images_are_fetched(tmp_path, monkeypatch):
+    """A SpatialExperiment whose imgData holds RemoteSpatialImage entries (spatialLIBD's objects do) gets its
+    H&E written from the URL; a local path and in-object pixels still work as before."""
+    import io
+    import urllib.request
+
+    import imageio.v3 as iio
+    import numpy as np
+
+    from spatialscape.convert import _write_image
+    from spatialscape.rds import RImage
+
+    png = io.BytesIO()
+    iio.imwrite(png, np.full((4, 5), 200, dtype=np.uint8), extension=".png")  # grayscale: becomes three planes
+    seen = []
+
+    class Reply(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(url, timeout=0):
+        seen.append(url)
+        return Reply(png.getvalue())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    out = tmp_path / "tissue_lowres_image.png"
+    assert _write_image(RImage(sample_id="a", image_id="lowres", scale_factor=0.05, rgb=None, path="https://example.org/a_lowres.png"), out)
+    assert seen == ["https://example.org/a_lowres.png"]
+    assert iio.imread(out).shape == (4, 5, 3)
+    assert not _write_image(RImage(sample_id="a", image_id="x", scale_factor=1.0, rgb=None, path=str(tmp_path / "missing.png")), tmp_path / "x.png")

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Images behind a URL.** A SpatialExperiment whose `imgData` holds `RemoteSpatialImage` entries (the spatialLIBD
+objects do) now gets its H&E fetched when the object is converted; before, those samples came through without an
+image. The conversion cache is versioned, so such objects convert again once.
+
 **Turn a section in the viewer.** The ↻ tool in the top bar turns the clicked (or focused) section 90° clockwise
 on screen, as does the ↻ on its row in the sample list:
 points, image, shapes and molecules together; the layout re-fits around the turned footprint, the lasso and the
