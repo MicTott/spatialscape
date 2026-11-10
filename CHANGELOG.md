@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+**Benchmarks, measured.** `docs/reference/benchmarks.md` now carries the build and viewer tables the protocol in
+`design/benchmarks.md` asked for: fourteen build rows (six on a laptop, eight from the cluster jobs behind the public
+apps) with bytes per store, and thirteen viewer rows (cold load, what is drawn at three zooms, requests and bytes,
+gene switches cold and cached, frame times over a scripted pan) from a headed Chrome driven by
+`benchmarks/viewer_bench.mjs`. Every number comes from a JSON report under `benchmarks/results/`; `tables.py`
+renders the page. The controller exposes what the last layer build drew (`window.__sscape.drawn()`).
+
+**One request fewer per shard.** The viewer's zarr stores read a shard's index with a suffix byte range instead of
+asking the file's size first: a cold gene switch on an 18-section atlas went from 54 requests to 36. Every host the
+bundles are served from honours suffix ranges (S3, CloudFront, GitHub Pages, `spatialscape serve`).
+
 **Images behind a URL.** A SpatialExperiment whose `imgData` holds `RemoteSpatialImage` entries (the spatialLIBD
 objects do) now gets its H&E fetched when the object is converted; before, those samples came through without an
 image. The conversion cache is versioned, so such objects convert again once.

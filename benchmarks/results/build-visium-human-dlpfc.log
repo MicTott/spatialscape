@@ -1,0 +1,703 @@
+# 2026-11-10T02:52:51Z arm64 LIBD-H7TPH3703H.local commit a28e811 spatialscape 0.6.0
+# python/.venv/bin/spatialscape build /Users/michael.totty/Documents/Web/spatialscape-examples/visium-human-dlpfc/dataset.yaml -o /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/bundle
+visium-human-dlpfc -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/bundle
+converting /Users/michael.totty/Documents/Web/spatialscape-examples/visium-human-dlpfc/raw/spe_dlpfc.rds -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73
+reading /Users/michael.totty/Documents/Web/spatialscape-examples/visium-human-dlpfc/raw/spe_dlpfc.rds (the whole object is parsed; about as long as loading it in R)
+  SpatialExperiment: 33538 genes x 47681 cells, assays counts, logcounts, 12 image(s)
+  151507: 4226 cells, 1 image(s)
+  151508: 4384 cells, 1 image(s)
+  151509: 4789 cells, 1 image(s)
+  151510: 4634 cells, 1 image(s)
+  151669: 3661 cells, 1 image(s)
+  151670: 3498 cells, 1 image(s)
+  151671: 4110 cells, 1 image(s)
+  151672: 4015 cells, 1 image(s)
+  151673: 3639 cells, 1 image(s)
+  151674: 3673 cells, 1 image(s)
+  151675: 3592 cells, 1 image(s)
+  151676: 3460 cells, 1 image(s)
+  note: the object holds only the low-resolution H&E (SpaceRanger's tissue_lowres_image, about 600-1200 px wide). For detail, point `images:` in the yaml at tissue_hires_image.png or the full-resolution scan of each sample.
+sources
+  /Users/michael.totty/Documents/Web/spatialscape-examples/visium-human-dlpfc/raw/spe_dlpfc.rds: converted (12 samples)
+  vis_151507  build  new
+  vis_151508  build  new
+  vis_151509  build  new
+  vis_151510  build  new
+  vis_151669  build  new
+  vis_151670  build  new
+  vis_151671  build  new
+  vis_151672  build  new
+  vis_151673  build  new
+  vis_151674  build  new
+  vis_151675  build  new
+  vis_151676  build  new
+12 samples to build, 0 unchanged; manifest.json, genes.json, features.json and thumbnails are rewritten every time
+[vis_151507] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151507/adata.h5ad
+[vis_151507] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151507] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151507/spatial/tissue_lowres_image.png
+[vis_151507] coordinates: 1 unit = 0.7299 um
+[vis_151507] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151507] writing expression (33538 genes x 4226 obs)
+  expr genes 512/21151
+  expr genes 1024/21151
+  expr genes 1536/21151
+  expr genes 2048/21151
+  expr genes 2560/21151
+  expr genes 3072/21151
+  expr genes 3584/21151
+  expr genes 4096/21151
+  expr genes 4608/21151
+  expr genes 5120/21151
+  expr genes 5632/21151
+  expr genes 6144/21151
+  expr genes 6656/21151
+  expr genes 7168/21151
+  expr genes 7680/21151
+  expr genes 8192/21151
+  expr genes 8704/21151
+  expr genes 9216/21151
+  expr genes 9728/21151
+  expr genes 10240/21151
+  expr genes 10752/21151
+  expr genes 11264/21151
+  expr genes 11776/21151
+  expr genes 12288/21151
+  expr genes 12800/21151
+  expr genes 13312/21151
+  expr genes 13824/21151
+  expr genes 14336/21151
+  expr genes 14848/21151
+  expr genes 15360/21151
+  expr genes 15872/21151
+  expr genes 16384/21151
+  expr genes 16896/21151
+  expr genes 17408/21151
+  expr genes 17920/21151
+  expr genes 18432/21151
+  expr genes 18944/21151
+  expr genes 19456/21151
+  expr genes 19968/21151
+  expr genes 20480/21151
+  expr genes 20992/21151
+  expr genes 21151/21151
+[vis_151507] 12387 all-zero features left out (21151 kept)
+[vis_151507] writing per-cell rows
+[vis_151507] rows: 5,959,380 stored values
+[vis_151507] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151507/spatial/tissue_lowres_image.png
+[vis_151507] image cropped to the points: 420 x 442 px
+[vis_151508] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151508/adata.h5ad
+[vis_151508] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151508] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151508/spatial/tissue_lowres_image.png
+[vis_151508] coordinates: 1 unit = 0.7299 um
+[vis_151508] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151508] writing expression (33538 genes x 4384 obs)
+  expr genes 512/20737
+  expr genes 1024/20737
+  expr genes 1536/20737
+  expr genes 2048/20737
+  expr genes 2560/20737
+  expr genes 3072/20737
+  expr genes 3584/20737
+  expr genes 4096/20737
+  expr genes 4608/20737
+  expr genes 5120/20737
+  expr genes 5632/20737
+  expr genes 6144/20737
+  expr genes 6656/20737
+  expr genes 7168/20737
+  expr genes 7680/20737
+  expr genes 8192/20737
+  expr genes 8704/20737
+  expr genes 9216/20737
+  expr genes 9728/20737
+  expr genes 10240/20737
+  expr genes 10752/20737
+  expr genes 11264/20737
+  expr genes 11776/20737
+  expr genes 12288/20737
+  expr genes 12800/20737
+  expr genes 13312/20737
+  expr genes 13824/20737
+  expr genes 14336/20737
+  expr genes 14848/20737
+  expr genes 15360/20737
+  expr genes 15872/20737
+  expr genes 16384/20737
+  expr genes 16896/20737
+  expr genes 17408/20737
+  expr genes 17920/20737
+  expr genes 18432/20737
+  expr genes 18944/20737
+  expr genes 19456/20737
+  expr genes 19968/20737
+  expr genes 20480/20737
+  expr genes 20737/20737
+[vis_151508] 12801 all-zero features left out (20737 kept)
+[vis_151508] writing per-cell rows
+[vis_151508] rows: 5,222,930 stored values
+[vis_151508] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151508/spatial/tissue_lowres_image.png
+[vis_151508] image cropped to the points: 420 x 442 px
+[vis_151509] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151509/adata.h5ad
+[vis_151509] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151509] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151509/spatial/tissue_lowres_image.png
+[vis_151509] coordinates: 1 unit = 0.7194 um
+[vis_151509] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151509] writing expression (33538 genes x 4789 obs)
+  expr genes 512/21279
+  expr genes 1024/21279
+  expr genes 1536/21279
+  expr genes 2048/21279
+  expr genes 2560/21279
+  expr genes 3072/21279
+  expr genes 3584/21279
+  expr genes 4096/21279
+  expr genes 4608/21279
+  expr genes 5120/21279
+  expr genes 5632/21279
+  expr genes 6144/21279
+  expr genes 6656/21279
+  expr genes 7168/21279
+  expr genes 7680/21279
+  expr genes 8192/21279
+  expr genes 8704/21279
+  expr genes 9216/21279
+  expr genes 9728/21279
+  expr genes 10240/21279
+  expr genes 10752/21279
+  expr genes 11264/21279
+  expr genes 11776/21279
+  expr genes 12288/21279
+  expr genes 12800/21279
+  expr genes 13312/21279
+  expr genes 13824/21279
+  expr genes 14336/21279
+  expr genes 14848/21279
+  expr genes 15360/21279
+  expr genes 15872/21279
+  expr genes 16384/21279
+  expr genes 16896/21279
+  expr genes 17408/21279
+  expr genes 17920/21279
+  expr genes 18432/21279
+  expr genes 18944/21279
+  expr genes 19456/21279
+  expr genes 19968/21279
+  expr genes 20480/21279
+  expr genes 20992/21279
+  expr genes 21279/21279
+[vis_151509] 12259 all-zero features left out (21279 kept)
+[vis_151509] writing per-cell rows
+[vis_151509] rows: 6,867,490 stored values
+[vis_151509] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151509/spatial/tissue_lowres_image.png
+[vis_151509] image cropped to the points: 424 x 445 px
+[vis_151510] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151510/adata.h5ad
+[vis_151510] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151510] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151510/spatial/tissue_lowres_image.png
+[vis_151510] coordinates: 1 unit = 0.7246 um
+[vis_151510] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151510] writing expression (33538 genes x 4634 obs)
+  expr genes 512/21089
+  expr genes 1024/21089
+  expr genes 1536/21089
+  expr genes 2048/21089
+  expr genes 2560/21089
+  expr genes 3072/21089
+  expr genes 3584/21089
+  expr genes 4096/21089
+  expr genes 4608/21089
+  expr genes 5120/21089
+  expr genes 5632/21089
+  expr genes 6144/21089
+  expr genes 6656/21089
+  expr genes 7168/21089
+  expr genes 7680/21089
+  expr genes 8192/21089
+  expr genes 8704/21089
+  expr genes 9216/21089
+  expr genes 9728/21089
+  expr genes 10240/21089
+  expr genes 10752/21089
+  expr genes 11264/21089
+  expr genes 11776/21089
+  expr genes 12288/21089
+  expr genes 12800/21089
+  expr genes 13312/21089
+  expr genes 13824/21089
+  expr genes 14336/21089
+  expr genes 14848/21089
+  expr genes 15360/21089
+  expr genes 15872/21089
+  expr genes 16384/21089
+  expr genes 16896/21089
+  expr genes 17408/21089
+  expr genes 17920/21089
+  expr genes 18432/21089
+  expr genes 18944/21089
+  expr genes 19456/21089
+  expr genes 19968/21089
+  expr genes 20480/21089
+  expr genes 20992/21089
+  expr genes 21089/21089
+[vis_151510] 12449 all-zero features left out (21089 kept)
+[vis_151510] writing per-cell rows
+[vis_151510] rows: 6,341,887 stored values
+[vis_151510] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151510/spatial/tissue_lowres_image.png
+[vis_151510] image cropped to the points: 424 x 446 px
+[vis_151669] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151669/adata.h5ad
+[vis_151669] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151669] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151669/spatial/tissue_lowres_image.png
+[vis_151669] coordinates: 1 unit = 0.7299 um
+[vis_151669] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151669] writing expression (33538 genes x 3661 obs)
+  expr genes 512/21235
+  expr genes 1024/21235
+  expr genes 1536/21235
+  expr genes 2048/21235
+  expr genes 2560/21235
+  expr genes 3072/21235
+  expr genes 3584/21235
+  expr genes 4096/21235
+  expr genes 4608/21235
+  expr genes 5120/21235
+  expr genes 5632/21235
+  expr genes 6144/21235
+  expr genes 6656/21235
+  expr genes 7168/21235
+  expr genes 7680/21235
+  expr genes 8192/21235
+  expr genes 8704/21235
+  expr genes 9216/21235
+  expr genes 9728/21235
+  expr genes 10240/21235
+  expr genes 10752/21235
+  expr genes 11264/21235
+  expr genes 11776/21235
+  expr genes 12288/21235
+  expr genes 12800/21235
+  expr genes 13312/21235
+  expr genes 13824/21235
+  expr genes 14336/21235
+  expr genes 14848/21235
+  expr genes 15360/21235
+  expr genes 15872/21235
+  expr genes 16384/21235
+  expr genes 16896/21235
+  expr genes 17408/21235
+  expr genes 17920/21235
+  expr genes 18432/21235
+  expr genes 18944/21235
+  expr genes 19456/21235
+  expr genes 19968/21235
+  expr genes 20480/21235
+  expr genes 20992/21235
+  expr genes 21235/21235
+[vis_151669] 12303 all-zero features left out (21235 kept)
+[vis_151669] writing per-cell rows
+[vis_151669] rows: 6,591,121 stored values
+[vis_151669] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151669/spatial/tissue_lowres_image.png
+[vis_151669] image cropped to the points: 416 x 430 px
+[vis_151670] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151670/adata.h5ad
+[vis_151670] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151670] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151670/spatial/tissue_lowres_image.png
+[vis_151670] coordinates: 1 unit = 0.7299 um
+[vis_151670] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151670] writing expression (33538 genes x 3498 obs)
+  expr genes 512/21019
+  expr genes 1024/21019
+  expr genes 1536/21019
+  expr genes 2048/21019
+  expr genes 2560/21019
+  expr genes 3072/21019
+  expr genes 3584/21019
+  expr genes 4096/21019
+  expr genes 4608/21019
+  expr genes 5120/21019
+  expr genes 5632/21019
+  expr genes 6144/21019
+  expr genes 6656/21019
+  expr genes 7168/21019
+  expr genes 7680/21019
+  expr genes 8192/21019
+  expr genes 8704/21019
+  expr genes 9216/21019
+  expr genes 9728/21019
+  expr genes 10240/21019
+  expr genes 10752/21019
+  expr genes 11264/21019
+  expr genes 11776/21019
+  expr genes 12288/21019
+  expr genes 12800/21019
+  expr genes 13312/21019
+  expr genes 13824/21019
+  expr genes 14336/21019
+  expr genes 14848/21019
+  expr genes 15360/21019
+  expr genes 15872/21019
+  expr genes 16384/21019
+  expr genes 16896/21019
+  expr genes 17408/21019
+  expr genes 17920/21019
+  expr genes 18432/21019
+  expr genes 18944/21019
+  expr genes 19456/21019
+  expr genes 19968/21019
+  expr genes 20480/21019
+  expr genes 20992/21019
+  expr genes 21019/21019
+[vis_151670] 12519 all-zero features left out (21019 kept)
+[vis_151670] writing per-cell rows
+[vis_151670] rows: 5,859,140 stored values
+[vis_151670] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151670/spatial/tissue_lowres_image.png
+[vis_151670] image cropped to the points: 419 x 407 px
+[vis_151671] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151671/adata.h5ad
+[vis_151671] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151671] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151671/spatial/tissue_lowres_image.png
+[vis_151671] coordinates: 1 unit = 0.7299 um
+[vis_151671] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151671] writing expression (33538 genes x 4110 obs)
+  expr genes 512/21631
+  expr genes 1024/21631
+  expr genes 1536/21631
+  expr genes 2048/21631
+  expr genes 2560/21631
+  expr genes 3072/21631
+  expr genes 3584/21631
+  expr genes 4096/21631
+  expr genes 4608/21631
+  expr genes 5120/21631
+  expr genes 5632/21631
+  expr genes 6144/21631
+  expr genes 6656/21631
+  expr genes 7168/21631
+  expr genes 7680/21631
+  expr genes 8192/21631
+  expr genes 8704/21631
+  expr genes 9216/21631
+  expr genes 9728/21631
+  expr genes 10240/21631
+  expr genes 10752/21631
+  expr genes 11264/21631
+  expr genes 11776/21631
+  expr genes 12288/21631
+  expr genes 12800/21631
+  expr genes 13312/21631
+  expr genes 13824/21631
+  expr genes 14336/21631
+  expr genes 14848/21631
+  expr genes 15360/21631
+  expr genes 15872/21631
+  expr genes 16384/21631
+  expr genes 16896/21631
+  expr genes 17408/21631
+  expr genes 17920/21631
+  expr genes 18432/21631
+  expr genes 18944/21631
+  expr genes 19456/21631
+  expr genes 19968/21631
+  expr genes 20480/21631
+  expr genes 20992/21631
+  expr genes 21504/21631
+  expr genes 21631/21631
+[vis_151671] 11907 all-zero features left out (21631 kept)
+[vis_151671] writing per-cell rows
+[vis_151671] rows: 7,638,281 stored values
+[vis_151671] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151671/spatial/tissue_lowres_image.png
+[vis_151671] image cropped to the points: 419 x 435 px
+[vis_151672] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151672/adata.h5ad
+[vis_151672] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151672] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151672/spatial/tissue_lowres_image.png
+[vis_151672] coordinates: 1 unit = 0.7299 um
+[vis_151672] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151672] writing expression (33538 genes x 4015 obs)
+  expr genes 512/21343
+  expr genes 1024/21343
+  expr genes 1536/21343
+  expr genes 2048/21343
+  expr genes 2560/21343
+  expr genes 3072/21343
+  expr genes 3584/21343
+  expr genes 4096/21343
+  expr genes 4608/21343
+  expr genes 5120/21343
+  expr genes 5632/21343
+  expr genes 6144/21343
+  expr genes 6656/21343
+  expr genes 7168/21343
+  expr genes 7680/21343
+  expr genes 8192/21343
+  expr genes 8704/21343
+  expr genes 9216/21343
+  expr genes 9728/21343
+  expr genes 10240/21343
+  expr genes 10752/21343
+  expr genes 11264/21343
+  expr genes 11776/21343
+  expr genes 12288/21343
+  expr genes 12800/21343
+  expr genes 13312/21343
+  expr genes 13824/21343
+  expr genes 14336/21343
+  expr genes 14848/21343
+  expr genes 15360/21343
+  expr genes 15872/21343
+  expr genes 16384/21343
+  expr genes 16896/21343
+  expr genes 17408/21343
+  expr genes 17920/21343
+  expr genes 18432/21343
+  expr genes 18944/21343
+  expr genes 19456/21343
+  expr genes 19968/21343
+  expr genes 20480/21343
+  expr genes 20992/21343
+  expr genes 21343/21343
+[vis_151672] 12195 all-zero features left out (21343 kept)
+[vis_151672] writing per-cell rows
+[vis_151672] rows: 7,059,657 stored values
+[vis_151672] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151672/spatial/tissue_lowres_image.png
+[vis_151672] image cropped to the points: 419 x 423 px
+[vis_151673] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151673/adata.h5ad
+[vis_151673] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151673] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151673/spatial/tissue_lowres_image.png
+[vis_151673] coordinates: 1 unit = 0.7299 um
+[vis_151673] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151673] writing expression (33538 genes x 3639 obs)
+  expr genes 512/21842
+  expr genes 1024/21842
+  expr genes 1536/21842
+  expr genes 2048/21842
+  expr genes 2560/21842
+  expr genes 3072/21842
+  expr genes 3584/21842
+  expr genes 4096/21842
+  expr genes 4608/21842
+  expr genes 5120/21842
+  expr genes 5632/21842
+  expr genes 6144/21842
+  expr genes 6656/21842
+  expr genes 7168/21842
+  expr genes 7680/21842
+  expr genes 8192/21842
+  expr genes 8704/21842
+  expr genes 9216/21842
+  expr genes 9728/21842
+  expr genes 10240/21842
+  expr genes 10752/21842
+  expr genes 11264/21842
+  expr genes 11776/21842
+  expr genes 12288/21842
+  expr genes 12800/21842
+  expr genes 13312/21842
+  expr genes 13824/21842
+  expr genes 14336/21842
+  expr genes 14848/21842
+  expr genes 15360/21842
+  expr genes 15872/21842
+  expr genes 16384/21842
+  expr genes 16896/21842
+  expr genes 17408/21842
+  expr genes 17920/21842
+  expr genes 18432/21842
+  expr genes 18944/21842
+  expr genes 19456/21842
+  expr genes 19968/21842
+  expr genes 20480/21842
+  expr genes 20992/21842
+  expr genes 21504/21842
+  expr genes 21842/21842
+[vis_151673] 11696 all-zero features left out (21842 kept)
+[vis_151673] writing per-cell rows
+[vis_151673] rows: 8,021,506 stored values
+[vis_151673] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151673/spatial/tissue_lowres_image.png
+[vis_151673] image cropped to the points: 385 x 437 px
+[vis_151674] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151674/adata.h5ad
+[vis_151674] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151674] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151674/spatial/tissue_lowres_image.png
+[vis_151674] coordinates: 1 unit = 0.7299 um
+[vis_151674] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151674] writing expression (33538 genes x 3673 obs)
+  expr genes 512/22437
+  expr genes 1024/22437
+  expr genes 1536/22437
+  expr genes 2048/22437
+  expr genes 2560/22437
+  expr genes 3072/22437
+  expr genes 3584/22437
+  expr genes 4096/22437
+  expr genes 4608/22437
+  expr genes 5120/22437
+  expr genes 5632/22437
+  expr genes 6144/22437
+  expr genes 6656/22437
+  expr genes 7168/22437
+  expr genes 7680/22437
+  expr genes 8192/22437
+  expr genes 8704/22437
+  expr genes 9216/22437
+  expr genes 9728/22437
+  expr genes 10240/22437
+  expr genes 10752/22437
+  expr genes 11264/22437
+  expr genes 11776/22437
+  expr genes 12288/22437
+  expr genes 12800/22437
+  expr genes 13312/22437
+  expr genes 13824/22437
+  expr genes 14336/22437
+  expr genes 14848/22437
+  expr genes 15360/22437
+  expr genes 15872/22437
+  expr genes 16384/22437
+  expr genes 16896/22437
+  expr genes 17408/22437
+  expr genes 17920/22437
+  expr genes 18432/22437
+  expr genes 18944/22437
+  expr genes 19456/22437
+  expr genes 19968/22437
+  expr genes 20480/22437
+  expr genes 20992/22437
+  expr genes 21504/22437
+  expr genes 22016/22437
+  expr genes 22437/22437
+[vis_151674] 11101 all-zero features left out (22437 kept)
+[vis_151674] writing per-cell rows
+[vis_151674] rows: 9,904,553 stored values
+[vis_151674] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151674/spatial/tissue_lowres_image.png
+[vis_151674] image cropped to the points: 384 x 443 px
+[vis_151675] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151675/adata.h5ad
+[vis_151675] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151675] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151675/spatial/tissue_lowres_image.png
+[vis_151675] coordinates: 1 unit = 0.7299 um
+[vis_151675] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151675] writing expression (33538 genes x 3592 obs)
+  expr genes 512/21344
+  expr genes 1024/21344
+  expr genes 1536/21344
+  expr genes 2048/21344
+  expr genes 2560/21344
+  expr genes 3072/21344
+  expr genes 3584/21344
+  expr genes 4096/21344
+  expr genes 4608/21344
+  expr genes 5120/21344
+  expr genes 5632/21344
+  expr genes 6144/21344
+  expr genes 6656/21344
+  expr genes 7168/21344
+  expr genes 7680/21344
+  expr genes 8192/21344
+  expr genes 8704/21344
+  expr genes 9216/21344
+  expr genes 9728/21344
+  expr genes 10240/21344
+  expr genes 10752/21344
+  expr genes 11264/21344
+  expr genes 11776/21344
+  expr genes 12288/21344
+  expr genes 12800/21344
+  expr genes 13312/21344
+  expr genes 13824/21344
+  expr genes 14336/21344
+  expr genes 14848/21344
+  expr genes 15360/21344
+  expr genes 15872/21344
+  expr genes 16384/21344
+  expr genes 16896/21344
+  expr genes 17408/21344
+  expr genes 17920/21344
+  expr genes 18432/21344
+  expr genes 18944/21344
+  expr genes 19456/21344
+  expr genes 19968/21344
+  expr genes 20480/21344
+  expr genes 20992/21344
+  expr genes 21344/21344
+[vis_151675] 12194 all-zero features left out (21344 kept)
+[vis_151675] writing per-cell rows
+[vis_151675] rows: 6,492,502 stored values
+[vis_151675] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151675/spatial/tissue_lowres_image.png
+[vis_151675] image cropped to the points: 409 x 442 px
+[vis_151676] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151676/adata.h5ad
+[vis_151676] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_151676] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151676/spatial/tissue_lowres_image.png
+[vis_151676] coordinates: 1 unit = 0.7299 um
+[vis_151676] expression layer 'X' looks log-normalized (non-integer values)
+[vis_151676] writing expression (33538 genes x 3460 obs)
+  expr genes 512/21312
+  expr genes 1024/21312
+  expr genes 1536/21312
+  expr genes 2048/21312
+  expr genes 2560/21312
+  expr genes 3072/21312
+  expr genes 3584/21312
+  expr genes 4096/21312
+  expr genes 4608/21312
+  expr genes 5120/21312
+  expr genes 5632/21312
+  expr genes 6144/21312
+  expr genes 6656/21312
+  expr genes 7168/21312
+  expr genes 7680/21312
+  expr genes 8192/21312
+  expr genes 8704/21312
+  expr genes 9216/21312
+  expr genes 9728/21312
+  expr genes 10240/21312
+  expr genes 10752/21312
+  expr genes 11264/21312
+  expr genes 11776/21312
+  expr genes 12288/21312
+  expr genes 12800/21312
+  expr genes 13312/21312
+  expr genes 13824/21312
+  expr genes 14336/21312
+  expr genes 14848/21312
+  expr genes 15360/21312
+  expr genes 15872/21312
+  expr genes 16384/21312
+  expr genes 16896/21312
+  expr genes 17408/21312
+  expr genes 17920/21312
+  expr genes 18432/21312
+  expr genes 18944/21312
+  expr genes 19456/21312
+  expr genes 19968/21312
+  expr genes 20480/21312
+  expr genes 20992/21312
+  expr genes 21312/21312
+[vis_151676] 12226 all-zero features left out (21312 kept)
+[vis_151676] writing per-cell rows
+[vis_151676] rows: 6,700,560 stored values
+[vis_151676] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/.cache/bundle/30172fc875595b73/151676/spatial/tissue_lowres_image.png
+[vis_151676] image cropped to the points: 390 x 412 px
+thumbnail: vis_151673 -> thumbnail.png
+built /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/bundle: 12 samples (12 built), 47,681 obs
+  next: spatialscape serve /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc --open
+       44.16 real        48.55 user         6.95 sys
+          4221059072  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              534207  page reclaims
+                 168  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                4005  messages sent
+                5660  messages received
+                   0  signals received
+                3843  voluntary context switches
+              412216  involuntary context switches
+        429541126983  instructions retired
+        171947822636  cycles elapsed
+          2893061760  peak memory footprint
+visium-human-dlpfc: 12 samples, 47,681 cells, 0 molecules, 0.31 GB
+| store | GB | share |
+|---|---|---|
+| expression | 0.16 | 51.1% |
+| rows | 0.14 | 45.1% |
+| cells | 0.01 | 2.0% |
+| images | 0.00 | 1.6% |
+| dataset_files | 0.00 | 0.2% |
+expression 3288 B/cell, rows 2906 B/cell

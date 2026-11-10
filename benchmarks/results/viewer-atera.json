@@ -1,0 +1,305 @@
+{
+ "name": "atera",
+ "data": "http://127.0.0.1:8799/atera",
+ "date": "2026-11-10T02:51:40.527Z",
+ "commit": "a28e811",
+ "machine": {
+  "cpu": "Apple M1 Max",
+  "cores": 10,
+  "memoryGB": 64,
+  "platform": "Darwin 24.6.0"
+ },
+ "browser": "chrome 157.0.8103.50",
+ "viewport": "1440x860 @2x",
+ "states": {
+  "overview": {
+   "view": "spatial",
+   "drawn": {
+    "points": 186185,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -4.400326179485206,
+   "pxPerUnit": 0.04735543488426148,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 72375667,
+   "reached": {
+    "requests": 110,
+    "bytes": 14894756,
+    "byStore": {
+     "app": {
+      "requests": 11,
+      "bytes": 3304474
+     },
+     "other": {
+      "requests": 3,
+      "bytes": 20634
+     },
+     "dataset": {
+      "requests": 2,
+      "bytes": 158310
+     },
+     "expression": {
+      "requests": 10,
+      "bytes": 80704
+     },
+     "cells": {
+      "requests": 12,
+      "bytes": 7217984
+     },
+     "images": {
+      "requests": 72,
+      "bytes": 4112650
+     }
+    }
+   },
+   "idleFrameMs": 8.399999999999636,
+   "pan": {
+    "n": 1200,
+    "median": 8.300000000000182,
+    "p95": 8.899999999999636,
+    "max": 9.600000000000364,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "section": {
+   "view": "spatial",
+   "drawn": {
+    "points": 494198,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -3.5999263254574325,
+   "pxPerUnit": 0.08247345601260835,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 123204072,
+   "reached": {
+    "requests": 87,
+    "bytes": 19623897,
+    "byStore": {
+     "images": {
+      "requests": 84,
+      "bytes": 19455023
+     },
+     "other": {
+      "requests": 2,
+      "bytes": 17466
+     },
+     "dataset": {
+      "requests": 1,
+      "bytes": 151408
+     }
+    }
+   },
+   "idleFrameMs": 8.300000000001091,
+   "pan": {
+    "n": 1200,
+    "median": 8.299999999999272,
+    "p95": 9.200000000000728,
+    "max": 9.5,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "window1mm": {
+   "windowMm": 1,
+   "view": "spatial",
+   "drawn": {
+    "points": 0,
+    "shapes": 27046,
+    "molecules": 0
+   },
+   "zoom": -0.2618807112174235,
+   "pxPerUnit": 0.834,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 261160651,
+   "reached": {
+    "requests": 88,
+    "bytes": 28803677,
+    "byStore": {
+     "shapes": {
+      "requests": 6,
+      "bytes": 1209627
+     },
+     "images": {
+      "requests": 80,
+      "bytes": 27576584
+     },
+     "other": {
+      "requests": 2,
+      "bytes": 17466
+     }
+    }
+   },
+   "idleFrameMs": 8.299999999999272,
+   "pan": {
+    "n": 1199,
+    "median": 8.30000000000291,
+    "p95": 8.799999999995634,
+    "max": 16.599999999998545,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "windowMolecules": {
+   "windowMm": 0.125,
+   "view": "spatial",
+   "drawn": {
+    "points": 0,
+    "shapes": 3496,
+    "molecules": 609358
+   },
+   "zoom": 2.7381192887825767,
+   "pxPerUnit": 6.672000000000001,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 441770340,
+   "reached": {
+    "requests": 132,
+    "bytes": 43656066,
+    "byStore": {
+     "molecules": {
+      "requests": 4,
+      "bytes": 3204026
+     },
+     "other": {
+      "requests": 4,
+      "bytes": 34932
+     },
+     "images": {
+      "requests": 124,
+      "bytes": 40417108
+     }
+    }
+   },
+   "idleFrameMs": 8.30000000000291,
+   "pan": {
+    "n": 1200,
+    "median": 8.30000000000291,
+    "p95": 8.5,
+    "max": 9.30000000000291,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  }
+ },
+ "displayFrameMs": 8.299999999999955,
+ "dataset": {
+  "samples": 2,
+  "cells": 887633,
+  "view": "spatial",
+  "section": "cervical",
+  "sectionCells": 717576,
+  "hasMolecules": true,
+  "hasShapes": true
+ },
+ "coldLoad": {
+  "readyMs": 459,
+  "firstFrameWithCellsMs": 510,
+  "requests": 110,
+  "bytes": 14894756,
+  "byStore": {
+   "app": {
+    "requests": 11,
+    "bytes": 3304474
+   },
+   "other": {
+    "requests": 3,
+    "bytes": 20634
+   },
+   "dataset": {
+    "requests": 2,
+    "bytes": 158310
+   },
+   "expression": {
+    "requests": 10,
+    "bytes": 80704
+   },
+   "cells": {
+    "requests": 12,
+    "bytes": 7217984
+   },
+   "images": {
+    "requests": 72,
+    "bytes": 4112650
+   }
+  }
+ },
+ "geneSwitch": {
+  "genes": 20,
+  "cold": {
+   "dataReadyMs": {
+    "n": 20,
+    "median": 9.399999976158142,
+    "p95": 14.899999976158142,
+    "max": 14.899999976158142
+   },
+   "firstFrameMs": {
+    "n": 20,
+    "median": 10.5,
+    "p95": 17.200000047683716,
+    "max": 17.200000047683716
+   },
+   "idleMs": {
+    "n": 20,
+    "median": 11,
+    "p95": 17.800000071525574,
+    "max": 17.800000071525574
+   },
+   "requests": {
+    "requests": 75,
+    "bytes": 2243440,
+    "byStore": {
+     "expression": {
+      "requests": 75,
+      "bytes": 2243440
+     }
+    }
+   },
+   "requestsPerSwitch": 3.75,
+   "bytesPerSwitch": 112172
+  },
+  "cached": {
+   "dataReadyMs": {
+    "n": 20,
+    "median": 1,
+    "p95": 2.0999999046325684,
+    "max": 2.0999999046325684
+   },
+   "firstFrameMs": {
+    "n": 20,
+    "median": 2.1999999284744263,
+    "p95": 3.700000047683716,
+    "max": 3.700000047683716
+   },
+   "idleMs": {
+    "n": 20,
+    "median": 2.3000000715255737,
+    "p95": 4.100000023841858,
+    "max": 4.100000023841858
+   },
+   "requests": {
+    "requests": 0,
+    "bytes": 0,
+    "byStore": {}
+   },
+   "requestsPerSwitch": 0
+  }
+ }
+}

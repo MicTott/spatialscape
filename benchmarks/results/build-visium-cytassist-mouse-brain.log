@@ -1,0 +1,83 @@
+# 2026-11-10T02:52:44Z arm64 LIBD-H7TPH3703H.local commit a28e811 spatialscape 0.6.0
+# python/.venv/bin/spatialscape build /Users/michael.totty/Documents/Web/spatialscape-examples/visium-cytassist-mouse-brain/dataset.yaml -o /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-cytassist-mouse-brain/bundle
+visium-cytassist-mouse-brain -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-cytassist-mouse-brain/bundle
+  section  build  new
+1 sample to build, 0 unchanged; manifest.json, genes.json, features.json and thumbnails are rewritten every time
+[section] reading /Users/michael.totty/Documents/Web/spatialscape-examples/visium-cytassist-mouse-brain/processed/section/adata.h5ad
+[section] auto image: /Users/michael.totty/Documents/Web/spatialscape-examples/visium-cytassist-mouse-brain/processed/section/spatial/tissue_hires_image.png
+[section] coordinates: 1 unit = 0.215 um
+[section] expression layer 'X' looks like counts (all-integer values, max 36543): applying log1p(CP10k)
+[section] writing expression (19465 genes x 2310 obs)
+  expr genes 512/19352
+  expr genes 1024/19352
+  expr genes 1536/19352
+  expr genes 2048/19352
+  expr genes 2560/19352
+  expr genes 3072/19352
+  expr genes 3584/19352
+  expr genes 4096/19352
+  expr genes 4608/19352
+  expr genes 5120/19352
+  expr genes 5632/19352
+  expr genes 6144/19352
+  expr genes 6656/19352
+  expr genes 7168/19352
+  expr genes 7680/19352
+  expr genes 8192/19352
+  expr genes 8704/19352
+  expr genes 9216/19352
+  expr genes 9728/19352
+  expr genes 10240/19352
+  expr genes 10752/19352
+  expr genes 11264/19352
+  expr genes 11776/19352
+  expr genes 12288/19352
+  expr genes 12800/19352
+  expr genes 13312/19352
+  expr genes 13824/19352
+  expr genes 14336/19352
+  expr genes 14848/19352
+  expr genes 15360/19352
+  expr genes 15872/19352
+  expr genes 16384/19352
+  expr genes 16896/19352
+  expr genes 17408/19352
+  expr genes 17920/19352
+  expr genes 18432/19352
+  expr genes 18944/19352
+  expr genes 19352/19352
+[section] 113 all-zero features left out (19352 kept)
+[section] writing per-cell rows
+[section] rows: 15,031,658 stored values
+[section] image /Users/michael.totty/Documents/Web/spatialscape-examples/visium-cytassist-mouse-brain/processed/section/spatial/tissue_hires_image.png
+[section] image cropped to the points: 1044 x 1231 px
+thumbnail: section -> thumbnail.png
+built /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-cytassist-mouse-brain/bundle: 1 samples (1 built), 2,310 obs
+  next: spatialscape serve /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-cytassist-mouse-brain --open
+        6.26 real         6.16 user         0.96 sys
+          1827094528  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              141913  page reclaims
+                 790  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 433  messages sent
+                 396  messages received
+                   0  signals received
+                1585  voluntary context switches
+               34502  involuntary context switches
+         50846665721  instructions retired
+         22303176512  cycles elapsed
+           932254080  peak memory footprint
+visium-cytassist-mouse-brain: 1 samples, 2,310 cells, 0 molecules, 0.04 GB
+| store | GB | share |
+|---|---|---|
+| expression | 0.02 | 44.7% |
+| rows | 0.02 | 48.1% |
+| cells | 0.00 | 0.6% |
+| images | 0.00 | 5.7% |
+| dataset_files | 0.00 | 0.8% |
+expression 8455 B/cell, rows 9092 B/cell

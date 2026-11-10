@@ -27,6 +27,12 @@ columns divide those by the cells or transcripts in the bundle.
 \* The Allen atlas job's MaxRSS counts the page cache of the 106 GB matrix streamed through it, above the 192 GB
 the job requested; the process itself fit the request.
 
+Three rows need a word. The DLPFC laptop row reads the SpatialExperiment through the conversion cache its folder
+already had (a first run converts the `.rds` once more, about ten seconds). The habenula row streams the two
+ATAC fragment files (8.7 GB) from the cluster over ssh while it builds the coverage tracks, so its wall time
+includes that transfer. The laptop and the cluster are not comparable machine to machine: the cluster rows ran on
+shared nodes with four CPUs, the laptop rows on ten cores with nothing else running.
+
 The processed inputs behind each row are the ones the examples repository's scripts write; their sizes are in each
 dataset's README there.
 
@@ -56,6 +62,22 @@ stuttered at 60 Hz.
 
 <!-- viewer-tables -->
 <!-- /viewer-tables -->
+
+## What the tables say
+
+- **Opening an app** takes under a second to the first frame with cells on every dataset, from 2 thousand spots
+  to 1.56 million cells, because the viewer reads each section's metadata and the default gene and nothing else;
+  the bytes it fetches are the manifest, the per-section index files, the thumbnails and the first image levels.
+- **A gene switch is one range request per section**, plus an 8 KB read of the shard index the first time a
+  section's shard of 502 genes is touched. Cold switches take tens of milliseconds on localhost; a cached switch
+  is one to two frames. On the two bundles with genome tracks the panel re-reads its coverage slices on every
+  switch, cached or not, which is where their extra requests come from; caching them is an open item.
+- **What is drawn is bounded by the screen, not the data.** The overview of the amygdala atlas draws about 100
+  thousand of its 1.56 million cells and the Atera overview about 190 thousand of 888 thousand; zooming in trades
+  dots for polygons and, once fewer than about a million would be visible, molecules. Every state on every
+  dataset panned at the display's rate (120 Hz, 8.3 ms a frame) with no frame over 16.7 ms, including the Atera
+  window with 609 thousand molecules and 3.5 thousand polygons on screen.
+- **Memory** stays under half a gigabyte of JS heap in the heaviest state measured (Atera with molecules).
 
 ## Reproduce
 

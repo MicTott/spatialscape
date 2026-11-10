@@ -1,0 +1,1923 @@
+# 2026-11-10T03:10:30Z arm64 LIBD-H7TPH3703H.local commit a28e811 spatialscape 0.6.0
+# python/.venv/bin/spatialscape build examples/habenula.yaml -o /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/bundle
+habenula_multiome -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/bundle
+converting /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/seur_cell_snMultiome_habenula_atlas.rds -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/3a3ca04d6924adfa
+reading /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/seur_cell_snMultiome_habenula_atlas.rds (the whole object is parsed; about as long as loading it in R)
+  Seurat (RNA): 34695 genes x 54193 cells, assays data, counts
+  + ATAC: 354,425 features as 'peak: '
+  seur_cell_snMultiome_habenula_atlas: 54193 cells, embedding 'wnn_umap' -> obsm/X_umap
+converting /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/spe_cell_habenula_atlas.rds -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c
+reading /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/spe_cell_habenula_atlas.rds (the whole object is parsed; about as long as loading it in R)
+  SpatialExperiment: 17708 genes x 287325 cells, assays counts, logcounts, 10 image(s)
+  Br9090_1: 24867 cells, 1 image(s)
+  Br9090_2: 28427 cells, 1 image(s)
+  Br8433_1: 29361 cells, 1 image(s)
+  Br8433_2: 33648 cells, 1 image(s)
+  Br8667_1: 27979 cells, 1 image(s)
+  Br8667_2: 28197 cells, 1 image(s)
+  Br3942_1: 26532 cells, 1 image(s)
+  Br3942_2: 31618 cells, 1 image(s)
+  Br9902_1: 26917 cells, 1 image(s)
+  Br9902_2: 29779 cells, 1 image(s)
+  note: the object holds only the low-resolution H&E (SpaceRanger's tissue_lowres_image, about 600-1200 px wide). For detail, point `images:` in the yaml at tissue_hires_image.png or the full-resolution scan of each sample.
+converting /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/spe_visium_habenula_atlas.rds -> /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09
+reading /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/spe_visium_habenula_atlas.rds (the whole object is parsed; about as long as loading it in R)
+  SpatialExperiment: 26610 genes x 33409 cells, assays counts, logcounts, 48 image(s)
+  V13B23-280_A1: 3117 cells, 4 image(s)
+  V13B23-280_B1: 2921 cells, 4 image(s)
+  V13B23-280_C1: 3580 cells, 4 image(s)
+  V13B23-280_D1: 3515 cells, 4 image(s)
+  V13B23-285_A1: 3803 cells, 4 image(s)
+  V13B23-285_B1: 3119 cells, 4 image(s)
+  V13B23-285_C1: 3201 cells, 4 image(s)
+  V13B23-285_D1: 3118 cells, 4 image(s)
+  V14F07-340_A1: 1669 cells, 4 image(s)
+  V14F07-340_B1: 1689 cells, 4 image(s)
+  V14F07-340_C1: 1794 cells, 4 image(s)
+  V14F07-340_D1: 1883 cells, 4 image(s)
+sources
+  /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/seur_cell_snMultiome_habenula_atlas.rds: converted (1 sample)
+  /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/spe_cell_habenula_atlas.rds: converted (10 samples)
+  /Users/michael.totty/Documents/Web/spatialscape/examples/habenula-src/spe_visium_habenula_atlas.rds: converted (12 samples)
+  wnn                build  new
+  hd_Br3942_1        build  new
+  hd_Br3942_2        build  new
+  hd_Br8433_1        build  new
+  hd_Br8433_2        build  new
+  hd_Br8667_1        build  new
+  hd_Br8667_2        build  new
+  hd_Br9090_1        build  new
+  hd_Br9090_2        build  new
+  hd_Br9902_1        build  new
+  hd_Br9902_2        build  new
+  vis_V13B23-280_A1  build  new
+  vis_V13B23-280_B1  build  new
+  vis_V13B23-280_C1  build  new
+  vis_V13B23-280_D1  build  new
+  vis_V13B23-285_A1  build  new
+  vis_V13B23-285_B1  build  new
+  vis_V13B23-285_C1  build  new
+  vis_V13B23-285_D1  build  new
+  vis_V14F07-340_A1  build  new
+  vis_V14F07-340_B1  build  new
+  vis_V14F07-340_C1  build  new
+  vis_V14F07-340_D1  build  new
+23 samples to build, 0 unchanged; manifest.json, genes.json, features.json and thumbnails are rewritten every time
+[wnn] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/3a3ca04d6924adfa/seur_cell_snMultiome_habenula_atlas/adata.h5ad
+[wnn] expression layer 'X' looks log-normalized (non-integer values)
+[wnn] writing expression (389120 genes x 54193 obs)
+  expr genes 512/389120
+  expr genes 1024/389120
+  expr genes 1536/389120
+  expr genes 2048/389120
+  expr genes 2560/389120
+  expr genes 3072/389120
+  expr genes 3584/389120
+  expr genes 4096/389120
+  expr genes 4608/389120
+  expr genes 5120/389120
+  expr genes 5632/389120
+  expr genes 6144/389120
+  expr genes 6656/389120
+  expr genes 7168/389120
+  expr genes 7680/389120
+  expr genes 8192/389120
+  expr genes 8704/389120
+  expr genes 9216/389120
+  expr genes 9728/389120
+  expr genes 10240/389120
+  expr genes 10752/389120
+  expr genes 11264/389120
+  expr genes 11776/389120
+  expr genes 12288/389120
+  expr genes 12800/389120
+  expr genes 13312/389120
+  expr genes 13824/389120
+  expr genes 14336/389120
+  expr genes 14848/389120
+  expr genes 15360/389120
+  expr genes 15872/389120
+  expr genes 16384/389120
+  expr genes 16896/389120
+  expr genes 17408/389120
+  expr genes 17920/389120
+  expr genes 18432/389120
+  expr genes 18944/389120
+  expr genes 19456/389120
+  expr genes 19968/389120
+  expr genes 20480/389120
+  expr genes 20992/389120
+  expr genes 21504/389120
+  expr genes 22016/389120
+  expr genes 22528/389120
+  expr genes 23040/389120
+  expr genes 23552/389120
+  expr genes 24064/389120
+  expr genes 24576/389120
+  expr genes 25088/389120
+  expr genes 25600/389120
+  expr genes 26112/389120
+  expr genes 26624/389120
+  expr genes 27136/389120
+  expr genes 27648/389120
+  expr genes 28160/389120
+  expr genes 28672/389120
+  expr genes 29184/389120
+  expr genes 29696/389120
+  expr genes 30208/389120
+  expr genes 30720/389120
+  expr genes 31232/389120
+  expr genes 31744/389120
+  expr genes 32256/389120
+  expr genes 32768/389120
+  expr genes 33280/389120
+  expr genes 33792/389120
+  expr genes 34304/389120
+  expr genes 34816/389120
+  expr genes 35328/389120
+  expr genes 35840/389120
+  expr genes 36352/389120
+  expr genes 36864/389120
+  expr genes 37376/389120
+  expr genes 37888/389120
+  expr genes 38400/389120
+  expr genes 38912/389120
+  expr genes 39424/389120
+  expr genes 39936/389120
+  expr genes 40448/389120
+  expr genes 40960/389120
+  expr genes 41472/389120
+  expr genes 41984/389120
+  expr genes 42496/389120
+  expr genes 43008/389120
+  expr genes 43520/389120
+  expr genes 44032/389120
+  expr genes 44544/389120
+  expr genes 45056/389120
+  expr genes 45568/389120
+  expr genes 46080/389120
+  expr genes 46592/389120
+  expr genes 47104/389120
+  expr genes 47616/389120
+  expr genes 48128/389120
+  expr genes 48640/389120
+  expr genes 49152/389120
+  expr genes 49664/389120
+  expr genes 50176/389120
+  expr genes 50688/389120
+  expr genes 51200/389120
+  expr genes 51712/389120
+  expr genes 52224/389120
+  expr genes 52736/389120
+  expr genes 53248/389120
+  expr genes 53760/389120
+  expr genes 54272/389120
+  expr genes 54784/389120
+  expr genes 55296/389120
+  expr genes 55808/389120
+  expr genes 56320/389120
+  expr genes 56832/389120
+  expr genes 57344/389120
+  expr genes 57856/389120
+  expr genes 58368/389120
+  expr genes 58880/389120
+  expr genes 59392/389120
+  expr genes 59904/389120
+  expr genes 60416/389120
+  expr genes 60928/389120
+  expr genes 61440/389120
+  expr genes 61952/389120
+  expr genes 62464/389120
+  expr genes 62976/389120
+  expr genes 63488/389120
+  expr genes 64000/389120
+  expr genes 64512/389120
+  expr genes 65024/389120
+  expr genes 65536/389120
+  expr genes 66048/389120
+  expr genes 66560/389120
+  expr genes 67072/389120
+  expr genes 67584/389120
+  expr genes 68096/389120
+  expr genes 68608/389120
+  expr genes 69120/389120
+  expr genes 69632/389120
+  expr genes 70144/389120
+  expr genes 70656/389120
+  expr genes 71168/389120
+  expr genes 71680/389120
+  expr genes 72192/389120
+  expr genes 72704/389120
+  expr genes 73216/389120
+  expr genes 73728/389120
+  expr genes 74240/389120
+  expr genes 74752/389120
+  expr genes 75264/389120
+  expr genes 75776/389120
+  expr genes 76288/389120
+  expr genes 76800/389120
+  expr genes 77312/389120
+  expr genes 77824/389120
+  expr genes 78336/389120
+  expr genes 78848/389120
+  expr genes 79360/389120
+  expr genes 79872/389120
+  expr genes 80384/389120
+  expr genes 80896/389120
+  expr genes 81408/389120
+  expr genes 81920/389120
+  expr genes 82432/389120
+  expr genes 82944/389120
+  expr genes 83456/389120
+  expr genes 83968/389120
+  expr genes 84480/389120
+  expr genes 84992/389120
+  expr genes 85504/389120
+  expr genes 86016/389120
+  expr genes 86528/389120
+  expr genes 87040/389120
+  expr genes 87552/389120
+  expr genes 88064/389120
+  expr genes 88576/389120
+  expr genes 89088/389120
+  expr genes 89600/389120
+  expr genes 90112/389120
+  expr genes 90624/389120
+  expr genes 91136/389120
+  expr genes 91648/389120
+  expr genes 92160/389120
+  expr genes 92672/389120
+  expr genes 93184/389120
+  expr genes 93696/389120
+  expr genes 94208/389120
+  expr genes 94720/389120
+  expr genes 95232/389120
+  expr genes 95744/389120
+  expr genes 96256/389120
+  expr genes 96768/389120
+  expr genes 97280/389120
+  expr genes 97792/389120
+  expr genes 98304/389120
+  expr genes 98816/389120
+  expr genes 99328/389120
+  expr genes 99840/389120
+  expr genes 100352/389120
+  expr genes 100864/389120
+  expr genes 101376/389120
+  expr genes 101888/389120
+  expr genes 102400/389120
+  expr genes 102912/389120
+  expr genes 103424/389120
+  expr genes 103936/389120
+  expr genes 104448/389120
+  expr genes 104960/389120
+  expr genes 105472/389120
+  expr genes 105984/389120
+  expr genes 106496/389120
+  expr genes 107008/389120
+  expr genes 107520/389120
+  expr genes 108032/389120
+  expr genes 108544/389120
+  expr genes 109056/389120
+  expr genes 109568/389120
+  expr genes 110080/389120
+  expr genes 110592/389120
+  expr genes 111104/389120
+  expr genes 111616/389120
+  expr genes 112128/389120
+  expr genes 112640/389120
+  expr genes 113152/389120
+  expr genes 113664/389120
+  expr genes 114176/389120
+  expr genes 114688/389120
+  expr genes 115200/389120
+  expr genes 115712/389120
+  expr genes 116224/389120
+  expr genes 116736/389120
+  expr genes 117248/389120
+  expr genes 117760/389120
+  expr genes 118272/389120
+  expr genes 118784/389120
+  expr genes 119296/389120
+  expr genes 119808/389120
+  expr genes 120320/389120
+  expr genes 120832/389120
+  expr genes 121344/389120
+  expr genes 121856/389120
+  expr genes 122368/389120
+  expr genes 122880/389120
+  expr genes 123392/389120
+  expr genes 123904/389120
+  expr genes 124416/389120
+  expr genes 124928/389120
+  expr genes 125440/389120
+  expr genes 125952/389120
+  expr genes 126464/389120
+  expr genes 126976/389120
+  expr genes 127488/389120
+  expr genes 128000/389120
+  expr genes 128512/389120
+  expr genes 129024/389120
+  expr genes 129536/389120
+  expr genes 130048/389120
+  expr genes 130560/389120
+  expr genes 131072/389120
+  expr genes 131584/389120
+  expr genes 132096/389120
+  expr genes 132608/389120
+  expr genes 133120/389120
+  expr genes 133632/389120
+  expr genes 134144/389120
+  expr genes 134656/389120
+  expr genes 135168/389120
+  expr genes 135680/389120
+  expr genes 136192/389120
+  expr genes 136704/389120
+  expr genes 137216/389120
+  expr genes 137728/389120
+  expr genes 138240/389120
+  expr genes 138752/389120
+  expr genes 139264/389120
+  expr genes 139776/389120
+  expr genes 140288/389120
+  expr genes 140800/389120
+  expr genes 141312/389120
+  expr genes 141824/389120
+  expr genes 142336/389120
+  expr genes 142848/389120
+  expr genes 143360/389120
+  expr genes 143872/389120
+  expr genes 144384/389120
+  expr genes 144896/389120
+  expr genes 145408/389120
+  expr genes 145920/389120
+  expr genes 146432/389120
+  expr genes 146944/389120
+  expr genes 147456/389120
+  expr genes 147968/389120
+  expr genes 148480/389120
+  expr genes 148992/389120
+  expr genes 149504/389120
+  expr genes 150016/389120
+  expr genes 150528/389120
+  expr genes 151040/389120
+  expr genes 151552/389120
+  expr genes 152064/389120
+  expr genes 152576/389120
+  expr genes 153088/389120
+  expr genes 153600/389120
+  expr genes 154112/389120
+  expr genes 154624/389120
+  expr genes 155136/389120
+  expr genes 155648/389120
+  expr genes 156160/389120
+  expr genes 156672/389120
+  expr genes 157184/389120
+  expr genes 157696/389120
+  expr genes 158208/389120
+  expr genes 158720/389120
+  expr genes 159232/389120
+  expr genes 159744/389120
+  expr genes 160256/389120
+  expr genes 160768/389120
+  expr genes 161280/389120
+  expr genes 161792/389120
+  expr genes 162304/389120
+  expr genes 162816/389120
+  expr genes 163328/389120
+  expr genes 163840/389120
+  expr genes 164352/389120
+  expr genes 164864/389120
+  expr genes 165376/389120
+  expr genes 165888/389120
+  expr genes 166400/389120
+  expr genes 166912/389120
+  expr genes 167424/389120
+  expr genes 167936/389120
+  expr genes 168448/389120
+  expr genes 168960/389120
+  expr genes 169472/389120
+  expr genes 169984/389120
+  expr genes 170496/389120
+  expr genes 171008/389120
+  expr genes 171520/389120
+  expr genes 172032/389120
+  expr genes 172544/389120
+  expr genes 173056/389120
+  expr genes 173568/389120
+  expr genes 174080/389120
+  expr genes 174592/389120
+  expr genes 175104/389120
+  expr genes 175616/389120
+  expr genes 176128/389120
+  expr genes 176640/389120
+  expr genes 177152/389120
+  expr genes 177664/389120
+  expr genes 178176/389120
+  expr genes 178688/389120
+  expr genes 179200/389120
+  expr genes 179712/389120
+  expr genes 180224/389120
+  expr genes 180736/389120
+  expr genes 181248/389120
+  expr genes 181760/389120
+  expr genes 182272/389120
+  expr genes 182784/389120
+  expr genes 183296/389120
+  expr genes 183808/389120
+  expr genes 184320/389120
+  expr genes 184832/389120
+  expr genes 185344/389120
+  expr genes 185856/389120
+  expr genes 186368/389120
+  expr genes 186880/389120
+  expr genes 187392/389120
+  expr genes 187904/389120
+  expr genes 188416/389120
+  expr genes 188928/389120
+  expr genes 189440/389120
+  expr genes 189952/389120
+  expr genes 190464/389120
+  expr genes 190976/389120
+  expr genes 191488/389120
+  expr genes 192000/389120
+  expr genes 192512/389120
+  expr genes 193024/389120
+  expr genes 193536/389120
+  expr genes 194048/389120
+  expr genes 194560/389120
+  expr genes 195072/389120
+  expr genes 195584/389120
+  expr genes 196096/389120
+  expr genes 196608/389120
+  expr genes 197120/389120
+  expr genes 197632/389120
+  expr genes 198144/389120
+  expr genes 198656/389120
+  expr genes 199168/389120
+  expr genes 199680/389120
+  expr genes 200192/389120
+  expr genes 200704/389120
+  expr genes 201216/389120
+  expr genes 201728/389120
+  expr genes 202240/389120
+  expr genes 202752/389120
+  expr genes 203264/389120
+  expr genes 203776/389120
+  expr genes 204288/389120
+  expr genes 204800/389120
+  expr genes 205312/389120
+  expr genes 205824/389120
+  expr genes 206336/389120
+  expr genes 206848/389120
+  expr genes 207360/389120
+  expr genes 207872/389120
+  expr genes 208384/389120
+  expr genes 208896/389120
+  expr genes 209408/389120
+  expr genes 209920/389120
+  expr genes 210432/389120
+  expr genes 210944/389120
+  expr genes 211456/389120
+  expr genes 211968/389120
+  expr genes 212480/389120
+  expr genes 212992/389120
+  expr genes 213504/389120
+  expr genes 214016/389120
+  expr genes 214528/389120
+  expr genes 215040/389120
+  expr genes 215552/389120
+  expr genes 216064/389120
+  expr genes 216576/389120
+  expr genes 217088/389120
+  expr genes 217600/389120
+  expr genes 218112/389120
+  expr genes 218624/389120
+  expr genes 219136/389120
+  expr genes 219648/389120
+  expr genes 220160/389120
+  expr genes 220672/389120
+  expr genes 221184/389120
+  expr genes 221696/389120
+  expr genes 222208/389120
+  expr genes 222720/389120
+  expr genes 223232/389120
+  expr genes 223744/389120
+  expr genes 224256/389120
+  expr genes 224768/389120
+  expr genes 225280/389120
+  expr genes 225792/389120
+  expr genes 226304/389120
+  expr genes 226816/389120
+  expr genes 227328/389120
+  expr genes 227840/389120
+  expr genes 228352/389120
+  expr genes 228864/389120
+  expr genes 229376/389120
+  expr genes 229888/389120
+  expr genes 230400/389120
+  expr genes 230912/389120
+  expr genes 231424/389120
+  expr genes 231936/389120
+  expr genes 232448/389120
+  expr genes 232960/389120
+  expr genes 233472/389120
+  expr genes 233984/389120
+  expr genes 234496/389120
+  expr genes 235008/389120
+  expr genes 235520/389120
+  expr genes 236032/389120
+  expr genes 236544/389120
+  expr genes 237056/389120
+  expr genes 237568/389120
+  expr genes 238080/389120
+  expr genes 238592/389120
+  expr genes 239104/389120
+  expr genes 239616/389120
+  expr genes 240128/389120
+  expr genes 240640/389120
+  expr genes 241152/389120
+  expr genes 241664/389120
+  expr genes 242176/389120
+  expr genes 242688/389120
+  expr genes 243200/389120
+  expr genes 243712/389120
+  expr genes 244224/389120
+  expr genes 244736/389120
+  expr genes 245248/389120
+  expr genes 245760/389120
+  expr genes 246272/389120
+  expr genes 246784/389120
+  expr genes 247296/389120
+  expr genes 247808/389120
+  expr genes 248320/389120
+  expr genes 248832/389120
+  expr genes 249344/389120
+  expr genes 249856/389120
+  expr genes 250368/389120
+  expr genes 250880/389120
+  expr genes 251392/389120
+  expr genes 251904/389120
+  expr genes 252416/389120
+  expr genes 252928/389120
+  expr genes 253440/389120
+  expr genes 253952/389120
+  expr genes 254464/389120
+  expr genes 254976/389120
+  expr genes 255488/389120
+  expr genes 256000/389120
+  expr genes 256512/389120
+  expr genes 257024/389120
+  expr genes 257536/389120
+  expr genes 258048/389120
+  expr genes 258560/389120
+  expr genes 259072/389120
+  expr genes 259584/389120
+  expr genes 260096/389120
+  expr genes 260608/389120
+  expr genes 261120/389120
+  expr genes 261632/389120
+  expr genes 262144/389120
+  expr genes 262656/389120
+  expr genes 263168/389120
+  expr genes 263680/389120
+  expr genes 264192/389120
+  expr genes 264704/389120
+  expr genes 265216/389120
+  expr genes 265728/389120
+  expr genes 266240/389120
+  expr genes 266752/389120
+  expr genes 267264/389120
+  expr genes 267776/389120
+  expr genes 268288/389120
+  expr genes 268800/389120
+  expr genes 269312/389120
+  expr genes 269824/389120
+  expr genes 270336/389120
+  expr genes 270848/389120
+  expr genes 271360/389120
+  expr genes 271872/389120
+  expr genes 272384/389120
+  expr genes 272896/389120
+  expr genes 273408/389120
+  expr genes 273920/389120
+  expr genes 274432/389120
+  expr genes 274944/389120
+  expr genes 275456/389120
+  expr genes 275968/389120
+  expr genes 276480/389120
+  expr genes 276992/389120
+  expr genes 277504/389120
+  expr genes 278016/389120
+  expr genes 278528/389120
+  expr genes 279040/389120
+  expr genes 279552/389120
+  expr genes 280064/389120
+  expr genes 280576/389120
+  expr genes 281088/389120
+  expr genes 281600/389120
+  expr genes 282112/389120
+  expr genes 282624/389120
+  expr genes 283136/389120
+  expr genes 283648/389120
+  expr genes 284160/389120
+  expr genes 284672/389120
+  expr genes 285184/389120
+  expr genes 285696/389120
+  expr genes 286208/389120
+  expr genes 286720/389120
+  expr genes 287232/389120
+  expr genes 287744/389120
+  expr genes 288256/389120
+  expr genes 288768/389120
+  expr genes 289280/389120
+  expr genes 289792/389120
+  expr genes 290304/389120
+  expr genes 290816/389120
+  expr genes 291328/389120
+  expr genes 291840/389120
+  expr genes 292352/389120
+  expr genes 292864/389120
+  expr genes 293376/389120
+  expr genes 293888/389120
+  expr genes 294400/389120
+  expr genes 294912/389120
+  expr genes 295424/389120
+  expr genes 295936/389120
+  expr genes 296448/389120
+  expr genes 296960/389120
+  expr genes 297472/389120
+  expr genes 297984/389120
+  expr genes 298496/389120
+  expr genes 299008/389120
+  expr genes 299520/389120
+  expr genes 300032/389120
+  expr genes 300544/389120
+  expr genes 301056/389120
+  expr genes 301568/389120
+  expr genes 302080/389120
+  expr genes 302592/389120
+  expr genes 303104/389120
+  expr genes 303616/389120
+  expr genes 304128/389120
+  expr genes 304640/389120
+  expr genes 305152/389120
+  expr genes 305664/389120
+  expr genes 306176/389120
+  expr genes 306688/389120
+  expr genes 307200/389120
+  expr genes 307712/389120
+  expr genes 308224/389120
+  expr genes 308736/389120
+  expr genes 309248/389120
+  expr genes 309760/389120
+  expr genes 310272/389120
+  expr genes 310784/389120
+  expr genes 311296/389120
+  expr genes 311808/389120
+  expr genes 312320/389120
+  expr genes 312832/389120
+  expr genes 313344/389120
+  expr genes 313856/389120
+  expr genes 314368/389120
+  expr genes 314880/389120
+  expr genes 315392/389120
+  expr genes 315904/389120
+  expr genes 316416/389120
+  expr genes 316928/389120
+  expr genes 317440/389120
+  expr genes 317952/389120
+  expr genes 318464/389120
+  expr genes 318976/389120
+  expr genes 319488/389120
+  expr genes 320000/389120
+  expr genes 320512/389120
+  expr genes 321024/389120
+  expr genes 321536/389120
+  expr genes 322048/389120
+  expr genes 322560/389120
+  expr genes 323072/389120
+  expr genes 323584/389120
+  expr genes 324096/389120
+  expr genes 324608/389120
+  expr genes 325120/389120
+  expr genes 325632/389120
+  expr genes 326144/389120
+  expr genes 326656/389120
+  expr genes 327168/389120
+  expr genes 327680/389120
+  expr genes 328192/389120
+  expr genes 328704/389120
+  expr genes 329216/389120
+  expr genes 329728/389120
+  expr genes 330240/389120
+  expr genes 330752/389120
+  expr genes 331264/389120
+  expr genes 331776/389120
+  expr genes 332288/389120
+  expr genes 332800/389120
+  expr genes 333312/389120
+  expr genes 333824/389120
+  expr genes 334336/389120
+  expr genes 334848/389120
+  expr genes 335360/389120
+  expr genes 335872/389120
+  expr genes 336384/389120
+  expr genes 336896/389120
+  expr genes 337408/389120
+  expr genes 337920/389120
+  expr genes 338432/389120
+  expr genes 338944/389120
+  expr genes 339456/389120
+  expr genes 339968/389120
+  expr genes 340480/389120
+  expr genes 340992/389120
+  expr genes 341504/389120
+  expr genes 342016/389120
+  expr genes 342528/389120
+  expr genes 343040/389120
+  expr genes 343552/389120
+  expr genes 344064/389120
+  expr genes 344576/389120
+  expr genes 345088/389120
+  expr genes 345600/389120
+  expr genes 346112/389120
+  expr genes 346624/389120
+  expr genes 347136/389120
+  expr genes 347648/389120
+  expr genes 348160/389120
+  expr genes 348672/389120
+  expr genes 349184/389120
+  expr genes 349696/389120
+  expr genes 350208/389120
+  expr genes 350720/389120
+  expr genes 351232/389120
+  expr genes 351744/389120
+  expr genes 352256/389120
+  expr genes 352768/389120
+  expr genes 353280/389120
+  expr genes 353792/389120
+  expr genes 354304/389120
+  expr genes 354816/389120
+  expr genes 355328/389120
+  expr genes 355840/389120
+  expr genes 356352/389120
+  expr genes 356864/389120
+  expr genes 357376/389120
+  expr genes 357888/389120
+  expr genes 358400/389120
+  expr genes 358912/389120
+  expr genes 359424/389120
+  expr genes 359936/389120
+  expr genes 360448/389120
+  expr genes 360960/389120
+  expr genes 361472/389120
+  expr genes 361984/389120
+  expr genes 362496/389120
+  expr genes 363008/389120
+  expr genes 363520/389120
+  expr genes 364032/389120
+  expr genes 364544/389120
+  expr genes 365056/389120
+  expr genes 365568/389120
+  expr genes 366080/389120
+  expr genes 366592/389120
+  expr genes 367104/389120
+  expr genes 367616/389120
+  expr genes 368128/389120
+  expr genes 368640/389120
+  expr genes 369152/389120
+  expr genes 369664/389120
+  expr genes 370176/389120
+  expr genes 370688/389120
+  expr genes 371200/389120
+  expr genes 371712/389120
+  expr genes 372224/389120
+  expr genes 372736/389120
+  expr genes 373248/389120
+  expr genes 373760/389120
+  expr genes 374272/389120
+  expr genes 374784/389120
+  expr genes 375296/389120
+  expr genes 375808/389120
+  expr genes 376320/389120
+  expr genes 376832/389120
+  expr genes 377344/389120
+  expr genes 377856/389120
+  expr genes 378368/389120
+  expr genes 378880/389120
+  expr genes 379392/389120
+  expr genes 379904/389120
+  expr genes 380416/389120
+  expr genes 380928/389120
+  expr genes 381440/389120
+  expr genes 381952/389120
+  expr genes 382464/389120
+  expr genes 382976/389120
+  expr genes 383488/389120
+  expr genes 384000/389120
+  expr genes 384512/389120
+  expr genes 385024/389120
+  expr genes 385536/389120
+  expr genes 386048/389120
+  expr genes 386560/389120
+  expr genes 387072/389120
+  expr genes 387584/389120
+  expr genes 388096/389120
+  expr genes 388608/389120
+  expr genes 389120/389120
+  tracks: streaming atac_fragments.tsv.gz (6S_Hb_KDM) over ssh from mtotty@jhpce-transfer01.jhsph.edu (celltype, donor; 100 bp bins)
+  tracks: 336,208,762 fragments from 7,029 barcodes over 24 chromosomes
+  tracks: streaming atac_fragments.tsv.gz (S11_Hb_KDM) over ssh from mtotty@jhpce-transfer01.jhsph.edu (celltype, donor; 100 bp bins)
+  tracks: 168,630,116 fragments from 7,406 barcodes over 24 chromosomes
+  tracks: scaling by insertions within 50 bp of a TSS (7,626,783 of 1,009,677,756)
+  tracks: celltype: 16 categories
+  tracks: donor: 2 categories
+  tracks: gene models: 60,625 genes from e7c024baa500_gencode.v32.annotation.gtf.gz
+[hd_Br3942_1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br3942_1/adata.h5ad
+[hd_Br3942_1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br3942_1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br3942_1/spatial/tissue_lowres_image.png
+[hd_Br3942_1] coordinates: 1 unit = 0.2525 um
+[hd_Br3942_1] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br3942_1] writing expression (17708 genes x 26532 obs)
+  expr genes 512/16539
+  expr genes 1024/16539
+  expr genes 1536/16539
+  expr genes 2048/16539
+  expr genes 2560/16539
+  expr genes 3072/16539
+  expr genes 3584/16539
+  expr genes 4096/16539
+  expr genes 4608/16539
+  expr genes 5120/16539
+  expr genes 5632/16539
+  expr genes 6144/16539
+  expr genes 6656/16539
+  expr genes 7168/16539
+  expr genes 7680/16539
+  expr genes 8192/16539
+  expr genes 8704/16539
+  expr genes 9216/16539
+  expr genes 9728/16539
+  expr genes 10240/16539
+  expr genes 10752/16539
+  expr genes 11264/16539
+  expr genes 11776/16539
+  expr genes 12288/16539
+  expr genes 12800/16539
+  expr genes 13312/16539
+  expr genes 13824/16539
+  expr genes 14336/16539
+  expr genes 14848/16539
+  expr genes 15360/16539
+  expr genes 15872/16539
+  expr genes 16384/16539
+  expr genes 16539/16539
+[hd_Br3942_1] 1169 all-zero features left out (16539 kept)
+[hd_Br3942_1] writing per-cell rows
+[hd_Br3942_1] rows: 11,614,541 stored values
+[hd_Br3942_1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br3942_1/spatial/tissue_lowres_image.png
+[hd_Br3942_1] image cropped to the points: 298 x 408 px
+[hd_Br3942_2] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br3942_2/adata.h5ad
+[hd_Br3942_2] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br3942_2] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br3942_2/spatial/tissue_lowres_image.png
+[hd_Br3942_2] coordinates: 1 unit = 0.2525 um
+[hd_Br3942_2] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br3942_2] writing expression (17708 genes x 31618 obs)
+  expr genes 512/16589
+  expr genes 1024/16589
+  expr genes 1536/16589
+  expr genes 2048/16589
+  expr genes 2560/16589
+  expr genes 3072/16589
+  expr genes 3584/16589
+  expr genes 4096/16589
+  expr genes 4608/16589
+  expr genes 5120/16589
+  expr genes 5632/16589
+  expr genes 6144/16589
+  expr genes 6656/16589
+  expr genes 7168/16589
+  expr genes 7680/16589
+  expr genes 8192/16589
+  expr genes 8704/16589
+  expr genes 9216/16589
+  expr genes 9728/16589
+  expr genes 10240/16589
+  expr genes 10752/16589
+  expr genes 11264/16589
+  expr genes 11776/16589
+  expr genes 12288/16589
+  expr genes 12800/16589
+  expr genes 13312/16589
+  expr genes 13824/16589
+  expr genes 14336/16589
+  expr genes 14848/16589
+  expr genes 15360/16589
+  expr genes 15872/16589
+  expr genes 16384/16589
+  expr genes 16589/16589
+[hd_Br3942_2] 1119 all-zero features left out (16589 kept)
+[hd_Br3942_2] writing per-cell rows
+[hd_Br3942_2] rows: 13,175,136 stored values
+[hd_Br3942_2] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br3942_2/spatial/tissue_lowres_image.png
+[hd_Br3942_2] image cropped to the points: 305 x 484 px
+[hd_Br8433_1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8433_1/adata.h5ad
+[hd_Br8433_1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br8433_1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8433_1/spatial/tissue_lowres_image.png
+[hd_Br8433_1] coordinates: 1 unit = 0.2525 um
+[hd_Br8433_1] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br8433_1] writing expression (17708 genes x 29361 obs)
+  expr genes 512/16447
+  expr genes 1024/16447
+  expr genes 1536/16447
+  expr genes 2048/16447
+  expr genes 2560/16447
+  expr genes 3072/16447
+  expr genes 3584/16447
+  expr genes 4096/16447
+  expr genes 4608/16447
+  expr genes 5120/16447
+  expr genes 5632/16447
+  expr genes 6144/16447
+  expr genes 6656/16447
+  expr genes 7168/16447
+  expr genes 7680/16447
+  expr genes 8192/16447
+  expr genes 8704/16447
+  expr genes 9216/16447
+  expr genes 9728/16447
+  expr genes 10240/16447
+  expr genes 10752/16447
+  expr genes 11264/16447
+  expr genes 11776/16447
+  expr genes 12288/16447
+  expr genes 12800/16447
+  expr genes 13312/16447
+  expr genes 13824/16447
+  expr genes 14336/16447
+  expr genes 14848/16447
+  expr genes 15360/16447
+  expr genes 15872/16447
+  expr genes 16384/16447
+  expr genes 16447/16447
+[hd_Br8433_1] 1261 all-zero features left out (16447 kept)
+[hd_Br8433_1] writing per-cell rows
+[hd_Br8433_1] rows: 11,350,573 stored values
+[hd_Br8433_1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8433_1/spatial/tissue_lowres_image.png
+[hd_Br8433_1] image cropped to the points: 224 x 368 px
+[hd_Br8433_1] image blanked beyond 150 um of the sample's own points (a slide image shared with another section)
+[hd_Br8433_2] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8433_2/adata.h5ad
+[hd_Br8433_2] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br8433_2] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8433_2/spatial/tissue_lowres_image.png
+[hd_Br8433_2] coordinates: 1 unit = 0.2525 um
+[hd_Br8433_2] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br8433_2] writing expression (17708 genes x 33648 obs)
+  expr genes 512/16207
+  expr genes 1024/16207
+  expr genes 1536/16207
+  expr genes 2048/16207
+  expr genes 2560/16207
+  expr genes 3072/16207
+  expr genes 3584/16207
+  expr genes 4096/16207
+  expr genes 4608/16207
+  expr genes 5120/16207
+  expr genes 5632/16207
+  expr genes 6144/16207
+  expr genes 6656/16207
+  expr genes 7168/16207
+  expr genes 7680/16207
+  expr genes 8192/16207
+  expr genes 8704/16207
+  expr genes 9216/16207
+  expr genes 9728/16207
+  expr genes 10240/16207
+  expr genes 10752/16207
+  expr genes 11264/16207
+  expr genes 11776/16207
+  expr genes 12288/16207
+  expr genes 12800/16207
+  expr genes 13312/16207
+  expr genes 13824/16207
+  expr genes 14336/16207
+  expr genes 14848/16207
+  expr genes 15360/16207
+  expr genes 15872/16207
+  expr genes 16207/16207
+[hd_Br8433_2] 1501 all-zero features left out (16207 kept)
+[hd_Br8433_2] writing per-cell rows
+[hd_Br8433_2] rows: 9,170,972 stored values
+[hd_Br8433_2] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8433_2/spatial/tissue_lowres_image.png
+[hd_Br8433_2] image cropped to the points: 241 x 373 px
+[hd_Br8433_2] image blanked beyond 150 um of the sample's own points (a slide image shared with another section)
+[hd_Br8667_1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8667_1/adata.h5ad
+[hd_Br8667_1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br8667_1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8667_1/spatial/tissue_lowres_image.png
+[hd_Br8667_1] coordinates: 1 unit = 0.2525 um
+[hd_Br8667_1] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br8667_1] writing expression (17708 genes x 27979 obs)
+  expr genes 512/16347
+  expr genes 1024/16347
+  expr genes 1536/16347
+  expr genes 2048/16347
+  expr genes 2560/16347
+  expr genes 3072/16347
+  expr genes 3584/16347
+  expr genes 4096/16347
+  expr genes 4608/16347
+  expr genes 5120/16347
+  expr genes 5632/16347
+  expr genes 6144/16347
+  expr genes 6656/16347
+  expr genes 7168/16347
+  expr genes 7680/16347
+  expr genes 8192/16347
+  expr genes 8704/16347
+  expr genes 9216/16347
+  expr genes 9728/16347
+  expr genes 10240/16347
+  expr genes 10752/16347
+  expr genes 11264/16347
+  expr genes 11776/16347
+  expr genes 12288/16347
+  expr genes 12800/16347
+  expr genes 13312/16347
+  expr genes 13824/16347
+  expr genes 14336/16347
+  expr genes 14848/16347
+  expr genes 15360/16347
+  expr genes 15872/16347
+  expr genes 16347/16347
+[hd_Br8667_1] 1361 all-zero features left out (16347 kept)
+[hd_Br8667_1] writing per-cell rows
+[hd_Br8667_1] rows: 8,538,555 stored values
+[hd_Br8667_1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8667_1/spatial/tissue_lowres_image.png
+[hd_Br8667_1] image cropped to the points: 117 x 235 px
+[hd_Br8667_2] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8667_2/adata.h5ad
+[hd_Br8667_2] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br8667_2] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8667_2/spatial/tissue_lowres_image.png
+[hd_Br8667_2] coordinates: 1 unit = 0.2525 um
+[hd_Br8667_2] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br8667_2] writing expression (17708 genes x 28197 obs)
+  expr genes 512/16472
+  expr genes 1024/16472
+  expr genes 1536/16472
+  expr genes 2048/16472
+  expr genes 2560/16472
+  expr genes 3072/16472
+  expr genes 3584/16472
+  expr genes 4096/16472
+  expr genes 4608/16472
+  expr genes 5120/16472
+  expr genes 5632/16472
+  expr genes 6144/16472
+  expr genes 6656/16472
+  expr genes 7168/16472
+  expr genes 7680/16472
+  expr genes 8192/16472
+  expr genes 8704/16472
+  expr genes 9216/16472
+  expr genes 9728/16472
+  expr genes 10240/16472
+  expr genes 10752/16472
+  expr genes 11264/16472
+  expr genes 11776/16472
+  expr genes 12288/16472
+  expr genes 12800/16472
+  expr genes 13312/16472
+  expr genes 13824/16472
+  expr genes 14336/16472
+  expr genes 14848/16472
+  expr genes 15360/16472
+  expr genes 15872/16472
+  expr genes 16384/16472
+  expr genes 16472/16472
+[hd_Br8667_2] 1236 all-zero features left out (16472 kept)
+[hd_Br8667_2] writing per-cell rows
+[hd_Br8667_2] rows: 11,211,377 stored values
+[hd_Br8667_2] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br8667_2/spatial/tissue_lowres_image.png
+[hd_Br8667_2] image cropped to the points: 123 x 235 px
+[hd_Br9090_1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9090_1/adata.h5ad
+[hd_Br9090_1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br9090_1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9090_1/spatial/tissue_lowres_image.png
+[hd_Br9090_1] coordinates: 1 unit = 0.2525 um
+[hd_Br9090_1] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br9090_1] writing expression (17708 genes x 24867 obs)
+  expr genes 512/16727
+  expr genes 1024/16727
+  expr genes 1536/16727
+  expr genes 2048/16727
+  expr genes 2560/16727
+  expr genes 3072/16727
+  expr genes 3584/16727
+  expr genes 4096/16727
+  expr genes 4608/16727
+  expr genes 5120/16727
+  expr genes 5632/16727
+  expr genes 6144/16727
+  expr genes 6656/16727
+  expr genes 7168/16727
+  expr genes 7680/16727
+  expr genes 8192/16727
+  expr genes 8704/16727
+  expr genes 9216/16727
+  expr genes 9728/16727
+  expr genes 10240/16727
+  expr genes 10752/16727
+  expr genes 11264/16727
+  expr genes 11776/16727
+  expr genes 12288/16727
+  expr genes 12800/16727
+  expr genes 13312/16727
+  expr genes 13824/16727
+  expr genes 14336/16727
+  expr genes 14848/16727
+  expr genes 15360/16727
+  expr genes 15872/16727
+  expr genes 16384/16727
+  expr genes 16727/16727
+[hd_Br9090_1] 981 all-zero features left out (16727 kept)
+[hd_Br9090_1] writing per-cell rows
+[hd_Br9090_1] rows: 13,458,300 stored values
+[hd_Br9090_1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9090_1/spatial/tissue_lowres_image.png
+[hd_Br9090_1] image cropped to the points: 128 x 286 px
+[hd_Br9090_1] image blanked beyond 150 um of the sample's own points (a slide image shared with another section)
+[hd_Br9090_2] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9090_2/adata.h5ad
+[hd_Br9090_2] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br9090_2] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9090_2/spatial/tissue_lowres_image.png
+[hd_Br9090_2] coordinates: 1 unit = 0.2525 um
+[hd_Br9090_2] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br9090_2] writing expression (17708 genes x 28427 obs)
+  expr genes 512/16833
+  expr genes 1024/16833
+  expr genes 1536/16833
+  expr genes 2048/16833
+  expr genes 2560/16833
+  expr genes 3072/16833
+  expr genes 3584/16833
+  expr genes 4096/16833
+  expr genes 4608/16833
+  expr genes 5120/16833
+  expr genes 5632/16833
+  expr genes 6144/16833
+  expr genes 6656/16833
+  expr genes 7168/16833
+  expr genes 7680/16833
+  expr genes 8192/16833
+  expr genes 8704/16833
+  expr genes 9216/16833
+  expr genes 9728/16833
+  expr genes 10240/16833
+  expr genes 10752/16833
+  expr genes 11264/16833
+  expr genes 11776/16833
+  expr genes 12288/16833
+  expr genes 12800/16833
+  expr genes 13312/16833
+  expr genes 13824/16833
+  expr genes 14336/16833
+  expr genes 14848/16833
+  expr genes 15360/16833
+  expr genes 15872/16833
+  expr genes 16384/16833
+  expr genes 16833/16833
+[hd_Br9090_2] 875 all-zero features left out (16833 kept)
+[hd_Br9090_2] writing per-cell rows
+[hd_Br9090_2] rows: 18,265,904 stored values
+[hd_Br9090_2] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9090_2/spatial/tissue_lowres_image.png
+[hd_Br9090_2] image cropped to the points: 121 x 286 px
+[hd_Br9090_2] image blanked beyond 150 um of the sample's own points (a slide image shared with another section)
+[hd_Br9902_1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9902_1/adata.h5ad
+[hd_Br9902_1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br9902_1] coordinates: 1 unit = 0.2525 um
+[hd_Br9902_1] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br9902_1] writing expression (17708 genes x 26917 obs)
+  expr genes 512/16903
+  expr genes 1024/16903
+  expr genes 1536/16903
+  expr genes 2048/16903
+  expr genes 2560/16903
+  expr genes 3072/16903
+  expr genes 3584/16903
+  expr genes 4096/16903
+  expr genes 4608/16903
+  expr genes 5120/16903
+  expr genes 5632/16903
+  expr genes 6144/16903
+  expr genes 6656/16903
+  expr genes 7168/16903
+  expr genes 7680/16903
+  expr genes 8192/16903
+  expr genes 8704/16903
+  expr genes 9216/16903
+  expr genes 9728/16903
+  expr genes 10240/16903
+  expr genes 10752/16903
+  expr genes 11264/16903
+  expr genes 11776/16903
+  expr genes 12288/16903
+  expr genes 12800/16903
+  expr genes 13312/16903
+  expr genes 13824/16903
+  expr genes 14336/16903
+  expr genes 14848/16903
+  expr genes 15360/16903
+  expr genes 15872/16903
+  expr genes 16384/16903
+  expr genes 16896/16903
+  expr genes 16903/16903
+[hd_Br9902_1] 805 all-zero features left out (16903 kept)
+[hd_Br9902_1] writing per-cell rows
+[hd_Br9902_1] rows: 20,963,300 stored values
+[hd_Br9902_2] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/72e5c32649a8fb8c/Br9902_2/adata.h5ad
+[hd_Br9902_2] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[hd_Br9902_2] coordinates: 1 unit = 0.2525 um
+[hd_Br9902_2] expression layer 'X' looks log-normalized (non-integer values)
+[hd_Br9902_2] writing expression (17708 genes x 29779 obs)
+  expr genes 512/17027
+  expr genes 1024/17027
+  expr genes 1536/17027
+  expr genes 2048/17027
+  expr genes 2560/17027
+  expr genes 3072/17027
+  expr genes 3584/17027
+  expr genes 4096/17027
+  expr genes 4608/17027
+  expr genes 5120/17027
+  expr genes 5632/17027
+  expr genes 6144/17027
+  expr genes 6656/17027
+  expr genes 7168/17027
+  expr genes 7680/17027
+  expr genes 8192/17027
+  expr genes 8704/17027
+  expr genes 9216/17027
+  expr genes 9728/17027
+  expr genes 10240/17027
+  expr genes 10752/17027
+  expr genes 11264/17027
+  expr genes 11776/17027
+  expr genes 12288/17027
+  expr genes 12800/17027
+  expr genes 13312/17027
+  expr genes 13824/17027
+  expr genes 14336/17027
+  expr genes 14848/17027
+  expr genes 15360/17027
+  expr genes 15872/17027
+  expr genes 16384/17027
+  expr genes 16896/17027
+  expr genes 17027/17027
+[hd_Br9902_2] 681 all-zero features left out (17027 kept)
+[hd_Br9902_2] writing per-cell rows
+[hd_Br9902_2] rows: 29,946,244 stored values
+[vis_V13B23-280_A1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_A1/adata.h5ad
+[vis_V13B23-280_A1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-280_A1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_A1/spatial/tissue_hires_image.png
+[vis_V13B23-280_A1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-280_A1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-280_A1] writing expression (26610 genes x 3117 obs)
+  expr genes 512/19893
+  expr genes 1024/19893
+  expr genes 1536/19893
+  expr genes 2048/19893
+  expr genes 2560/19893
+  expr genes 3072/19893
+  expr genes 3584/19893
+  expr genes 4096/19893
+  expr genes 4608/19893
+  expr genes 5120/19893
+  expr genes 5632/19893
+  expr genes 6144/19893
+  expr genes 6656/19893
+  expr genes 7168/19893
+  expr genes 7680/19893
+  expr genes 8192/19893
+  expr genes 8704/19893
+  expr genes 9216/19893
+  expr genes 9728/19893
+  expr genes 10240/19893
+  expr genes 10752/19893
+  expr genes 11264/19893
+  expr genes 11776/19893
+  expr genes 12288/19893
+  expr genes 12800/19893
+  expr genes 13312/19893
+  expr genes 13824/19893
+  expr genes 14336/19893
+  expr genes 14848/19893
+  expr genes 15360/19893
+  expr genes 15872/19893
+  expr genes 16384/19893
+  expr genes 16896/19893
+  expr genes 17408/19893
+  expr genes 17920/19893
+  expr genes 18432/19893
+  expr genes 18944/19893
+  expr genes 19456/19893
+  expr genes 19893/19893
+[vis_V13B23-280_A1] 6717 all-zero features left out (19893 kept)
+[vis_V13B23-280_A1] writing per-cell rows
+[vis_V13B23-280_A1] rows: 1,342,551 stored values
+[vis_V13B23-280_A1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_A1/spatial/tissue_hires_image.png
+[vis_V13B23-280_A1] image cropped to the points: 1522 x 1449 px
+[vis_V13B23-280_B1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_B1/adata.h5ad
+[vis_V13B23-280_B1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-280_B1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_B1/spatial/tissue_hires_image.png
+[vis_V13B23-280_B1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-280_B1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-280_B1] writing expression (26610 genes x 2921 obs)
+  expr genes 512/20101
+  expr genes 1024/20101
+  expr genes 1536/20101
+  expr genes 2048/20101
+  expr genes 2560/20101
+  expr genes 3072/20101
+  expr genes 3584/20101
+  expr genes 4096/20101
+  expr genes 4608/20101
+  expr genes 5120/20101
+  expr genes 5632/20101
+  expr genes 6144/20101
+  expr genes 6656/20101
+  expr genes 7168/20101
+  expr genes 7680/20101
+  expr genes 8192/20101
+  expr genes 8704/20101
+  expr genes 9216/20101
+  expr genes 9728/20101
+  expr genes 10240/20101
+  expr genes 10752/20101
+  expr genes 11264/20101
+  expr genes 11776/20101
+  expr genes 12288/20101
+  expr genes 12800/20101
+  expr genes 13312/20101
+  expr genes 13824/20101
+  expr genes 14336/20101
+  expr genes 14848/20101
+  expr genes 15360/20101
+  expr genes 15872/20101
+  expr genes 16384/20101
+  expr genes 16896/20101
+  expr genes 17408/20101
+  expr genes 17920/20101
+  expr genes 18432/20101
+  expr genes 18944/20101
+  expr genes 19456/20101
+  expr genes 19968/20101
+  expr genes 20101/20101
+[vis_V13B23-280_B1] 6509 all-zero features left out (20101 kept)
+[vis_V13B23-280_B1] writing per-cell rows
+[vis_V13B23-280_B1] rows: 1,427,632 stored values
+[vis_V13B23-280_B1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_B1/spatial/tissue_hires_image.png
+[vis_V13B23-280_B1] image cropped to the points: 1503 x 1426 px
+[vis_V13B23-280_C1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_C1/adata.h5ad
+[vis_V13B23-280_C1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-280_C1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_C1/spatial/tissue_hires_image.png
+[vis_V13B23-280_C1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-280_C1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-280_C1] writing expression (26610 genes x 3580 obs)
+  expr genes 512/20272
+  expr genes 1024/20272
+  expr genes 1536/20272
+  expr genes 2048/20272
+  expr genes 2560/20272
+  expr genes 3072/20272
+  expr genes 3584/20272
+  expr genes 4096/20272
+  expr genes 4608/20272
+  expr genes 5120/20272
+  expr genes 5632/20272
+  expr genes 6144/20272
+  expr genes 6656/20272
+  expr genes 7168/20272
+  expr genes 7680/20272
+  expr genes 8192/20272
+  expr genes 8704/20272
+  expr genes 9216/20272
+  expr genes 9728/20272
+  expr genes 10240/20272
+  expr genes 10752/20272
+  expr genes 11264/20272
+  expr genes 11776/20272
+  expr genes 12288/20272
+  expr genes 12800/20272
+  expr genes 13312/20272
+  expr genes 13824/20272
+  expr genes 14336/20272
+  expr genes 14848/20272
+  expr genes 15360/20272
+  expr genes 15872/20272
+  expr genes 16384/20272
+  expr genes 16896/20272
+  expr genes 17408/20272
+  expr genes 17920/20272
+  expr genes 18432/20272
+  expr genes 18944/20272
+  expr genes 19456/20272
+  expr genes 19968/20272
+  expr genes 20272/20272
+[vis_V13B23-280_C1] 6338 all-zero features left out (20272 kept)
+[vis_V13B23-280_C1] writing per-cell rows
+[vis_V13B23-280_C1] rows: 1,740,281 stored values
+[vis_V13B23-280_C1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_C1/spatial/tissue_hires_image.png
+[vis_V13B23-280_C1] image cropped to the points: 1482 x 1445 px
+[vis_V13B23-280_D1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_D1/adata.h5ad
+[vis_V13B23-280_D1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-280_D1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_D1/spatial/tissue_hires_image.png
+[vis_V13B23-280_D1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-280_D1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-280_D1] writing expression (26610 genes x 3515 obs)
+  expr genes 512/19694
+  expr genes 1024/19694
+  expr genes 1536/19694
+  expr genes 2048/19694
+  expr genes 2560/19694
+  expr genes 3072/19694
+  expr genes 3584/19694
+  expr genes 4096/19694
+  expr genes 4608/19694
+  expr genes 5120/19694
+  expr genes 5632/19694
+  expr genes 6144/19694
+  expr genes 6656/19694
+  expr genes 7168/19694
+  expr genes 7680/19694
+  expr genes 8192/19694
+  expr genes 8704/19694
+  expr genes 9216/19694
+  expr genes 9728/19694
+  expr genes 10240/19694
+  expr genes 10752/19694
+  expr genes 11264/19694
+  expr genes 11776/19694
+  expr genes 12288/19694
+  expr genes 12800/19694
+  expr genes 13312/19694
+  expr genes 13824/19694
+  expr genes 14336/19694
+  expr genes 14848/19694
+  expr genes 15360/19694
+  expr genes 15872/19694
+  expr genes 16384/19694
+  expr genes 16896/19694
+  expr genes 17408/19694
+  expr genes 17920/19694
+  expr genes 18432/19694
+  expr genes 18944/19694
+  expr genes 19456/19694
+  expr genes 19694/19694
+[vis_V13B23-280_D1] 6916 all-zero features left out (19694 kept)
+[vis_V13B23-280_D1] writing per-cell rows
+[vis_V13B23-280_D1] rows: 1,220,824 stored values
+[vis_V13B23-280_D1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-280_D1/spatial/tissue_hires_image.png
+[vis_V13B23-280_D1] image cropped to the points: 1522 x 1447 px
+[vis_V13B23-285_A1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_A1/adata.h5ad
+[vis_V13B23-285_A1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-285_A1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_A1/spatial/tissue_hires_image.png
+[vis_V13B23-285_A1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-285_A1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-285_A1] writing expression (26610 genes x 3803 obs)
+  expr genes 512/20670
+  expr genes 1024/20670
+  expr genes 1536/20670
+  expr genes 2048/20670
+  expr genes 2560/20670
+  expr genes 3072/20670
+  expr genes 3584/20670
+  expr genes 4096/20670
+  expr genes 4608/20670
+  expr genes 5120/20670
+  expr genes 5632/20670
+  expr genes 6144/20670
+  expr genes 6656/20670
+  expr genes 7168/20670
+  expr genes 7680/20670
+  expr genes 8192/20670
+  expr genes 8704/20670
+  expr genes 9216/20670
+  expr genes 9728/20670
+  expr genes 10240/20670
+  expr genes 10752/20670
+  expr genes 11264/20670
+  expr genes 11776/20670
+  expr genes 12288/20670
+  expr genes 12800/20670
+  expr genes 13312/20670
+  expr genes 13824/20670
+  expr genes 14336/20670
+  expr genes 14848/20670
+  expr genes 15360/20670
+  expr genes 15872/20670
+  expr genes 16384/20670
+  expr genes 16896/20670
+  expr genes 17408/20670
+  expr genes 17920/20670
+  expr genes 18432/20670
+  expr genes 18944/20670
+  expr genes 19456/20670
+  expr genes 19968/20670
+  expr genes 20480/20670
+  expr genes 20670/20670
+[vis_V13B23-285_A1] 5940 all-zero features left out (20670 kept)
+[vis_V13B23-285_A1] writing per-cell rows
+[vis_V13B23-285_A1] rows: 2,414,321 stored values
+[vis_V13B23-285_A1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_A1/spatial/tissue_hires_image.png
+[vis_V13B23-285_A1] image cropped to the points: 1583 x 1542 px
+[vis_V13B23-285_B1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_B1/adata.h5ad
+[vis_V13B23-285_B1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-285_B1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_B1/spatial/tissue_hires_image.png
+[vis_V13B23-285_B1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-285_B1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-285_B1] writing expression (26610 genes x 3119 obs)
+  expr genes 512/21210
+  expr genes 1024/21210
+  expr genes 1536/21210
+  expr genes 2048/21210
+  expr genes 2560/21210
+  expr genes 3072/21210
+  expr genes 3584/21210
+  expr genes 4096/21210
+  expr genes 4608/21210
+  expr genes 5120/21210
+  expr genes 5632/21210
+  expr genes 6144/21210
+  expr genes 6656/21210
+  expr genes 7168/21210
+  expr genes 7680/21210
+  expr genes 8192/21210
+  expr genes 8704/21210
+  expr genes 9216/21210
+  expr genes 9728/21210
+  expr genes 10240/21210
+  expr genes 10752/21210
+  expr genes 11264/21210
+  expr genes 11776/21210
+  expr genes 12288/21210
+  expr genes 12800/21210
+  expr genes 13312/21210
+  expr genes 13824/21210
+  expr genes 14336/21210
+  expr genes 14848/21210
+  expr genes 15360/21210
+  expr genes 15872/21210
+  expr genes 16384/21210
+  expr genes 16896/21210
+  expr genes 17408/21210
+  expr genes 17920/21210
+  expr genes 18432/21210
+  expr genes 18944/21210
+  expr genes 19456/21210
+  expr genes 19968/21210
+  expr genes 20480/21210
+  expr genes 20992/21210
+  expr genes 21210/21210
+[vis_V13B23-285_B1] 5400 all-zero features left out (21210 kept)
+[vis_V13B23-285_B1] writing per-cell rows
+[vis_V13B23-285_B1] rows: 2,373,704 stored values
+[vis_V13B23-285_B1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_B1/spatial/tissue_hires_image.png
+[vis_V13B23-285_B1] image cropped to the points: 1179 x 1467 px
+[vis_V13B23-285_C1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_C1/adata.h5ad
+[vis_V13B23-285_C1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-285_C1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_C1/spatial/tissue_hires_image.png
+[vis_V13B23-285_C1] coordinates: 1 unit = 0.3612 um
+[vis_V13B23-285_C1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-285_C1] writing expression (26610 genes x 3201 obs)
+  expr genes 512/22024
+  expr genes 1024/22024
+  expr genes 1536/22024
+  expr genes 2048/22024
+  expr genes 2560/22024
+  expr genes 3072/22024
+  expr genes 3584/22024
+  expr genes 4096/22024
+  expr genes 4608/22024
+  expr genes 5120/22024
+  expr genes 5632/22024
+  expr genes 6144/22024
+  expr genes 6656/22024
+  expr genes 7168/22024
+  expr genes 7680/22024
+  expr genes 8192/22024
+  expr genes 8704/22024
+  expr genes 9216/22024
+  expr genes 9728/22024
+  expr genes 10240/22024
+  expr genes 10752/22024
+  expr genes 11264/22024
+  expr genes 11776/22024
+  expr genes 12288/22024
+  expr genes 12800/22024
+  expr genes 13312/22024
+  expr genes 13824/22024
+  expr genes 14336/22024
+  expr genes 14848/22024
+  expr genes 15360/22024
+  expr genes 15872/22024
+  expr genes 16384/22024
+  expr genes 16896/22024
+  expr genes 17408/22024
+  expr genes 17920/22024
+  expr genes 18432/22024
+  expr genes 18944/22024
+  expr genes 19456/22024
+  expr genes 19968/22024
+  expr genes 20480/22024
+  expr genes 20992/22024
+  expr genes 21504/22024
+  expr genes 22016/22024
+  expr genes 22024/22024
+[vis_V13B23-285_C1] 4586 all-zero features left out (22024 kept)
+[vis_V13B23-285_C1] writing per-cell rows
+[vis_V13B23-285_C1] rows: 3,103,996 stored values
+[vis_V13B23-285_C1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_C1/spatial/tissue_hires_image.png
+[vis_V13B23-285_C1] image cropped to the points: 1240 x 1525 px
+[vis_V13B23-285_D1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_D1/adata.h5ad
+[vis_V13B23-285_D1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V13B23-285_D1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_D1/spatial/tissue_hires_image.png
+[vis_V13B23-285_D1] coordinates: 1 unit = 0.361 um
+[vis_V13B23-285_D1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V13B23-285_D1] writing expression (26610 genes x 3118 obs)
+  expr genes 512/21682
+  expr genes 1024/21682
+  expr genes 1536/21682
+  expr genes 2048/21682
+  expr genes 2560/21682
+  expr genes 3072/21682
+  expr genes 3584/21682
+  expr genes 4096/21682
+  expr genes 4608/21682
+  expr genes 5120/21682
+  expr genes 5632/21682
+  expr genes 6144/21682
+  expr genes 6656/21682
+  expr genes 7168/21682
+  expr genes 7680/21682
+  expr genes 8192/21682
+  expr genes 8704/21682
+  expr genes 9216/21682
+  expr genes 9728/21682
+  expr genes 10240/21682
+  expr genes 10752/21682
+  expr genes 11264/21682
+  expr genes 11776/21682
+  expr genes 12288/21682
+  expr genes 12800/21682
+  expr genes 13312/21682
+  expr genes 13824/21682
+  expr genes 14336/21682
+  expr genes 14848/21682
+  expr genes 15360/21682
+  expr genes 15872/21682
+  expr genes 16384/21682
+  expr genes 16896/21682
+  expr genes 17408/21682
+  expr genes 17920/21682
+  expr genes 18432/21682
+  expr genes 18944/21682
+  expr genes 19456/21682
+  expr genes 19968/21682
+  expr genes 20480/21682
+  expr genes 20992/21682
+  expr genes 21504/21682
+  expr genes 21682/21682
+[vis_V13B23-285_D1] 4928 all-zero features left out (21682 kept)
+[vis_V13B23-285_D1] writing per-cell rows
+[vis_V13B23-285_D1] rows: 2,596,617 stored values
+[vis_V13B23-285_D1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V13B23-285_D1/spatial/tissue_hires_image.png
+[vis_V13B23-285_D1] image cropped to the points: 1333 x 1395 px
+[vis_V14F07-340_A1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_A1/adata.h5ad
+[vis_V14F07-340_A1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V14F07-340_A1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_A1/spatial/tissue_hires_image.png
+[vis_V14F07-340_A1] coordinates: 1 unit = 0.3751 um
+[vis_V14F07-340_A1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V14F07-340_A1] writing expression (26610 genes x 1669 obs)
+  expr genes 512/19746
+  expr genes 1024/19746
+  expr genes 1536/19746
+  expr genes 2048/19746
+  expr genes 2560/19746
+  expr genes 3072/19746
+  expr genes 3584/19746
+  expr genes 4096/19746
+  expr genes 4608/19746
+  expr genes 5120/19746
+  expr genes 5632/19746
+  expr genes 6144/19746
+  expr genes 6656/19746
+  expr genes 7168/19746
+  expr genes 7680/19746
+  expr genes 8192/19746
+  expr genes 8704/19746
+  expr genes 9216/19746
+  expr genes 9728/19746
+  expr genes 10240/19746
+  expr genes 10752/19746
+  expr genes 11264/19746
+  expr genes 11776/19746
+  expr genes 12288/19746
+  expr genes 12800/19746
+  expr genes 13312/19746
+  expr genes 13824/19746
+  expr genes 14336/19746
+  expr genes 14848/19746
+  expr genes 15360/19746
+  expr genes 15872/19746
+  expr genes 16384/19746
+  expr genes 16896/19746
+  expr genes 17408/19746
+  expr genes 17920/19746
+  expr genes 18432/19746
+  expr genes 18944/19746
+  expr genes 19456/19746
+  expr genes 19746/19746
+[vis_V14F07-340_A1] 6864 all-zero features left out (19746 kept)
+[vis_V14F07-340_A1] writing per-cell rows
+[vis_V14F07-340_A1] rows: 1,315,550 stored values
+[vis_V14F07-340_A1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_A1/spatial/tissue_hires_image.png
+[vis_V14F07-340_A1] image cropped to the points: 410 x 874 px
+[vis_V14F07-340_B1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_B1/adata.h5ad
+[vis_V14F07-340_B1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V14F07-340_B1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_B1/spatial/tissue_hires_image.png
+[vis_V14F07-340_B1] coordinates: 1 unit = 0.3757 um
+[vis_V14F07-340_B1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V14F07-340_B1] writing expression (26610 genes x 1689 obs)
+  expr genes 512/20894
+  expr genes 1024/20894
+  expr genes 1536/20894
+  expr genes 2048/20894
+  expr genes 2560/20894
+  expr genes 3072/20894
+  expr genes 3584/20894
+  expr genes 4096/20894
+  expr genes 4608/20894
+  expr genes 5120/20894
+  expr genes 5632/20894
+  expr genes 6144/20894
+  expr genes 6656/20894
+  expr genes 7168/20894
+  expr genes 7680/20894
+  expr genes 8192/20894
+  expr genes 8704/20894
+  expr genes 9216/20894
+  expr genes 9728/20894
+  expr genes 10240/20894
+  expr genes 10752/20894
+  expr genes 11264/20894
+  expr genes 11776/20894
+  expr genes 12288/20894
+  expr genes 12800/20894
+  expr genes 13312/20894
+  expr genes 13824/20894
+  expr genes 14336/20894
+  expr genes 14848/20894
+  expr genes 15360/20894
+  expr genes 15872/20894
+  expr genes 16384/20894
+  expr genes 16896/20894
+  expr genes 17408/20894
+  expr genes 17920/20894
+  expr genes 18432/20894
+  expr genes 18944/20894
+  expr genes 19456/20894
+  expr genes 19968/20894
+  expr genes 20480/20894
+  expr genes 20894/20894
+[vis_V14F07-340_B1] 5716 all-zero features left out (20894 kept)
+[vis_V14F07-340_B1] writing per-cell rows
+[vis_V14F07-340_B1] rows: 1,989,912 stored values
+[vis_V14F07-340_B1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_B1/spatial/tissue_hires_image.png
+[vis_V14F07-340_B1] image cropped to the points: 397 x 874 px
+[vis_V14F07-340_C1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_C1/adata.h5ad
+[vis_V14F07-340_C1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V14F07-340_C1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_C1/spatial/tissue_hires_image.png
+[vis_V14F07-340_C1] coordinates: 1 unit = 0.3751 um
+[vis_V14F07-340_C1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V14F07-340_C1] writing expression (26610 genes x 1794 obs)
+  expr genes 512/20174
+  expr genes 1024/20174
+  expr genes 1536/20174
+  expr genes 2048/20174
+  expr genes 2560/20174
+  expr genes 3072/20174
+  expr genes 3584/20174
+  expr genes 4096/20174
+  expr genes 4608/20174
+  expr genes 5120/20174
+  expr genes 5632/20174
+  expr genes 6144/20174
+  expr genes 6656/20174
+  expr genes 7168/20174
+  expr genes 7680/20174
+  expr genes 8192/20174
+  expr genes 8704/20174
+  expr genes 9216/20174
+  expr genes 9728/20174
+  expr genes 10240/20174
+  expr genes 10752/20174
+  expr genes 11264/20174
+  expr genes 11776/20174
+  expr genes 12288/20174
+  expr genes 12800/20174
+  expr genes 13312/20174
+  expr genes 13824/20174
+  expr genes 14336/20174
+  expr genes 14848/20174
+  expr genes 15360/20174
+  expr genes 15872/20174
+  expr genes 16384/20174
+  expr genes 16896/20174
+  expr genes 17408/20174
+  expr genes 17920/20174
+  expr genes 18432/20174
+  expr genes 18944/20174
+  expr genes 19456/20174
+  expr genes 19968/20174
+  expr genes 20174/20174
+[vis_V14F07-340_C1] 6436 all-zero features left out (20174 kept)
+[vis_V14F07-340_C1] writing per-cell rows
+[vis_V14F07-340_C1] rows: 1,447,229 stored values
+[vis_V14F07-340_C1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_C1/spatial/tissue_hires_image.png
+[vis_V14F07-340_C1] image cropped to the points: 479 x 874 px
+[vis_V14F07-340_D1] reading /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_D1/adata.h5ad
+[vis_V14F07-340_D1] gene names from var column 'gene_name' (var_names are Ensembl ids)
+[vis_V14F07-340_D1] auto image: /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_D1/spatial/tissue_hires_image.png
+[vis_V14F07-340_D1] coordinates: 1 unit = 0.3751 um
+[vis_V14F07-340_D1] expression layer 'X' looks log-normalized (non-integer values)
+[vis_V14F07-340_D1] writing expression (26610 genes x 1883 obs)
+  expr genes 512/19438
+  expr genes 1024/19438
+  expr genes 1536/19438
+  expr genes 2048/19438
+  expr genes 2560/19438
+  expr genes 3072/19438
+  expr genes 3584/19438
+  expr genes 4096/19438
+  expr genes 4608/19438
+  expr genes 5120/19438
+  expr genes 5632/19438
+  expr genes 6144/19438
+  expr genes 6656/19438
+  expr genes 7168/19438
+  expr genes 7680/19438
+  expr genes 8192/19438
+  expr genes 8704/19438
+  expr genes 9216/19438
+  expr genes 9728/19438
+  expr genes 10240/19438
+  expr genes 10752/19438
+  expr genes 11264/19438
+  expr genes 11776/19438
+  expr genes 12288/19438
+  expr genes 12800/19438
+  expr genes 13312/19438
+  expr genes 13824/19438
+  expr genes 14336/19438
+  expr genes 14848/19438
+  expr genes 15360/19438
+  expr genes 15872/19438
+  expr genes 16384/19438
+  expr genes 16896/19438
+  expr genes 17408/19438
+  expr genes 17920/19438
+  expr genes 18432/19438
+  expr genes 18944/19438
+  expr genes 19438/19438
+[vis_V14F07-340_D1] 7172 all-zero features left out (19438 kept)
+[vis_V14F07-340_D1] writing per-cell rows
+[vis_V14F07-340_D1] rows: 1,149,910 stored values
+[vis_V14F07-340_D1] image /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/.cache/bundle/4e967795aa9a3c09/V14F07-340_D1/spatial/tissue_hires_image.png
+[vis_V14F07-340_D1] image cropped to the points: 480 x 875 px
+thumbnail: hd_Br9090_1 -> thumbnail.png
+built /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome/bundle: 23 samples (23 built), 374,927 obs
+  next: spatialscape serve /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/habenula_multiome --open
+     1403.30 real      1237.34 user       194.26 sys
+         14643036160  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            11500501  page reclaims
+                 224  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+              125012  messages sent
+              328513  messages received
+                   0  signals received
+              325175  voluntary context switches
+             1710256  involuntary context switches
+      13911704958992  instructions retired
+       4345424515273  cycles elapsed
+         20088086464  peak memory footprint
+habenula_multiome: 23 samples, 374,927 cells, 0 molecules, 3.77 GB
+| store | GB | share |
+|---|---|---|
+| expression | 1.61 | 42.9% |
+| rows | 0.30 | 8.0% |
+| cells | 0.03 | 0.9% |
+| images | 0.05 | 1.3% |
+| tracks | 1.75 | 46.3% |
+| dataset_files | 0.03 | 0.7% |
+expression 4305 B/cell, rows 802 B/cell

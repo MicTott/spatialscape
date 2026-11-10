@@ -1,0 +1,37 @@
+{
+ "name": "visium-human-dlpfc",
+ "yaml": "/Users/michael.totty/Documents/Web/spatialscape-examples/visium-human-dlpfc/dataset.yaml",
+ "date": "2026-11-10T02:53:35+00:00",
+ "commit": "a28e811",
+ "machine": {
+  "cpu": "Apple M1 Max",
+  "system": "macOS-15.6.1-arm64-arm-64bit-Mach-O"
+ },
+ "command": "python/.venv/bin/spatialscape build /Users/michael.totty/Documents/Web/spatialscape-examples/visium-human-dlpfc/dataset.yaml -o /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/visium-human-dlpfc/bundle",
+ "wall_s": 44.16,
+ "user_s": 48.55,
+ "sys_s": 6.95,
+ "max_rss_bytes": 4221059072,
+ "cache_bytes": 0,
+ "samples": 12,
+ "nObs": 47681,
+ "molecules": 0,
+ "bundle_bytes": 306976945,
+ "bytes": {
+  "expression": 156780477,
+  "rows": 138551782,
+  "cells": 6041028,
+  "images": 4891555,
+  "shapes": 0,
+  "molecules": 0,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 712103
+ },
+ "bytes_per_cell": {
+  "expression": 3288.1121830498523,
+  "rows": 2905.806967135756
+ },
+ "bytes_per_molecule": null,
+ "built": "12 samples (12 built), 47,681 obs"
+}

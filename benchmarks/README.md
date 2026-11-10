@@ -59,3 +59,7 @@ gene switches cold and cached, frame times over a scripted pan). The JSON report
 `build-*.json` and `viewer-*.json` (`build-jhpce-*.json` are the cluster jobs' accounting plus the bundle sizes
 measured there), and `tables.py --write` renders them into
 [docs/reference/benchmarks.md](../docs/reference/benchmarks.md), the page that explains the columns.
+
+Run 2026-11-09 (laptop: Apple M1 Max, 64 GB, Chrome 157; cluster rows from the 1.0 rebuild jobs of 2026-11-06 to
+-09): build rows for 14 datasets (6 on the laptop, 8 on JHPCE), viewer rows for 13 (every public app but the Allen
+atlas, which is not on the laptop, plus the amygdala, dACC, BLA and habenula apps and the synthetic bundle).

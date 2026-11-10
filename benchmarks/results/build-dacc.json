@@ -1,0 +1,37 @@
+{
+ "name": "dacc",
+ "yaml": "examples/dacc.yaml",
+ "date": "2026-11-10T02:54:31+00:00",
+ "commit": "a28e811",
+ "machine": {
+  "cpu": "Apple M1 Max",
+  "system": "macOS-15.6.1-arm64-arm-64bit-Mach-O"
+ },
+ "command": "python/.venv/bin/spatialscape build examples/dacc.yaml -o /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/dacc/bundle",
+ "wall_s": 54.94,
+ "user_s": 78.94,
+ "sys_s": 13.5,
+ "max_rss_bytes": 7070466048,
+ "cache_bytes": 0,
+ "samples": 18,
+ "nObs": 108528,
+ "molecules": 0,
+ "bundle_bytes": 803680768,
+ "bytes": {
+  "expression": 500663789,
+  "rows": 203626123,
+  "cells": 11018702,
+  "images": 87607929,
+  "shapes": 0,
+  "molecules": 0,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 764225
+ },
+ "bytes_per_cell": {
+  "expression": 4613.222292864514,
+  "rows": 1876.2542661801563
+ },
+ "bytes_per_molecule": null,
+ "built": "18 samples (18 built), 108,528 obs"
+}

@@ -1,0 +1,249 @@
+{
+ "name": "visium-cytassist-mouse-brain",
+ "data": "http://127.0.0.1:8799/visium-cytassist-mouse-brain",
+ "date": "2026-11-10T02:46:37.117Z",
+ "commit": "a28e811",
+ "machine": {
+  "cpu": "Apple M1 Max",
+  "cores": 10,
+  "memoryGB": 64,
+  "platform": "Darwin 24.6.0"
+ },
+ "browser": "chrome 157.0.8103.50",
+ "viewport": "1440x860 @2x",
+ "states": {
+  "overview": {
+   "view": "spatial",
+   "drawn": {
+    "points": 2310,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -2.711493238955505,
+   "pxPerUnit": 0.15267193220739944,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 23495614,
+   "reached": {
+    "requests": 68,
+    "bytes": 5655168,
+    "byStore": {
+     "app": {
+      "requests": 11,
+      "bytes": 3304474
+     },
+     "dataset": {
+      "requests": 2,
+      "bytes": 172052
+     },
+     "other": {
+      "requests": 3,
+      "bytes": 20634
+     },
+     "cells": {
+      "requests": 7,
+      "bytes": 186040
+     },
+     "expression": {
+      "requests": 5,
+      "bytes": 56896
+     },
+     "images": {
+      "requests": 40,
+      "bytes": 1915072
+     }
+    }
+   },
+   "idleFrameMs": 8.300000000000182,
+   "pan": {
+    "n": 1200,
+    "median": 8.300000000000182,
+    "p95": 9.299999999999272,
+    "max": 9.5,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "section": {
+   "view": "spatial",
+   "drawn": {
+    "points": 2310,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -2.6381200526252857,
+   "pxPerUnit": 0.1606374243225681,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 25913453,
+   "reached": {
+    "requests": 3,
+    "bytes": 187150,
+    "byStore": {
+     "other": {
+      "requests": 2,
+      "bytes": 17466
+     },
+     "dataset": {
+      "requests": 1,
+      "bytes": 169684
+     }
+    }
+   },
+   "idleFrameMs": 8.300000000001091,
+   "pan": {
+    "n": 1200,
+    "median": 8.299999999999272,
+    "p95": 8.899999999997817,
+    "max": 9.30000000000291,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "window1mm": {
+   "windowMm": 1,
+   "view": "spatial",
+   "drawn": {
+    "points": 2310,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -0.2618807112174235,
+   "pxPerUnit": 0.834,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 23840342,
+   "reached": {
+    "requests": 2,
+    "bytes": 17466,
+    "byStore": {
+     "other": {
+      "requests": 2,
+      "bytes": 17466
+     }
+    }
+   },
+   "idleFrameMs": 8.299999999999272,
+   "pan": {
+    "n": 1200,
+    "median": 8.30000000000291,
+    "p95": 9.10000000000582,
+    "max": 9.400000000001455,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  }
+ },
+ "displayFrameMs": 8.299999999999955,
+ "dataset": {
+  "samples": 1,
+  "cells": 2310,
+  "view": "spatial",
+  "section": "section",
+  "sectionCells": 2310,
+  "hasMolecules": false,
+  "hasShapes": false
+ },
+ "coldLoad": {
+  "readyMs": 275.7999999523163,
+  "firstFrameWithCellsMs": 329,
+  "requests": 68,
+  "bytes": 5655168,
+  "byStore": {
+   "app": {
+    "requests": 11,
+    "bytes": 3304474
+   },
+   "dataset": {
+    "requests": 2,
+    "bytes": 172052
+   },
+   "other": {
+    "requests": 3,
+    "bytes": 20634
+   },
+   "cells": {
+    "requests": 7,
+    "bytes": 186040
+   },
+   "expression": {
+    "requests": 5,
+    "bytes": 56896
+   },
+   "images": {
+    "requests": 40,
+    "bytes": 1915072
+   }
+  }
+ },
+ "geneSwitch": {
+  "genes": 20,
+  "cold": {
+   "dataReadyMs": {
+    "n": 20,
+    "median": 5.800000071525574,
+    "p95": 10.5,
+    "max": 10.5
+   },
+   "firstFrameMs": {
+    "n": 20,
+    "median": 7.100000023841858,
+    "p95": 12.199999928474426,
+    "max": 12.199999928474426
+   },
+   "idleMs": {
+    "n": 20,
+    "median": 7.300000071525574,
+    "p95": 12.700000047683716,
+    "max": 12.700000047683716
+   },
+   "requests": {
+    "requests": 36,
+    "bytes": 148092,
+    "byStore": {
+     "expression": {
+      "requests": 36,
+      "bytes": 148092
+     }
+    }
+   },
+   "requestsPerSwitch": 1.8,
+   "bytesPerSwitch": 7404.6
+  },
+  "cached": {
+   "dataReadyMs": {
+    "n": 20,
+    "median": 1.2000000476837158,
+    "p95": 2.3000000715255737,
+    "max": 2.3000000715255737
+   },
+   "firstFrameMs": {
+    "n": 20,
+    "median": 2.4000000953674316,
+    "p95": 4.300000071525574,
+    "max": 4.300000071525574
+   },
+   "idleMs": {
+    "n": 20,
+    "median": 2.5,
+    "p95": 4.599999904632568,
+    "max": 4.599999904632568
+   },
+   "requests": {
+    "requests": 0,
+    "bytes": 0,
+    "byStore": {}
+   },
+   "requestsPerSwitch": 0
+  }
+ }
+}

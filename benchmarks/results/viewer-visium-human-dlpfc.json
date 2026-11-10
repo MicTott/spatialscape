@@ -1,0 +1,253 @@
+{
+ "name": "visium-human-dlpfc",
+ "data": "http://127.0.0.1:8803/visium-human-dlpfc",
+ "date": "2026-11-10T02:45:55.203Z",
+ "commit": "a28e811",
+ "machine": {
+  "cpu": "Apple M1 Max",
+  "cores": 10,
+  "memoryGB": 64,
+  "platform": "Darwin 24.6.0"
+ },
+ "browser": "chrome 157.0.8103.50",
+ "viewport": "1440x860 @2x",
+ "states": {
+  "overview": {
+   "view": "spatial",
+   "drawn": {
+    "points": 47681,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -4.949592110142715,
+   "pxPerUnit": 0.03236117697805405,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 95341983,
+   "reached": {
+    "requests": 532,
+    "bytes": 37767604,
+    "byStore": {
+     "app": {
+      "requests": 11,
+      "bytes": 3304474
+     },
+     "other": {
+      "requests": 3,
+      "bytes": 18048
+     },
+     "dataset": {
+      "requests": 2,
+      "bytes": 358808
+     },
+     "expression": {
+      "requests": 60,
+      "bytes": 760436
+     },
+     "cells": {
+      "requests": 84,
+      "bytes": 4421892
+     },
+     "images": {
+      "requests": 372,
+      "bytes": 28903946
+     }
+    }
+   },
+   "idleFrameMs": 8.300000000000182,
+   "pan": {
+    "n": 1200,
+    "median": 8.300000000000182,
+    "p95": 9.299999999999272,
+    "max": 9.400000000000546,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "section": {
+   "view": "spatial",
+   "drawn": {
+    "points": 13807,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -3.2768845025257014,
+   "pxPerUnit": 0.10317143530314,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 59790169,
+   "reached": {
+    "requests": 144,
+    "bytes": 13026103,
+    "byStore": {
+     "images": {
+      "requests": 141,
+      "bytes": 12665920
+     },
+     "other": {
+      "requests": 2,
+      "bytes": 17466
+     },
+     "dataset": {
+      "requests": 1,
+      "bytes": 342717
+     }
+    }
+   },
+   "idleFrameMs": 8.300000000001091,
+   "pan": {
+    "n": 1200,
+    "median": 8.299999999999272,
+    "p95": 9,
+    "max": 9.400000000001455,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  },
+  "window1mm": {
+   "windowMm": 1,
+   "view": "spatial",
+   "drawn": {
+    "points": 4789,
+    "shapes": 0,
+    "molecules": 0
+   },
+   "zoom": -0.2618807112174235,
+   "pxPerUnit": 0.834,
+   "viewportPx": [
+    1120,
+    834
+   ],
+   "heapBytes": 41254620,
+   "reached": {
+    "requests": 2,
+    "bytes": 17466,
+    "byStore": {
+     "other": {
+      "requests": 2,
+      "bytes": 17466
+     }
+    }
+   },
+   "idleFrameMs": 8.30000000000291,
+   "pan": {
+    "n": 1200,
+    "median": 8.30000000000291,
+    "p95": 9,
+    "max": 10.10000000000582,
+    "over16_7ms": 0,
+    "over33ms": 0,
+    "throttled": false
+   }
+  }
+ },
+ "displayFrameMs": 8.299999999999955,
+ "dataset": {
+  "samples": 12,
+  "cells": 47681,
+  "view": "spatial",
+  "section": "vis_151509",
+  "sectionCells": 4789,
+  "hasMolecules": false,
+  "hasShapes": false
+ },
+ "coldLoad": {
+  "readyMs": 450,
+  "firstFrameWithCellsMs": 521,
+  "requests": 412,
+  "bytes": 25501554,
+  "byStore": {
+   "app": {
+    "requests": 11,
+    "bytes": 3304474
+   },
+   "other": {
+    "requests": 3,
+    "bytes": 18048
+   },
+   "dataset": {
+    "requests": 2,
+    "bytes": 358808
+   },
+   "expression": {
+    "requests": 60,
+    "bytes": 760436
+   },
+   "cells": {
+    "requests": 84,
+    "bytes": 4421892
+   },
+   "images": {
+    "requests": 372,
+    "bytes": 28903946
+   }
+  }
+ },
+ "geneSwitch": {
+  "genes": 20,
+  "cold": {
+   "dataReadyMs": {
+    "n": 20,
+    "median": 11.800000071525574,
+    "p95": 22.600000023841858,
+    "max": 22.600000023841858
+   },
+   "firstFrameMs": {
+    "n": 20,
+    "median": 12.800000071525574,
+    "p95": 24.299999952316284,
+    "max": 24.299999952316284
+   },
+   "idleMs": {
+    "n": 20,
+    "median": 13,
+    "p95": 24.699999928474426,
+    "max": 24.699999928474426
+   },
+   "requests": {
+    "requests": 363,
+    "bytes": 1482057,
+    "byStore": {
+     "expression": {
+      "requests": 363,
+      "bytes": 1482057
+     }
+    }
+   },
+   "requestsPerSwitch": 18.15,
+   "bytesPerSwitch": 74102.85
+  },
+  "cached": {
+   "dataReadyMs": {
+    "n": 20,
+    "median": 1.399999976158142,
+    "p95": 1.899999976158142,
+    "max": 1.899999976158142
+   },
+   "firstFrameMs": {
+    "n": 20,
+    "median": 2.8000000715255737,
+    "p95": 3.5,
+    "max": 3.5
+   },
+   "idleMs": {
+    "n": 20,
+    "median": 2.899999976158142,
+    "p95": 3.6999999284744263,
+    "max": 3.6999999284744263
+   },
+   "requests": {
+    "requests": 0,
+    "bytes": 0,
+    "byStore": {}
+   },
+   "requestsPerSwitch": 0
+  }
+ }
+}
