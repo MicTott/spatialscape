@@ -29,6 +29,7 @@ export default defineConfig({
           items: [
             { text: "Getting started", link: "/guide/getting-started" },
             { text: "In a notebook: show()", link: "/guide/notebooks" },
+            { text: "Reproduce the examples", link: "/guide/examples" },
           ],
         },
         {

@@ -119,6 +119,13 @@ command writes next to the yaml it read, and the data it points at can live anyw
    spatialscape serve bundles --open
    ```
 
+::: tip The same two steps on a real object
+The spatialLIBD DLPFC `SpatialExperiment` (12 Visium sections, 47,681 spots) is the first example in the
+[examples repository](./examples): `visium-human-dlpfc/build.sh` downloads it, runs `init`, builds the committed
+yaml and validates the result in under two minutes on a laptop. Diff the menu `init` wrote against that yaml to
+see what was kept.
+:::
+
 [Writing dataset.yaml](./dataset-yaml) explains the menu and [Making changes](./changes) maps every common
 edit to the line to change. Your platform's page ([sequencing-based](./platforms/sequencing),
 [imaging-based](./platforms/imaging), [single-cell](./platforms/single-cell)) lists the optional layers (images,

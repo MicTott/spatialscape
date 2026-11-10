@@ -1,0 +1,13 @@
+{
+  "title": "spatialscape: a static, reactive browser for spatial transcriptomics and snRNA-seq",
+  "description": "One Python package: a command-line tool that turns AnnData, SpatialData or SpatialExperiment objects into bundles of static files, and the web viewer that streams them. Every section of a study on one canvas, a gene switch as one range request, lasso selections and region tests in the browser; no server. The example datasets and the scripts that build them are in the spatialscape-examples repository.",
+  "upload_type": "software",
+  "license": "MIT",
+  "creators": [
+    { "name": "Totty, Michael", "affiliation": "Lieber Institute for Brain Development" }
+  ],
+  "keywords": ["spatial transcriptomics", "visualization", "single-cell", "Visium", "Xenium", "MERFISH", "static site", "AnnData", "SpatialExperiment"],
+  "related_identifiers": [
+    { "identifier": "https://github.com/MicTott/spatialscape-examples", "relation": "isSupplementedBy", "resource_type": "software" }
+  ]
+}
