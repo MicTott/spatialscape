@@ -1,7 +1,7 @@
 // The viewer table of design/benchmarks.md, measured in a headed Chrome through Playwright.
 //
 //   node benchmarks/viewer_bench.mjs --app http://127.0.0.1:8790 --data http://127.0.0.1:8790/amygdala --name amygdala \
-//        [--section xen_Br9192] [--genes 20] [--out benchmarks/results/viewer-amygdala.json] [--browser chrome|chromium]
+//        [--section xen_Br9192] [--genes 20] [--out $BENCH_RESULTS/viewer-amygdala.json] [--browser chrome|chromium]
 //
 // Serve the bundles first (`spatialscape serve <folder> --port 8790`): the app and the data come from one origin, with
 // no network in between. States: the grid at the fitted zoom; one section focused; a 1 x 1 mm window on that section
@@ -18,7 +18,8 @@
 // into one JSON with the machine, browser and commit. A dataset with no tissue sections (an embedding-only atlas) gets
 // the overview state and the gene switch only, on the embedding view.
 import { chromium } from "playwright";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { execSync } from "node:child_process";
 import os from "node:os";
 
@@ -28,7 +29,7 @@ const DATA = arg("data");
 const NAME = arg("name", "dataset");
 const SECTION = arg("section", null);
 const NGENES = Number(arg("genes", "20"));
-const OUT = arg("out", `benchmarks/results/viewer-${NAME}.json`);
+const OUT = arg("out", `${process.env.BENCH_RESULTS ?? "benchmarks/results"}/viewer-${NAME}.json`);
 const BROWSER = arg("browser", "chrome");
 const PAN_MS = 10_000;
 if (!DATA) throw new Error("--data <bundle url> is required");
@@ -212,6 +213,7 @@ if (section) {
   }
 }
 
+mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify(result, null, 1));
 const r = result;
 const mb = (b) => (b / 1e6).toFixed(1);

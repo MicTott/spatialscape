@@ -30,7 +30,7 @@
 Browsing a spatial transcriptomics or snRNA-seq dataset should feel immediate: every section of a study in view at once, a new gene in milliseconds, a link that reopens the exact view, and nothing to run but a static web host. spatialscape is a viewer built for that, and the command line that turns your data into something it can show.
 
 - **Every sample on one canvas.** All sections of a study sit side by side under identical settings. Double-click to focus, step through donors with the arrow keys, switch platforms with one click.
-- **Instant.** Expression is stored one byte per cell per gene in sharded Zarr, so a gene is one HTTP range request and a cached switch is a GPU upload. Panning and zooming run at the display's refresh rate because the viewer draws a uniform subsample of the cells at overview zoom and every cell once zoomed in, so what is on screen, not what is in the dataset, sets the frame time; measured numbers per example dataset are in the benchmarks (in preparation).
+- **Instant.** Expression is stored one byte per cell per gene in sharded Zarr, so a gene is one HTTP range request and a cached switch is a GPU upload. Panning and zooming run at the display's refresh rate because the viewer draws a uniform subsample of the cells at overview zoom and every cell once zoomed in, so what is on screen, not what is in the dataset, sets the frame time; the scripts in `benchmarks/` measure this on any bundle.
 - **Linked snRNA-seq.** Paired references render as embeddings beside the tissue with one shared cell type vocabulary, so a color means the same thing everywhere.
 - **Nothing to run.** The viewer is files and the data is files. Host them on GitHub Pages, S3, Cloudflare R2 or a lab server; every view state lives in the URL.
 

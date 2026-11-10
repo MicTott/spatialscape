@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One row of the build table: `spatialscape build` from a clean output folder under /usr/bin/time, then the bundle's
-# bytes per store. Writes benchmarks/results/build-<name>.json and leaves the log beside it.
+# bytes per store. Writes build-<name>.json into $BENCH_RESULTS (default benchmarks/results/) and leaves the log beside it.
 #   bash benchmarks/build_bench.sh <name> <dataset.yaml> [extra build args]
 # Runs on macOS (`time -l`) or Linux (`time -v`). The output folder is a scratch location and is removed afterwards;
 # the dataset's own bundle is not touched. The row names the machine, the commit and the exact command.
@@ -10,8 +10,9 @@ name="${1:?name}"; yaml="${2:?dataset.yaml}"; shift 2
 SS="${SPATIALSCAPE:-python/.venv/bin/spatialscape}"
 PY="${PYTHON:-python/.venv/bin/python}"
 out="${BENCH_OUT:-/tmp/spatialscape-bench}/$name"
-rm -rf "$out"; mkdir -p "$out" benchmarks/results
-log="benchmarks/results/build-$name.log"
+res="${BENCH_RESULTS:-benchmarks/results}"
+rm -rf "$out"; mkdir -p "$out" "$res"
+log="$res/build-$name.log"
 cmd=("$SS" build "$yaml" -o "$out/bundle" "$@")
 echo "# $(date -u +%FT%TZ) $(uname -m) $(hostname) commit $(git rev-parse --short HEAD) $("$SS" --version)" > "$log"
 echo "# ${cmd[*]}" >> "$log"
@@ -51,7 +52,7 @@ row = {
     "bundle_bytes": size["total_bytes"], "bytes": size["bytes"], "bytes_per_cell": size["bytes_per_cell"], "bytes_per_molecule": size["bytes_per_molecule"],
     "built": grab(r"^built .*: (.*)$", str),
 }
-Path(f"benchmarks/results/build-{name}.json").write_text(json.dumps(row, indent=1))
+Path(log).with_suffix(".json").write_text(json.dumps(row, indent=1))
 print(f"{name}: {wall:.0f} s wall, {user:.0f} s user, {rss/1e9:.1f} GB peak RSS, bundle {size['total_bytes']/1e9:.2f} GB, cache {cache_bytes/1e9:.2f} GB")
 EOF
 rm -rf "$out"

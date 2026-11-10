@@ -2,8 +2,9 @@
 
 A plan, not results. The viewer's claims (a gene switch is one request, panning stays smooth on large sections,
 billions of transcripts can be browsed) are true in the sense the architecture makes them true, but the README
-quoted numbers without a protocol. This page fixes the protocol first; the numbers come from running it and go into
-`docs/reference/benchmarks.md` with the raw logs under `benchmarks/results/`.
+quoted numbers without a protocol. This page fixes the protocol first; the numbers come from running it and go to the
+manuscript's repository with the raw reports; this repository keeps the scripts and `docs/reference/benchmarks.md`
+says how to run them.
 
 Three questions, each with its own table:
 
@@ -25,7 +26,6 @@ Fixed set, each with a provenance block (source URL or accession, file checksums
 | amygdala | the paper's atlas: 3 platforms, 16 sections, 2 references | 1.56 M | 35 k | 46–117 M per Xenium section, 4 sections | H&E and DAPI |
 | atera | two whole-transcriptome Xenium Prime sections (breast, cervical), 18 k genes: the transcript story | 888 k | 18 k | 1.66 B (624 M + 1,040 M), 5.7 GB of tiles | DAPI at 0.2125 µm, full resolution |
 | abc-atlas | 59 MERFISH sections and the whole-brain nuclei sample on Allen's UMAP: the largest matrix (18.7 B stored values) | 8.05 M | 1.1 k | none | none |
-| habenula | multiome with tracks: the genome panel | 375 k | 35 k | none | H&E |
 
 Atera is the row the "billions of transcripts" claim rests on, and it is already built on JHPCE (25 GB, 50 min on a
 128 GB job). What is missing is not the dataset but the measured viewer rows for it: what is fetched and drawn at
@@ -82,7 +82,7 @@ where the workflow differs, not a feature checklist.
 
 Done: `python -m spatialscape.fidelity` (the package), `python/tests/test_fidelity.py` (CI, synthetic) and
 `app/e2e/fidelity.spec.ts` (the browser's lasso and region test); see `benchmarks/README.md` for the bounds and
-`benchmarks/results/` for the reports on real bundles. The rare-population check is not written yet.
+the manuscript's repository for the reports on real bundles. The rare-population check is not written yet.
 
 Offline computation in Python against the same bundle, as tests that run in CI on the synthetic dataset and as a
 script on the real ones:

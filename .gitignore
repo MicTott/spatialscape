@@ -26,3 +26,6 @@ python/src/spatialscape/_app/
 python/dist/
 # per-machine registry overlay used by the vite dev server
 app/public/datasets.local.json
+
+# benchmark reports: the paper keeps them
+benchmarks/results/

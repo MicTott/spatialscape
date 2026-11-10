@@ -8,12 +8,12 @@ a gene, or drawing the same window again once the tracks change, costs no reques
 the panel after each gene switch, so its coverage reads count toward the switch that caused them; they used to land
 under the cached switch, which made a tracked bundle look as if it re-read its tracks on every switch.
 
-**Benchmarks, measured.** `docs/reference/benchmarks.md` now carries the build and viewer tables the protocol in
-`design/benchmarks.md` asked for: fourteen build rows (six on a laptop, eight from the cluster jobs behind the public
-apps) with bytes per store, and thirteen viewer rows (cold load, what is drawn at three zooms, requests and bytes,
-gene switches cold and cached, frame times over a scripted pan) from a headed Chrome driven by
-`benchmarks/viewer_bench.mjs`. Every number comes from a JSON report under `benchmarks/results/`; `tables.py`
-renders the page. The controller exposes what the last layer build drew (`window.__sscape.drawn()`).
+**Benchmarks, scripted.** `benchmarks/` holds the scripts behind the protocol in `design/benchmarks.md`:
+`build_bench.sh` with `bundle_size.py` times a build and sizes its stores, and `viewer_bench.mjs` drives a headed
+Chrome through Playwright (cold load, what is drawn at three zooms, requests and bytes, gene switches cold and cached,
+frame times over a scripted pan). `docs/reference/benchmarks.md` says what each measures and how to run them on your
+own bundle. The controller exposes what the last layer build drew (`window.__sscape.drawn()`). The measured tables
+for the example datasets are kept with the manuscript, in its own repository, so this one carries only what measures.
 
 **One request fewer per shard.** The viewer's zarr stores read a shard's index with a suffix byte range instead of
 asking the file's size first: a cold gene switch on an 18-section atlas went from 54 requests to 36. Every host the

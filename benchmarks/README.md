@@ -1,7 +1,9 @@
 # Benchmarks
 
-The protocol is in [design/benchmarks.md](../design/benchmarks.md). This folder holds what has been run: the scripts
-are in the package and the app, the raw reports land in `results/`.
+The protocol is in [design/benchmarks.md](../design/benchmarks.md); what each script measures and how to run it is in
+[docs/reference/benchmarks.md](../docs/reference/benchmarks.md). Reports land in `results/` (untracked) unless
+`BENCH_RESULTS` or `--out` says otherwise. The measured tables for the example datasets are kept with the paper, in
+its repository, not here.
 
 ## Fidelity
 
@@ -43,23 +45,9 @@ in `test_reference_test_is_scipy_on_the_dequantised_rows`: on log1p(CP10k) data 
 hundredths and no gene crosses 0.05; values under half a code step tie at code 1, which makes the test slightly
 conservative where a gene has many such values.
 
-### Results so far
-
-- `results/fidelity-amygdala.json` (2026-11-06, commit afd9a44, laptop): xen_Br9192 (267,091 cells, 200 genes, every
-  ring, 20 genes of molecules), vis_Br9280, hd_Br9280_CeA and sn_totty against the Vitessce-era AnnData stores and the
-  5 µm Xenium outputs. Every bound holds: expression within half a code step with zeros exact, rows equal to the
-  gene-major codes, positions within 1e-3 µm, shape vertices within 0.05 µm, molecules within the 1/64 µm grid, the
-  zero-gene lists complete. The run before the rebuild found the tile-edge rounding described in the changelog.
-
 ## Build and viewer tables
 
-Run with `build_bench.sh` (one timed `spatialscape build` per row, with `bundle_size.py` for the bytes per store) and
+`build_bench.sh` (one timed `spatialscape build` per row, with `bundle_size.py` for the bytes per store) and
 `viewer_bench.mjs` (a headed Chrome through Playwright: cold load, what is drawn at three states, requests and bytes,
-gene switches cold and cached, frame times over a scripted pan). The JSON reports are in `results/` as
-`build-*.json` and `viewer-*.json` (`build-jhpce-*.json` are the cluster jobs' accounting plus the bundle sizes
-measured there), and `tables.py --write` renders them into
-[docs/reference/benchmarks.md](../docs/reference/benchmarks.md), the page that explains the columns.
-
-Run 2026-11-09 (laptop: Apple M1 Max, 64 GB, Chrome 157; cluster rows from the 1.0 rebuild jobs of 2026-11-06 to
--09): build rows for 14 datasets (6 on the laptop, 8 on JHPCE), viewer rows for 13 (every public app but the Allen
-atlas, which is not on the laptop, plus the amygdala, dACC, BLA and habenula apps and the synthetic bundle).
+gene switches cold and cached, frame times over a scripted pan) each write one JSON report per dataset. The paper's
+repository holds the reports for the example datasets and renders them into its tables.
