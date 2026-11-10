@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**A layer whose file is missing is left out, not fatal.** An image, `polygons.path`, a segmentation or
+`molecules.path` that is not on disk no longer stops `build`: the sample is built without it, with a note saying
+so, and gains the layer on the next `build` once the file exists (its presence is part of the fingerprint). So an
+app builds from the processed objects alone, as the examples repository's `fetch_processed.sh` promises, and the
+published images and transcripts are added later by running the dataset's `download.sh`. The expression file is
+never optional.
+
 **Coverage slices are kept.** The genome panel's coverage reads (one bigWig window per track at the gene's locus) are
 cached in the data worker by track, chromosome, window and bin, 16 MB of them, dropped with the dataset: returning to
 a gene, or drawing the same window again once the tracks change, costs no request. The viewer benchmark now waits for

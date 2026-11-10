@@ -18,7 +18,7 @@ import scipy.sparse as sp
 
 from . import __version__
 from .comparisons import ComparisonAction, plan_comparisons, read_info, samples_signature, write_comparison
-from .config import DatasetConfig, FieldSpec, ImageSpec, PolygonSpec, SampleSpec, rows_wanted
+from .config import DatasetConfig, FieldSpec, ImageSpec, PolygonSpec, SampleSpec, is_remote, rows_wanted
 from .convert import SourceStatus, expand_r_objects
 from .discover import auto_fields, auto_segmentations, infer_field_spec
 from .expression import column_moments, csr_rows, detect_lognorm, get_matrix, log1p_cp10k, write_expression
@@ -183,6 +183,34 @@ class _Frame:
             x, y = apply_affine(raw[:, 0], raw[:, 1], affine)
             raw = np.column_stack([x, y])
         return transform_points(raw, self.width, self.height, self.flip, self.rotate) * self.upu - self.shift
+
+
+def _without_missing_layers(spec: SampleSpec, log: Log) -> SampleSpec:
+    """An optional layer whose file is not there (an image, the cell shapes, another segmentation, the molecules) is
+    left out with a note instead of stopping the build, so a sample builds from its processed object alone and gains
+    the layer on the next `build` once the file exists (its presence is part of the sample's fingerprint). The
+    expression file itself is never optional: without it there is nothing to draw."""
+
+    def missing(p) -> bool:
+        return p is not None and not is_remote(p) and not Path(p).exists()
+
+    update: dict = {}
+    gone: list[tuple[str, Path]] = []
+    if isinstance(spec.images, list) and any(missing(im.path) for im in spec.images):
+        gone += [("image", im.path) for im in spec.images if missing(im.path)]
+        update["images"] = [im for im in spec.images if not missing(im.path)]
+    if spec.polygons is not None and (missing(spec.polygons.path) or missing(spec.polygons.labels)):
+        gone.append(("cell shapes", spec.polygons.path or spec.polygons.labels))
+        update["polygons"] = None
+    if isinstance(spec.segmentations, list) and any(missing(sg.path) for sg in spec.segmentations):
+        gone += [("segmentation", sg.path) for sg in spec.segmentations if missing(sg.path)]
+        update["segmentations"] = [sg for sg in spec.segmentations if not missing(sg.path)]
+    if spec.molecules is not None and missing(spec.molecules.path):
+        gone.append(("molecules", spec.molecules.path))
+        update["molecules"] = None
+    for what, p in gone:
+        log(f"[{spec.id}] {what}: {p} is not there; built without it (the next build adds it once the file exists)")
+    return spec.model_copy(update=update) if update else spec
 
 
 def _auto_polygons(spec: SampleSpec, adata, log: Log) -> SampleSpec:
@@ -603,6 +631,7 @@ def build_sample(
 ) -> Sample:
     log(f"[{spec.id}] reading {spec.path}")
     spec = resolve_sample(spec)  # a SpatialData store: the region's centroids, shapes, points and spot size
+    spec = _without_missing_layers(spec, log)
     sinput = load_sample(spec)
     for note in sinput.notes:
         log(f"[{spec.id}] {note}")
