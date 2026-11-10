@@ -12,7 +12,9 @@
 // with cells. A gene switch is timed over N genes, each cold (first request) then cached, as data-ready and
 // first-frame-drawn, from the store's own timings. Requests are Playwright's page events, which include the data
 // worker's range requests; bytes are the response body size, or Content-Length for partial responses (HEADs count
-// as requests with no bytes). Everything goes
+// as requests with no bytes). The genome panel reacts to a gene switch on its own clock (locating the gene, a glide,
+// a debounce, then the coverage reads), so each switch is followed by a wait for the panel to go idle: its reads
+// count toward the switch that caused them. Everything goes
 // into one JSON with the machine, browser and commit. A dataset with no tissue sections (an embedding-only atlas) gets
 // the overview state and the gene switch only, on the embedding view.
 import { chromium } from "playwright";
@@ -157,6 +159,14 @@ const genes = await page.evaluate(async (n) => {
   return pick;
 }, NGENES);
 const cold = { data: [], frame: [], idle: [] }, cached = { data: [], frame: [], idle: [] };
+// the panel's reads follow the map's idle by a 500 ms glide and a 60 ms debounce: give it that, then wait them out
+const hasGenome = await page.evaluate(() => !!window.__sscape.genome);
+const switched = async () => {
+  await page.waitForTimeout(50);
+  if (!hasGenome) return;
+  await page.waitForTimeout(700);
+  await page.evaluate(() => window.__sscape.genome?.whenIdle());
+};
 const coldBucket = newBucket();
 let cachedBucket = null;
 for (const g of genes) {
@@ -164,12 +174,12 @@ for (const g of genes) {
   let idle = await page.evaluate((gene) => window.__sscape.setGene(gene), g);
   let t = await page.evaluate(() => window.__sscape.store.getState().timings);
   cold.idle.push(idle); cold.data.push(t.lastGeneMs); cold.frame.push(t.lastGeneFrameMs);
-  await page.waitForTimeout(50);
+  await switched();
   bucket = cachedBucket ??= { requests: 0, bytes: 0, byStore: {} };
   idle = await page.evaluate((gene) => window.__sscape.setGene(gene), g);
   t = await page.evaluate(() => window.__sscape.store.getState().timings);
   cached.idle.push(idle); cached.data.push(t.lastGeneMs); cached.frame.push(t.lastGeneFrameMs);
-  await page.waitForTimeout(50);
+  await switched();
 }
 result.geneSwitch = {
   genes: genes.length,

@@ -19,6 +19,7 @@ import { coalesce, indexByKey, tileKey, type TileEntry, type TileIndexBase } fro
 
 import { subsample, testLevel, type DeBlock, type DeLevelResult, type DePart, type DeProgress, type DeRequest } from "./de";
 import { fetchRows, openRows, type CellRows, type RowsHandle } from "./rows";
+import { ByteLRU } from "./lru";
 
 type U8Array = zarr.Array<"uint8", zarr.FetchStore>;
 type Handles = {
@@ -47,6 +48,11 @@ function rowsOf(sampleId: string, chunk: number): Promise<RowsHandle> {
   return h.rows;
 }
 const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
+/** Rasterized coverage slices by track, chromosome, window and bin, so a locus shown before (the gene the viewer
+ *  returns to, the same window drawn again) costs no request. A slice is a few thousand float32s; the budget holds
+ *  about a thousand of them. The worker is terminated with its dataset (DataCache.dispose), which empties it. */
+const BINS_BUDGET_BYTES = 16 * 1024 * 1024;
+const bins = new ByteLRU<Float32Array>(BINS_BUDGET_BYTES);
 type TileKind = string; // "shapes", "molecules", or a segmentation's "segmentations/<id>/shapes": the path under the sample
 const tileIndexes = new Map<string, { index: TileIndexBase; byKey: Map<string, TileEntry> }>(); // `${kind}:${sampleId}`
 let zstdCodec: Promise<{ decode(data: Uint8Array): Uint8Array | Promise<Uint8Array> }> | null = null;
@@ -292,13 +298,21 @@ const api = {
   /** Mean signal of a bigWig over `n` bins of `bin` bp from `start`, from the zoom level that is at least that fine
    *  (genome panel coverage). Unknown chromosomes and empty regions come back as zeros. */
   async bigwigBins(url: string, chrom: string, start: number, bin: number, n: number): Promise<Float32Array> {
-    let bw = bigwigs.get(url);
-    if (!bw) {
-      bw = new BigWig({ url });
-      bigwigs.set(url, bw);
-    }
-    const f = await bw.getFeaturesAsArrays(chrom, start, start + n * bin, { basesPerSpan: bin / 2 });
-    const out = rasterize(f.starts, f.ends, f.scores, start, bin, n);
+    const key = `bins:${url}|${chrom}|${start}|${bin}|${n}`;
+    const hit =
+      bins.get(key) ??
+      (await dedupe(key, async () => {
+        let bw = bigwigs.get(url);
+        if (!bw) {
+          bw = new BigWig({ url });
+          bigwigs.set(url, bw);
+        }
+        const f = await bw.getFeaturesAsArrays(chrom, start, start + n * bin, { basesPerSpan: bin / 2 });
+        const v = rasterize(f.starts, f.ends, f.scores, start, bin, n);
+        bins.set(key, v);
+        return v;
+      }));
+    const out = hit.slice(); // the cached copy stays here; the caller gets its own buffer
     return Comlink.transfer(out, [out.buffer]);
   },
 

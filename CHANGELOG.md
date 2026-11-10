@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Coverage slices are kept.** The genome panel's coverage reads (one bigWig window per track at the gene's locus) are
+cached in the data worker by track, chromosome, window and bin, 16 MB of them, dropped with the dataset: returning to
+a gene, or drawing the same window again once the tracks change, costs no request. The viewer benchmark now waits for
+the panel after each gene switch, so its coverage reads count toward the switch that caused them; they used to land
+under the cached switch, which made a tracked bundle look as if it re-read its tracks on every switch.
+
 **Benchmarks, measured.** `docs/reference/benchmarks.md` now carries the build and viewer tables the protocol in
 `design/benchmarks.md` asked for: fourteen build rows (six on a laptop, eight from the cluster jobs behind the public
 apps) with bytes per store, and thirteen viewer rows (cold load, what is drawn at three zooms, requests and bytes,

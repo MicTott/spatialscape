@@ -247,6 +247,14 @@ export class GenomeView {
     this.setLocus(this.locus(), false);
   }
 
+  /** Resolves once nothing is pending for the view: no fetch waiting on the debounce, none in flight (benchmarks). */
+  whenIdle(): Promise<void> {
+    return new Promise((resolve) => {
+      const check = () => (this.destroyed || (this.fetchTimer == null && this.inflight.size === 0) ? resolve() : window.setTimeout(check, 20));
+      check();
+    });
+  }
+
   setTracks(tracks: CoverageTrack[]) {
     const ids = new Set(tracks.map((t) => t.id));
     for (const id of [...this.cache.keys()]) if (!ids.has(id)) this.cache.delete(id);
