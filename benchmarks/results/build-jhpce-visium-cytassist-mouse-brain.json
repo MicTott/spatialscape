@@ -1,0 +1,40 @@
+{
+ "name": "visium-cytassist-mouse-brain",
+ "yaml": "examples/visium-cytassist-mouse-brain/dataset.yaml",
+ "date": "2026-11-06",
+ "commit": "afd9a44",
+ "machine": {
+  "cluster": "JHPCE",
+  "node": "compute-119",
+  "slurm_job": 36920797,
+  "request": "12G, 4 CPUs"
+ },
+ "command": "sbatch slurm/build.sbatch  (spatialscape build dataset.yaml; validate)",
+ "wall_s": 47,
+ "user_s": 13,
+ "sys_s": null,
+ "max_rss_bytes": 558931968,
+ "max_rss_note": "sacct MaxRSS of the batch step",
+ "cache_bytes": null,
+ "samples": 1,
+ "nObs": 2310,
+ "molecules": 0,
+ "bundle_bytes": 43655110,
+ "bytes": {
+  "expression": 19530827,
+  "rows": 21003364,
+  "cells": 260645,
+  "images": 2509960,
+  "shapes": 0,
+  "molecules": 0,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 350314
+ },
+ "bytes_per_cell": {
+  "expression": 8454.903463203464,
+  "rows": 9092.365367965367
+ },
+ "bytes_per_molecule": null,
+ "built": "1 samples, 2,310 obs"
+}

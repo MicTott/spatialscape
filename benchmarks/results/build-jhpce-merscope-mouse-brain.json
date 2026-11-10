@@ -1,0 +1,40 @@
+{
+ "name": "merscope-mouse-brain",
+ "yaml": "examples/merscope-mouse-brain/dataset.yaml",
+ "date": "2026-11-06",
+ "commit": "afd9a44",
+ "machine": {
+  "cluster": "JHPCE",
+  "node": "compute-094",
+  "slurm_job": 36920799,
+  "request": "48G, 4 CPUs"
+ },
+ "command": "sbatch slurm/build.sbatch  (spatialscape build dataset.yaml; validate)",
+ "wall_s": 652,
+ "user_s": 588,
+ "sys_s": null,
+ "max_rss_bytes": 21928448000,
+ "max_rss_note": "sacct MaxRSS of the batch step",
+ "cache_bytes": null,
+ "samples": 3,
+ "nObs": 232719,
+ "molecules": 150931478,
+ "bundle_bytes": 1230823070,
+ "bytes": {
+  "expression": 24958482,
+  "rows": 26656824,
+  "cells": 13452864,
+  "images": 681632703,
+  "shapes": 9987687,
+  "molecules": 473974697,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 159813
+ },
+ "bytes_per_cell": {
+  "expression": 107.24728964974926,
+  "rows": 114.54511234579041
+ },
+ "bytes_per_molecule": 3.140330322611695,
+ "built": "3 samples, 232,719 obs"
+}

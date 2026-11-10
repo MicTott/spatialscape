@@ -1,0 +1,40 @@
+{
+ "name": "xenium-mouse-brain",
+ "yaml": "examples/xenium-mouse-brain/dataset.yaml",
+ "date": "2026-11-09",
+ "commit": "c4a4c0e",
+ "machine": {
+  "cluster": "JHPCE",
+  "node": "compute-120",
+  "slurm_job": 36964400,
+  "request": "24G, 4 CPUs"
+ },
+ "command": "sbatch slurm/build.sbatch  (spatialscape build dataset.yaml; validate)",
+ "wall_s": 306,
+ "user_s": 254,
+ "sys_s": null,
+ "max_rss_bytes": 3447848960,
+ "max_rss_note": "sacct MaxRSS of the batch step",
+ "cache_bytes": null,
+ "samples": 1,
+ "nObs": 63173,
+ "molecules": 149297699,
+ "bundle_bytes": 920578157,
+ "bytes": {
+  "expression": 67789854,
+  "rows": 68497504,
+  "cells": 2013226,
+  "images": 221818708,
+  "shapes": 5168832,
+  "molecules": 555064654,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 225379
+ },
+ "bytes_per_cell": {
+  "expression": 1073.0827093853386,
+  "rows": 1084.2844886264702
+ },
+ "bytes_per_molecule": 3.717837968822279,
+ "built": "1 samples, 63,173 obs"
+}

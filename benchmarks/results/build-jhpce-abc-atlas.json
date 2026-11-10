@@ -1,0 +1,40 @@
+{
+ "name": "abc-atlas",
+ "yaml": "examples/abc-atlas/dataset.yaml",
+ "date": "2026-11-06",
+ "commit": "afd9a44",
+ "machine": {
+  "cluster": "JHPCE",
+  "node": "compute-129",
+  "slurm_job": 36920802,
+  "request": "192G, 2 CPUs"
+ },
+ "command": "sbatch slurm/build.sbatch  (spatialscape build dataset.yaml; validate)",
+ "wall_s": 32253,
+ "user_s": 31295,
+ "sys_s": null,
+ "max_rss_bytes": 292166443008,
+ "max_rss_note": "sacct MaxRSS; on the abc-atlas job it counts the page cache of the streamed matrix, above the 192 GB requested",
+ "cache_bytes": null,
+ "samples": 60,
+ "nObs": 8049329,
+ "molecules": 0,
+ "bundle_bytes": 26271238272,
+ "bytes": {
+  "expression": 25118288507,
+  "rows": 824793266,
+  "cells": 327059103,
+  "images": 0,
+  "shapes": 0,
+  "molecules": 0,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 1097396
+ },
+ "bytes_per_cell": {
+  "expression": 3120.544396557775,
+  "rows": 102.46733187325304
+ },
+ "bytes_per_molecule": null,
+ "built": "60 samples, 8,049,329 obs"
+}

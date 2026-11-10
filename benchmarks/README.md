@@ -53,4 +53,9 @@ conservative where a gene has many such values.
 
 ## Build and viewer tables
 
-Not run yet; see the protocol.
+Run with `build_bench.sh` (one timed `spatialscape build` per row, with `bundle_size.py` for the bytes per store) and
+`viewer_bench.mjs` (a headed Chrome through Playwright: cold load, what is drawn at three states, requests and bytes,
+gene switches cold and cached, frame times over a scripted pan). The JSON reports are in `results/` as
+`build-*.json` and `viewer-*.json` (`build-jhpce-*.json` are the cluster jobs' accounting plus the bundle sizes
+measured there), and `tables.py --write` renders them into
+[docs/reference/benchmarks.md](../docs/reference/benchmarks.md), the page that explains the columns.

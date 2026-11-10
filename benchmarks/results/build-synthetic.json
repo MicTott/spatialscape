@@ -1,0 +1,37 @@
+{
+ "name": "synthetic",
+ "yaml": "examples/synthetic-src/dataset.yaml",
+ "date": "2026-11-10T01:28:38+00:00",
+ "commit": "c4a4c0e",
+ "machine": {
+  "cpu": "Apple M1 Max",
+  "system": "macOS-15.6.1-arm64-arm-64bit-Mach-O"
+ },
+ "command": "python/.venv/bin/spatialscape build examples/synthetic-src/dataset.yaml -o /private/tmp/claude-501/-Users-michael-totty-Library-Application-Support-Claude-scratch-workspaces-dac9ca1b-9cad-4572-9616-ef7f18e45fed-515f1350-3505-4b1c-9eb9-2c8d40a04efe-scratch-2026-10-06-ea5aab/05d33f0b-b377-4e22-b5b3-b84813a66995/scratchpad/bench/synthetic/bundle",
+ "wall_s": 2.37,
+ "user_s": 1.55,
+ "sys_s": 0.32,
+ "max_rss_bytes": 270434304,
+ "cache_bytes": 0,
+ "samples": 3,
+ "nObs": 6800,
+ "molecules": 0,
+ "bundle_bytes": 1644264,
+ "bytes": {
+  "expression": 258678,
+  "rows": 183059,
+  "cells": 208062,
+  "images": 885504,
+  "shapes": 85511,
+  "molecules": 0,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 23450
+ },
+ "bytes_per_cell": {
+  "expression": 38.040882352941175,
+  "rows": 26.92044117647059
+ },
+ "bytes_per_molecule": null,
+ "built": "3 samples (3 built), 6,800 obs"
+}

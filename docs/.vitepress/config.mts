@@ -78,6 +78,7 @@ export default defineConfig({
             { text: "Bundle format", link: "/reference/format" },
             { text: "URL parameters", link: "/reference/url" },
             { text: "Architecture", link: "/reference/architecture" },
+            { text: "Benchmarks", link: "/reference/benchmarks" },
           ],
         },
       ],

@@ -7,6 +7,11 @@ import { BigWig } from "@gmod/bbi";
 import * as Comlink from "comlink";
 import KDBush from "kdbush";
 import * as zarr from "zarrita";
+
+/** Sharded stores read a shard's index from its tail. By default zarrita learns the size with a HEAD request first; a
+ *  suffix range (`bytes=-N`) does it in one request, and every host we serve from (S3, CloudFront, `spatialscape
+ *  serve`, GitHub Pages) honours it: one round trip less per shard touched. */
+const SUFFIX = { useSuffixRequest: true };
 import { rasterize } from "../genome/raster";
 import { decodeMoleculeTile, type MoleculeTile } from "./moleculeTiles";
 import { decodeShapeTile, type ShapeTile } from "./shapeTiles";
@@ -38,7 +43,7 @@ const cancelledTests = new Set<number>();
 function rowsOf(sampleId: string, chunk: number): Promise<RowsHandle> {
   const h = samples.get(sampleId);
   if (!h) throw new Error(`sample ${sampleId} not open`);
-  h.rows ??= zarr.open.v3(zarr.root(new zarr.FetchStore(`${h.base}/rows.zarr`)), { kind: "group" }).then((g) => openRows(g, chunk));
+  h.rows ??= zarr.open.v3(zarr.root(new zarr.FetchStore(`${h.base}/rows.zarr`, SUFFIX)), { kind: "group" }).then((g) => openRows(g, chunk));
   return h.rows;
 }
 const bigwigs = new Map<string, BigWig>(); // genome-panel coverage tracks, by URL
@@ -125,13 +130,13 @@ const api = {
       const existing = samples.get(sampleId);
       if (existing) return { nGenes: existing.genes.length, genes: existing.genes, zeroGenes: [...existing.zero] };
       const base = `${datasetUrl.replace(/\/$/, "")}/samples/${sampleId}`;
-      const exprStore = new zarr.FetchStore(`${base}/expr.zarr`);
+      const exprStore = new zarr.FetchStore(`${base}/expr.zarr`, SUFFIX);
       const exprRoot = zarr.root(exprStore);
       const [u8, gmaxArr, genes, obs, zeroGenes] = await Promise.all([
         zarr.open.v3(exprRoot.resolve("u8"), { kind: "array" }) as Promise<U8Array>,
         zarr.open.v3(exprRoot.resolve("gmax"), { kind: "array" }),
         fetchJSON<string[]>(`${base}/genes.json`),
-        zarr.open.v3(zarr.root(new zarr.FetchStore(`${base}/obs.zarr`)), { kind: "group" }),
+        zarr.open.v3(zarr.root(new zarr.FetchStore(`${base}/obs.zarr`, SUFFIX)), { kind: "group" }),
         nZeroGenes > 0 ? fetchJSON<string[]>(`${base}/zero_genes.json`) : Promise.resolve([] as string[]),
       ]);
       const gmaxChunk = await zarr.get(gmaxArr as zarr.Array<"float32", zarr.FetchStore>);

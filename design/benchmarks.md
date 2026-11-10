@@ -41,7 +41,7 @@ Per dataset, from `/usr/bin/time -l` (macOS) or `-v` (Linux) around `spatialscap
 - bundle size in total and per store: `expr.zarr`, `rows.zarr`, images, `shapes.bin`, `molecules.bin`, `tracks/`
 - bytes per cell for expression and rows, bytes per transcript, bytes per polygon vertex
 
-Two machines: a laptop (M1 Pro, 32 GB) and a JHPCE node (the sbatch request named). The Allen row is the memory
+Two machines: a laptop (Apple M1 Max, 10 cores, 64 GB) and a JHPCE node (the sbatch request named). The Allen row is the memory
 story (the 60 GB figure in the changelog), the atera row the image story, transcripts-1B the molecule story.
 
 ## 2. Viewer
@@ -50,7 +50,7 @@ Measured by a Playwright script against `spatialscape serve` on the same machine
 against the CloudFront deployment (network named: wired, Wi-Fi, a throttled profile), in Chromium with a 1440×860
 viewport at device scale 2. Headless Chromium uses SwiftShader and is only good for correctness, so frame timings
 come from the headed browser via `window.__sscape.timings` and a `requestAnimationFrame` sampler, with the GPU
-named (the M1 Pro's, and one discrete desktop GPU).
+named (the M1 Max's, and one discrete desktop GPU).
 
 For each dataset and each of these states:
 

@@ -1,0 +1,40 @@
+{
+ "bundle": "../apps/visium-hd-mouse-brain",
+ "id": "visium-hd-mouse-brain",
+ "samples": 1,
+ "nObs": 393543,
+ "molecules": 0,
+ "bytes": {
+  "expression": 197204464,
+  "rows": 160596805,
+  "cells": 15055176,
+  "images": 268313185,
+  "shapes": 0,
+  "molecules": 0,
+  "tracks": 0,
+  "other": 0,
+  "dataset_files": 422421
+ },
+ "total_bytes": 641592051,
+ "bytes_per_cell": {
+  "expression": 501.1001694859266,
+  "rows": 408.07943477586946
+ },
+ "bytes_per_molecule": null,
+ "per_sample": [
+  {
+   "id": "square_008um",
+   "platform": "visium_hd",
+   "nObs": 393543,
+   "nGenes": 18991,
+   "molecules": 0,
+   "expression": 197204464,
+   "rows": 160596805,
+   "cells": 15055176,
+   "images": 268313185,
+   "shapes": 0,
+   "tracks": 0,
+   "other": 0
+  }
+ ]
+}

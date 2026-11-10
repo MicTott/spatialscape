@@ -1,6 +1,11 @@
 /** Loads a comparison's files once per dataset: comparison.json for the whole comparison, then each level's
  *  results.json and pseudobulk array as it is shown. */
 import * as zarr from "zarrita";
+
+/** Sharded stores read a shard's index from its tail. By default zarrita learns the size with a HEAD request first; a
+ *  suffix range (`bytes=-N`) does it in one request, and every host we serve from (S3, CloudFront, `spatialscape
+ *  serve`, GitHub Pages) honours it: one round trip less per shard touched. */
+const SUFFIX = { useSuffixRequest: true };
 import type { ComparisonInfo, LevelInfo } from "../data/manifest";
 import { levelOf, type ComparisonData, type ComparisonDoc, type MatrixData, type ResultsDoc } from "./model";
 
@@ -48,7 +53,7 @@ export function loadComparison(datasetUrl: string, info: ComparisonInfo, levelId
       let pseudobulk: Float32Array | null = null;
       if (level.hasPseudobulk && replicates.length) {
         // a few megabytes at most (genes x replicates of float32): read once, then every gene is a slice
-        const arr = await zarr.open.v3(zarr.root(new zarr.FetchStore(`${b}/pseudobulk.zarr`)), { kind: "array" });
+        const arr = await zarr.open.v3(zarr.root(new zarr.FetchStore(`${b}/pseudobulk.zarr`, SUFFIX)), { kind: "array" });
         const chunk = await zarr.get(arr as zarr.Array<"float32", zarr.FetchStore>);
         pseudobulk = new Float32Array(chunk.data as Float32Array);
       }
@@ -69,7 +74,7 @@ export function loadMatrix(datasetUrl: string, info: ComparisonInfo): Promise<Ma
   if (!p) {
     p = (async () => {
       const doc = await json<MatrixDoc>(`${b}/matrix.json`);
-      const root = zarr.root(new zarr.FetchStore(`${b}/matrix.zarr`));
+      const root = zarr.root(new zarr.FetchStore(`${b}/matrix.zarr`, SUFFIX));
       const stats: Record<string, Float32Array> = {};
       await Promise.all(
         doc.stats.map(async (name) => {
