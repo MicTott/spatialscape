@@ -28,6 +28,25 @@ import { Visibility } from "./visibility";
 import { composePNG } from "./exportPng";
 import { sameChannel } from "./types";
 
+/** Counts from the layers' props: points are each visible dot layer's `drawCount`; shapes are polygons, counted once per tile
+ *  (the fill layer when there is one, else the edge layer); molecules are the rows of every molecule tile layer. */
+function tallyDrawn(layers: unknown[]): { points: number; shapes: number; molecules: number } {
+  const out = { points: 0, shapes: 0, molecules: 0 };
+  const filled = new Set<string>();
+  const edges: { tid: string; n: number }[] = [];
+  for (const l of layers as { id: string; props: { visible?: boolean; drawCount?: number; data?: { length?: number } | unknown[] } }[]) {
+    if (!l || l.props?.visible === false) continue;
+    const n = Array.isArray(l.props.data) ? l.props.data.length : (l.props.data as { length?: number } | undefined)?.length ?? 0;
+    if (l.id.startsWith("pts-")) out.points += l.props.drawCount ?? 0;
+    else if (l.id.startsWith("shape-fill-")) { out.shapes += n; filled.add(l.id.slice("shape-fill-".length)); }
+    else if (l.id.startsWith("shape-edge-")) edges.push({ tid: l.id.slice("shape-edge-".length), n });
+    else if (l.id.startsWith("poly-")) out.shapes += n;
+    else if (l.id.startsWith("mol-")) out.molecules += n;
+  }
+  for (const e of edges) if (!filled.has(e.tid)) out.shapes += e.n;
+  return out;
+}
+
 export class ViewerController {
   deck: Deck<OrthographicView[]>;
   cache = new DataCache();
@@ -529,11 +548,16 @@ export class ViewerController {
   buildLayers() {
     if (this.destroyed || !this.manifest) return;
     try {
-      this.deck.setProps({ layers: this.layersBuilder.build() });
+      const layers = this.layersBuilder.build();
+      this.drawn = tallyDrawn(layers);
+      this.deck.setProps({ layers });
     } catch (e) {
       console.error("buildLayers failed", e);
     }
   }
+
+  /** What the last layer build put on screen: cell dots (the LOD prefix of each visible sample), cell polygons and molecules. For the benchmarks. */
+  drawn = { points: 0, shapes: 0, molecules: 0 };
 
   // ---------------------------------------------------------------- diagnostics
   /** Set when a gene's data arrived: the next completed frame ends the gene-switch measurement (`lastGeneFrameMs`). */

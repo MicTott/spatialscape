@@ -17,6 +17,7 @@ declare global {
       setGene: (gene: string) => Promise<number>;
       getState: () => ViewerState;
       pixelProbe: () => Promise<{ nonBackground: number; total: number }>;
+      drawn: () => { points: number; shapes: number; molecules: number }; // what the last layer build put on screen
       regionTest: (opts: TestOptions) => Promise<void>; // the region test, as the panel's button runs it
       liveMatrix: () => Promise<MatrixData> | null; // its result, as the Compare panel reads it
     };
@@ -53,6 +54,7 @@ export function installTestHooks(controller: ViewerController) {
       return controller.whenIdle().then(() => performance.now() - t0);
     },
     pixelProbe: () => controller.pixelProbe(),
+    drawn: () => controller.drawn,
     regionTest: (opts) => runRegionTest(controller, opts),
     liveMatrix: () => {
       const live = controller.regions.live;
