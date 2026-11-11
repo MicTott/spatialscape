@@ -94,10 +94,12 @@ def md_inline(s: str) -> str:
 
 
 def type_name(p) -> str:
-    t = p.type
     if is_opt(p) and p.is_flag:
         return "flag"
-    name = getattr(t, "name", str(t)).upper()
+    if hasattr(p, "type"):  # typer < 0.28: a click ParamType
+        name = getattr(p.type, "name", str(p.type)).upper()
+    else:  # typer >= 0.28: the annotation's name, "list[Path]" for a repeatable one
+        name = re.sub(r"^list\[(.*)\]$", r"\1", str(p.bare_type())).upper()
     if name in ("TEXT", "STR", "STRING"):
         name = "text"
     elif name in ("INTEGER",):
@@ -124,11 +126,16 @@ def default_str(p) -> str:
     return f"`{d}`"
 
 
+def arg_name(p) -> str:
+    """An argument's name as the usage line shows it. Typer 0.28 dropped click's `human_readable_name`."""
+    return (getattr(p, "metavar", None) or p.name).upper()
+
+
 def usage(cmd_name: str, cmd) -> str:
     parts = [f"spatialscape {cmd_name}"]
     for p in cmd.params:
         if is_arg(p):
-            nm = p.human_readable_name.upper()
+            nm = arg_name(p)
             parts.append(f"<{nm}>" + ("..." if p.nargs == -1 else "") if p.required else f"[{nm}]")
     if any(is_opt(p) for p in cmd.params):
         parts.append("[OPTIONS]")
@@ -148,7 +155,7 @@ def page(cmd_name: str, cmd) -> str:
     if args:
         out += ["## Arguments", "", "| Argument | Type | Default | Description |", "|---|---|---|---|"]
         for p in args:
-            out.append(f"| `{p.human_readable_name.upper()}` | {type_name(p)} | {default_str(p)} | {md_inline(getattr(p, 'help', '') or '')} |")
+            out.append(f"| `{arg_name(p)}` | {type_name(p)} | {default_str(p)} | {md_inline(getattr(p, 'help', '') or '')} |")
         out.append("")
     if opts:
         out += ["## Options", "", "| Option | Type | Default | Description |", "|---|---|---|---|"]
