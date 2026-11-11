@@ -5,7 +5,7 @@ and their cards, an optional navigation bar, and where the bundles are hosted. `
 site.yaml` turns it into `datasets.json` next to the viewer's `index.html`, which is what the gallery reads.
 You edit the yaml; the JSON is a build output.
 
-![The gallery that site build writes: one card per dataset, thumbnails rendered at build time](/screenshots/gallery.png)
+![The examples gallery: two groups of cards, each card with a thumbnail rendered at build time, its platforms and tags, and its counts](/screenshots/gallery.jpg)
 
 ```yaml
 title: Our lab's spatial data
@@ -21,6 +21,7 @@ datasets:
   - config: mouse_brain.yaml                   # a dataset yaml: built into bundles/mouse_brain next to it when needed
     paper: { title: Someone et al. 2026, url: https://doi.org/... }
     tags: [mouse, visium, xenium]
+    # group: Main examples                     # a heading in the gallery; see below
   - bundle: ../dlpfc/bundles/dlpfc             # an already built bundle
     description: Thirty sections across ten donors.   # replaces the manifest's description on the card
   - id: hippocampus                            # a placeholder card
@@ -42,11 +43,29 @@ description, platforms, sample and cell counts, gene count, thumbnail); these ke
 |---|---|
 | `name`, `description` | card text; default: the dataset's own |
 | `paper` | `{ title, url }` shown under the description |
-| `tags` | short labels |
+| `tags` | short labels, shown as pills after the platforms |
+| `group` | the heading the card sits under |
 | `status` | `live`, `local` or `coming soon` (the badge); default `live`, placeholders `coming soon` |
 | `accent` | color of the generated card art when there is no thumbnail |
 | `thumbnail` | image URL; default `<bundle>/thumbnail.png`, which `build` renders |
 | `platforms` | placeholders only; bundles report their own |
+
+### Groups
+
+A gallery of many datasets can be split under headings. Give cards a `group:` and each group becomes a section,
+in the order the groups first appear in `site.yaml`; cards without one follow, under no heading. A group of up
+to three cards fills the row, so a few lead examples draw larger than the rest:
+
+```yaml
+datasets:
+  - { config: atlas.yaml, group: Main examples }
+  - { config: multiome.yaml, group: Main examples }
+  - { config: visium.yaml, group: Other technologies }
+  - { config: xenium.yaml, group: Other technologies }
+```
+
+Without any `group:` the gallery is one grid. The picture at the top of this page is the
+[examples gallery](https://d2lbhik7smmaaj.cloudfront.net), which uses two groups.
 
 ## The navigation bar
 
@@ -58,7 +77,7 @@ a dataset switcher lists every card that has a bundle, and `links` are rendered 
 
 `datasets.json` is plain JSON: `title`, `intro`, `site` (the `nav` block) and `datasets`, one object per
 card with `id`, `name`, `description`, `platforms`, `samples`, `cells`, `genes`, `url` (empty for
-placeholders), `status`, `thumbnail`, `paper`, `tags` and `accent`. `?d=<id>` opens a card by id and
+placeholders), `status`, `thumbnail`, `paper`, `tags`, `group` and `accent`. `?d=<id>` opens a card by id and
 `?d=<url>` opens any bundle anywhere.
 
 `spatialscape serve <folder>` generates the same document on the fly for a folder of bundles, and

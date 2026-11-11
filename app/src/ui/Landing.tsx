@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { platformLabel } from "../data/manifest";
 import { store } from "../store/store";
-import { thumbnailUrl, useRegistry, type RegistryEntry } from "./registry";
+import { cardGroups, cardPills, thumbnailUrl, useRegistry, type RegistryEntry } from "./registry";
 export { resolveDataset } from "./registry";
 
 
@@ -25,66 +25,73 @@ export function Landing() {
             go(url);
           }}
         >
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="open any bundle: https://host/path/to/bundle  or  http://127.0.0.1:8787/amygdala" />
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="open any bundle: https://host/path/to/bundle  or  http://127.0.0.1:8787/my_atlas" />
           <button type="submit">Open</button>
         </form>
       </header>
-      {reg && (
-        <section className="cards">
-          {reg.datasets.map((d) => {
-            const openable = !!d.url;
-            // entries written by hand may omit keys; the card still renders
-            const status = d.status ?? (openable ? "live" : "coming soon");
-            return (
-              <article key={d.id} className={`card ${openable ? "" : "soon"}`} style={{ ["--accent" as any]: d.accent ?? "#40c4ff" }} onClick={() => openable && go(d.url)}>
-                <div className="card-art">
-                  <CardArt d={d} />
-                  <span className={`status ${status.replace(" ", "-")}`}>{status}</span>
-                </div>
-                <div className="card-body">
-                  <h2>{d.name}</h2>
-                  <p>{d.description ?? ""}</p>
-                  <div className="meta">
-                    {(d.platforms ?? []).map((p) => (
-                      <span key={p} className="pill">
-                        {platformLabel(p)}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="nums">
-                    <span>
-                      <b>{d.samples ?? 0}</b> samples
-                    </span>
-                    <span>
-                      <b>{(d.cells ?? 0).toLocaleString()}</b> cells
-                    </span>
-                    {d.genes != null && (
-                      <span>
-                        <b>{d.genes.toLocaleString()}</b> genes
-                      </span>
-                    )}
-                  </div>
-                  {d.paper?.title && (
-                    <div className="paper">
-                      {d.paper.url ? (
-                        <a href={d.paper.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                          {d.paper.title}
-                        </a>
-                      ) : (
-                        d.paper.title
-                      )}
-                    </div>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
+      {reg &&
+        cardGroups(reg.datasets).map((g) => (
+          <div key={g.name ?? ""} className="card-group">
+            {g.name && <h2 className="card-group-title">{g.name}</h2>}
+            {/* a named group of up to three cards fills the row, so a few lead examples draw larger */}
+            <section className={`cards${g.name && g.items.length <= 3 ? " few" : ""}`}>
+              {g.items.map((d) => (
+                <Card key={d.id} d={d} open={go} />
+              ))}
+            </section>
+          </div>
+        ))}
       <footer className="gallery-foot muted">
         Datasets are static bundles built with <code>spatialscape build</code>; the gallery comes from <code>site.yaml</code> (<code>spatialscape site build</code>). Share any view by copying the URL.
       </footer>
     </div>
+  );
+}
+
+const count = (n: number, one: string) => (
+  <span>
+    <b>{n.toLocaleString()}</b> {n === 1 ? one : `${one}s`}
+  </span>
+);
+
+function Card({ d, open }: { d: RegistryEntry; open: (url: string) => void }) {
+  const openable = !!d.url;
+  // entries written by hand may omit keys; the card still renders
+  const status = d.status ?? (openable ? "live" : "coming soon");
+  return (
+    <article className={`card ${openable ? "" : "soon"}`} style={{ ["--accent" as any]: d.accent ?? "#40c4ff" }} onClick={() => openable && open(d.url)}>
+      <div className="card-art">
+        <CardArt d={d} />
+        <span className={`status ${status.replace(" ", "-")}`}>{status}</span>
+      </div>
+      <div className="card-body">
+        <h2>{d.name}</h2>
+        <p>{d.description ?? ""}</p>
+        <div className="meta">
+          {cardPills(d, platformLabel).map((p) => (
+            <span key={p} className="pill">
+              {p}
+            </span>
+          ))}
+        </div>
+        <div className="nums">
+          {count(d.samples ?? 0, "sample")}
+          {count(d.cells ?? 0, "cell")}
+          {d.genes != null && count(d.genes, "gene")}
+        </div>
+        {d.paper?.title && (
+          <div className="paper">
+            {d.paper.url ? (
+              <a href={d.paper.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                {d.paper.title}
+              </a>
+            ) : (
+              d.paper.title
+            )}
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 

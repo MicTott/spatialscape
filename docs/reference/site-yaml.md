@@ -28,7 +28,8 @@ Exactly one of `config`, `bundle` or `id` per card.
 | `platforms` | list | placeholders only (`visium`, `visium_hd`, `xenium`, `merfish`, `codex`, `snrnaseq`, `other`) |
 | `status` | `live`, `local`, `coming soon` | badge; default `live`, placeholders `coming soon` |
 | `paper` | `{title, url}` | |
-| `tags` | list of strings | |
+| `tags` | list of strings | pills on the card, after the platforms |
+| `group` | string | the heading the card sits under; groups appear in the order first used, cards without one last |
 | `accent` | `#hex` | color of the generated art when there is no thumbnail |
 | `thumbnail` | URL | default `<bundle>/thumbnail.png` |
 

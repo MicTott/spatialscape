@@ -57,6 +57,7 @@ class SiteDataset(_Model):
     status: Literal["live", "local", "coming soon"] | None = None
     paper: PaperSpec | None = None
     tags: list[str] = Field(default_factory=list)
+    group: str | None = None  # the heading this card sits under in the gallery; cards without one come last
     accent: str | None = None  # color of the generated card art when there is no thumbnail
     thumbnail: str | None = None  # image URL; default: <bundle>/thumbnail.png
 
@@ -174,6 +175,8 @@ def _overlay(entry: dict[str, Any], d: SiteDataset) -> dict[str, Any]:
         entry["paper"] = d.paper.model_dump(exclude_none=True)
     if d.tags:
         entry["tags"] = list(d.tags)
+    if d.group:
+        entry["group"] = d.group
     if d.accent:
         entry["accent"] = d.accent
     if d.thumbnail:

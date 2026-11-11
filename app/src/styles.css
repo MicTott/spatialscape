@@ -228,7 +228,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .overlay.gallery { justify-content: flex-start; overflow-y: auto; padding: 48px 32px 32px; gap: 24px; }
 .gallery-head { max-width: 760px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .gallery-head form { width: min(680px, 90vw); }
-.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; width: min(1320px, 100%); text-align: left; align-items: stretch; }
+.card-group { width: min(1320px, 100%); display: flex; flex-direction: column; gap: 12px; }
+.card-group-title { font-size: 18px; font-weight: 600; text-align: left; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; width: 100%; text-align: left; align-items: stretch; }
+@media (min-width: 901px) { .cards.few { grid-template-columns: repeat(3, minmax(0, 1fr)); } .cards.few .card-body h2 { font-size: 16px; } .cards.few .card-body p { font-size: 13px; } }
 @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.12s ease, border-color 0.12s ease; display: flex; flex-direction: column; }
@@ -243,7 +246,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .card-body p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card-body .paper { margin-top: auto; }
-.card-body h2 { margin: 0; font-size: 14px; }
+.card-body h2 { margin: 0; font-size: 14px; display: block; color: var(--fg); text-transform: none; letter-spacing: 0; }
 .card-body p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; max-width: none; }
 .card .meta { display: flex; flex-wrap: wrap; gap: 4px; }
 .pill { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--border); }

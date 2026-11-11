@@ -21,6 +21,48 @@
   },
   "datasets": [
     {
+      "id": "abc-atlas",
+      "name": "Whole mouse brain (Allen Brain Cell Atlas)",
+      "description": "The adult mouse brain atlas of Yao et al. and Zhang et al. (2023): 4.0 million cells on 59 coronal MERFISH sections with the 500-gene panel, and all 4.0 million 10x nuclei at 32,285 genes on the atlas's whole-brain UMAP, labelled at every level of the 5,000-cluster taxonomy and the sections by CCF region. Data CC BY-NC 4.0, Allen Institute.",
+      "platforms": [
+        "merfish",
+        "snrnaseq"
+      ],
+      "samples": 60,
+      "cells": 8049329,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/abc-atlas",
+      "status": "live",
+      "genes": 32285,
+      "paper": {
+        "title": "Yao et al. 2023, Nature",
+        "url": "https://doi.org/10.1038/s41586-023-06812-z"
+      },
+      "tags": [
+        "whole mouse brain",
+        "8 million cells"
+      ],
+      "group": "Main examples"
+    },
+    {
+      "id": "atera",
+      "name": "Atera whole-transcriptome previews (FFPE tumours)",
+      "description": "Two FFPE sections, human breast and cervical cancer, from the preview datasets 10x Genomics published with the Atera instrument: whole-transcriptome in situ (about 18,000 genes per cell), the morphology image, cell and nucleus boundaries and every transcript.",
+      "platforms": [
+        "xenium"
+      ],
+      "samples": 2,
+      "cells": 887633,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/atera",
+      "status": "live",
+      "genes": 18028,
+      "tags": [
+        "Atera",
+        "whole transcriptome",
+        "transcripts"
+      ],
+      "group": "Main examples"
+    },
+    {
       "id": "visium-human-dlpfc",
       "name": "Human DLPFC, Visium (Maynard et al. 2021)",
       "description": "Twelve Visium sections of human dorsolateral prefrontal cortex from three donors (Maynard et al. 2021, Nature Neuroscience; the spatialLIBD package), with the manual cortical layer annotation and the H&E of each section.",
@@ -37,10 +79,10 @@
         "url": "https://doi.org/10.1038/s41593-020-00787-0"
       },
       "tags": [
-        "visium",
         "human cortex",
         "layers"
-      ]
+      ],
+      "group": "Other technologies"
     },
     {
       "id": "visium-cytassist-mouse-brain",
@@ -55,9 +97,10 @@
       "status": "live",
       "genes": 19465,
       "tags": [
-        "visium",
+        "CytAssist",
         "mouse brain"
-      ]
+      ],
+      "group": "Other technologies"
     },
     {
       "id": "visium-hd-mouse-brain",
@@ -72,9 +115,9 @@
       "status": "live",
       "genes": 19059,
       "tags": [
-        "visium hd",
         "mouse brain"
-      ]
+      ],
+      "group": "Other technologies"
     },
     {
       "id": "xenium-mouse-brain",
@@ -89,10 +132,10 @@
       "status": "live",
       "genes": 5006,
       "tags": [
-        "xenium",
         "mouse brain",
         "transcripts"
-      ]
+      ],
+      "group": "Other technologies"
     },
     {
       "id": "merscope-mouse-brain",
@@ -107,10 +150,11 @@
       "status": "live",
       "genes": 483,
       "tags": [
-        "merscope",
+        "MERSCOPE",
         "mouse brain",
         "transcripts"
-      ]
+      ],
+      "group": "Other technologies"
     },
     {
       "id": "cosmx-nsclc",
@@ -129,10 +173,11 @@
         "url": "https://doi.org/10.1038/s41587-022-01483-z"
       },
       "tags": [
-        "cosmx",
+        "CosMx",
         "lung cancer",
         "transcripts"
-      ]
+      ],
+      "group": "Other technologies"
     },
     {
       "id": "spatial-atac-rna-mouse-brain",
@@ -151,51 +196,10 @@
         "url": "https://doi.org/10.1038/s41586-023-05795-1"
       },
       "tags": [
-        "spatial atac",
-        "multiome",
-        "tracks"
-      ]
-    },
-    {
-      "id": "atera",
-      "name": "Atera whole-transcriptome previews (FFPE tumours)",
-      "description": "Two FFPE sections, human breast and cervical cancer, from the preview datasets 10x Genomics published with the Atera instrument: whole-transcriptome in situ (about 18,000 genes per cell), the morphology image, cell and nucleus boundaries and every transcript.",
-      "platforms": [
-        "xenium"
+        "spatial ATAC + RNA",
+        "genome tracks"
       ],
-      "samples": 2,
-      "cells": 887633,
-      "url": "https://d2lbhik7smmaaj.cloudfront.net/atera",
-      "status": "live",
-      "genes": 18028,
-      "tags": [
-        "atera",
-        "whole transcriptome",
-        "transcripts"
-      ]
-    },
-    {
-      "id": "abc-atlas",
-      "name": "Whole mouse brain (Allen Brain Cell Atlas)",
-      "description": "The adult mouse brain atlas of Yao et al. and Zhang et al. (2023): 4.0 million cells on 59 coronal MERFISH sections with the 500-gene panel, and all 4.0 million 10x nuclei at 32,285 genes on the atlas's whole-brain UMAP, labelled at every level of the 5,000-cluster taxonomy and the sections by CCF region. Data CC BY-NC 4.0, Allen Institute.",
-      "platforms": [
-        "merfish",
-        "snrnaseq"
-      ],
-      "samples": 60,
-      "cells": 8049329,
-      "url": "https://d2lbhik7smmaaj.cloudfront.net/abc-atlas",
-      "status": "live",
-      "genes": 32285,
-      "paper": {
-        "title": "Yao et al. 2023, Nature",
-        "url": "https://doi.org/10.1038/s41586-023-06812-z"
-      },
-      "tags": [
-        "merfish",
-        "snrna-seq",
-        "whole mouse brain"
-      ]
+      "group": "Other technologies"
     }
   ]
 }

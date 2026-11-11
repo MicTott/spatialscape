@@ -118,7 +118,7 @@ def test_site_yaml_is_the_one_source_of_the_gallery(bundle, fake_app, tmp_path):
         "title: Lab data\nintro: Two datasets.\n"
         "nav: { title: Our lab, links: [{ label: Lab site, url: https://lab.example.org }] }\n"
         "datasets:\n"
-        "  - config: src/other.yaml\n    paper: { title: Someone 2026, url: https://doi.org/x }\n    tags: [demo]\n"
+        "  - config: src/other.yaml\n    paper: { title: Someone 2026, url: https://doi.org/x }\n    tags: [demo]\n    group: Main examples\n"
         f"  - bundle: {bundle}\n    description: Hand-written card text.\n"
         "  - id: later\n    name: Later\n    platforms: [visium]\n"
     )
@@ -131,6 +131,7 @@ def test_site_yaml_is_the_one_source_of_the_gallery(bundle, fake_app, tmp_path):
     ids = [d["id"] for d in reg["datasets"]]
     assert ids == ["other", "synthetic", "later"]
     assert reg["datasets"][0]["paper"]["title"] == "Someone 2026" and reg["datasets"][0]["tags"] == ["demo"] and reg["datasets"][0]["url"] == "other"
+    assert reg["datasets"][0]["group"] == "Main examples" and all("group" not in d for d in reg["datasets"][1:])
     assert reg["datasets"][1]["description"] == "Hand-written card text." and reg["datasets"][1]["samples"] == 3
     assert reg["datasets"][2] == {"id": "later", "name": "Later", "description": "", "platforms": ["visium"], "samples": 0, "cells": 0, "url": "", "status": "coming soon"}
     # a hand edit to datasets.json does not survive: site.yaml is the source

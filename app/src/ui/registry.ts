@@ -12,6 +12,7 @@ export interface RegistryEntry {
   url: string; // empty for "coming soon" entries
   thumbnail?: string; // defaults to <url>/thumbnail.png
   tags?: string[];
+  group?: string; // the heading this card sits under; cards without one come last
   status?: "live" | "local" | "coming soon";
   paper?: { title: string; url?: string };
   accent?: string;
@@ -21,6 +22,35 @@ export interface Registry {
   intro?: string;
   site?: { title?: string; logo?: string; links?: { label: string; url: string }[] };
   datasets: RegistryEntry[];
+}
+
+/** The gallery's sections: cards under their `group` headings in order of first appearance, ungrouped cards last
+ *  under no heading. A registry without groups is one section, which is the plain gallery. */
+export function cardGroups(datasets: RegistryEntry[]): { name: string | null; items: RegistryEntry[] }[] {
+  const named = new Map<string, RegistryEntry[]>();
+  const rest: RegistryEntry[] = [];
+  for (const d of datasets) {
+    const g = d.group?.trim();
+    if (!g) rest.push(d);
+    else named.set(g, [...(named.get(g) ?? []), d]);
+  }
+  const out: { name: string | null; items: RegistryEntry[] }[] = [...named].map(([name, items]) => ({ name, items }));
+  if (rest.length || !out.length) out.push({ name: null, items: rest });
+  return out;
+}
+
+/** A card's pills: its platforms by name (`other` says nothing, so it is left out), then its tags, without repeats. */
+export function cardPills(d: RegistryEntry, label: (platform: string) => string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of [...(d.platforms ?? []).filter((p) => p !== "other").map(label), ...(d.tags ?? [])]) {
+    const k = t.trim().toLowerCase();
+    if (k && !seen.has(k)) {
+      seen.add(k);
+      out.push(t.trim());
+    }
+  }
+  return out;
 }
 
 export function registryUrl() {

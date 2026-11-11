@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Gallery groups.** A card in `site.yaml` may name a `group:`; the gallery then draws each group as a section under
+its heading, in the order the groups first appear, with ungrouped cards last. A group of up to three cards fills the
+row, so lead examples draw larger. Cards show their `tags` as pills after the platforms (the platform `other` is no
+longer shown as a pill), titles keep their own capitals ("8 µm" was drawn as "8 MM"), and one sample is "1 sample".
+
 **A layer whose file is missing is left out, not fatal.** An image, `polygons.path`, a segmentation or
 `molecules.path` that is not on disk no longer stops `build`: the sample is built without it, with a note saying
 so, and gains the layer on the next `build` once the file exists (its presence is part of the fingerprint). So an
