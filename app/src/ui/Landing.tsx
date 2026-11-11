@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { platformLabel } from "../data/manifest";
 import { store } from "../store/store";
-import { cardGroups, cardPills, thumbnailUrl, useRegistry, type RegistryEntry } from "./registry";
+import { cardGroups, cardPills, thumbnailUrl, useRegistry, wantsOpenBox, type RegistryEntry } from "./registry";
 export { resolveDataset } from "./registry";
 
 
@@ -19,15 +19,17 @@ export function Landing() {
       <header className="gallery-head">
         <h1>{reg?.title || "spatialscape"}</h1>
         <p>{reg?.intro ?? "A static, reactive browser for spatial transcriptomics and snRNA-seq."}</p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            go(url);
-          }}
-        >
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="open any bundle: https://host/path/to/bundle  or  http://127.0.0.1:8787/my_atlas" />
-          <button type="submit">Open</button>
-        </form>
+        {wantsOpenBox(reg) && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              go(url);
+            }}
+          >
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="open any bundle: https://host/path/to/bundle  or  http://127.0.0.1:8787/my_atlas" />
+            <button type="submit">Open</button>
+          </form>
+        )}
       </header>
       {reg &&
         cardGroups(reg.datasets).map((g) => (

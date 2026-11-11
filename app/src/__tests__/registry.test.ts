@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardGroups, cardPills, type RegistryEntry } from "../ui/registry";
+import { cardGroups, cardPills, wantsOpenBox, type RegistryEntry } from "../ui/registry";
 
 const card = (id: string, extra: Partial<RegistryEntry> = {}): RegistryEntry => ({ id, name: id, url: id, ...extra });
 
@@ -29,5 +29,16 @@ describe("card pills", () => {
   it("leaves out the platform `other`, which says nothing", () => {
     expect(cardPills(card("a", { platforms: ["other"], tags: ["CosMx"] }), label)).toEqual(["CosMx"]);
     expect(cardPills(card("a", { platforms: ["other"] }), label)).toEqual([]);
+  });
+});
+
+describe("the open-any-bundle box", () => {
+  it("is drawn on a page that lists no datasets", () => {
+    expect(wantsOpenBox(null)).toBe(true);
+    expect(wantsOpenBox({ datasets: [] })).toBe(true);
+  });
+  it("is left out of a gallery with cards, and while the list is loading", () => {
+    expect(wantsOpenBox({ datasets: [card("a")] })).toBe(false);
+    expect(wantsOpenBox(undefined)).toBe(false);
   });
 });

@@ -53,6 +53,12 @@ export function cardPills(d: RegistryEntry, label: (platform: string) => string)
   return out;
 }
 
+/** The "open any bundle" box is the way in on a page that lists no datasets. A gallery with cards leaves it out
+ * (`?d=<url>` still opens any bundle), and so does a page whose list is still loading. */
+export function wantsOpenBox(reg: Registry | null | undefined): boolean {
+  return reg !== undefined && !reg?.datasets?.length;
+}
+
 export function registryUrl() {
   return new URL("datasets.json", document.baseURI).toString();
 }
@@ -67,8 +73,9 @@ export function loadRegistry(): Promise<Registry | null> {
   return cached;
 }
 
-export function useRegistry(): Registry | null {
-  const [reg, setReg] = useState<Registry | null>(null);
+/** The page's datasets.json: `undefined` while it loads, `null` when the page has none. */
+export function useRegistry(): Registry | null | undefined {
+  const [reg, setReg] = useState<Registry | null | undefined>(undefined);
   useEffect(() => {
     void loadRegistry().then(setReg);
   }, []);
