@@ -14,7 +14,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: Live examples
-      link: https://mictott.github.io/spatialscape/
+      link: https://mictott.github.io/spatialscape/examples/
     - theme: alt
       text: GitHub
       link: https://github.com/MicTott/spatialscape
@@ -41,28 +41,28 @@ features:
 
 ## See it on real data
 
-[![The Allen whole mouse brain atlas: the UMAP of 4.0 million nuclei beside 59 MERFISH sections, colored by subclass](/screenshots/abc-atlas.jpg)](https://mictott.github.io/spatialscape/?d=abc-atlas&ps=0.25&pse=0.25&cl=0)
+[![The Allen whole mouse brain atlas: the UMAP of 4.0 million nuclei beside 59 MERFISH sections, colored by subclass](/screenshots/abc-atlas.jpg)](https://mictott.github.io/spatialscape/examples/?d=abc-atlas&ps=0.25&pse=0.25&cl=0)
 
 **Scale.** The Allen Brain Cell Atlas of the whole mouse brain in one app: 4.0 million nuclei on their UMAP beside 59 MERFISH sections holding another 4.0 million cells, one legend for both. The picture opens the app.
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; margin-top: 24px;">
 <div>
 
-[![10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1](/screenshots/pbmc-multiome.jpg)](https://mictott.github.io/spatialscape/?d=pbmc-multiome)
+[![10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1](/screenshots/pbmc-multiome.jpg)](https://mictott.github.io/spatialscape/examples/?d=pbmc-multiome)
 
 **Breadth.** A 10x multiome: the RNA and ATAC UMAPs of the same nuclei with one cell type legend, over accessibility tracks per cell type at MS4A1.
 
 </div>
 <div>
 
-[![Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines](/screenshots/atera-transcripts.jpg)](https://mictott.github.io/spatialscape/?d=atera&v=5039,4729,2.8&c=g:EPCAM&mol=1&mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&cs=outlined&msz=2.00)
+[![Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines](/screenshots/atera-transcripts.jpg)](https://mictott.github.io/spatialscape/examples/?d=atera&v=5039,4729,2.8&c=g:EPCAM&mol=1&mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&cs=outlined&msz=2.00)
 
 **New technology.** A whole-transcriptome Atera section of breast cancer, zoomed until single transcripts draw over the morphology image and the cell outlines.
 
 </div>
 </div>
 
-These three are among the eleven in the **[examples gallery](https://mictott.github.io/spatialscape/)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, PhenoCycler spatial proteomics, spatial ATAC + RNA, a 10x multiome, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
+These three are among the eleven in the **[examples gallery](https://mictott.github.io/spatialscape/examples/)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, PhenoCycler spatial proteomics, spatial ATAC + RNA, a 10x multiome, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
 
 ## In three commands
 

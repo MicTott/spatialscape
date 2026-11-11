@@ -52,7 +52,7 @@ share as `pf`.
 
 ![MOBP in two donors of the DLPFC example: section 151507 pinned left, section 151673 pinned right, images off, spots enlarged, one viridis scale](/screenshots/pinned-windows.jpg)
 
-The view above compares one gene in two donors of the [DLPFC example](https://mictott.github.io/spatialscape/?d=visium-human-dlpfc&c=g:MOBP&img=0&pins=vis_151507,vis_151673&psg=1.60,1.60):
+The view above compares one gene in two donors of the [DLPFC example](https://mictott.github.io/spatialscape/examples/?d=visium-human-dlpfc&c=g:MOBP&img=0&pins=vis_151507,vis_151673&psg=1.60,1.60):
 MOBP, a white matter gene, in section 151507 beside section 151673, with the H&E hidden and the spots
 enlarged. Its URL parameters: `c=g:MOBP`, `img=0`, `pins=vis_151507,vis_151673`, `psg=1.60,1.60`.
 

@@ -65,7 +65,7 @@ datasets:
 ```
 
 Without any `group:` the gallery is one grid. The picture at the top of this page is the
-[examples gallery](https://mictott.github.io/spatialscape/), which uses two groups.
+[examples gallery](https://mictott.github.io/spatialscape/examples/), which uses two groups.
 
 ## The navigation bar
 

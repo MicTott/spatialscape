@@ -24,6 +24,8 @@ jobs:
       - run: npm run build
       - run: npm run docs:build && mkdir -p /tmp/site/docs && cp -r docs/.vitepress/dist/* /tmp/site/docs/
       - run: cp -r app/dist/* /tmp/site/
+      - name: The examples gallery at /examples/ (the same viewer and card list; the synthetic bundle sits beside it)
+        run: cp -r app/dist/* /tmp/site/examples/
       - uses: actions/upload-pages-artifact@v3
         with: { path: /tmp/site }
   deploy:

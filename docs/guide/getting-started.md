@@ -148,10 +148,10 @@ for data too large for it.
 
 ## The hosted viewer
 
-<https://mictott.github.io/spatialscape/> is the same viewer, deployed from this repository, with the public examples
-as its gallery. It opens any bundle on any host with `?d=<url>`, which is handy for sharing data that is already
-online. Opening a `127.0.0.1` bundle from it depends on your browser's local-network permissions, so for local work
-use `spatialscape serve`.
+<https://mictott.github.io/spatialscape/> is the same viewer, deployed from this repository. It opens any bundle on
+any host with `?d=<url>`, which is handy for sharing data that is already online; the public examples are its gallery
+at [/examples/](https://mictott.github.io/spatialscape/examples/). Opening a `127.0.0.1` bundle from it depends on
+your browser's local-network permissions, so for local work use `spatialscape serve`.
 
 ## Working on the viewer itself
 

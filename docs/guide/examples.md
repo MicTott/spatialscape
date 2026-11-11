@@ -1,6 +1,6 @@
 # Reproduce the examples
 
-The eleven public example apps are live in the [examples gallery](https://mictott.github.io/spatialscape/). They are built from
+The eleven public example apps are live in the [examples gallery](https://mictott.github.io/spatialscape/examples/). They are built from
 <https://github.com/MicTott/spatialscape-examples>: one folder per dataset
 with the script that fetches the published files, the script (when one is needed) that turns them into an AnnData,
 the `dataset.yaml` that describes the app, and a README with the source, the licence and what each step costs.
@@ -8,17 +8,17 @@ Nothing in an app is edited by hand; every one rebuilds from those files, on a l
 
 | Folder | Technology | Scale | Source | Live app |
 |---|---|---|---|---|
-| `visium-human-dlpfc` | Visium, H&E, manual layer labels | 12 sections, 47,681 spots | spatialLIBD (Maynard et al. 2021) | [open](https://mictott.github.io/spatialscape/?d=visium-human-dlpfc) |
-| `visium-cytassist-mouse-brain` | Visium CytAssist, H&E | 1 section, 2,310 spots | 10x Genomics | [open](https://mictott.github.io/spatialscape/?d=visium-cytassist-mouse-brain) |
-| `visium-hd-mouse-brain` | Visium HD, 8 µm bins, H&E | 1 section, 394k bins | 10x Genomics | [open](https://mictott.github.io/spatialscape/?d=visium-hd-mouse-brain) |
-| `xenium-mouse-brain` | Xenium Prime 5K: image, shapes, nuclei, transcripts | 1 section, 63k cells | 10x Genomics | [open](https://mictott.github.io/spatialscape/?d=xenium-mouse-brain) |
-| `atera` | Atera whole-transcriptome in situ: morphology, shapes, transcripts | 2 sections, 888k cells, 1.66 billion transcripts | 10x Genomics previews | [open](https://mictott.github.io/spatialscape/?d=atera) |
-| `merscope-mouse-brain` | MERSCOPE: boundaries, transcripts, mosaics | 3 slices, 233k cells | Vizgen | [open](https://mictott.github.io/spatialscape/?d=merscope-mouse-brain) |
-| `cosmx-nsclc` | CosMx SMI: cell types and niches, boundaries, transcripts, composites | 8 sections, 800k cells | NanoString (He et al. 2022) | [open](https://mictott.github.io/spatialscape/?d=cosmx-nsclc) |
-| `phenocycler-lymph-node` | PhenoCycler spatial proteomics: 56-channel image, cell outlines, gated cell types | 3 cores, 46,671 cells, 56 proteins | BioImage Archive S-BIAD2100 | [open](https://mictott.github.io/spatialscape/?d=phenocycler-lymph-node) |
-| `spatial-atac-rna-mouse-brain` | spatial ATAC + RNA: RNA on 20 µm pixels, ATAC tracks per cluster | 3 sections, 14k pixels | GEO GSE205055 | [open](https://mictott.github.io/spatialscape/?d=spatial-atac-rna-mouse-brain) |
-| `pbmc-multiome` | 10x Multiome: RNA and ATAC UMAPs of the same nuclei, ATAC tracks per cell type | 11,577 nuclei | 10x Genomics | [open](https://mictott.github.io/spatialscape/?d=pbmc-multiome) |
-| `abc-atlas` | whole mouse brain: 59 MERFISH sections and all 10x nuclei on Allen's UMAP | 4.0 M cells + 4.0 M nuclei | Allen Brain Cell Atlas | [open](https://mictott.github.io/spatialscape/?d=abc-atlas) |
+| `visium-human-dlpfc` | Visium, H&E, manual layer labels | 12 sections, 47,681 spots | spatialLIBD (Maynard et al. 2021) | [open](https://mictott.github.io/spatialscape/examples/?d=visium-human-dlpfc) |
+| `visium-cytassist-mouse-brain` | Visium CytAssist, H&E | 1 section, 2,310 spots | 10x Genomics | [open](https://mictott.github.io/spatialscape/examples/?d=visium-cytassist-mouse-brain) |
+| `visium-hd-mouse-brain` | Visium HD, 8 µm bins, H&E | 1 section, 394k bins | 10x Genomics | [open](https://mictott.github.io/spatialscape/examples/?d=visium-hd-mouse-brain) |
+| `xenium-mouse-brain` | Xenium Prime 5K: image, shapes, nuclei, transcripts | 1 section, 63k cells | 10x Genomics | [open](https://mictott.github.io/spatialscape/examples/?d=xenium-mouse-brain) |
+| `atera` | Atera whole-transcriptome in situ: morphology, shapes, transcripts | 2 sections, 888k cells, 1.66 billion transcripts | 10x Genomics previews | [open](https://mictott.github.io/spatialscape/examples/?d=atera) |
+| `merscope-mouse-brain` | MERSCOPE: boundaries, transcripts, mosaics | 3 slices, 233k cells | Vizgen | [open](https://mictott.github.io/spatialscape/examples/?d=merscope-mouse-brain) |
+| `cosmx-nsclc` | CosMx SMI: cell types and niches, boundaries, transcripts, composites | 8 sections, 800k cells | NanoString (He et al. 2022) | [open](https://mictott.github.io/spatialscape/examples/?d=cosmx-nsclc) |
+| `phenocycler-lymph-node` | PhenoCycler spatial proteomics: 56-channel image, cell outlines, gated cell types | 3 cores, 46,671 cells, 56 proteins | BioImage Archive S-BIAD2100 | [open](https://mictott.github.io/spatialscape/examples/?d=phenocycler-lymph-node) |
+| `spatial-atac-rna-mouse-brain` | spatial ATAC + RNA: RNA on 20 µm pixels, ATAC tracks per cluster | 3 sections, 14k pixels | GEO GSE205055 | [open](https://mictott.github.io/spatialscape/examples/?d=spatial-atac-rna-mouse-brain) |
+| `pbmc-multiome` | 10x Multiome: RNA and ATAC UMAPs of the same nuclei, ATAC tracks per cell type | 11,577 nuclei | 10x Genomics | [open](https://mictott.github.io/spatialscape/examples/?d=pbmc-multiome) |
+| `abc-atlas` | whole mouse brain: 59 MERFISH sections and all 10x nuclei on Allen's UMAP | 4.0 M cells + 4.0 M nuclei | Allen Brain Cell Atlas | [open](https://mictott.github.io/spatialscape/examples/?d=abc-atlas) |
 
 ## Start with an R object
 

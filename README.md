@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://mictott.github.io/spatialscape/docs/"><b>Documentation</b></a>
   &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/docs/guide/getting-started">Getting started</a>
-  &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/">Live examples</a>
+  &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/examples/">Live examples</a>
   &nbsp;·&nbsp; <a href="CHANGELOG.md">Changelog</a>
 </p>
 
@@ -92,13 +92,13 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 ## What it looks like
 
 <p align="center">
-  <a href="https://mictott.github.io/spatialscape/?d=abc-atlas&amp;ps=0.25&amp;pse=0.25&amp;cl=0"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/abc-atlas.jpg" width="840" alt="The Allen whole mouse brain atlas: the UMAP of 4.0 million nuclei beside 59 MERFISH sections, colored by subclass"></a>
+  <a href="https://mictott.github.io/spatialscape/examples/?d=abc-atlas&amp;ps=0.25&amp;pse=0.25&amp;cl=0"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/abc-atlas.jpg" width="840" alt="The Allen whole mouse brain atlas: the UMAP of 4.0 million nuclei beside 59 MERFISH sections, colored by subclass"></a>
 </p>
 <p align="center"><sub>Scale: the Allen Brain Cell Atlas of the whole mouse brain, 4.0 million nuclei on their UMAP beside 59 MERFISH sections with another 4.0 million cells.</sub></p>
 
 <p align="center">
-  <a href="https://mictott.github.io/spatialscape/?d=pbmc-multiome"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/pbmc-multiome.jpg" width="49%" alt="10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1"></a>
-  <a href="https://mictott.github.io/spatialscape/?d=atera&amp;v=5039,4729,2.8&amp;c=g:EPCAM&amp;mol=1&amp;mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&amp;cs=outlined&amp;msz=2.00"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/atera-transcripts.jpg" width="49%" alt="Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines"></a>
+  <a href="https://mictott.github.io/spatialscape/examples/?d=pbmc-multiome"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/pbmc-multiome.jpg" width="49%" alt="10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1"></a>
+  <a href="https://mictott.github.io/spatialscape/examples/?d=atera&amp;v=5039,4729,2.8&amp;c=g:EPCAM&amp;mol=1&amp;mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&amp;cs=outlined&amp;msz=2.00"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/atera-transcripts.jpg" width="49%" alt="Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines"></a>
 </p>
 <p align="center"><sub>Left, breadth: a 10x multiome, RNA and ATAC UMAPs of the same nuclei over accessibility tracks per cell type. Right, new technology: a whole-transcriptome Atera section of breast cancer, single transcripts over the morphology image and the cell outlines.</sub></p>
 
