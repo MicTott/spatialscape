@@ -1,6 +1,6 @@
 {
   "title": "spatialscape examples",
-  "intro": "Public spatial transcriptomics datasets, one app per technology, each built from the scripts in the spatialscape-examples repository.",
+  "intro": "Public spatial transcriptomics and single-cell datasets, one app per technology, each built from the scripts in the spatialscape-examples repository.",
   "site": {
     "title": "spatialscape",
     "logo": "favicon.svg",
@@ -40,6 +40,25 @@
       "tags": [
         "whole mouse brain",
         "8 million cells"
+      ],
+      "group": "Main examples"
+    },
+    {
+      "id": "pbmc-multiome",
+      "name": "Human PBMCs, 10x Multiome (RNA + ATAC)",
+      "description": "Human peripheral blood mononuclear cells profiled for gene expression and chromatin accessibility in the same nuclei (10x Genomics public dataset): the RNA and ATAC UMAPs side by side with one cell type legend, accessibility tracks per cell type in the genome panel, and gene activity, marker-set scores and the most variable peaks beside the genes.",
+      "platforms": [
+        "snrnaseq"
+      ],
+      "samples": 2,
+      "cells": 23154,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/pbmc-multiome",
+      "status": "live",
+      "genes": 36601,
+      "tags": [
+        "10x multiome",
+        "PBMC",
+        "genome tracks"
       ],
       "group": "Main examples"
     },

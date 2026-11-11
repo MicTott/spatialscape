@@ -48,7 +48,7 @@ features:
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; margin-top: 24px;">
 <div>
 
-[![10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1](/screenshots/pbmc-multiome.jpg)](/guide/tracks)
+[![10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1](/screenshots/pbmc-multiome.jpg)](https://d2lbhik7smmaaj.cloudfront.net/?d=pbmc-multiome)
 
 **Breadth.** A 10x multiome: the RNA and ATAC UMAPs of the same nuclei with one cell type legend, over accessibility tracks per cell type at MS4A1.
 
@@ -62,7 +62,7 @@ features:
 </div>
 </div>
 
-The Allen atlas and Atera are two of nine in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
+These three are among the ten in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, a 10x multiome, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
 
 ## In three commands
 

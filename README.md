@@ -97,7 +97,7 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 <p align="center"><sub>Scale: the Allen Brain Cell Atlas of the whole mouse brain, 4.0 million nuclei on their UMAP beside 59 MERFISH sections with another 4.0 million cells.</sub></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/pbmc-multiome.jpg" width="49%" alt="10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1">
+  <a href="https://d2lbhik7smmaaj.cloudfront.net/?d=pbmc-multiome"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/pbmc-multiome.jpg" width="49%" alt="10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1"></a>
   <a href="https://d2lbhik7smmaaj.cloudfront.net/?d=atera&amp;v=5039,4729,2.8&amp;c=g:EPCAM&amp;mol=1&amp;mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&amp;cs=outlined&amp;msz=2.00"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/atera-transcripts.jpg" width="49%" alt="Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines"></a>
 </p>
 <p align="center"><sub>Left, breadth: a 10x multiome, RNA and ATAC UMAPs of the same nuclei over accessibility tracks per cell type. Right, new technology: a whole-transcriptome Atera section of breast cancer, single transcripts over the morphology image and the cell outlines.</sub></p>
@@ -123,7 +123,7 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 app/       the viewer: Vite + React 19 + TypeScript (deck.gl 9, Viv, zarrita, Zustand)
 python/    the spatialscape CLI (anndata, zarr v3, pydantic); the built viewer ships inside the wheel
 docs/      the documentation site (VitePress); the CLI pages are generated from the help text
-examples/  the synthetic demo and a 10x PBMC multiome config; the public example datasets have their own repository
+examples/  the synthetic demo; the public example datasets have their own repository
 ```
 
 ## Development

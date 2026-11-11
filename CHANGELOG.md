@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**The PBMC multiome example moved to the examples repository.** `examples/pbmc_multiome.yaml` and
+`examples/scripts/pbmc_multiome.py` are gone from this repository: the dataset is now `pbmc-multiome` in
+`spatialscape-examples`, built by one `build.sh` from the public 10x files, and the tenth app of the examples gallery.
+
 **Gallery groups.** A card in `site.yaml` may name a `group:`; the gallery then draws each group as a section under
 its heading, in the order the groups first appear, with ungrouped cards last. A group of up to three cards fills the
 row, so lead examples draw larger. Cards show their `tags` as pills after the platforms (the platform `other` is no

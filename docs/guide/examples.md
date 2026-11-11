@@ -1,6 +1,6 @@
 # Reproduce the examples
 
-The nine public example apps are live in the [examples gallery](https://d2lbhik7smmaaj.cloudfront.net). They are built from
+The ten public example apps are live in the [examples gallery](https://d2lbhik7smmaaj.cloudfront.net). They are built from
 <https://github.com/MicTott/spatialscape-examples>: one folder per dataset
 with the script that fetches the published files, the script (when one is needed) that turns them into an AnnData,
 the `dataset.yaml` that describes the app, and a README with the source, the licence and what each step costs.
@@ -16,6 +16,7 @@ Nothing in an app is edited by hand; every one rebuilds from those files, on a l
 | `merscope-mouse-brain` | MERSCOPE: boundaries, transcripts, mosaics | 3 slices, 233k cells | Vizgen | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=merscope-mouse-brain) |
 | `cosmx-nsclc` | CosMx SMI: cell types and niches, boundaries, transcripts, composites | 8 sections, 800k cells | NanoString (He et al. 2022) | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=cosmx-nsclc) |
 | `spatial-atac-rna-mouse-brain` | spatial ATAC + RNA: RNA on 20 µm pixels, ATAC tracks per cluster | 3 sections, 14k pixels | GEO GSE205055 | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=spatial-atac-rna-mouse-brain) |
+| `pbmc-multiome` | 10x Multiome: RNA and ATAC UMAPs of the same nuclei, ATAC tracks per cell type | 11,577 nuclei | 10x Genomics | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=pbmc-multiome) |
 | `abc-atlas` | whole mouse brain: 59 MERFISH sections and all 10x nuclei on Allen's UMAP | 4.0 M cells + 4.0 M nuclei | Allen Brain Cell Atlas | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=abc-atlas) |
 
 ## Start with an R object
