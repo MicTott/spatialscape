@@ -6,7 +6,7 @@ site.yaml` turns it into `datasets.json` next to the viewer's `index.html`, whic
 You edit the yaml; the JSON is a build output.
 
 ```yaml
-title: LIBD spatial data browser
+title: Our lab's spatial data
 intro: Published spatial transcriptomics and snRNA-seq datasets, viewable in the browser.
 nav:
   title: spatialscape

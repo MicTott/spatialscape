@@ -1,6 +1,6 @@
 {
-  "title": "LIBD spatial data browser",
-  "intro": "Spatial transcriptomics and snRNA-seq datasets from the Lieber Institute for Brain Development, viewable in the browser without any installation.",
+  "title": "spatialscape examples",
+  "intro": "Public spatial transcriptomics datasets, one app per technology, each built from the scripts in the spatialscape-examples repository.",
   "site": {
     "title": "spatialscape",
     "logo": "favicon.svg",
@@ -10,6 +10,10 @@
         "url": "https://mictott.github.io/spatialscape/docs/"
       },
       {
+        "label": "Scripts",
+        "url": "https://github.com/MicTott/spatialscape-examples"
+      },
+      {
         "label": "GitHub",
         "url": "https://github.com/MicTott/spatialscape"
       }
@@ -17,65 +21,180 @@
   },
   "datasets": [
     {
-      "id": "amygdala",
-      "name": "Human amygdala",
-      "description": "Visium, Visium HD and Xenium sections of human amygdala with spatial domains, cell types and cell boundaries.",
+      "id": "visium-human-dlpfc",
+      "name": "Human DLPFC, Visium (Maynard et al. 2021)",
+      "description": "Twelve Visium sections of human dorsolateral prefrontal cortex from three donors (Maynard et al. 2021, Nature Neuroscience; the spatialLIBD package), with the manual cortical layer annotation and the H&E of each section.",
       "platforms": [
-        "xenium",
-        "visium",
-        "visium_hd",
-        "snrnaseq"
+        "visium"
       ],
-      "samples": 18,
-      "cells": 1559143,
-      "url": "https://d1zhz42bsrntt0.cloudfront.net/amygdala",
+      "samples": 12,
+      "cells": 47681,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/visium-human-dlpfc",
       "status": "live",
-      "genes": 35315,
+      "genes": 33538,
+      "paper": {
+        "title": "Maynard et al. 2021, Nature Neuroscience",
+        "url": "https://doi.org/10.1038/s41593-020-00787-0"
+      },
       "tags": [
-        "amygdala",
         "visium",
-        "visium-hd",
-        "xenium",
-        "snrnaseq"
+        "human cortex",
+        "layers"
       ]
     },
     {
-      "id": "dacc",
-      "name": "Human dACC",
-      "description": "Visium sections of the dorsal anterior cingulate cortex with cortical layer labels, and paired snRNA-seq with Azimuth cell types, across ten donors.",
+      "id": "visium-cytassist-mouse-brain",
+      "name": "Mouse brain, Visium CytAssist",
+      "description": "One FFPE coronal section of mouse brain on Visium CytAssist (10x Genomics public dataset), with graph clusters and the H&E.",
       "platforms": [
-        "visium",
-        "snrnaseq"
+        "visium"
       ],
-      "samples": 18,
-      "cells": 108528,
-      "url": "https://d1zhz42bsrntt0.cloudfront.net/dacc",
+      "samples": 1,
+      "cells": 2310,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/visium-cytassist-mouse-brain",
       "status": "live",
-      "genes": 34975,
+      "genes": 19465,
       "tags": [
-        "dACC",
-        "cortex",
-        "layers",
         "visium",
-        "snrnaseq"
+        "mouse brain"
       ]
     },
     {
-      "id": "bla_crossspecies",
-      "name": "Amygdala across species (snRNA-seq)",
-      "description": "Basolateral amygdala nuclei from human, rhesus macaque and baboon with conserved fine cell type labels; one UMAP per species and broad cell class.",
+      "id": "visium-hd-mouse-brain",
+      "name": "Mouse brain, Visium HD (8 µm bins)",
+      "description": "One FFPE coronal section of mouse brain on Visium HD at 8 µm bins (10x Genomics public dataset), with graph clusters and the H&E.",
       "platforms": [
+        "visium_hd"
+      ],
+      "samples": 1,
+      "cells": 393543,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/visium-hd-mouse-brain",
+      "status": "live",
+      "genes": 19059,
+      "tags": [
+        "visium hd",
+        "mouse brain"
+      ]
+    },
+    {
+      "id": "xenium-mouse-brain",
+      "name": "Mouse brain, Xenium Prime 5K",
+      "description": "One coronal section of fresh-frozen mouse brain on Xenium Prime 5K (10x Genomics public dataset): 5,006 genes, the morphology image, cell and nucleus boundaries and every transcript.",
+      "platforms": [
+        "xenium"
+      ],
+      "samples": 1,
+      "cells": 63173,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/xenium-mouse-brain",
+      "status": "live",
+      "genes": 5006,
+      "tags": [
+        "xenium",
+        "mouse brain",
+        "transcripts"
+      ]
+    },
+    {
+      "id": "merscope-mouse-brain",
+      "name": "Mouse brain receptor map, MERSCOPE",
+      "description": "Three coronal mouse brain slices from Vizgen's open-access MERFISH Mouse Brain Receptor Map (MERSCOPE, 483 genes): cell boundaries, every detected transcript, and the DAPI and polyT mosaics at one z plane.",
+      "platforms": [
+        "merfish"
+      ],
+      "samples": 3,
+      "cells": 232719,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/merscope-mouse-brain",
+      "status": "live",
+      "genes": 483,
+      "tags": [
+        "merscope",
+        "mouse brain",
+        "transcripts"
+      ]
+    },
+    {
+      "id": "cosmx-nsclc",
+      "name": "Non-small-cell lung cancer, CosMx SMI",
+      "description": "Eight FFPE lung tumour sections from the CosMx SMI paper (He et al. 2022, 960-plex RNA): the paper's cell types and niches, every transcript with its compartment, cell boundaries traced from the segmentation masks, and the per-FOV composite images stitched into one picture per section.",
+      "platforms": [
+        "other"
+      ],
+      "samples": 8,
+      "cells": 800327,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/cosmx-nsclc",
+      "status": "live",
+      "genes": 960,
+      "paper": {
+        "title": "He et al. 2022, Nature Biotechnology",
+        "url": "https://doi.org/10.1038/s41587-022-01483-z"
+      },
+      "tags": [
+        "cosmx",
+        "lung cancer",
+        "transcripts"
+      ]
+    },
+    {
+      "id": "spatial-atac-rna-mouse-brain",
+      "name": "Spatial ATAC + RNA, mouse brain (Zhang et al. 2023)",
+      "description": "Chromatin accessibility and gene expression in the same 20 µm pixels of mouse brain, from the spatial epigenome–transcriptome co-profiling of Zhang et al. 2023 (GEO GSE205055): two 50 x 50 arrays (1 mm) and one 100 x 100 array (2 mm). RNA on the pixels; ATAC as tracks per cluster in the genome panel.",
+      "platforms": [
+        "other"
+      ],
+      "samples": 3,
+      "cells": 14086,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/spatial-atac-rna-mouse-brain",
+      "status": "live",
+      "genes": 24169,
+      "paper": {
+        "title": "Zhang et al. 2023, Nature",
+        "url": "https://doi.org/10.1038/s41586-023-05795-1"
+      },
+      "tags": [
+        "spatial atac",
+        "multiome",
+        "tracks"
+      ]
+    },
+    {
+      "id": "atera",
+      "name": "Atera whole-transcriptome previews (FFPE tumours)",
+      "description": "Two FFPE sections, human breast and cervical cancer, from the preview datasets 10x Genomics published with the Atera instrument: whole-transcriptome in situ (about 18,000 genes per cell), the morphology image, cell and nucleus boundaries and every transcript.",
+      "platforms": [
+        "xenium"
+      ],
+      "samples": 2,
+      "cells": 887633,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/atera",
+      "status": "live",
+      "genes": 18028,
+      "tags": [
+        "atera",
+        "whole transcriptome",
+        "transcripts"
+      ]
+    },
+    {
+      "id": "abc-atlas",
+      "name": "Whole mouse brain (Allen Brain Cell Atlas)",
+      "description": "The adult mouse brain atlas of Yao et al. and Zhang et al. (2023): 4.0 million cells on 59 coronal MERFISH sections with the 500-gene panel, and all 4.0 million 10x nuclei at 32,285 genes on the atlas's whole-brain UMAP, labelled at every level of the 5,000-cluster taxonomy and the sections by CCF region. Data CC BY-NC 4.0, Allen Institute.",
+      "platforms": [
+        "merfish",
         "snrnaseq"
       ],
-      "samples": 9,
-      "cells": 131812,
-      "url": "https://d1zhz42bsrntt0.cloudfront.net/bla_crossspecies",
+      "samples": 60,
+      "cells": 8049329,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/abc-atlas",
       "status": "live",
-      "genes": 43449,
+      "genes": 32285,
+      "paper": {
+        "title": "Yao et al. 2023, Nature",
+        "url": "https://doi.org/10.1038/s41586-023-06812-z"
+      },
       "tags": [
-        "amygdala",
-        "cross-species",
-        "snrnaseq"
+        "merfish",
+        "snrna-seq",
+        "whole mouse brain"
       ]
     }
   ]

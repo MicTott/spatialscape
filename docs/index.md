@@ -41,12 +41,9 @@ features:
 
 ## See it on real data
 
-[![PENK in one donor's amygdala: the Visium section in the left window, the Visium HD capture of its central nucleus in the right](/screenshots/penk-visium-vs-hd.jpg)](https://d1zhz42bsrntt0.cloudfront.net/?d=amygdala&c=g%3APENK&img=0.00&psg=1.50%2C3.05&sv=0&pins=vis_Br9280%2Chd_Br9280_CeA&pv=4265%2C4626%2C-3.54%3B3789%2C3342%2C-3.28)
+[![Twelve Visium sections of human dorsolateral prefrontal cortex on one canvas, H&E under the manual layer annotation](/screenshots/dlpfc-layers.jpg)](https://d2lbhik7smmaaj.cloudfront.net/?d=visium-human-dlpfc)
 
-One gene, one donor, two platforms: PENK on a Visium section beside the Visium HD capture of its central amygdala. The picture is a link to that view. Two galleries run in the browser with nothing to install:
-
-- **[Examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**: nine public datasets, one app per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, and the Allen whole mouse brain, 8 million cells and nuclei. Each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
-- **[LIBD spatial data browser](https://d1zhz42bsrntt0.cloudfront.net)**: datasets from the Lieber Institute for Brain Development, among them the human amygdala on Visium, Visium HD, Xenium and snRNA-seq in one app, the dorsal anterior cingulate cortex, and basolateral amygdala nuclei from three species.
+Twelve Visium sections of human cortex on one canvas, the H&E under the layer annotation; the picture opens the app. It is one of nine in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, and the Allen whole mouse brain, 8 million cells and nuclei. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
 
 ## In three commands
 
