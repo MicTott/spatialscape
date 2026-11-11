@@ -1,6 +1,6 @@
 # In a notebook or an R session: `show()`
 
-No yaml, no site. Look at the object you have in memory, and take what you lasso back out.
+`show()` opens an object in the viewer without a YAML configuration. Select cells or draw regions in the viewer, then retrieve them in Python or R.
 
 ```python
 import spatialscape
@@ -10,8 +10,9 @@ s = spatialscape.show(adata, color="cell_type")   # the viewer opens under the c
 
 The first call builds the object the same way `build` would, straight from memory, into
 `~/.cache/spatialscape/show/<hash>`, where the hash covers the data and the settings. Showing the same object
-again is instant, and an edited object is new data. One server thread per Python process serves everything shown
-so far, so the viewer's gallery lists your earlier objects too. Outside a notebook, `s.url` is the address and
+again reuses the cached build when its fingerprint matches. Changes detected by the fingerprint trigger a
+new build; see the fingerprint limitations below. One server thread per Python process serves the objects
+shown in that session, which are also listed in the viewer's gallery. Outside a notebook, `s.url` is the address and
 `show(..., open_browser=True)` opens it. The server lives in your Python process: in an interactive session it
 stays up between prompts, but a plain `python script.py` exits as soon as the script ends and takes the viewer
 with it, so end such a script with something that waits (`input("press Enter to stop")`, or a loop that polls
@@ -30,7 +31,7 @@ with it, so end such a script with something that waits (`input("press Enter to 
 | `comparisons` | results of tests you ran, each a dict with the arguments of `add_comparison()` below, added once the object is built |
 | `layer`, `normalized`, `platform`, `name`, `height` | as in [dataset.yaml](./dataset-yaml) |
 
-## From a lasso to a variable
+## Retrieve selected cells
 
 Draw a lasso in the viewer (the `lasso` tool at the top left, or press `l`). Then:
 
@@ -57,9 +58,9 @@ switching between cell type maps and genes while you draw. For data shown from a
 selection comes back as the cell ids. Under the hood the viewer posts the selection to the session's own server
 (`/_api/selection`); a viewer served from anywhere else never makes that request.
 
-## From a test to the tissue
+## Add analysis results
 
-Run the test where you always do, then hand its tables back to the session:
+Run the analysis in R or Python, then add the results and replicate-level values to the session:
 
 ```python
 s = spatialscape.show(adata, sample="section", meta={"condition": "condition", "mouse": "mouse"})
@@ -81,10 +82,10 @@ s.add_markers(find_all_markers_df, name="Seurat markers", field="cell_type")   #
 
 Each cluster becomes a level of one *markers* comparison: pick a cluster, click a gene, see it on every section,
 and *only &lt;cluster&gt;* keeps the cluster alone on the map. It writes the comparison into the session's bundle
-and its manifest without rebuilding the object, so iterating on a test costs nothing; a comparison with the
-same name replaces the previous one. Replicates find their sections through the `meta` keys (a `mouse` id that
-matches a section's `meta.mouse`), the split key follows from the groups, and the panel does the rest:
-click a gene in the table, see its dots per mouse and the gene on every section side by side.
+and its manifest without rebuilding the expression or coordinate arrays. A comparison with the same name
+replaces the previous one. Replicates are linked to sections through `meta` keys, such as a replicate ID
+matching `meta.mouse`. The group labels determine the split key. Click a gene in the table to view its
+replicate values alongside its expression in the sections.
 
 Whether the object changed since the last `show()` is decided from a fingerprint: the names, the columns in use, the
 coordinates, and the matrix through its index pointer and a sample of its values and column indices. An edit that
@@ -93,7 +94,7 @@ regardless.
 
 ## From R
 
-`show()` reads R objects, so one `saveRDS` and reticulate are all an R session needs:
+Save the R object and call `show()` through reticulate:
 
 ```r
 reticulate::py_require("spatialscape")
@@ -105,7 +106,7 @@ spe[, cells]
 s$add_comparison("Stress vs control", results_df, pseudobulk_df, groups = list("control", "stress"))   # data frames convert through reticulate
 ```
 
-The first call reads the object once (about as long as `readRDS` takes); later calls on the same file are instant.
+The first call reads and builds the object. Later calls reuse the cached build when the file and settings are unchanged.
 
 ## Housekeeping
 

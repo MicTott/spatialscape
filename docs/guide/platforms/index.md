@@ -1,8 +1,7 @@
-# By platform: what each family can show
+# Supported platforms and layers
 
-Every platform goes through the same three commands (`init`, `build`, `serve`) and the same yaml. What differs
-is which *layers* a sample can carry, where the files for them come from, and what each one costs. Pick the
-page for your data:
+Use `init`, `build` and `serve` for each platform. The input files, coordinate settings and available layers
+differ by platform; the guides below describe those requirements.
 
 - [Sequencing-based spatial](./sequencing) — Visium, Visium HD, Slide-seq, Stereo-seq: spots or bins on an H&E image.
 - [Imaging-based spatial](./imaging) — Xenium, MERSCOPE (MERFISH), CosMx: segmented cells with boundaries, a fluorescence image and the individual transcripts.
@@ -21,9 +20,10 @@ page for your data:
 | Embedding (UMAP) | – | – | always | an `obsm` key or a `reducedDim` | like a section |
 | Genome tracks | – | – | optional (ATAC) | fragment files or bigWigs | 0.1–2 GB per dataset |
 
-"Usual" means `init` proposes the layer when it finds the file and `build` makes it; "optional" means one line in
-the yaml. Nothing is required beyond expression and coordinates: a bundle built from a bare h5ad draws dots, and
-every layer can be added to it later with a one-sample rebuild.
+"Usual" identifies layers commonly available from that platform. `init` adds recognized files to the
+configuration; other layers require explicit entries. Expression and coordinates are sufficient to draw
+points. Add images, boundaries or transcripts later by editing the YAML and rebuilding the affected samples.
+The sizes above are approximate and depend on the dataset and conversion settings.
 
 ## What the viewer does with them
 

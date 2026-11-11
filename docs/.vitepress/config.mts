@@ -9,7 +9,7 @@ const version = /__version__ = "([^"]+)"/.exec(init)?.[1] ?? "dev";
 
 export default defineConfig({
   title: "spatialscape",
-  description: "A static, reactive browser for spatial transcriptomics and snRNA-seq, and the CLI that builds its data bundles.",
+  description: "Documentation for preparing, viewing and publishing spatial and single-cell data with spatialscape.",
   base: "/spatialscape/docs/",
   lastUpdated: true,
   cleanUrls: true,
@@ -35,7 +35,7 @@ export default defineConfig({
         {
           text: "By platform",
           items: [
-            { text: "What each family can show", link: "/guide/platforms/" },
+            { text: "Supported platforms and layers", link: "/guide/platforms/" },
             { text: "Sequencing-based spatial", link: "/guide/platforms/sequencing" },
             { text: "Imaging-based spatial", link: "/guide/platforms/imaging" },
             { text: "Single-cell and multiome", link: "/guide/platforms/single-cell" },
@@ -44,7 +44,7 @@ export default defineConfig({
         {
           text: "Your dataset",
           items: [
-            { text: "Where your data comes from", link: "/guide/preparing-data" },
+            { text: "Preparing data", link: "/guide/preparing-data" },
             { text: "Writing dataset.yaml", link: "/guide/dataset-yaml" },
             { text: "Building and validating", link: "/guide/building" },
             { text: "Making changes", link: "/guide/changes" },

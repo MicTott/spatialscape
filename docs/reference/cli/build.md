@@ -2,7 +2,7 @@
 
 Build or update a bundle from the dataset yaml. Rerun it after any edit.
 
-The first run converts R objects listed under `samples:` (kept in `bundles/.cache/<id>/` next to the bundle), builds every sample and writes the dataset-level files. Later runs rebuild only the samples whose source files, settings or field declarations changed (compared with `samples/<id>/build.json`), remove samples the yaml no longer lists, and always rewrite `manifest.json`, `genes.json`, `features.json` and the thumbnails, so renamed fields, palettes and defaults apply in seconds. Ends with the same checks as `validate`; exits with status 1 if they report problems.
+The first run converts R objects listed under `samples:` (kept in `bundles/.cache/<id>/` next to the bundle), builds every sample and writes the dataset-level files. Later runs rebuild only the samples whose source files, settings or field declarations changed (compared with `samples/<id>/build.json`), remove samples the yaml no longer lists, and always rewrite `manifest.json`, `genes.json`, `features.json` and the thumbnails. Changes to display names, palettes and defaults reuse the sample arrays. The command ends with the same checks as `validate` and exits with status 1 if they report problems.
 
 ## Usage
 

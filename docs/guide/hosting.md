@@ -1,6 +1,6 @@
 # Hosting
 
-The app is static and the data is static. They can live on different hosts, and the hosted viewer at `mictott.github.io/spatialscape` can open bundles from anywhere.
+The viewer and data bundles are static files and can be hosted together or separately. The hosted viewer at `mictott.github.io/spatialscape` can open remote bundles when the data host provides the headers listed below.
 
 ## What a data host must do
 
@@ -14,9 +14,9 @@ Check any host with:
 spatialscape validate https://host/path/my_atlas
 ```
 
-## Cloudflare R2 (recommended)
+## Cloudflare R2
 
-Free egress, so a popular dataset does not run up a bill; storage is about $0.015 per GB-month.
+R2 can serve public bundles through a custom domain. Check [R2 pricing](https://developers.cloudflare.com/r2/pricing/) for storage, request and transfer charges before choosing a host.
 
 1. Create a bucket and upload one bundle folder at a time: `rclone copy bundles/my_atlas r2:bucket/my_atlas` (not `bundles/` itself, whose `.cache/` sibling is local only).
 2. Attach a custom domain (the `r2.dev` endpoint is rate-limited and not cached).
@@ -31,9 +31,11 @@ Free egress, so a popular dataset does not run up a bill; storage is about $0.01
 
 ## AWS S3 + CloudFront
 
-A private bucket read by a CloudFront distribution: free egress up to a terabyte a month, byte ranges served
-natively, and a CORS policy applied by CloudFront so cached responses always carry the headers. Five calls
-with the AWS CLI set up the bucket and the two policies (`BUCKET` is a name you choose; export it first):
+Use a private S3 bucket with a CloudFront distribution to serve the bundles. Apply the CORS policy at
+CloudFront so it is included on cached responses. The following commands create the bucket, origin access
+control and response headers policy. Choose a unique bucket name and export it as `BUCKET` first.
+See [CloudFront pricing](https://aws.amazon.com/cloudfront/pricing/) and
+[S3 pricing](https://aws.amazon.com/s3/pricing/) for the costs that apply to your account.
 
 ```bash
 aws s3api create-bucket --bucket $BUCKET --region us-east-1
@@ -72,8 +74,9 @@ spatialscape validate https://$DISTRIBUTION/my_atlas
 CloudFront caches for a day; after re-uploading a changed bundle, invalidate its paths
 (`aws cloudfront create-invalidation --distribution-id $ID --paths "/my_atlas/*"`). The same `datasets.json`
 can be served from the distribution root and from a GitHub Pages copy of the viewer: the data is reached
-cross-origin either way. For public scientific data, the AWS Open Data Sponsorship Program covers storage
-and egress entirely.
+cross-origin either way. Public research datasets may be eligible for the
+[AWS Open Data Sponsorship Program](https://aws.amazon.com/opendata/open-data-sponsorship-program/);
+check its application and eligibility requirements.
 
 ## GitHub Pages
 

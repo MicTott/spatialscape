@@ -1,8 +1,12 @@
-# Where your data comes from
+# Preparing data
 
-Usually nothing needs preparing: point `init` at what you have, then read the `assumed for` block it prints
-(platform, coordinate units, the layer drawn) and fix whatever it got wrong in the yaml. The cases that need a
-hand (scale, a file that pools several sections, Ensembl ids, images) are on this page. A **sample** is one tissue section or one embedding; files give one sample each, an R object gives one per `sample_id` (or one embedding).
+Run `init` on a supported input to generate a configuration. Review its `assumed for` output for the
+platform, coordinate units and expression layer before building. This page explains the input requirements
+and settings for sample splitting, gene names, scale and images.
+
+A **sample** is one tissue section or one embedding. An AnnData file produces one sample unless you use
+`subset:`; a spatial R object is split by `sample_id` by default. An R object without spatial coordinates
+produces an embedding sample.
 
 | Input | Entry in the dataset yaml | Notes |
 |---|---|---|
@@ -24,7 +28,7 @@ Many files of one kind go in as a single `glob:` entry (`glob: visium/*/adata.h5
 
 ## From R
 
-You do not need to export anything from R. Save your object and point the CLI at it:
+The CLI can read supported saved R objects directly:
 
 ```bash
 spatialscape init analysis/spe_visium.rds --id my_visium      # reads the object once, writes my_visium.yaml
@@ -102,7 +106,7 @@ Then give the CLI the scale and image yourself: a `spatial/` folder next to the 
 
 ## From Python
 
-AnnData objects need nothing special:
+Save an AnnData object with the expression, coordinates and annotations described above:
 
 ```python
 adata.write_h5ad("sample.h5ad")       # or adata.write_zarr("sample.zarr")
@@ -154,7 +158,7 @@ to the scan's pixel size and `expression: { normalized: raw }` to keep the inten
 
 ## Getting the scale right
 
-Everything in the viewer is laid out in **microns**, so Visium spots are 55 µm wide next to 10 µm Xenium cells, and the scale bar is honest. The rules, in order:
+Spatial coordinates are converted to **microns** so sections can be displayed at the same physical scale. Embeddings use a separate display extent. The scale is resolved in this order:
 
 1. `microns:` in `dataset.yaml` wins (`already_microns`, `microns_per_unit`, `spot_diameter_fullres`, `spot_spacing`, `scalefactors_json`).
 2. Xenium and MERFISH samples are assumed to be in microns.
@@ -183,39 +187,37 @@ thousands would be drawn against 0 to 65,535 and look black. The viewer draws th
 (`morphology_focus/` in XOA 2 and later, with one file per stain, or `morphology_focus.ome.tif` in XOA 1, then
 `morphology_mip.ome.tif`), never the 3D `morphology.ome.tif` stack, with the pixel size from `experiment.xenium`.
 It is read at about 0.85 µm per pixel, the stored level four times coarser than the scan, where a nucleus is 7 to
-12 px across. A machine without the memory for that reads the next coarser level instead and says so. Full
-resolution waits for a streaming converter; `max_size:` on an explicit image entry picks another level. These files are JPEG 2000 compressed and
+12 px across. A machine without the memory for that reads the next coarser level instead and says so. Use `max_size:` on an explicit image entry to select another resolution. These files are JPEG 2000 compressed and
 need the optional `imagecodecs` package: `pip install "spatialscape[images]"`. Without it the image is skipped
 with a note and the sample builds without it.
 
 `max_size:` picks the level kept. A pyramidal file is read at the level that gives the largest copy within it,
 reduced by a power of two on the way when no level fits. TIFF, OME-Zarr and Zarr-array sources are written band
-by band, a few tile rows at a time, so the memory a build needs does not grow with the scan: a 2-gigapixel,
-50-channel slide converts on a laptop. Only an image whose pixels have to move (`transform.flip` or `rotate`,
+by band, a few tile rows at a time, to avoid loading all pixels into memory at once. Only an image whose pixels have to move (`transform.flip` or `rotate`,
 `transpose`, `flip`, a shared slide image with `mask`) and PNG or JPEG files are still read whole, and a read of
 those that would need more than a sixth of the machine's memory (or of a cgroup or SLURM limit) is refused with
 the size it would need and the way out: set or lower `max_size:` on the image. A TIFF that stores each plane as a
 single strip is read a plane at a time and refused the same way when one plane is too large; convert such a file
 to a tiled TIFF first.
 
-**OME-Zarr in, OME-Zarr out.** An image that is already an OME-Zarr pyramid, the output of `bioformats2raw`,
-a SpatialData image or an earlier bundle's image, is copied into the bundle as it is: no decode, no re-encode,
-no limit on its size, and hard links rather than a second copy when the bundle sits on the same disk. Channel
+**Reusing an OME-Zarr pyramid.** A compatible pyramid from `bioformats2raw`, SpatialData or an earlier
+bundle can be copied without decoding and re-encoding its pixels. On the same filesystem, the build uses
+hard links where possible to avoid duplicating the image files. Channel
 names and colours come from the pyramid's own metadata when the yaml gives none, and display windows are
 fitted on a coarse level unless the pyramid carries a narrower one. Such an image is not cropped to the points,
 and a setting that moves pixels (`transform.flip` or `rotate`, `transpose`, `flip`, `mask`, `max_size`) switches
 back to reading and writing it. For a whole-slide scan of many channels, convert once with `bioformats2raw` and
 let every build pass it through.
 
-`max_size:` is also the only knob for how fine a copy the bundle keeps. `pixels_per_unit` describes the source
+`max_size:` controls the resolution retained in the bundle. `pixels_per_unit` describes the source
 scan and never changes with the level read: a Xenium-layout image stays at 4.705882 pixels per µm (the 0.2125 µm
 scan) whether it is kept at full, half or quarter resolution. Halving `pixels_per_unit` to "read at half
 resolution" declares a pixel twice as large as it is, and the image lands at twice its size over the cells.
 
 ## Layers beyond the matrix
 
-Cell shapes, molecules, nuclei and embeddings each come from a file the platform writes; which ones, where they
-are and what they cost is on the family pages: [sequencing-based](./platforms/sequencing),
+See the platform guides for the files and configuration entries used for cell shapes, molecules, nuclei
+and embeddings: [sequencing-based](./platforms/sequencing),
 [imaging-based](./platforms/imaging), [single-cell](./platforms/single-cell). Boundary and transcript tables are
 read as Parquet, CSV or TSV, gzipped or not, with the column names given in the yaml when they are not 10x's.
 A segmentation that exists only as a label mask (one integer per cell) is traced into outlines with

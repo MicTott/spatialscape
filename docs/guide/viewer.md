@@ -1,6 +1,8 @@
 # Using the viewer
 
-Open a bundle with `?d=<url>` or, from a gallery, `?d=<id>`. Everything you change ends up in the URL, so the address bar is always a shareable description of what you are looking at.
+Open a bundle with `?d=<url>` or choose a dataset from a gallery with `?d=<id>`. The URL records the selected
+gene, annotations, filters and view layout. Drawn regions are saved separately as JSON; see
+[Regions](#regions-your-own-annotation). Links to a local server require that server to be running on the computer opening them.
 
 ## Layout
 
@@ -140,7 +142,7 @@ over the genes expressed in at least 10 % of either side, the percent expressing
 rank statistic implies, and *sections agreeing*: of the sections holding at least three cells on both sides, how
 many show the same direction on their own. A side larger than the cap (3,000 cells, or 10,000) is cut to it by
 whole blocks of the row store, so the download shrinks with the cap; the *i* button in the panel header lists how many
-cells each side used, per section. A few thousand cells a side take about a second on a local bundle.
+cells each side used, per section. Runtime depends on the number of genes, selected cells and data host.
 
 The result opens in the Compare panel like a comparison shipped with the dataset, is listed in the *Comparisons*
 group until the next run, and exports with the panel's *CSV* button. It needs the bundle's per-cell row store
@@ -212,7 +214,11 @@ travels in the URL as `gl`; the `genome` switch in the top bar hides the panel (
 
 ## Images and cell shapes (details)
 
-H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone. At most six draw at once, which is what a GPU blends in one pass and about what the eye can read; with a larger panel the list says how many are on, a seventh click does nothing until one is switched off, and only the channels on screen are fetched. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. 
+H&E or fluorescence images render beneath the points. Use the opacity slider to blend the image with the
+background. For multichannel images, click a channel to show or hide it, or double-click to show it alone.
+The viewer displays up to six channels at once; switch one off before enabling a seventh. Channels are matched
+by name across samples. Only enabled channels are fetched, and enabling a channel may load tiles that are
+not already cached. Hide cell categories or reduce point size to see more of the underlying image.
 
 When the bundle has cell boundaries, cells turn from dots into their shapes once a cell is about 6 px across. *Draw cells as* in the Cells group chooses how: **filled**, in the cell's colour with a darker edge (the default when no image is drawn), **outlined**, in the cell's colour over the image (the default when one is), or **dots** to keep the dots. Shapes follow everything the dots do: the gene or annotation colour, blends, filters and hidden categories, with no extra download when the colour changes. Only the tiles in view are fetched, once the camera stops moving; while they arrive the dots stay. When a view holds more than about 40,000 cells the status line says *zoom in for cell shapes*. The choice travels in the URL as `cs`.
 

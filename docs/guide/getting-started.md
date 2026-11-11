@@ -1,14 +1,13 @@
 # Getting started
 
-spatialscape is one Python package: a command-line tool that turns your data into *bundles*
-(folders of static files), and the web viewer that streams them, shipped inside the same install.
-Pick the goal you have today; each one builds on the previous.
+The spatialscape Python package includes a command-line tool and a browser viewer. The CLI converts
+data into *bundles*: folders containing the arrays, images and metadata the viewer reads.
 
-| You want to | Use | Time |
-|---|---|---|
-| look at an object you have in memory, lasso cells back out | `spatialscape.show(adata)` in a notebook | a minute |
-| browse your data in the viewer on your own machine, and keep a yaml you can edit | `init` → edit → `build` → `serve` | the first pass takes a while: the data is read once and the yaml is worth reading |
-| put a site online for others | `site build`, then upload a folder | an afternoon the first time, with a host to set up |
+| Task | Workflow |
+|---|---|
+| View an object and retrieve selected cells in a notebook | `spatialscape.show(adata)` |
+| Build a local viewer with an editable configuration | `init` → edit the YAML → `build` → `serve` |
+| Publish datasets online | `site build`, then upload the output folder to a static host |
 
 ## Install
 
@@ -31,17 +30,17 @@ pip install ./python                                            # or `pip instal
 Without that step `site build` stops with "this install has no packaged viewer" and `serve` serves the bundles without one.
 :::
 
-## Goal 1: just look at an object
+## View an object in a notebook {#goal-1-just-look-at-an-object}
 
 In a notebook, `spatialscape.show(adata)` builds the object straight from memory and opens the viewer under the
 cell; `s.selection()` hands back the cells you lasso. The same works from R through reticulate and one
 `saveRDS`. See [In a notebook: show()](./notebooks). The rest of this page is the path to a dataset you edit,
 rebuild and publish.
 
-## Try the full path in two minutes
+## Try a synthetic dataset {#try-the-full-path-in-two-minutes}
 
 ```bash
-spatialscape synth demo-src                      # two fake sections, an embedding and a dataset.yaml
+spatialscape synth demo-src                      # two synthetic sections, an embedding and a dataset.yaml
 spatialscape build demo-src/dataset.yaml         # -> demo-src/bundles/synthetic
 spatialscape serve demo-src/bundles --open       # viewer + data from one local address
 ```
@@ -49,15 +48,15 @@ spatialscape serve demo-src/bundles --open       # viewer + data from one local 
 `serve` opens a gallery of every bundle in the folder. Click one: double-click a section to focus it,
 step through sections with the arrow keys, type a gene, color by an annotation, lasso a region.
 
-::: tip Nothing leaves your machine
-The viewer is plain JavaScript served from `127.0.0.1`, and it reads the bundle from the same address.
-There is no upload, no account and no server process beyond this one. A link copied from this viewer
-points at `127.0.0.1` too: it reopens the view on this computer and nowhere else, until you publish.
+::: tip Local preview
+`serve` runs the viewer and serves the bundle from `127.0.0.1`. It does not upload the bundle.
+A copied link points to that local address and requires the server to be running on the computer that opens it.
+Publish the site before sharing links with others.
 :::
 
 ## How it fits together
 
-Two kinds of file are yours to edit, everything else is built from them:
+Edit the dataset configuration and, optionally, a gallery configuration. The CLI builds the output folders from them:
 
 ```
 your data                     you write / edit                    spatialscape builds
@@ -91,47 +90,47 @@ myproject/
 
 Every command prints the paths it wrote and the next command to run.
 
-## Goal 2: your own data, on your machine
+## Build a dataset from your data {#goal-2-your-own-data-on-your-machine}
 
-Work inside a folder of your project that is yours to fill (the `spatialscape/` folder above): every
-command writes next to the yaml it read, and the data it points at can live anywhere.
+Create a folder for the configuration and build outputs, such as `spatialscape/` in the layout above.
+Input data can live elsewhere. Relative paths in the YAML resolve from the configuration file's folder;
+`build` writes to `bundles/<id>` beside it unless you specify `-o`.
 
-1. **Describe.** Point `init` at the data: a saved R object (a `SpatialExperiment`, `SingleCellExperiment`
-   or Seurat object as `.rds` / `.rda`) or a glob of AnnData files. It writes `<id>.yaml` where you run it,
-   a menu of what the data contains: the columns that look like spatial domains, cell types and QC metrics
-   are already mapped, every other column is a comment, and so is every optional setting. It also prints
-   what it assumed (platform, coordinate units, which layer is drawn); if one of those is wrong, that is
-   the first line to edit.
+1. **Create a configuration.** Run `init` on a saved R object (`SpatialExperiment`, `SingleCellExperiment`
+   or Seurat, as `.rds` / `.rda`) or a glob of AnnData files. It writes `<id>.yaml` in the current folder,
+   with inferred mappings for spatial domains, cell types and QC metrics. Additional columns and optional
+   display settings appear as comments. Check the reported platform, coordinate units and expression
+   layer, and correct them in the YAML if needed.
 
    ```bash
    mkdir -p spatialscape && cd spatialscape
    spatialscape init ../analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"     # -> ./dlpfc.yaml
    ```
 
-2. **Edit, build, look.** Open `dlpfc.yaml`, keep the annotations you want, name them, pick the opening
-   gene and a palette. Build, then open the result. Rerun `build` after any edit: only the samples whose
-   inputs or settings changed are rebuilt, so names, colors and defaults apply in seconds. The first build
-   reads the whole object (an R object once, into the cache) and writes every sample; expect minutes for a
-   large study, not seconds.
+2. **Review the settings and build.** Open `dlpfc.yaml`, choose the annotations to display, and set their
+   names, colors and the initial view. Run `build`, then open the result. The first build reads the inputs
+   and writes every sample; saved R objects are converted into a local cache. Later builds reuse unchanged
+   samples. Changes to display names, palettes and defaults update the dataset metadata without rebuilding
+   the sample arrays. Build time depends on the input size, included layers and hardware.
 
    ```bash
    spatialscape build dlpfc.yaml                  # -> bundles/dlpfc next to the yaml
    spatialscape serve bundles --open
    ```
 
-::: tip The same two steps on a real object
+::: tip DLPFC example
 The spatialLIBD DLPFC `SpatialExperiment` (12 Visium sections, 47,681 spots) is the first example in the
 [examples repository](./examples): `visium-human-dlpfc/build.sh` downloads it, runs `init`, builds the committed
-yaml and validates the result in under two minutes on a laptop. Diff the menu `init` wrote against that yaml to
-see what was kept.
+YAML and validates the result. Compare the generated and committed configurations to see which settings
+the example uses.
 :::
 
-[Writing dataset.yaml](./dataset-yaml) explains the menu and [Making changes](./changes) maps every common
+[Writing dataset.yaml](./dataset-yaml) explains the configuration and [Making changes](./changes) maps every common
 edit to the line to change. Your platform's page ([sequencing-based](./platforms/sequencing),
 [imaging-based](./platforms/imaging), [single-cell](./platforms/single-cell)) lists the optional layers (images,
-cell shapes, transcripts), where their files come from and what each costs.
+cell shapes, transcripts) and the files each requires.
 
-## Goal 3: publish
+## Publish a site {#goal-3-publish}
 
 `spatialscape site build bundles -o site` writes a folder with the viewer, a gallery and your bundles, to
 upload to any static host. For a gallery with a title, several datasets, paper links or "coming soon"

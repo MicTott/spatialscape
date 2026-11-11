@@ -1,8 +1,8 @@
 # `spatialscape init`
 
-Write a dataset yaml that doubles as a menu of what the data contains.
+Generate a dataset YAML with sample entries and inferred annotation mappings.
 
-The yaml gets one `samples:` entry per argument. Inside it, `fields:` already maps the columns that look like spatial domains, cell types and the usual QC metrics (total counts, detected genes, mito percent), and every other column is listed as a comment with its type and levels, so showing one more annotation is uncommenting a line. Optional settings (opening gene, palette, thumbnail, layout) are present as comments. The file builds as written; edit it, then run `build`.
+Data objects and globs become `samples:` entries; results tables become `comparisons:` entries. The `fields:` mappings include inferred spatial domains, cell types and QC metrics. Additional columns appear as comments with their types and levels. Optional display settings are also included as comments. Review the platform, coordinates, expression layer and annotations, then run `build`.
 
 ## Usage
 

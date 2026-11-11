@@ -46,13 +46,12 @@ def init(
     platform: str | None = typer.Option(None, "--platform", help="Platform of the spatial samples: `visium`, `visium_hd`, `xenium`, `merfish` or `other`. Default: guessed from the columns (`array_row` / `array_col` mean Visium when the grid fits one Visium array or the spots split into capture areas of Visium size, Visium HD when the grid is larger; Xenium's cell metrics mean Xenium), else `visium`; the yaml says which. Objects and files without spatial coordinates become `snrnaseq` embeddings regardless.", show_default=False),
     table: str | None = typer.Option(None, "--table", help="Table key inside a SpatialData store.", show_default=False),
 ):
-    """Write a dataset yaml that doubles as a menu of what the data contains.
+    """Generate a dataset YAML with sample entries and inferred annotation mappings.
 
-    The yaml gets one `samples:` entry per argument. Inside it, `fields:` already maps the columns that look
-    like spatial domains, cell types and the usual QC metrics (total counts, detected genes, mito percent),
-    and every other column is listed as a comment with its type and levels, so showing one more annotation is
-    uncommenting a line. Optional settings (opening gene, palette, thumbnail, layout) are present as comments.
-    The file builds as written; edit it, then run `build`.
+    Data objects and globs become `samples:` entries; results tables become `comparisons:` entries.
+    The `fields:` mappings include inferred spatial domains, cell types and QC metrics. Additional columns
+    appear as comments with their types and levels. Optional display settings are also included as comments.
+    Review the platform, coordinates, expression layer and annotations, then run `build`.
     """
     from .init import write_menu
 
@@ -160,8 +159,8 @@ def build(
     bundle), builds every sample and writes the dataset-level files. Later runs rebuild only the samples whose
     source files, settings or field declarations changed (compared with `samples/<id>/build.json`), remove
     samples the yaml no longer lists, and always rewrite `manifest.json`, `genes.json`, `features.json` and
-    the thumbnails, so renamed fields, palettes and defaults apply in seconds. Ends with the same checks as
-    `validate`; exits with status 1 if they report problems.
+    the thumbnails. Changes to display names, palettes and defaults reuse the sample arrays. The command
+    ends with the same checks as `validate` and exits with status 1 if they report problems.
     """
     from .build import build_bundle
     from .config import load_config
@@ -323,7 +322,7 @@ def synth(
 ):
     """Write a tiny synthetic dataset for tests and demos.
 
-    Produces two fake tissue sections (one log-normalized, one as counts with a flip and rotation), PNG images,
+    Produces two synthetic tissue sections (one log-normalized, one as counts with a flip and rotation), PNG images,
     cell polygons, an embedding sample, and a `dataset.yaml` that ties them together. `--comparisons` adds two
     more sections and sample metadata (a control and a stress group), the input for comparing groups side by side.
     """

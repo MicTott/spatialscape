@@ -1,6 +1,6 @@
 # The gallery: site.yaml
 
-`site.yaml` describes the landing gallery and the chrome around the viewer: a title and intro, the datasets
+`site.yaml` describes the dataset gallery and navigation around the viewer: a title and intro, the datasets
 and their cards, an optional navigation bar, and where the bundles are hosted. `spatialscape site build
 site.yaml` turns it into `datasets.json` next to the viewer's `index.html`, which is what the gallery reads.
 You edit the yaml; the JSON is a build output.
@@ -71,7 +71,7 @@ Without any `group:` the gallery is one grid. The picture at the top of this pag
 
 When `nav` is present, a slim bar appears above the viewer and the gallery: its title links to the gallery,
 a dataset switcher lists every card that has a bundle, and `links` are rendered on the right. Without
-`nav` the viewer has no chrome above the map, which is right for embedding it in another page.
+`nav` the viewer has no navigation bar above the map. Omit it when the surrounding website provides navigation.
 
 ## What the viewer reads
 

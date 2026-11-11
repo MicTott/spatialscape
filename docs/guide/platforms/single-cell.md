@@ -1,10 +1,10 @@
 # Single-cell and multiome
 
-snRNA-seq and scRNA-seq references, snATAC and 10x Multiome: no tissue, an embedding instead. A single-cell sample
-is drawn by its UMAP in a pane beside the sections, shares genes, annotations and colours with them, and can carry
-genome tracks when it has fragments.
+Single-cell and single-nucleus datasets are displayed using an embedding stored in the input object.
+They can be viewed alone or alongside tissue sections, with shared genes, annotations and colors.
+ATAC and multiome datasets can also include genome tracks.
 
-## The minimum
+## Required input
 
 An object with an embedding: a `SingleCellExperiment` or Seurat object saved from R, or an h5ad with `obsm/X_umap`.
 
@@ -27,8 +27,8 @@ extent, so point size and zoom behave like a section's.
 
 ## Beside the sections
 
-The value of a reference is next to the tissue. List it in the same yaml as the sections and map its cell type
-column to the **same field id** the sections use:
+To display a reference alongside tissue sections, list it in the same YAML and map the corresponding
+cell-type annotations to the **same field id**:
 
 ```yaml
 platforms:
@@ -64,7 +64,7 @@ A Seurat object (v3 to v5) works like an SCE: the gene assay is drawn as express
 `counts`), every other assay becomes a set of features next to the genes (`peak: chr1-100-200` for a Signac
 `ChromatinAssay`, `motif:` for chromVAR, `activity:` for gene activity), `meta.data` is `obs`, and `embedding:`
 names a reduction (`wnn.umap`, `umap.rna`). `spatialscape inspect x.rds` lists all of it. An object with Visium
-image slots is tissue, not an embedding: see [Where your data comes from](../preparing-data#from-r).
+image slots is tissue, not an embedding: see [Preparing data](../preparing-data#from-r).
 
 ## Genome tracks (ATAC and multiome)
 
@@ -82,9 +82,9 @@ viewer's genome panel:
       genome: hg38
 ```
 
-`init` writes this block, commented, with the fragment paths the Seurat object recorded. Streaming two 4 GB fragment
-files takes about 15 minutes; bigWigs another tool exported (ArchR, Signac) can be copied in instead. The whole of
-it, including `ssh://` paths for fragments on a cluster, is in [Genome tracks](../tracks).
+`init` includes a commented block with the fragment paths recorded in the Seurat object. Check that those
+paths are accessible from the machine running the build. You can also use bigWigs exported by another tool,
+such as ArchR or Signac. See [Genome tracks](../tracks) for both input formats and remote `ssh://` paths.
 
 ## Next
 

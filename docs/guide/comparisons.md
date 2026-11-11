@@ -1,7 +1,7 @@
 # Metadata and comparisons
 
-Two things that live on the dataset rather than inside a sample: metadata keys that describe each sample
-(condition, subject, batch), and the results of a test fit upstream, linked to the sections through those keys.
+Sample metadata records values such as condition, subject and batch. The viewer uses these values to group
+sections and to link them to imported analysis results. This page describes how to configure both.
 
 ## Sample metadata
 
@@ -35,9 +35,11 @@ built. `init` lists the columns that are constant within each sample as a commen
 ## Comparisons: results of a test, next to the sections
 
 A dataset can carry differential expression results that were fit upstream, in R or Python, so the viewer
-can put a gene's statistics, the replicate values behind them and the tissue side by side. Nothing
-statistical is computed by `build` or the viewer: the tables are read, their columns recognised, their genes
-matched to the bundle and their replicates linked to sections through the samples' [metadata](#sample-metadata).
+can display a gene's statistics and replicate values alongside the tissue. For these imported comparisons,
+`build` and the viewer use the supplied statistics without refitting the test. Columns are recognized,
+genes are matched to the bundle, and replicates are linked to sections through sample [metadata](#sample-metadata).
+The viewer also provides a separate [exploratory test between drawn regions](./viewer#differential-expression-between-regions),
+which computes results in the browser.
 
 ```yaml
 comparisons:

@@ -2,14 +2,14 @@
 
 ## Principles
 
-Each one traces to a lesson from an earlier viewer:
+The renderer and loaders use the following design choices:
 
-- **One GL context for all samples** (ABC Atlas slide view, Odon mosaic). Stepping samples moves nothing in memory.
-- **Recolor is a one-byte-per-cell upload.** Legend toggles, colormap, range and filter bounds are uniform or 4 KB texture updates. Nothing is refetched.
+- **One GL context for all samples**, following the mosaic layouts used by ABC Atlas and Odon. Loaded sample arrays can be reused when changing the focused section.
+- **Gene colors use one byte per cell.** Selecting a gene uploads its values to the GPU. Legend toggles, colormap changes and range adjustments update uniforms or palette textures; selecting an uncached gene or filter requires a data fetch.
 - **Loaders open once per sample and are cached.** Switching samples or colors never rebuilds them.
 - **Decoding runs in a worker.** The main thread receives transferred `ArrayBuffer`s.
 - **Rows are shuffled at build time**, so level of detail is a prefix draw count rather than a second attribute.
-- **React renders chrome only.** The canvas is driven by store subscriptions.
+- **React renders the interface controls.** Store subscriptions drive the canvas.
 
 ## App modules
 
@@ -55,7 +55,7 @@ The filter channel (`instanceFilter`, uniform bounds) applies in every mode; fil
 ## Data flow for a gene switch
 
 1. Store `color` changes → controller bumps a generation counter → `Loader.loadChannels()`.
-2. For each open sample without the gene cached, the worker reads one Zarr chunk (one range request on sharded stores), decodes zstd, transfers a `Uint8Array`.
+2. For each open sample without the gene cached, the worker reads the gene's Zarr chunk (plus shard metadata when not cached), decodes zstd, transfers a `Uint8Array`.
 3. The main-thread LRU stores it; `LayerBuilder` builds layers whose `data.attributes.getValue` points at the array. Positions keep the same descriptor object, so deck.gl does not re-upload them.
 4. deck.gl uploads the new byte attribute and redraws. Cached switches skip step 2 entirely.
 

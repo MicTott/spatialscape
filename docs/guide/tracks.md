@@ -21,8 +21,8 @@ binned) per category of the fields you name, built once by `build` and streamed 
 
 Fragment barcodes are matched to the observation names (or to `barcode_column`). Peaks are recognised among the
 sample's features by name (`chr1:9790-10675`, with or without a `peak: ` prefix) and written as a BED track.
-Building tracks needs `pip install "spatialscape[tracks]"` (pyBigWig); streaming a 2 GB fragment file takes a
-few minutes and never decompresses it to disk.
+Building tracks requires `pip install "spatialscape[tracks]"` (pyBigWig). Fragment files are streamed
+without writing a decompressed copy to disk. Runtime depends on file size, group count and storage speed.
 
 ## Several runs in one object
 

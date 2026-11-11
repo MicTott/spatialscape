@@ -4,10 +4,9 @@
 spatialscape build dlpfc.yaml              # -> bundles/dlpfc next to the yaml (or -o <dir>)
 ```
 
-`build` brings the bundle in line with the yaml and the source files, validates the result and renders
-thumbnails. Rerun it after any edit: it does only the work the edit requires. A Xenium donor with 270k
-cells and 366 genes takes a few seconds to build, a Visium donor with 36k genes about fifteen, and a
-sample that did not change takes none.
+`build` updates the bundle from the configuration and source files, validates it and renders thumbnails.
+Rerun it after editing the YAML or replacing an input. Unchanged samples are reused; names, colors and
+display defaults are written to the dataset metadata. The table below lists which changes rebuild sample data.
 
 ## What happens per sample
 
@@ -42,7 +41,7 @@ recomputes the fingerprint from the yaml and the files and decides per sample:
 Samples the yaml no longer lists are deleted. Names, group labels, the palette, the opening gene and
 annotation, the layout, feature groups and `thumbnail_sample` are not part of the fingerprint: they live
 in `manifest.json`, which every `build` rewrites together with `genes.json`, `features.json` and the
-thumbnails. That is why renaming or recoloring takes seconds.
+thumbnails. Renaming a field or changing its palette therefore does not rebuild the sample arrays.
 
 - `build --dry-run` prints this table for the current state and writes nothing.
 - `build --force` rebuilds every sample.
@@ -73,7 +72,9 @@ change. When every sample is rebuilt, vocabularies start fresh in the declared o
 
 Against a URL, `validate` also fetches the manifest and one expression chunk with a `Range` header and reports missing CORS headers or a non-206 response. Run it after every upload.
 
-## Sizes to expect
+## Example bundle sizes
+
+These examples give approximate sizes; gene counts, sparsity, compression and optional layers affect the result.
 
 | Data | Per sample |
 |---|---|

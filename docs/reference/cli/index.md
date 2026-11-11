@@ -9,7 +9,7 @@ spatialscape --help
 
 | Command | Purpose |
 |---|---|
-| [`init`](./init) | Write a dataset yaml that doubles as a menu of what the data contains. |
+| [`init`](./init) | Generate a dataset YAML with sample entries and inferred annotation mappings. |
 | [`build`](./build) | Build or update a bundle from the dataset yaml. Rerun it after any edit. |
 | [`serve`](./serve) | Open your bundles in the viewer locally: one origin for the app and the data. |
 | [`site init`](./site-init) | Write a starter `site.yaml` listing your datasets. |
@@ -22,7 +22,7 @@ spatialscape --help
 ## Typical sequence
 
 ```bash
-spatialscape init analysis/spe_visium.rds --id my_atlas     # writes my_atlas.yaml, a menu of the data
+spatialscape init analysis/spe_visium.rds --id my_atlas     # writes my_atlas.yaml for review
 # edit my_atlas.yaml: annotations, names, colors, the opening gene
 spatialscape build my_atlas.yaml                            # -> bundles/my_atlas; rerun after any edit
 spatialscape serve bundles --open

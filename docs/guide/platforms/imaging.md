@@ -1,10 +1,11 @@
 # Imaging-based spatial
 
-Xenium, MERSCOPE (MERFISH), CosMx, Molecular Cartography and the like: cells segmented from a fluorescence image,
-a few hundred to a few thousand genes, and every decoded transcript with a position. The viewer draws the cells as
-dots, then as their shapes, with the image underneath and the molecules on top once zoomed in.
+Imaging-based transcriptomic datasets can include a cell-by-gene matrix, segmented cell boundaries,
+fluorescence images and transcript coordinates. The viewer displays cells as points at overview zoom,
+with boundaries and transcripts available at higher zoom. The following examples cover Xenium, MERSCOPE
+and CosMx inputs; other platforms can use the same table formats with explicit column mappings.
 
-## The minimum
+## Required input
 
 An object with cells × genes and coordinates in microns is enough:
 
@@ -133,21 +134,24 @@ In the viewer the channel list shows every marker; up to six draw at once, chose
 fetched. A panel's first six channels are rarely the ones to open on, so name them at the top of the yaml:
 `default_channels: [DAPI, CD20, CD3, CD68, Ki-67, CD31]`. Colour cells by any marker's intensity from the gene box, or by a gating-tree level from the annotations.
 
-## What each layer costs
+## Layer size and loading
 
-| Layer | Build | Bundle | Viewer |
-|---|---|---|---|
-| Image at 0.85 µm/px | 10–60 s per section, 3 GB of memory | about 200 MB | tiles in view only |
-| Cell shapes | 2 s per 250k cells | 10 MB per 250k cells (44 B per cell) | replaces the dots when a cell is 6 px across; at most 40,000 cells per pane |
-| Nuclei | as shapes | 7–10 MB per section | dashed over the cells, with a cells / median area table |
-| Transcripts | 20–50 s per 50–120 M molecules, 7 B each of memory | 3.5 B per molecule: 170–400 MB per section | about one molecule per screen pixel, a million in a large window |
+The following are approximate storage sizes for the Xenium examples. Image resolution, polygon complexity
+and the number of transcripts affect both size and build time. See the [example dataset READMEs](../examples)
+for run-specific requirements.
 
-The whole-section build of a 250k-cell Xenium sample with all four layers takes about two minutes and lands at
-roughly 600 MB. Leave out the transcripts and it is a third of that. Every layer is added or removed by editing
-the sample's entry and rerunning `build`; only that sample is rebuilt.
+| Layer | Approximate bundle size | Viewer behavior |
+|---|---|---|
+| Image at 0.85 µm/px | 200 MB per section | loads tiles for the visible area |
+| Cell shapes | 10 MB per 250k cells | replaces points when a cell is about 6 px across; up to 40,000 cells per pane |
+| Nuclei | 7–10 MB per section | draws dashed boundaries and reports cell counts and median area |
+| Transcripts | 3.5 bytes per molecule | limits the number drawn according to the visible density |
+
+Add or remove a layer by editing the sample's configuration and rerunning `build`. Only affected samples
+are rebuilt.
 
 ## Next
 
 - [Comparing segmentations](../viewer#comparing-segmentations) and [molecules in the viewer](../viewer#molecules).
-- [Where your data comes from](../preparing-data) for R objects, SpatialData stores and image placement.
+- [Preparing data](../preparing-data) for R objects, SpatialData stores and image placement.
 - [Making changes](../changes) maps every edit to the line to change.

@@ -1,10 +1,10 @@
 # Writing dataset.yaml
 
-A dataset yaml describes one dataset: its samples, the annotations to expose, and a few display defaults.
-You rarely write one from scratch: `init` writes it as a menu of the data, and three mechanisms keep it
-short even for many samples.
+A dataset YAML describes the input samples, annotations and display settings. Generate a starting file
+with `init`, then review and edit it. Globs, platform settings and defaults let several samples share a
+configuration.
 
-## Start from a menu
+## Generate a configuration {#start-from-a-menu}
 
 ```bash
 spatialscape init analysis/spe_dlpfc.rds --id dlpfc --name "Human DLPFC"     # an R object
@@ -12,7 +12,7 @@ spatialscape init "visium/*/adata.h5ad" --platform visium --id dlpfc         # o
 ```
 
 `init` reads the data once and writes `dlpfc.yaml` where you ran it (`-o` puts it elsewhere). The file is
-complete and builds as written, but it is meant to be edited:
+contains inferred settings. Check them against the input data before building:
 
 ```yaml
 id: dlpfc
@@ -49,7 +49,7 @@ samples:
     # not listed: sample_id, in_tissue, array_row, array_col (ids and layout columns)
 ```
 
-`init` prints what it took for granted, one block per entry, so nothing is silently assumed:
+`init` reports the inferred platform, coordinate units, expression layer and annotations for each entry:
 
 ```
 assumed for analysis/spe_dlpfc.rds:
@@ -68,7 +68,7 @@ note carries its NA count (`9 levels: L1, L2, ...; 120 NA`), and a single file t
 (a `sample_id` or `capture_area` column with several values) gets a warning and a commented `subset:` line,
 because one entry draws them as one sample.
 
-Three things to know about the menu:
+Review these parts of the generated configuration:
 
 - **What gets mapped.** The first column that looks like a spatial domain or cluster becomes `domain`, the
   first that looks like a cell type becomes `celltype`, and the usual QC metrics are matched by name
@@ -187,7 +187,7 @@ error, so a typo cannot silently do nothing.
 
 ## Automatic discovery
 
-- `fields: auto` exposes every categorical column with 2 to 200 levels and every numeric column whose name looks like a QC metric (count, sum, detected, percent, ratio, area, score, umi, genes, mito, nucleus, transcript, total). Columns such as `sample_id`, barcodes and indices are skipped. The menu that `init` writes is the explicit version of this; `auto` remains valid for yamls written by hand.
+- `fields: auto` exposes every categorical column with 2 to 200 levels and every numeric column whose name looks like a QC metric (count, sum, detected, percent, ratio, area, score, umi, genes, mito, nucleus, transcript, total). Columns such as `sample_id`, barcodes and indices are skipped. The configuration that `init` writes contains explicit mappings; `auto` remains valid for yamls written by hand.
 - `images: auto` (the default for spatial samples) looks next to the data for `image.ome.zarr` or any `*.ome.zarr`, then a SpaceRanger `spatial/` folder (`tissue_hires_image.png` + `scalefactors_json.json`, which also supplies the micron scale), then a Xenium morphology focus image (the `morphology_focus/` folder, `morphology_focus.ome.tif`, then `morphology_mip.ome.tif`; read at about 0.85 µm per pixel).
 - Fields that samples map without a declaration are declared automatically; the type is inferred from the data and the display name from the column.
 
@@ -217,4 +217,5 @@ platforms:
     fields: { mito_percent: subsets_Mito_percent }                      # already a percent
 ```
 
-Keeping annotations shared this way is what makes the sidebar short: one *Total counts*, one *Mito %*, one *Cell type* per reference, each listing every sample that carries it.
+Mapping equivalent columns to the same field combines them into one sidebar entry. Convert numeric
+columns to the same units before sharing a field across samples.

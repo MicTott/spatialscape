@@ -2,7 +2,7 @@
 
 Write a tiny synthetic dataset for tests and demos.
 
-Produces two fake tissue sections (one log-normalized, one as counts with a flip and rotation), PNG images, cell polygons, an embedding sample, and a `dataset.yaml` that ties them together. `--comparisons` adds two more sections and sample metadata (a control and a stress group), the input for comparing groups side by side.
+Produces two synthetic tissue sections (one log-normalized, one as counts with a flip and rotation), PNG images, cell polygons, an embedding sample, and a `dataset.yaml` that ties them together. `--comparisons` adds two more sections and sample metadata (a control and a stress group), the input for comparing groups side by side.
 
 ## Usage
 

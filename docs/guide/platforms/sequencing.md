@@ -1,10 +1,10 @@
 # Sequencing-based spatial
 
-Visium, Visium HD, Slide-seq, Stereo-seq and the like: barcoded spots, beads or bins on a tissue section,
-whole-transcriptome counts, usually an H&E image of the same section. The viewer draws the spots at their true size
-on the image, with spatial domains as colours.
+Visium, Visium HD, Slide-seq and Stereo-seq measure expression at spots, beads or bins on a tissue section.
+Spatialscape places these observations at their physical scale and can display a registered image beneath
+them. Color observations by gene expression or annotations such as spatial domains.
 
-## The minimum
+## Required input
 
 A SpaceRanger-style folder, an AnnData file, a `SpatialExperiment` or a Seurat object with Visium slices saved from
 R, or a SpatialData store:
@@ -33,8 +33,8 @@ is inferred from the spot spacing (100 µm) or SpaceRanger's scale factors; for 
 | Slide-seq / Slide-seqV2 | `other` | bead-array pixels | `microns: { microns_per_unit: 0.65 }`, `point_radius: 5` |
 | Stereo-seq | `other` | DNB units or bins | `microns: { microns_per_unit: 0.5 }` for DNBs, times the bin size for bins; `point_radius` half the bin |
 
-A spot drawn too large or too small against the image, or a scale bar that reads wrong, means this value; the
-[scale rules](../preparing-data#getting-the-scale-right) list what the build tries, in order.
+If the spot size or scale bar is incorrect, check the coordinate scale and image placement. The
+[scale rules](../preparing-data#getting-the-scale-right) list how the build resolves the coordinate units.
 
 ## The optional layers
 
@@ -70,8 +70,9 @@ them. The one thing to set is the pixel size:
     microns: { microns_per_unit: 0.2525 }      # SpaceRanger's microns_per_pixel for this slide
 ```
 
-Build time and bundle size scale with the bin count: an 8 µm-binned 6.5 mm section is about 600k bins and builds in
-a minute; 2 µm bins are sixteen times that and are better served segmented into cells first.
+Build time and bundle size depend on the number of bins retained. For the same area, 2 µm bins produce
+sixteen times as many observations as 8 µm bins. Use coarser bins or a cell segmentation when the finer
+resolution is not needed for the analysis.
 
 ### Slide-seq and Stereo-seq
 
@@ -91,6 +92,6 @@ true }` when the coordinates are microns; the build stops and says so without it
 
 ## Next
 
-- [Where your data comes from](../preparing-data) for the R, Python and SpatialData paths and image placement.
+- [Preparing data](../preparing-data) for the R, Python and SpatialData paths and image placement.
 - [Using the viewer](../viewer): blends, the filter, lasso.
 - [Single-cell and multiome](./single-cell) to put a reference beside the sections with shared colours.

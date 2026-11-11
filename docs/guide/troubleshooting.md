@@ -37,7 +37,19 @@ The selected feature is not measured on that sample (a gene missing from a Xeniu
 
 ## The build is slow
 
-Expression is written in one pass over the stored values: a Visium donor with 36k genes and 30k spots takes 3–6 s, a 15k-nucleus snRNA-seq object about 4 s, and `--no-shard` is not faster. A slow build is almost always the input: a large `.h5ad` on a network drive, an R object converted on first use (into `bundles/.cache`, once), or a full-resolution image with no `max_size` (with one, a pyramidal OME-TIFF or OME-Zarr is read at the level it asks for and any other file is reduced while it is read). Peak memory is about the matrix of the largest sample, twice that for a tissue section whose file stores it column-wise or dense (the row store reads it row-wise, one more copy), plus one 128 MB shard. After the first build only the samples whose inputs or settings changed are rebuilt, so edits to names, colors and defaults take seconds; `spatialscape build <yaml> --dry-run` shows what a run would do before it starts.
+Check the build log to identify the stage taking time. Reading a large input, converting an R object,
+writing expression arrays, tiling transcripts and processing images have different resource requirements.
+Input size, matrix layout, storage speed and optional layers all affect runtime.
+
+- Run `spatialscape build <yaml> --dry-run` to see which samples will be rebuilt and why.
+- R objects are converted into `bundles/.cache/` on first use. Later builds reuse that conversion when the
+  object and conversion settings are unchanged.
+- For images, use `max_size` if a lower-resolution copy is sufficient. See [Images](./preparing-data#images)
+  for supported inputs, streaming conversion and memory limits.
+- Use the [benchmark scripts](../reference/benchmarks) to record elapsed time, peak memory and output size
+  for the dataset and machine you are using.
+
+Names, palettes and display defaults update the dataset metadata without rebuilding the sample arrays.
 
 ## "needs N GB of memory" or "JPEG 2000 compressed" when building an image
 

@@ -1,9 +1,9 @@
 # Benchmarks
 
-What the benchmark scripts measure and how to run them on a bundle of your own. The protocol is `design/benchmarks.md`
-in the repository. The measured tables for the example datasets (what a build costs and how the viewer behaves, on a
-named machine at a named commit) belong to the paper and live in its repository, not here: they go stale with every
-commit and machine, and this repository carries only what measures.
+This page describes the build, viewer and fidelity checks included in the repository. The protocol is in
+`design/benchmarks.md`. Run the scripts against a specific bundle and record the software commit, hardware,
+browser and hosting conditions with the results. Timings from one setup do not establish performance on
+another machine or against another viewer.
 
 ## Build
 
@@ -41,7 +41,7 @@ Frame times are per `requestAnimationFrame` tick, so on a 120 Hz display 8.3 ms 
 
 ## Fidelity
 
-Does what the viewer shows equal the data? `python -m spatialscape.fidelity` reads a built bundle back and measures
+`python -m spatialscape.fidelity` reads a built bundle back and measures
 it against the source; the checks, their bounds and the browser-side region test are in `benchmarks/README.md`. It
 runs in CI on the synthetic dataset.
 

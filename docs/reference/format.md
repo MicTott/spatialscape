@@ -114,7 +114,7 @@ About 3.5 bytes per molecule on Xenium data. `python/src/spatialscape/molecules.
 
 ## Design notes
 
-- **Gene-major uint8.** Coloring N cells by a gene needs N bytes. One inner chunk per gene means one range request per gene per sample; shards keep file counts small. Quantization to 8 bits is visually lossless; `gmax` restores the scale for tooltips and statistics.
+- **Gene-major uint8.** Coloring N cells by a gene uses N bytes of decoded values. Each gene has its own inner chunk; shards reduce the file count. Reading a gene may also require shard metadata when it is not cached. The 8-bit values are a lossy representation of the source matrix. Stored ranges reconstruct approximate values for coloring, tooltips and summaries; retain the source data for analysis.
 - **Rows for tests on a selection.** A differential expression test on a lasso needs every gene of a few cells, the opposite access pattern, so a sample may carry the matrix a second time as sparse rows ordered along a space-filling curve: a compact region is a few contiguous runs of rows, fetched with a few range requests. It costs about as much as the gene-major store (on the sections we measured 0.96×: the dense store's zeros compress well, and the codes themselves are most of the rows); `expression.rows: auto` writes it for tissue sections and not for embeddings.
 - **Shuffled rows.** Any prefix of an array is a uniform random subsample, so the viewer draws the first k rows at overview zoom with no extra data.
 - **Dataset-level vocabularies.** Codes are shared across samples and platforms; the same label has the same code and color everywhere.
