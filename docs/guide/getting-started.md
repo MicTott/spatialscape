@@ -62,8 +62,8 @@ Two kinds of file are yours to edit, everything else is built from them:
 ```
 your data                     you write / edit                    spatialscape builds
 ─────────────────────────     ─────────────────────────────────   ──────────────────────────────────
-spe.rds, sce.rds        ──▶   amygdala.yaml   (one per dataset) ──▶  bundles/amygdala/   the dataset, upload this
-*.h5ad, *.zarr          ──▶   dlpfc.yaml                        ──▶  bundles/dlpfc/
+spe.rds, sce.rds        ──▶   dlpfc.yaml      (one per dataset) ──▶  bundles/dlpfc/      the dataset, upload this
+*.h5ad, *.zarr          ──▶   mouse_brain.yaml                  ──▶  bundles/mouse_brain/
                               site.yaml       (optional gallery) ──▶  site/               viewer + gallery + bundles, upload this
 ```
 

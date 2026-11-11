@@ -11,14 +11,14 @@ carry it, a re-exported file rebuilds that sample.
 | Rename the dataset, change its description | `name:` / `description:` | `build` (seconds) |
 | Choose the gene shown on open | `default_gene: SNAP25` | `build` (seconds) |
 | Open on an annotation instead | `default_color: { field: domain }` | `build` (seconds) |
-| Name an annotation properly ("Spatial domain", not "BS k16 …") | `name:` on its entry under `fields:` | `build` (seconds) |
+| Name an annotation properly ("Layer", not "layer_guess_reordered_short") | `name:` on its entry under `fields:` | `build` (seconds) |
 | Compare conditions side by side in the viewer | `meta: { condition: stress }` on each sample (or `{ column: condition }`), optionally `meta:` at the top for names and order | `build` (seconds for typed values; the sample once for a column) |
 | Show fewer / other annotations | the `fields:` mapping on the sample entry: delete or uncomment lines | `build` (rebuilds those samples) |
 | Use my paper's colors | `palette: colors.json` plus `palette_key:` on the field | `build` (seconds) |
 | Fix the order of categories | `categories: [L1, L2, …]` on the field | `build` (rebuilds the samples that carry it) |
 | Merge spellings (`AI` and `IA`) | `aliases: { AI: IA }` on the field | `build` (rebuilds the samples that carry it) |
 | Put QC metrics in one unit across platforms | `{ column: expr_chrM_ratio, scale: 100 }` in the mapping | `build` |
-| Change which section is the thumbnail | `thumbnail_sample: vis_Br8325` | `build` (seconds) |
+| Change which section is the thumbnail | `thumbnail_sample: vis_151673` | `build` (seconds) |
 | Space the sections out | `layout: { gutter_fraction: 0.3 }` | `build` (seconds) |
 | Re-export one sample | fix the file, keep the yaml | `build` (rebuilds that sample) |
 | Add a sample | add it to `samples:`, or let the glob find it | `build` (builds the new one) |
@@ -33,12 +33,12 @@ and the reason.
 
 ## The same yaml, before and after
 
-`spatialscape init` writes the menu. This is the amygdala Visium dataset as `init` left it, comments
-trimmed:
+`spatialscape init` writes the menu. This is the DLPFC example from [Reproduce the examples](./examples) as
+`init` left it, comments trimmed:
 
 ```yaml
-id: amygdala_visium
-name: Human amygdala Visium
+id: visium-human-dlpfc
+name: "Human DLPFC, Visium (Maynard et al. 2021)"
 default_color: { field: domain }
 layout: { mode: grid }
 fields:
@@ -47,53 +47,57 @@ fields:
   - { id: detected_genes, name: Detected genes, type: continuous }
   - { id: mito_percent, name: Mito %, type: continuous }
 samples:
-  - path: ../Vitessce_app/spe_amy_shinyapp.rds   # SpatialExperiment, 7 samples: Br2743, Br3942, ... (one sample per sample_id)
+  - path: raw/spe_dlpfc.rds                      # SpatialExperiment, 12 samples: 151507, 151508, ... (one sample per sample_id)
     platform: visium
     assay: logcounts
     id: "vis_{name}"
     name: "{name} (Visium)"
     group: "{name}"
     fields:
-      domain: BS_k16_Semisupervised_wAI          # 16 levels: CeA, MeA, BLA, ...
+      domain: layer_guess_reordered_short        # 7 levels: L1, L3, WM, L6, ...; 352 NA
       total_counts: sum_umi
       detected_genes: sum_gene
       mito_percent: { column: expr_chrM_ratio, scale: 100 }
-      # domain: BS_k8                            # alternative; 8 levels
-      # subject: subject                         # 7 levels: Br2743, Br3942, ...
+      # domain: Cluster                          # alternative; 9 levels: 1, 2, 3, 4, ...
+    # meta: { subject: { column: subject }, position: { column: position }, replicate: { column: replicate } }
 ```
 
-and after a description, the paper's colors and the opening view:
+and after a description, the opening view, the layer order and the donor metadata:
 
 ```yaml
-id: amygdala_visium
-name: Human amygdala Visium
-description: Seven donors, BayesSpace domains with manual relabeling, lowres H&E.
-default_gene: PENK
+id: visium-human-dlpfc
+name: Human DLPFC, Visium (Maynard et al. 2021)
+description: "Twelve Visium sections of human dorsolateral prefrontal cortex from three donors, with the manual cortical layer annotation and the H&E of each section."
+default_gene: SNAP25
 default_color: { field: domain }
-palette: ../Vitessce_app/build/handoff/palette.json     # { "visium_semisupervised": { "CeA": "#8b2e17", ... } }
-thumbnail_sample: vis_Br8325
-layout: { mode: grid }
+thumbnail_sample: vis_151673
+layout: { mode: grid, columns: 4 }               # four sections per donor, so one row per donor
 fields:
-  - { id: domain, name: Spatial domain, type: categorical, palette_key: visium_semisupervised, aliases: { AI: IA } }
+  - { id: domain, name: Layer (manual annotation), type: categorical, categories: [L1, L2, L3, L4, L5, L6, WM] }
   - { id: total_counts, name: Total counts, type: continuous }
   - { id: detected_genes, name: Detected genes, type: continuous }
   - { id: mito_percent, name: Mito %, type: continuous }
+meta:
+  - { id: subject, name: Donor }
+  - { id: position, name: Position (µm) }
+  - { id: replicate, name: Replicate }
 samples:
-  - path: ../Vitessce_app/spe_amy_shinyapp.rds
+  - path: raw/spe_dlpfc.rds
     platform: visium
     assay: logcounts
     id: "vis_{name}"
-    name: "{name} (Visium)"
+    name: "Section {name}"
     group: "{name}"
     fields:
-      domain: BS_k16_Semisupervised_wAI
+      domain: layer_guess_reordered_short
       total_counts: sum_umi
       detected_genes: sum_gene
       mito_percent: { column: expr_chrM_ratio, scale: 100 }
+    meta: { subject: { column: subject }, position: { column: position }, replicate: { column: replicate } }
 ```
 
-The `aliases` line changes codes, so this edit rebuilds the seven samples once; every later edit that the
-table above marks "seconds" is just that.
+The `categories` line changes codes and `meta` reads a column, so this edit rebuilds the twelve samples once;
+every later edit that the table above marks "seconds" is just that.
 
 ## Colors
 

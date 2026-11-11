@@ -21,7 +21,7 @@ OUT = ROOT / "docs" / "reference" / "cli"
 EXAMPLES: dict[str, list[tuple[str, str]]] = {
     "init": [
         ("A SpatialExperiment saved from R (one sample per sample_id)", 'spatialscape init analysis/spe_visium.rds --id dlpfc --name "Human DLPFC"'),
-        ("Xenium donors in sibling folders", 'spatialscape init "xenium/*/adata.zarr" --platform xenium --id amygdala --name "Human amygdala"'),
+        ("Xenium donors in sibling folders", 'spatialscape init "xenium/*/adata.zarr" --platform xenium --id mouse_brain --name "Mouse brain"'),
         ("A spatial object and the snRNA-seq reference behind its labels, one dataset", "spatialscape init analysis/spe_visium.rds analysis/sce_snrnaseq.rds --id dlpfc"),
     ],
     "build": [
@@ -36,7 +36,7 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
         ("Preview a site written by `site build`", "spatialscape serve site"),
     ],
     "site init": [
-        ("List two datasets and start a gallery yaml", 'spatialscape site init dlpfc.yaml amygdala.yaml --title "Our lab\'s spatial data"'),
+        ("List two datasets and start a gallery yaml", 'spatialscape site init dlpfc.yaml mouse_brain.yaml --title "Our lab\'s spatial data"'),
         ("Pick up every dataset yaml and bundle in the current folder", "spatialscape site init"),
     ],
     "site build": [
@@ -46,14 +46,14 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
     ],
     "inspect": [
         ("A SpatialExperiment saved from R", "spatialscape inspect analysis/spe_visium.rds"),
-        ("An h5ad written from R", "spatialscape inspect Br2743.h5ad"),
+        ("An h5ad written from R", "spatialscape inspect Br5292.h5ad"),
         ("A SpatialData store with several tables", "spatialscape inspect store.zarr --table cells"),
     ],
     "validate": [
         ("Before upload", "spatialscape validate bundles/dlpfc"),
         ("After upload", "spatialscape validate https://data.example.org/dlpfc"),
     ],
-    "thumbnails": [("Lead with a particular section", "spatialscape thumbnails bundles/dlpfc --hero vis_Br8325")],
+    "thumbnails": [("Lead with a particular section", "spatialscape thumbnails bundles/dlpfc --hero vis_151673")],
     "synth": [("Make inputs, build them, serve them", "spatialscape synth demo-src && spatialscape build demo-src/dataset.yaml && spatialscape serve demo-src/bundles --open")],
 }
 RELATED: dict[str, list[str]] = {

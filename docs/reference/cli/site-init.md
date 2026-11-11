@@ -28,7 +28,7 @@ spatialscape site init [ITEMS] [OPTIONS]
 **List two datasets and start a gallery yaml**
 
 ```bash
-spatialscape site init dlpfc.yaml amygdala.yaml --title "Our lab's spatial data"
+spatialscape site init dlpfc.yaml mouse_brain.yaml --title "Our lab's spatial data"
 ```
 
 **Pick up every dataset yaml and bundle in the current folder**

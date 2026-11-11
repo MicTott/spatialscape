@@ -51,8 +51,8 @@ the sample at the hires PNG or the full scan:
 
 ```yaml
     images:
-      - { path: spaceranger/Br2743/spatial/tissue_hires_image.png, pixel_size: auto }   # same frame as the spots
-      - { path: scans/Br2743.tif, pixel_size: 0.5, translate: [120, -40] }               # a scan: µm per pixel and an offset
+      - { path: spaceranger/Br5292/spatial/tissue_hires_image.png, pixel_size: auto }   # same frame as the spots
+      - { path: scans/Br5292.tif, pixel_size: 0.5, translate: [120, -40] }               # a scan: µm per pixel and an offset
 ```
 
 A slide scan shared by two sections is masked to each section's spots automatically. Several capture areas in one

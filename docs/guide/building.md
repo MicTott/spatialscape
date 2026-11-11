@@ -59,7 +59,7 @@ change. When every sample is rebuilt, vocabularies start fresh in the declared o
 
 | Task | Command |
 |---|---|
-| Re-render thumbnails around another section | set `thumbnail_sample` and `build`, or `spatialscape thumbnails bundles/dlpfc --hero vis_Br8325` |
+| Re-render thumbnails around another section | set `thumbnail_sample` and `build`, or `spatialscape thumbnails bundles/dlpfc --hero vis_151673` |
 
 ## Validation
 

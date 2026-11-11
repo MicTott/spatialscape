@@ -33,7 +33,7 @@ spatialscape inspect analysis/spe_visium.rds
 **An h5ad written from R**
 
 ```bash
-spatialscape inspect Br2743.h5ad
+spatialscape inspect Br5292.h5ad
 ```
 
 **A SpatialData store with several tables**

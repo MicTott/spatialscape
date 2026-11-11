@@ -37,9 +37,8 @@ other platforms it writes the keys as comments with the column names to fill in.
 | Transcripts | `molecules:` | `transcripts.parquet` (`feature_name`, `x_location`, `y_location`, `qv` ≥ 20, `cell_id`, `overlaps_nucleus`) | `detected_transcripts.csv`: `gene`, `global_x`, `global_y`, `cell_id` (−1 = none) | `*_tx_file.csv`: `target`, `x_global_px`, `y_global_px`, `cell_ID` (0 = none), `CellComp` |
 
 Tables are Parquet, CSV or TSV, gzipped or not. Control features are dropped by name (10x's `NegControl*` and
-`Unassigned*`, Vizgen's `Blank-*`, NanoString's `NegPrb*`, `SystemControl*`, `FalseCode*`). The Xenium column
-is what we build the amygdala from; the MERSCOPE and CosMx columns follow the formats the vendors document and
-have not been built here, so a report of one that works (or does not) is welcome.
+`Unassigned*`, Vizgen's `Blank-*`, NanoString's `NegPrb*`, `SystemControl*`, `FalseCode*`). Each column is
+built in the [examples](../examples): `xenium-mouse-brain`, `merscope-mouse-brain` and `cosmx-nsclc`.
 
 ### Xenium
 

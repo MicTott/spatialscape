@@ -7,7 +7,7 @@ hero:
   tagline: A static, reactive browser for spatial transcriptomics and snRNA-seq. One pip install turns an AnnData, SpatialExperiment or Seurat object into a dataset you can open locally or publish as a site.
   image:
     src: /hero.png
-    alt: a human amygdala Visium section colored by spatial domain
+    alt: a mouse brain Visium HD section colored by cluster
   actions:
     - theme: brand
       text: Get started

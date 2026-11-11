@@ -16,9 +16,9 @@ nav:
     - { label: GitHub, url: https://github.com/MicTott/spatialscape }
 # data_url: https://data.example.org          # bundles live there at <data_url>/<id>; the site carries only the viewer
 datasets:
-  - config: amygdala.yaml                      # a dataset yaml: built into bundles/amygdala next to it when needed
-    paper: { title: Totty et al., url: https://doi.org/... }
-    tags: [amygdala, visium, xenium]
+  - config: mouse_brain.yaml                   # a dataset yaml: built into bundles/mouse_brain next to it when needed
+    paper: { title: Someone et al. 2026, url: https://doi.org/... }
+    tags: [mouse, visium, xenium]
   - bundle: ../dlpfc/bundles/dlpfc             # an already built bundle
     description: Thirty sections across ten donors.   # replaces the manifest's description on the card
   - id: hippocampus                            # a placeholder card

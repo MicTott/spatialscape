@@ -92,15 +92,15 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 ## What it looks like
 
 <p align="center">
-  <a href="https://mictott.github.io/spatialscape/docs/"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/dacc-layers.png" width="840" alt="Seventeen Visium sections of human dACC on one canvas, H&E under cortical layer labels"></a>
+  <a href="https://mictott.github.io/spatialscape/docs/"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/dlpfc-layers.jpg" width="840" alt="Twelve Visium sections of human dorsolateral prefrontal cortex on one canvas, H&E under the manual layer annotation"></a>
 </p>
-<p align="center"><sub>Seventeen Visium sections of human dorsal anterior cingulate cortex on one canvas: H&amp;E under PRECAST layer labels, one legend for all of them.</sub></p>
+<p align="center"><sub>Twelve Visium sections of human dorsolateral prefrontal cortex on one canvas: H&amp;E under the manual layer annotation, one legend for all of them.</sub></p>
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/gallery.png" width="49%" alt="The landing gallery with thumbnails rendered at build time">
-  <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/bla-umaps.png" width="49%" alt="snRNA-seq UMAPs of three species sharing one cell type legend">
+  <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/xenium-cells.jpg" width="49%" alt="Xenium mouse brain zoomed to single cells: the morphology image under cell outlines colored by cluster">
 </p>
-<p align="center"><sub>Left: the gallery that <code>site build</code> writes, thumbnails rendered at build time. Right: basolateral amygdala nuclei from three species, one UMAP per species and cell class, one shared cell type legend.</sub></p>
+<p align="center"><sub>Left: the gallery that <code>site build</code> writes, thumbnails rendered at build time. Right: a Xenium mouse brain section zoomed to single cells, the morphology image under cell outlines colored by cluster.</sub></p>
 
 ## What you get
 
@@ -141,6 +141,6 @@ python/.venv/bin/python -m pytest python/tests && npm test && npm run e2e
 
 ## Status
 
-Developed at the Lieber Institute for Brain Development for its spatial transcriptomics and snRNA-seq data releases, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints, more LIBD datasets.
+Developed at the Lieber Institute for Brain Development, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints.
 
 MIT license. Cite with [CITATION.cff](CITATION.cff).

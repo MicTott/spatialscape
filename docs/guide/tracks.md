@@ -31,13 +31,13 @@ one fragment file per run and name the obs column that says which run each obser
 
 ```yaml
     tracks:
-      fragments: { Br2743: runs/Br2743/atac_fragments.tsv.gz, Br6423: runs/Br6423/atac_fragments.tsv.gz }
-      sample_column: donor                # obs column holding Br2743 / Br6423 per observation
+      fragments: { Br5292: runs/Br5292/atac_fragments.tsv.gz, Br8100: runs/Br8100/atac_fragments.tsv.gz }
+      sample_column: donor                # obs column holding Br5292 / Br8100 per observation
       by: [cell_type]
 ```
 
 Observations are matched within their run, by `barcode_column` or by their names with the run's prefix or suffix
-removed (`Br2743#AAAC…-1` as ArchR names cells, `Br2743_AAAC…-1`, `AAAC…-1_Br2743`). A category's track sums
+removed (`Br5292#AAAC…-1` as ArchR names cells, `Br5292_AAAC…-1`, `AAAC…-1_Br5292`). A category's track sums
 its cells over every run and is then scaled to insertions per million, so donors weigh in by their cell numbers.
 
 `normalize:` sets what each group's track is scaled by: `nfrags` (default) divides by the group's total insertions

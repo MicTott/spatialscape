@@ -37,7 +37,7 @@ spatialscape init analysis/spe_visium.rds --id dlpfc --name "Human DLPFC"
 **Xenium donors in sibling folders**
 
 ```bash
-spatialscape init "xenium/*/adata.zarr" --platform xenium --id amygdala --name "Human amygdala"
+spatialscape init "xenium/*/adata.zarr" --platform xenium --id mouse_brain --name "Mouse brain"
 ```
 
 **A spatial object and the snRNA-seq reference behind its labels, one dataset**

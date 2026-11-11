@@ -9,15 +9,15 @@ genome tracks when it has fragments.
 An object with an embedding: a `SingleCellExperiment` or Seurat object saved from R, or an h5ad with `obsm/X_umap`.
 
 ```bash
-spatialscape init analysis/sce_bla.rds --id sn               # no spatialCoords: one embedding sample
+spatialscape init analysis/sce_cortex.rds --id sn               # no spatialCoords: one embedding sample
 spatialscape build sn.yaml && spatialscape serve bundles --open
 ```
 
 ```yaml
 samples:
-  - path: analysis/sce_bla.rds
-    id: sn_bla
-    name: snRNA-seq (BLA, 5 donors)
+  - path: analysis/sce_cortex.rds
+    id: sn
+    name: snRNA-seq (5 donors)
     fields: { celltype: fine_celltype, total_counts: sum }
 ```
 
@@ -38,8 +38,8 @@ samples:
   - glob: xenium/*/adata.h5ad
     platform: xenium
     id: "xen_{name}"
-  - path: analysis/sce_bla.rds
-    id: sn_bla
+  - path: analysis/sce_cortex.rds
+    id: sn
     fields: { celltype: fine_celltype }          # the same id: one legend, one set of colours
 ```
 

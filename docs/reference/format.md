@@ -115,7 +115,7 @@ About 3.5 bytes per molecule on Xenium data. `python/src/spatialscape/molecules.
 ## Design notes
 
 - **Gene-major uint8.** Coloring N cells by a gene needs N bytes. One inner chunk per gene means one range request per gene per sample; shards keep file counts small. Quantization to 8 bits is visually lossless; `gmax` restores the scale for tooltips and statistics.
-- **Rows for tests on a selection.** A differential expression test on a lasso needs every gene of a few cells, the opposite access pattern, so a sample may carry the matrix a second time as sparse rows ordered along a space-filling curve: a compact region is a few contiguous runs of rows, fetched with a few range requests. It costs about as much as the gene-major store (on the amygdala sections 0.96×: the dense store's zeros compress well, and the codes themselves are most of the rows); `expression.rows: auto` writes it for tissue sections and not for embeddings.
+- **Rows for tests on a selection.** A differential expression test on a lasso needs every gene of a few cells, the opposite access pattern, so a sample may carry the matrix a second time as sparse rows ordered along a space-filling curve: a compact region is a few contiguous runs of rows, fetched with a few range requests. It costs about as much as the gene-major store (on the sections we measured 0.96×: the dense store's zeros compress well, and the codes themselves are most of the rows); `expression.rows: auto` writes it for tissue sections and not for embeddings.
 - **Shuffled rows.** Any prefix of an array is a uniform random subsample, so the viewer draws the first k rows at overview zoom with no extra data.
 - **Dataset-level vocabularies.** Codes are shared across samples and platforms; the same label has the same code and color everywhere.
 - **Images carry their geometry in the manifest** (`pixelSize` µm per level-0 pixel, `translate` µm), independent of NGFF transforms. NGFF 0.4 / zarr v2 is used because that is what the image renderer reads.
@@ -190,10 +190,10 @@ Python:
 
 ```python
 import zarr, json
-g = zarr.open_group("bundle/samples/xen_Br9280/expr.zarr", mode="r")
-genes = json.load(open("bundle/samples/xen_Br9280/genes.json"))
+g = zarr.open_group("bundle/samples/coronal/expr.zarr", mode="r")
+genes = json.load(open("bundle/samples/coronal/genes.json"))
 gmax = g["gmax"][:]
-penk = g["u8"][genes.index("PENK"), :] / 255 * gmax[genes.index("PENK")]
+gad1 = g["u8"][genes.index("Gad1"), :] / 255 * gmax[genes.index("Gad1")]
 ```
 
 R (Rarr / pizzarr) reads the same arrays; `obs.zarr/order` maps rows back to the source object.

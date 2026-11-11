@@ -92,7 +92,7 @@ If you prefer to control the export, zellkonverter works:
 library(zellkonverter)
 sce <- as(spe, "SingleCellExperiment")
 reducedDim(sce, "spatial") <- spatialCoords(spe)      # becomes obsm/spatial
-writeH5AD(sce, "Br2743.h5ad", X_name = "logcounts")
+writeH5AD(sce, "Br5292.h5ad", X_name = "logcounts")
 ```
 
 Then give the CLI the scale and image yourself: a `spatial/` folder next to the file with

@@ -20,7 +20,7 @@ name: Human DLPFC
 # default_gene: SNAP25                       # gene shown on open (default: the most variable gene)
 default_color: { field: domain }             # annotation shown on open; or { gene: SNAP25 }
 # palette: colors.json                       # { "domain": { "L1": "#F0027F", ... } }; a field uses it through palette_key
-# thumbnail_sample: vis_Br2743               # section drawn on the gallery card (default: the first)
+# thumbnail_sample: vis_151507               # section drawn on the gallery card (default: the first)
 layout: { mode: grid }                       # or strip; gutter_fraction: 0.1 spaces sections out
 
 fields:                                      # display names; add palette_key, aliases or categories here
@@ -30,7 +30,7 @@ fields:                                      # display names; add palette_key, a
   - { id: mito_percent, name: Mito %, type: continuous }
 
 samples:
-  - path: analysis/spe_dlpfc.rds             # SpatialExperiment, 12 samples: Br2743, Br3942, ... (one sample per sample_id)
+  - path: analysis/spe_dlpfc.rds             # SpatialExperiment, 12 samples: 151507, 151508, ... (one sample per sample_id)
     platform: visium                         # or visium_hd, xenium, merfish
     assay: logcounts                         # drawn as expression; also in the object: counts
     # sample_col: sample_id                  # colData column that splits the object into samples
@@ -43,7 +43,7 @@ samples:
       detected_genes: sum_gene               # numeric 300..9.8e3
       mito_percent: { column: expr_chrM_ratio, scale: 100 }   # numeric 0.001..0.4 -> shown as percent
       # domain: BayesSpace_harmony_16        # alternative; 16 levels: Sp16D1, Sp16D2, ...
-      # subject: subject                     # 3 levels: Br2743, Br3942, Br6423
+      # subject: subject                     # 3 levels: Br5292, Br5595, Br8100
       # position: position                   # 2 levels: 0, 300
     # not listed: sample_id, in_tissue, array_row, array_col (ids and layout columns)
 ```
@@ -81,14 +81,14 @@ Three things to know about the menu:
 ## A complete example
 
 ```yaml
-id: amygdala
-name: Human amygdala
-description: Visium, Visium HD and Xenium sections with spatial domains and cell types.
-default_gene: PENK
-default_color: { field: domain }          # or { gene: PENK }
+id: cortex
+name: Human cortex
+description: Visium and Xenium sections with spatial domains and cell types, and the snRNA-seq reference.
+default_gene: SNAP25
+default_color: { field: domain }          # or { gene: SNAP25 }
 palette: palette.json                     # optional {vocabId: {label: "#hex"}}
 layout: { mode: grid }                    # grid | strip
-thumbnail_sample: vis_Br8325              # which section the gallery card shows
+thumbnail_sample: vis_Br8100              # which section the gallery card shows
 
 feature_groups:                           # non-gene features get their own tab
   - { id: rctd, name: Cell type weights (RCTD), pattern: "^RCTD: ", units: weight }
@@ -107,7 +107,7 @@ platforms:                                # shared per platform; samples can ove
     images: auto
 
 samples:
-  - glob: xenium/Br*/adata.zarr           # one sample per match
+  - glob: xenium/*/adata.zarr             # one sample per match
     platform: xenium
     id: "xen_{name}"
     name: "{name} (Xenium)"
@@ -117,9 +117,9 @@ samples:
     id: "vis_{name}"
     name: "{name} (Visium)"
     group: "{name}"
-  - path: sce_bla.rds                     # an R object without spatialCoords: one embedding sample
+  - path: sce_cortex.rds                  # an R object without spatialCoords: one embedding sample
     id: sn
-    name: snRNA-seq (BLA, 5 donors)
+    name: snRNA-seq (5 donors)
     fields: { celltype: fine_celltype, total_umi: sum }
 ```
 
@@ -138,7 +138,7 @@ id.
 | `embedding` | UMAP if present | reducedDims entry for objects without spatialCoords |
 | `object` | | which object to take from an `.rda` that holds several |
 | `microns` | spot spacing (Visium) | `{ microns_per_unit: 0.2525 }` for Visium HD; Xenium and MERFISH objects are taken as microns |
-| `overrides` | | settings for single samples, keyed by sample id: `{ Br9902_1: { images: [] }, Br2743: { name: Br2743 (replicate) } }` |
+| `overrides` | | settings for single samples, keyed by sample id: `{ Br5595_1: { images: [] }, Br5292: { name: Br5292 (replicate) } }` |
 
 The cache keeps every colData column, so editing `fields:` never reconverts. Re-saving the object or
 changing `assay`, `sample_col`, `embedding` or `object` converts again and removes the old copy. The cache
@@ -159,7 +159,7 @@ A `glob:` entry expands to one sample per matching path, sorted. Inside that ent
 
 | Placeholder | Value |
 |---|---|
-| `{name}` | the folder containing the matched file (`Br2743` for `visium/Br2743/adata.zarr`), or the sample id for an R object |
+| `{name}` | the folder containing the matched file (`Br5292` for `visium/Br5292/adata.zarr`), or the sample id for an R object |
 | `{stem}` | the file name without `.h5ad` / `.zarr` |
 | `{dir}` | the containing folder's full path |
 | `{i}` | the match index, from 0 |
@@ -176,8 +176,8 @@ error, so a typo cannot silently do nothing.
     platform: visium_hd
     id: "hd_{name}"
     overrides:
-      Br9902_1: { images: [] }                       # this section's H&E does not match its cells
-      Br8667_2: { fields: { note: qc_flag } }        # one more annotation on one section
+      Br5595_1: { images: [] }                       # this section's H&E does not match its cells
+      Br8100_2: { fields: { note: qc_flag } }        # one more annotation on one section
 ```
 
 ## `platforms` and `defaults`

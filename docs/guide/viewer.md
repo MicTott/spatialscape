@@ -40,7 +40,7 @@ the handle positions and each pane's camera travel in the URL, so a copied link 
 
 Two sections that are not neighbours in the grid can be put side by side. The canvas is then two windows,
 left and right. Press the pin tool (top left, next to the lasso): every section in the grid gets a frame, and
-the words next to the pointer say what a click does ("pin Br6423 (Visium) on the left"). The first click opens
+the words next to the pointer say what a click does ("pin Section 151673 on the left"). The first click opens
 that section in the left window; the grid moves to the right, where you click a second section to fill the
 right window. Right-clicking a section offers the same two choices, *Pin left* and *Pin right*, without arming
 the tool. Each window has its own camera, scale bar, point size and header: a select to swap the section it
@@ -50,12 +50,11 @@ steps aside while a section is pinned and returns when the last pin goes. A pinn
 the grid in the pin colour. The two slots travel in the URL as `pins=<left>,<right>`, with the left window's
 share as `pf`.
 
-![PENK in donor Br9280: the Visium section pinned left at 1.5× spot size, the Visium HD capture of its central amygdala pinned right at 3× bin size, images off, one viridis scale](/screenshots/penk-visium-vs-hd.jpg)
+![MOBP in two donors of the DLPFC example: section 151507 pinned left, section 151673 pinned right, images off, spots enlarged, one viridis scale](/screenshots/pinned-windows.jpg)
 
-The view above compares one gene across two platforms in the same donor: PENK in Br9280 on Visium (55 µm
-spots) beside the Visium HD capture of its central nucleus (8 µm bins), with the H&E hidden, the points
-enlarged for the HD bins, and each window zoomed on its own. Its URL parameters: `c=g:PENK`, `img=0`,
-`pins=vis_Br9280,hd_Br9280_CeA`, `psg=1.50,3.05`.
+The view above compares one gene in two donors of the [DLPFC example](https://d2lbhik7smmaaj.cloudfront.net/?d=visium-human-dlpfc&c=g:MOBP&img=0&pins=vis_151507,vis_151673&psg=1.60,1.60):
+MOBP, a white matter gene, in section 151507 beside section 151673, with the H&E hidden and the spots
+enlarged. Its URL parameters: `c=g:MOBP`, `img=0`, `pins=vis_151507,vis_151673`, `psg=1.60,1.60`.
 
 ## Color by
 
@@ -150,11 +149,11 @@ sections without one are left out and named. The test treats cells as independen
 not replicates, and a difference between regions drawn on different donors is a difference between donors too.
 For a result to publish, fit a model with replicates and add it as a [comparison](./comparisons).
 
-![Central vs Medial in donor Br9280: two regions boxed on the Visium section and on the Visium HD capture, tested against each other; PENK tops both columns, with its violins per region on the right](/screenshots/regions-test.jpg)
+![White matter vs Layer 3 in the DLPFC example: a box over each on two pinned sections, tested against each other; MBP tops the list, with its violins per region on the right](/screenshots/regions-test.jpg)
 
-Above, two regions boxed over the central and medial amygdala of donor Br9280, on the Visium section pinned
-left and the Visium HD capture pinned right, tested against each other: one column per platform, sorted by the
-Visium log2 fold change, PENK and C11orf96 at the top of both.
+Above, a box over white matter and one over layer 3 on each of two pinned sections of the DLPFC example,
+tested against each other: the genes sorted by log2 fold change, the myelin genes MBP and PLP1 at the top, and
+MBP's distribution in each region on the right.
 
 ## Compare panel: a test's results next to the tissue
 

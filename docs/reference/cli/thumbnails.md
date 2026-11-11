@@ -28,7 +28,7 @@ spatialscape thumbnails <OUT> [OPTIONS]
 **Lead with a particular section**
 
 ```bash
-spatialscape thumbnails bundles/dlpfc --hero vis_Br8325
+spatialscape thumbnails bundles/dlpfc --hero vis_151673
 ```
 
 ## See also

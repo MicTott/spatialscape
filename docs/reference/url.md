@@ -4,8 +4,8 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 
 | Key | Meaning | Example |
 |---|---|---|
-| `d` | dataset: its id in the gallery, or a bundle URL | `d=amygdala`, `d=https://host/bundle` |
-| `s` | focused sample id | `s=vis_Br8325` |
+| `d` | dataset: its id in the gallery, or a bundle URL | `d=visium-human-dlpfc`, `d=https://host/bundle` |
+| `s` | focused sample id | `s=vis_151673` |
 | `c` | color: `g:<gene>`, `f:<field>`, or `b:<scheme>:<genesA>\|<genesB>` | `c=b:yb:GAD1,GAD2\|SLC17A7` |
 | `cm` | colormap | `cm=magma` |
 | `vr` | value range as fractions of the gene's or field's range | `vr=0.100,0.800` |
@@ -14,7 +14,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `h` | hidden categories per field | `h=domain:1.3;celltype:0` |
 | `gf` | annotation for the expression-by-annotation panel | `gf=domain` |
 | `mol` | `1` draws molecules once zoomed in | `mol=1` |
-| `mg` | pinned molecule genes, in pin order, separated by `\|`; `=<hex>` after a gene is its chosen colour | `mg=PENK\|SST=ff6b4f` |
+| `mg` | pinned molecule genes, in pin order, separated by `\|`; `=<hex>` after a gene is its chosen colour | `mg=Slc17a7\|Gad1=ff6b4f` |
 | `msz` | molecule point size multiplier | `msz=2.00` |
 | `mc` | `all`: every gene's molecules in its own colour | `mc=all` |
 | `cs` | how cells draw once zoomed in: `filled`, `outlined` or `dots` (default: filled, or outlined over an image). Older links' `poly=0` means `dots` and `cs=edges` means `outlined` | `cs=outlined` |
@@ -27,7 +27,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `ch` | the image channels drawn, by name and in order, separated by `\|`; at most six. Older links' `hc` (channels switched off) is still read | `ch=DAPI\|CD3\|CD20` |
 | `l` | layout `grid` or `strip` | `l=strip` |
 | `p` | visible platforms | `p=visium,xenium` |
-| `hs` | hidden samples | `hs=vis_Br2743` |
+| `hs` | hidden samples | `hs=vis_151507` |
 | `rot` | sections turned on screen, `id:degrees` clockwise (90, 180 or 270), comma-separated | `rot=mouse_20um:90` |
 | `ps` | point size multiplier, spatial view | `ps=1.5` |
 | `pse` | point size multiplier, embedding view | `pse=0.5` |
@@ -38,7 +38,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `v` | camera: `x,y,zoom` in dataset microns and log2 scale (the single tissue pane) | `v=24609,23505,-6.4` |
 | `sb` | split the tissue canvas by a sample metadata key, one pane per level | `sb=condition` |
 | `sg` | the levels shown as panes, in order, when not the first three | `sg=stress,control` |
-| `pins` | the pinned windows, left then right: a section id or empty for the grid | `pins=,vis_Br6423` |
+| `pins` | the pinned windows, left then right: a section id or empty for the grid | `pins=,vis_151673` |
 | `pf` | width share of the left window while a section is pinned, when not a half | `pf=0.30` |
 | `pl` | the two pinned windows linked at one scale (off by default) | `pl=1` |
 | `sf` | width shares of the group panes after a handle was dragged | `sf=0.400,0.600` |
