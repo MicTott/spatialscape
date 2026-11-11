@@ -55,4 +55,12 @@ describe("drawn channels", () => {
     expect(drawnChannels(names, names.slice(10, 20), [])).toHaveLength(MAX_DRAWN);
     expect(drawnChannels(["DAPI", "CD3"], null, [])).toEqual(["DAPI", "CD3"]);
   });
+  it("open on the dataset's own set when the manifest names one, until the user chooses", async () => {
+    const { drawnChannels } = await import("../layers/imageLayers");
+    const names = Array.from({ length: 56 }, (_, i) => (i === 0 ? "DAPI" : `M${i}`));
+    expect(drawnChannels(names, null, [], ["M40", "DAPI", "M7"])).toEqual(["M40", "DAPI", "M7"]); // the manifest's order
+    expect(drawnChannels(names, null, ["M40"], ["M40", "DAPI", "M7"])).toEqual(["DAPI", "M7"]);
+    expect(drawnChannels(names, ["M3"], [], ["M40", "DAPI"])).toEqual(["M3"]); // a chosen list wins
+    expect(drawnChannels(names, null, [], ["gone"])).toEqual(names.slice(0, 6)); // none of them here: the first six
+  });
 });

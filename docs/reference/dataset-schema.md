@@ -11,6 +11,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `description` | string | | |
 | `default_gene` | string | | must exist in the gene union |
 | `default_color` | `{gene}` or `{field}` | `default_gene` when set, else the first categorical field declared under `fields:`, else a variable gene | |
+| `default_channels` | list of channel names | the first six of the panel | the multichannel image's channels drawn when the dataset opens, in this order; at most six, each a channel of some image |
 | `palette` | path | | `{vocabulary: {label: "#hex"}}` JSON |
 | `colormaps` | list | the built-in eight | the colormaps the viewer offers: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `greys`, `rdbu` |
 | `layout` | `{mode, order, gutter_fraction, columns}` | `grid`, build order, `0.1`, fitted | `columns` fixes the grid width, e.g. `3` for a 3 × 3 of species by cell class |

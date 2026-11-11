@@ -263,6 +263,7 @@ class Manifest(_Model):
     description: str | None = None
     defaultGene: str | None = None
     defaultColor: ColorSpec
+    defaultChannels: list[str] | None = None  # image channels drawn on open; absent: the first six
     layout: Layout = Field(default_factory=Layout)
     colormaps: list[str] = Field(default_factory=lambda: list(BUILTIN_COLORMAPS))
     vocabularies: dict[str, Vocabulary] = Field(default_factory=dict)

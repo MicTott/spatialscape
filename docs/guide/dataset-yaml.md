@@ -19,6 +19,7 @@ id: dlpfc
 name: Human DLPFC
 # default_gene: SNAP25                       # gene shown on open (default: the most variable gene)
 default_color: { field: domain }             # annotation shown on open; or { gene: SNAP25 }
+# default_channels: [DAPI, CD20, CD3]         # image channels drawn on open, at most six (default: the panel's first six)
 # palette: colors.json                       # { "domain": { "L1": "#F0027F", ... } }; a field uses it through palette_key
 # thumbnail_sample: vis_151507               # section drawn on the gallery card (default: the first)
 layout: { mode: grid }                       # or strip; gutter_fraction: 0.1 spaces sections out

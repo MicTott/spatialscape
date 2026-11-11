@@ -261,7 +261,7 @@ export class LayerBuilder {
     const m = this.c.manifest;
     if (this.drawn.manifest !== m || this.drawn.active !== s.activeChannels || this.drawn.hidden !== s.hiddenChannels) {
       const names = m ? datasetChannels(m).map(([n]) => n) : [];
-      this.drawn = { manifest: m, active: s.activeChannels, hidden: s.hiddenChannels, list: drawnChannels(names, s.activeChannels, s.hiddenChannels) };
+      this.drawn = { manifest: m, active: s.activeChannels, hidden: s.hiddenChannels, list: drawnChannels(names, s.activeChannels, s.hiddenChannels, m?.defaultChannels) };
     }
     return this.drawn.list;
   }

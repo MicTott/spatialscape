@@ -120,6 +120,48 @@ def test_a_core_builds_with_its_colours_outlines_and_channel_names(tmp_path):
     assert validate_local(tmp_path / "out") == []
 
 
+def _one_core(tmp_path, **dataset_keys):
+    make_object(tmp_path / "data" / "LN_1.zarr")
+    doc = {
+        "id": "cores",
+        "name": "Cores",
+        "default_color": {"field": "cell_type"},
+        "samples": [
+            {
+                "id": "LN_1",
+                "name": "Core 1",
+                "platform": "codex",
+                "path": "data/LN_1.zarr",
+                "microns": {"microns_per_unit": 0.5},
+                "expression": {"normalized": "raw"},
+                "fields": {"cell_type": "labels"},
+                "images": [{"id": "stains", "name": "Stains", "path": "data/LN_1.zarr/_image_raw", "kind": "multichannel", "pixels_per_unit": 1.0, "crop": False}],
+            }
+        ],
+        **dataset_keys,
+    }
+    cfg_path = tmp_path / "cores.yaml"
+    cfg_path.write_text(yaml.safe_dump(doc))
+    return cfg_path
+
+
+def test_default_channels_name_the_stains_the_dataset_opens_on(tmp_path):
+    m = build_dataset(load_config(_one_core(tmp_path, default_channels=["CD20", "DAPI"])), tmp_path / "out", log=lambda *_: None)
+    assert m.defaultChannels == ["CD20", "DAPI"]  # the yaml's order, not the panel's
+    assert validate_local(tmp_path / "out") == []
+    (tmp_path / "plain").mkdir()
+    plain = build_dataset(load_config(_one_core(tmp_path / "plain")), tmp_path / "plain" / "out", log=lambda *_: None)
+    assert plain.defaultChannels is None  # absent: the viewer draws the panel's first six
+
+
+def test_default_channels_must_be_channels_of_an_image_and_at_most_six(tmp_path):
+    with pytest.raises(ValueError, match="CD-20 not among the images' channels"):
+        build_dataset(load_config(_one_core(tmp_path, default_channels=["DAPI", "CD-20"])), tmp_path / "out", log=lambda *_: None)
+    (tmp_path / "many").mkdir()
+    with pytest.raises(Exception, match="at most 6"):
+        load_config(_one_core(tmp_path / "many", default_channels=[f"M{i}" for i in range(7)]))
+
+
 def test_codex_coordinates_need_a_pixel_size(tmp_path):
     make_object(tmp_path / "data" / "LN_1.zarr")
     doc = {"id": "cores", "name": "Cores", "samples": [{"id": "LN_1", "platform": "codex", "path": "data/LN_1.zarr"}]}

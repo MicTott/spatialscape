@@ -129,6 +129,7 @@ Field names are camelCase and mirrored one-to-one between the Python and TypeScr
 type Manifest = {
   formatVersion: 1; id: string; name: string; description?: string;
   defaultGene?: string; defaultColor: {kind: "gene"|"field", gene?, field?};
+  defaultChannels?: string[];      // image channels drawn on open, by name; absent: the first six
   layout: {mode: "grid"|"strip", gutterFraction: number, order: string[], columns?: number};
   colormaps: string[];
   vocabularies: Record<string, {categories: string[], colors: string[], aliases?: Record<string,string>}>;

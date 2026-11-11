@@ -526,6 +526,7 @@ class DatasetConfig(_Model):
     description: str | None = None
     default_gene: str | None = None
     default_color: DefaultColorSpec | None = None
+    default_channels: list[str] | None = Field(default=None, max_length=6)  # image channels drawn when the dataset opens, by name (default: the panel's first six)
     layout: LayoutSpec = Field(default_factory=LayoutSpec)
     palette: Path | None = None
     colormaps: list[str] | None = None

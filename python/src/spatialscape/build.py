@@ -887,6 +887,11 @@ def _write_dataset_files(
             else ColorSpec(kind="gene", gene=suggested_default(samples, genes) or _any_feature(genes, groups))
         )
     default_gene = cfg.default_gene or (dc.gene if dc.kind == "gene" else suggested_default(samples, genes))
+    if cfg.default_channels:
+        known = {ch.name for s in samples for im in s.images for ch in (im.channels or [])}
+        unknown = [c for c in cfg.default_channels if c not in known]
+        if unknown:
+            raise ValueError(f"default_channels: {', '.join(unknown)} not among the images' channels ({', '.join(sorted(known)) or 'no image has named channels'})")
     order = cfg.layout.order or [s.id for s in samples]
     manifest = Manifest(
         id=cfg.id,
@@ -894,6 +899,7 @@ def _write_dataset_files(
         description=cfg.description,
         defaultGene=default_gene,
         defaultColor=dc,
+        defaultChannels=cfg.default_channels,
         layout=Layout(
             mode=cfg.layout.mode, gutterFraction=cfg.layout.gutter_fraction, order=order, columns=cfg.layout.columns
         ),

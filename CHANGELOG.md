@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**`default_channels`.** A dataset with a many-channel image opened on the panel's first six channels, whatever they
+were. `default_channels: [DAPI, CD20, CD3]` in `dataset.yaml` names the channels drawn on open (at most six, in that
+order; `build` refuses a name no image has). The manifest carries them as `defaultChannels`; a link's `ch=` and the
+reader's own choice still win.
+
 **The PBMC multiome example moved to the examples repository.** `examples/pbmc_multiome.yaml` and
 `examples/scripts/pbmc_multiome.py` are gone from this repository: the dataset is now `pbmc-multiome` in
 `spatialscape-examples`, built by one `build.sh` from the public 10x files, and the tenth app of the examples gallery.

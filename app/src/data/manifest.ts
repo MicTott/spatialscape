@@ -156,6 +156,7 @@ export interface Manifest {
   description?: string;
   defaultGene?: string;
   defaultColor: ColorSpecManifest;
+  defaultChannels?: string[]; // image channels drawn on open; absent: the first MAX_DRAWN
   layout: Layout;
   colormaps: string[];
   vocabularies: Record<string, Vocabulary>;

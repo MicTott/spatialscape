@@ -134,6 +134,11 @@ def validate_local(root: Path) -> list[str]:
         _problem(p, "missing genes.json")
     if m.defaultGene and genes_union is not None and m.defaultGene not in set(genes_union):
         _problem(p, f"defaultGene {m.defaultGene!r} not in genes.json")
+    if m.defaultChannels:
+        known = {ch.name for s in m.samples for im in s.images for ch in (im.channels or [])}
+        for c in m.defaultChannels:
+            if c not in known:
+                _problem(p, f"defaultChannels: {c!r} is not a channel of any image")
     fpath = root / "features.json"
     if fpath.exists():
         try:

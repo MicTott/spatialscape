@@ -174,7 +174,7 @@ export interface ViewerState {
   showImages: boolean;
   showCells: boolean; // the cells (dots and shapes); off to see the image or the transcripts alone
   showRois: boolean; // the drawn regions and the lasso's highlight; drawing switches it back on
-  activeChannels: string[] | null; // fluorescence channels drawn, by name and in order, at most MAX_DRAWN; null = the dataset's first ones
+  activeChannels: string[] | null; // fluorescence channels drawn, by name and in order, at most MAX_DRAWN; null = the dataset's opening set (its defaultChannels, else its first ones)
   hiddenChannels: string[]; // channels switched off in links written before `ch` existed (`hc`); read once, never written
   // point radius multipliers: "spatial" and "embedding" are the bases per pane kind; a group pane ("g0".."g2") may
   // override its own, so a dense section and a sparse one can be read side by side

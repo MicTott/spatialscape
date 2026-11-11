@@ -130,7 +130,8 @@ becomes the cell shapes. A label mask from any other pipeline (MCMICRO, Cytokit,
 TIFF or PNG with `polygons: { labels: mask.tif }`, next to a table of cells read as any other AnnData.
 
 In the viewer the channel list shows every marker; up to six draw at once, chosen by clicking, and only those are
-fetched. Colour cells by any marker's intensity from the gene box, or by a gating-tree level from the annotations.
+fetched. A panel's first six channels are rarely the ones to open on, so name them at the top of the yaml:
+`default_channels: [DAPI, CD20, CD3, CD68, Ki-67, CD31]`. Colour cells by any marker's intensity from the gene box, or by a gating-tree level from the annotations.
 
 ## What each layer costs
 

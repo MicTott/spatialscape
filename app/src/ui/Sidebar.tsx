@@ -119,7 +119,7 @@ function Groups({ genes }: { genes: string[] }) {
   const drawn = selection?.total ? `${selection.total.toLocaleString()} cells selected` : nRegions ? `${nRegions} region${nRegions === 1 ? "" : "s"} drawn` : null;
   const selectionSummary = showRois ? (drawn ?? "lasso, regions") : drawn ? `${drawn} · hidden` : "off";
   const transcriptSummary = !molecules ? "off" : [moleculeColors === "all" ? "all genes" : color?.kind === "gene" ? color.gene : color?.kind === "blend" ? "gene sets" : "other genes grey", pins.length ? `${pins.length} pinned` : null].filter(Boolean).join(" · ");
-  const imageSummary = !showImages ? "off" : channelRows ? `${drawnChannels(datasetChannels(manifest).map(([n]) => n), activeChannels, hiddenChannels).length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
+  const imageSummary = !showImages ? "off" : channelRows ? `${drawnChannels(datasetChannels(manifest).map(([n]) => n), activeChannels, hiddenChannels, manifest.defaultChannels).length} of ${channelRows} channels` : `${Math.round(imageOpacity * 100)}%`;
   return (
     <>
       {hasImages && (

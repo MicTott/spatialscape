@@ -69,11 +69,13 @@ export function datasetChannels(manifest: Manifest): [string, string][] {
   return [...seen.entries()];
 }
 
-/** The channels on screen, in order: the chosen list, or the dataset's first MAX_DRAWN minus any an older link hid. */
-export function drawnChannels(names: string[], activeChannels: string[] | null, hiddenChannels: string[]): string[] {
+/** The channels on screen, in order: the chosen list; else the dataset's own opening set (`defaultChannels` in the
+ *  manifest) or, without one, its first MAX_DRAWN; minus any an older link hid. */
+export function drawnChannels(names: string[], activeChannels: string[] | null, hiddenChannels: string[], defaults: readonly string[] = []): string[] {
   if (activeChannels) return activeChannels.filter((n) => names.includes(n)).slice(0, MAX_DRAWN);
   const hidden = new Set(hiddenChannels);
-  return names.filter((n) => !hidden.has(n)).slice(0, MAX_DRAWN);
+  const opening = defaults.filter((n) => names.includes(n));
+  return (opening.length ? opening : names).filter((n) => !hidden.has(n)).slice(0, MAX_DRAWN);
 }
 
 export function imageLayer(

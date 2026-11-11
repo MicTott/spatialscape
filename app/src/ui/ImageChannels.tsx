@@ -18,7 +18,7 @@ export function ImageChannels() {
   const rows = useMemo(() => datasetChannels(manifest), [manifest]);
   if (rows.length < 2) return null;
   const names = rows.map(([n]) => n);
-  const drawn = drawnChannels(names, active, hidden);
+  const drawn = drawnChannels(names, active, hidden, manifest.defaultChannels);
   const on = new Set(drawn);
   const full = drawn.length >= MAX_DRAWN;
   const setActive = (list: string[]) => store.getState().set({ activeChannels: list, hiddenChannels: [] });
@@ -26,7 +26,7 @@ export function ImageChannels() {
     if (on.has(name)) setActive(drawn.filter((n) => n !== name));
     else if (!full) setActive([...drawn, name]);
   };
-  const solo = (name: string) => setActive(drawn.length === 1 && on.has(name) ? names.slice(0, MAX_DRAWN) : [name]);
+  const solo = (name: string) => setActive(drawn.length === 1 && on.has(name) ? drawnChannels(names, null, [], manifest.defaultChannels) : [name]);
   return (
     <>
       {rows.length > MAX_DRAWN && (
