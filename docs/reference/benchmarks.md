@@ -49,11 +49,11 @@ runs in CI on the synthetic dataset.
 
 ```bash
 # a build row (the output folder is scratch; the dataset's own bundle is not touched)
-bash benchmarks/build_bench.sh amygdala examples/amygdala.yaml
+bash benchmarks/build_bench.sh synthetic examples/synthetic-src/dataset.yaml
 
 # the viewer rows of one dataset
 spatialscape serve examples --port 8790
-node benchmarks/viewer_bench.mjs --app http://127.0.0.1:8790 --data http://127.0.0.1:8790/amygdala --name amygdala --section xen_Br9192
+node benchmarks/viewer_bench.mjs --app http://127.0.0.1:8790 --data http://127.0.0.1:8790/synthetic --name synthetic --section sampleA
 ```
 
 Reports land in `benchmarks/results/`, which is not tracked here; `BENCH_RESULTS=<folder>` and `--out <file>` put

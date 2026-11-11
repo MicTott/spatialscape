@@ -1,6 +1,6 @@
 """Bytes per store of a built bundle, for the build table in docs/reference/benchmarks.md.
 
-    python benchmarks/bundle_size.py examples/amygdala [--json out.json]
+    python benchmarks/bundle_size.py examples/synthetic [--json out.json]
 
 Walks <bundle>/samples/<id>/ and sums file sizes by store: expression (expr.zarr), rows (rows.zarr), cells
 (obs.zarr, ids, genes.json, build.json, zero_genes.json, thumbnail), images (*.ome.zarr), shapes (shapes.bin,

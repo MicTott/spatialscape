@@ -13,8 +13,8 @@ CI on the synthetic dataset ([python/tests/test_fidelity.py](../python/tests/tes
 bundle like this:
 
 ```bash
-SPATIALAMYGDALA=~/Documents/R/spatialAmygdala python -m spatialscape.fidelity bundle examples/amygdala.yaml examples/amygdala \
-  --sample xen_Br9192 --sample vis_Br9280 --sample hd_Br9280_CeA --sample sn_totty --out benchmarks/results/fidelity-amygdala.json
+python -m spatialscape.fidelity bundle dlpfc.yaml bundles/dlpfc \
+  --sample 151673 --sample 151507 --out benchmarks/results/fidelity-dlpfc.json
 ```
 
 What it checks, and the bound each must meet:

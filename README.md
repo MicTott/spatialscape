@@ -123,7 +123,7 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 app/       the viewer: Vite + React 19 + TypeScript (deck.gl 9, Viv, zarrita, Zustand)
 python/    the spatialscape CLI (anndata, zarr v3, pydantic); the built viewer ships inside the wheel
 docs/      the documentation site (VitePress); the CLI pages are generated from the help text
-examples/  dataset yamls for the LIBD amygdala, dACC and cross-species BLA datasets, and the synthetic demo
+examples/  the synthetic demo and a 10x PBMC multiome config; the public example datasets have their own repository
 ```
 
 ## Development

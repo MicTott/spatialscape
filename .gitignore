@@ -20,7 +20,6 @@ examples/*/
 !examples/synthetic/
 !examples/synthetic-src/
 !examples/scripts/
-!examples/palettes/
 # viewer build copied into the package by python/scripts/bundle_app.py
 python/src/spatialscape/_app/
 python/dist/

@@ -1,7 +1,7 @@
 // The viewer table of design/benchmarks.md, measured in a headed Chrome through Playwright.
 //
-//   node benchmarks/viewer_bench.mjs --app http://127.0.0.1:8790 --data http://127.0.0.1:8790/amygdala --name amygdala \
-//        [--section xen_Br9192] [--genes 20] [--out $BENCH_RESULTS/viewer-amygdala.json] [--browser chrome|chromium]
+//   node benchmarks/viewer_bench.mjs --app http://127.0.0.1:8790 --data http://127.0.0.1:8790/synthetic --name synthetic \
+//        [--section sampleA] [--genes 20] [--out $BENCH_RESULTS/viewer-synthetic.json] [--browser chrome|chromium]
 //
 // Serve the bundles first (`spatialscape serve <folder> --port 8790`): the app and the data come from one origin, with
 // no network in between. States: the grid at the fitted zoom; one section focused; a 1 x 1 mm window on that section
