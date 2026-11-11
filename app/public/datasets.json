@@ -82,6 +82,51 @@
       "group": "Main examples"
     },
     {
+      "id": "spatial-atac-rna-mouse-brain",
+      "name": "Spatial ATAC + RNA, mouse brain (Zhang et al. 2023)",
+      "description": "Chromatin accessibility and gene expression in the same 20 µm pixels of mouse brain, from the spatial epigenome–transcriptome co-profiling of Zhang et al. 2023 (GEO GSE205055): two 50 x 50 arrays (1 mm) and one 100 x 100 array (2 mm). RNA on the pixels; ATAC as tracks per cluster in the genome panel.",
+      "platforms": [
+        "other"
+      ],
+      "samples": 3,
+      "cells": 14086,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/spatial-atac-rna-mouse-brain",
+      "status": "live",
+      "genes": 24169,
+      "paper": {
+        "title": "Zhang et al. 2023, Nature",
+        "url": "https://doi.org/10.1038/s41586-023-05795-1"
+      },
+      "tags": [
+        "spatial ATAC + RNA",
+        "genome tracks"
+      ],
+      "group": "Main examples"
+    },
+    {
+      "id": "phenocycler-lymph-node",
+      "name": "Human lymph node, PhenoCycler (56 proteins)",
+      "description": "Spatial proteomics: three reactive human lymph node cores imaged with a 56-antibody PhenoCycler panel (Meyer-Bender et al., BioImage Archive S-BIAD2100, CC0). Every cell with its outline, the authors' gated cell types and cellular neighbourhoods, each marker's intensity per cell, and the 56-channel image underneath, any six channels at a time.",
+      "platforms": [
+        "codex"
+      ],
+      "samples": 3,
+      "cells": 46671,
+      "url": "https://d2lbhik7smmaaj.cloudfront.net/phenocycler-lymph-node",
+      "status": "live",
+      "genes": 56,
+      "paper": {
+        "title": "BioImage Archive S-BIAD2100",
+        "url": "https://doi.org/10.6019/S-BIAD2100"
+      },
+      "tags": [
+        "PhenoCycler",
+        "spatial proteomics",
+        "lymph node"
+      ],
+      "group": "Main examples"
+    },
+    {
       "id": "visium-human-dlpfc",
       "name": "Human DLPFC, Visium (Maynard et al. 2021)",
       "description": "Twelve Visium sections of human dorsolateral prefrontal cortex from three donors (Maynard et al. 2021, Nature Neuroscience; the spatialLIBD package), with the manual cortical layer annotation and the H&E of each section.",
@@ -195,28 +240,6 @@
         "CosMx",
         "lung cancer",
         "transcripts"
-      ],
-      "group": "Other technologies"
-    },
-    {
-      "id": "spatial-atac-rna-mouse-brain",
-      "name": "Spatial ATAC + RNA, mouse brain (Zhang et al. 2023)",
-      "description": "Chromatin accessibility and gene expression in the same 20 µm pixels of mouse brain, from the spatial epigenome–transcriptome co-profiling of Zhang et al. 2023 (GEO GSE205055): two 50 x 50 arrays (1 mm) and one 100 x 100 array (2 mm). RNA on the pixels; ATAC as tracks per cluster in the genome panel.",
-      "platforms": [
-        "other"
-      ],
-      "samples": 3,
-      "cells": 14086,
-      "url": "https://d2lbhik7smmaaj.cloudfront.net/spatial-atac-rna-mouse-brain",
-      "status": "live",
-      "genes": 24169,
-      "paper": {
-        "title": "Zhang et al. 2023, Nature",
-        "url": "https://doi.org/10.1038/s41586-023-05795-1"
-      },
-      "tags": [
-        "spatial ATAC + RNA",
-        "genome tracks"
       ],
       "group": "Other technologies"
     }

@@ -62,7 +62,7 @@ features:
 </div>
 </div>
 
-These three are among the ten in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, a 10x multiome, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
+These three are among the eleven in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, PhenoCycler spatial proteomics, spatial ATAC + RNA, a 10x multiome, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
 
 ## In three commands
 
