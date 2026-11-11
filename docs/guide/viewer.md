@@ -1,6 +1,6 @@
 # Using the viewer
 
-Open a bundle with `?d=<url>` or, when a registry is configured, `?d=<id>`. Everything you change ends up in the URL, so the address bar is always a shareable description of what you are looking at.
+Open a bundle with `?d=<url>` or, from a gallery, `?d=<id>`. Everything you change ends up in the URL, so the address bar is always a shareable description of what you are looking at.
 
 ## Layout
 
@@ -15,8 +15,8 @@ The **spatial view** holds every section as a grid or a strip, at true physical 
 | Hide samples from the layout | the top bar's platform buttons, or `hs=<id>` in the link |
 | Turn a section on screen | click the section, then the ↻ tool in the top bar (or the ↻ on its row in the sample list): 90° clockwise per click, kept in the link; `transform: { rotate }` in the dataset yaml makes it permanent |
 | Show one platform | the top bar: All / Visium / Xenium …; shift-click toggles |
-| Grid vs strip | Display → Grid / Strip |
-| Cluster names on the embedding | Display → label clusters in the embedding |
+| Grid vs strip | Samples → grid / strip |
+| Cluster names on the embedding | Cells → Drawing → Embedding labels |
 | Compare groups side by side | the top bar: *split by* → a sample metadata key |
 
 ### Panes: comparing groups side by side
@@ -26,8 +26,8 @@ offers *split by*. Choosing a key divides the tissue canvas into one pane per le
 stress on the other, a third pane for a third level; with more levels than panes, each pane's header has a
 select to choose which group it shows. Every pane has its own camera, scale bar and caption ("control · 2
 sections"), and the one the pointer last touched is underlined: `←` `→`, `Esc` and double-click work inside
-it. Colour, filters, the legend, point size, images, the lasso and regions stay shared, exactly as
-they are between the tissue and the embedding today; hover rows show the section's metadata.
+it. Colour, filters, the legend, images, the lasso and regions stay shared, exactly as
+they are between the tissue and the embedding; hover rows show the section's metadata.
 
 *match scale*, on by default, keeps every pane at the same microns per pixel: zoom in one and the others
 follow in scale while each keeps its own centre, so two sections can be read side by side at equal size. One
@@ -66,6 +66,10 @@ enlarged for the HD bins, and each window zoomed on its own. Its URL parameters:
 
 Samples that don't carry the selected feature are drawn in grey ("not measured") rather than hidden.
 
+Features that take negative values (module scores, motif deviations) are stored symmetrically around zero and drawn with a diverging colormap centred on zero, whatever the colormap setting; the legend shows the real minimum and maximum.
+
+When an embedding is colored by an annotation, each category's name floats at the centre of its cells, largest clusters first and never overlapping; hidden categories lose their label. *Embedding labels* under Cells → Drawing turns them off (`cl=0` in the URL).
+
 ## Filter by
 
 Independent of coloring: keep cells whose gene expression or continuous value falls in a range (with a live histogram), or cells in chosen categories of an annotation. The map, counts and dot plot all respect it. The URL carries it as `fl=`.
@@ -81,7 +85,7 @@ while the filter is on, and the panel says how many cells that hides.
 
 ## Expression by annotation
 
-When coloring by a gene, this panel shows mean expression and percent expressing per category of any annotation across the visible samples, with a per-sample heatmap toggle. Clicking a row filters the map to that category; several rows combine.
+When coloring by a gene (or by gene sets, where it reads the first set), this panel shows mean expression and percent expressing per category of any annotation across the visible samples, with a per-sample heatmap toggle. Clicking a row filters the map to that category; several rows combine.
 
 ## Hover
 
@@ -89,7 +93,7 @@ The tooltip lists the current gene's value, the filter gene's value if different
 
 ## Lasso
 
-Press `L` or the ⌒ lasso button, drag around a region, release. Selected cells get a white ring and the Selection panel shows counts per sample, the composition of every annotation, and the current gene's mean and percent expressing in the selection next to the same numbers over all cells of the sections the selection touches (shown as "vs … overall"). "export CSV" downloads `sample,cell_id` rows. `Esc` clears.
+Press `L` or the ⌒ lasso button, drag around a region, release. Selected cells get a white ring and the Selection panel shows counts per sample, the composition of every annotation, and the current gene's mean and percent expressing in the selection next to the same numbers over all cells of the sections the selection touches (shown as "vs … overall"). "export CSV" downloads `sample,cell_id,row` rows, `row` being the cell's position in the bundle. `Esc` clears.
 
 ## Gene color scale
 
@@ -101,7 +105,7 @@ Gene colors share one scale across all samples on screen, so the same color mean
 
 ## Point size
 
-The slider at the bottom left of each pane multiplies the point radius, from a quarter to four times the platform's default (Visium spots at their true 55 µm, cells at 5 µm). The tissue canvas and the embedding each have their own value. When the canvas is split by a group, every pane has its own slider too: a dense section and a sparse one can be read side by side at different sizes, and a double-click on a group pane's slider makes it follow the shared value again. The values travel in the URL (`ps`, `pse`, `psg`).
+The slider at the bottom left of each pane multiplies the point radius, from a quarter to four times the platform's default (Visium spots at their true 55 µm, cells at 5 µm). The tissue canvas and the embedding each have their own value. When the canvas is split by a group, every pane has its own slider too: a dense section and a sparse one can be read side by side at different sizes, and a double-click on a group pane's slider makes it follow the shared value again; on the other sliders it resets the size. The values travel in the URL (`ps`, `pse`, `psg`).
 
 ## Regions: your own annotation
 
@@ -136,7 +140,7 @@ as Seurat reports it), the two-sided Wilcoxon rank-sum p-value with ties correct
 over the genes expressed in at least 10 % of either side, the percent expressing on each side, the AUROC the
 rank statistic implies, and *sections agreeing*: of the sections holding at least three cells on both sides, how
 many show the same direction on their own. A side larger than the cap (3,000 cells, or 10,000) is cut to it by
-whole blocks of the row store, so the download shrinks with the cap; the ⓘ in the panel header lists how many
+whole blocks of the row store, so the download shrinks with the cap; the *i* button in the panel header lists how many
 cells each side used, per section. A few thousand cells a side take about a second on a local bundle.
 
 The result opens in the Compare panel like a comparison shipped with the dataset, is listed in the *Comparisons*
@@ -177,7 +181,7 @@ the panel header says so and clears it), and opens a panel under the maps:
   focused level and the comparison's description, verbatim.
 
 The focused level travels as `cmp=<id>:<level>` in the URL. For a **markers** comparison the map is not filtered
-(the question is whether the gene is specific, which the whole tissue answers); *only Astro* filters it to the
+(the question is whether the gene is specific, which the whole tissue answers); *only Astro on the map* filters it to the
 focused cluster on request and follows the focus; each legend row of the matching annotation shows a *markers*
 button on hover that opens the table focused on that cluster. The violins and the *expression by annotation* dot
 plot in the Cells group read the same field, so the two agree.
@@ -207,12 +211,6 @@ position and the value of the track under the cursor; clicking a gene colors the
 activity score when the sample has no RNA), clicking a peak colors them by that peak's accessibility. The locus
 travels in the URL as `gl`; the `genome` switch in the top bar hides the panel (`gb=0`).
 
-Features that take negative values (module scores, motif deviations) are stored symmetrically around zero and drawn with a diverging colormap centred on zero, whatever the colormap setting; the legend shows the real minimum and maximum.
-
-When an embedding is colored by an annotation, each category's name floats at the centre of its cells, largest clusters first and never overlapping; hidden categories lose their label. Turn it off under Display (`cl=0` in the URL).
-
-Each view has its own point-size slider at its bottom-left corner: one for the tissue sections, one for the embedding, so dense UMAPs and sparse Visium spots can be tuned independently. Double-click a slider to reset it. The values travel in the URL as `ps` (spatial) and `pse` (embedding).
-
 ## Images and cell shapes (details)
 
 H&E or fluorescence pyramids render under the points with an opacity slider. A fluorescence image with several channels (Xenium morphology: DAPI, the boundary stain, 18S, alphaSMA/Vimentin) also lists its channels under the slider, like the legend: click a channel to switch it off or on, double-click to show it alone. At most six draw at once, which is what a GPU blends in one pass and about what the eye can read; with a larger panel the list says how many are on, a seventh click does nothing until one is switched off, and only the channels on screen are fetched. Channels are matched by name, so one switch covers every sample, and switching costs no download. To see the image under dense points, hide the categories in the legend or lower the point size. 
@@ -221,18 +219,19 @@ When the bundle has cell boundaries, cells turn from dots into their shapes once
 
 ## The side panel
 
-The panel is five groups, each a bar that opens its controls; closed bars show a one-line summary, several can be
-open at once, and what is open is remembered per browser:
+The panel is up to six groups, each a bar that opens its controls; closed bars show a one-line summary, several can be
+open at once, and what is open is remembered per browser. Image, Transcripts and Comparisons appear only when the
+dataset has them:
 
 - **Image**: its switch in the bar, opacity and, for fluorescence, the channel list.
 - **Cells**: its switch in the bar (off leaves the image and the transcripts alone on the canvas), colour by (gene,
   cell type weights, gene sets, annotation), the legend, expression by annotation, the filter, and *Drawing*: how cells
-  draw once zoomed in (dots, filled, outlined), cluster labels.
+  draw once zoomed in (dots, filled, outlined), a second segmentation to compare with, cluster labels.
 - **Transcripts**: its switch in the bar, selected genes or all genes, the pinned genes with their colours, the point size.
 - **Comparisons** (when the dataset carries any): its switch in the bar opens or closes the panel under the maps;
   one row per comparison, the active one with its level (a cluster, a cell type).
 - **ROIs**: the lasso's selection and your drawn regions.
-- **Samples**: comparisons, the grid or strip layout, focus and the list of sections.
+- **Samples**: the grid or strip layout, *show all*, and the list of sections, each with its focus and turn buttons.
 
 The groups are what is drawn, not how; a Transcripts bar reading "GAD1 · 2 pinned" tells you what the molecules show
 without opening it.

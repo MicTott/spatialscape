@@ -66,7 +66,8 @@ bundles built later.
                                (names; a molecule's gene id indexes them), counts (per gene), count, flags ["assigned", "nucleus"],
                                layout, tiles: [[ix, iy, offset, bytes, molecules]]}
     molecules.bin              the tiles' zstd frames back to back, or molecules/<ix>_<iy>.bin
-    <imageId>.ome.zarr/        OME-Zarr NGFF 0.4 (zarr v2), axes c,y,x, 512² chunks
+    <imageId>.ome.zarr/        OME-Zarr NGFF 0.4 (zarr v2), axes c,y,x, 512² chunks (an OME-Zarr source passed through
+                               keeps its own axes and chunks)
     tracks/                    ATAC samples built with `tracks:` (manifest samples[].tracks: genome, bin, units, all?, by)
       all.bw                   every cell, binned (bigWig): built from fragments, or copied when `bigwigs.all` was given
       <field>/<label>.bw       one per category of each `tracks.by` field: insertions per million from fragments
@@ -128,22 +129,31 @@ Field names are camelCase and mirrored one-to-one between the Python and TypeScr
 type Manifest = {
   formatVersion: 1; id: string; name: string; description?: string;
   defaultGene?: string; defaultColor: {kind: "gene"|"field", gene?, field?};
-  layout: {mode: "grid"|"strip", gutterFraction: number, order: string[]};
+  layout: {mode: "grid"|"strip", gutterFraction: number, order: string[], columns?: number};
   colormaps: string[];
   vocabularies: Record<string, {categories: string[], colors: string[], aliases?: Record<string,string>}>;
-  fields: Array<{id, name, type: "categorical", vocabulary} | {id, name, type: "continuous", range?, colormap?}>;
+  fields: Array<{id, name, type: "categorical", vocabulary, description?}
+              | {id, name, type: "continuous", range?, colormap?, description?}>;
   featureGroups: Array<{id, name, units?, count}>;
+  thumbnailSample?: string;                       // the sample drawn on thumbnail.png
   meta: Array<{id, name, levels: string[]}>;      // sample metadata keys the viewer can split the canvas by
-  comparisons: Array<{id, name, description?, path, groups, units?, population?: {field, value}, split?, link?,
-                      nGenes, nReplicates, nUnmatched, hasP, hasPadj, hasMean, hasPseudobulk}>;
+  comparisons: Array<{id, kind: "contrast"|"markers", name, description?, path, groups, contrast?, effect, units?,
+                      population?: {field, value}, split?, link?, facet?: {column, field?},
+                      levels: Array<{id, name, path, nGenes, nSignificant, nUnmatched, nReplicates, hasPseudobulk,
+                                     population?: {field, value}}>,
+                      nGenes, nReplicates, nUnmatched, nMatrixGenes,
+                      hasEffect, hasP, hasPadj, hasMean, hasPct, hasScore, hasPseudobulk}>;
   samples: Array<{
     id, name, platform, kind: "spatial"|"embedding", group?, meta?: Record<string, string>, nObs, nGenes,
     bbox: [minx, miny, maxx, maxy], toDataset: number[9], pointRadius,
-    expr: {kind: "u8"|"csc", sharded, shardGenes}, hasF16, fields: string[],
-    images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?, defaultOpacity}>,
-    shapes?: {path, cells, vertices, tile, tiles, bytes},
+    expr: {kind: "u8"|"csc", sharded, shardGenes, normalized?: "lognorm"|"log1p_cp10k"|"raw"}, hasF16, fields: string[],
+    images: Array<{id, name, path, kind, pixelSize, translate, size: [h, w], channels?: Array<{name, color, window}>, defaultOpacity}>,
+    shapes?: {path, cells, vertices, tile, tiles, bytes, medianArea?},
     molecules?: {path, count, genes, tile, tiles, bytes},
-    segmentations: Array<{id, name, path, cells, vertices, tile, tiles, bytes, medianArea}>, idBlock
+    segmentations: Array<{id, name, path, cells, vertices, tile, tiles, bytes, medianArea?}>,
+    rows?: {nnz, chunk, order: "morton"},           // rows.zarr
+    tracks?: {genome, bin, units, all?, by: Array<{field, categories: Record<string, string>}>, peaks?, genes?, links?, chromSizes},
+    nZeroGenes, suggestedGene?, idBlock
     // polygons?: {path, cells, vertices, scale}: whole-sample polygons of bundles built before shape tiles (still drawn)
   }>;
 };
@@ -161,14 +171,15 @@ comparisons/<id>/
   matrix.json         {genes, levels, stats, unmeasured}: the row order of matrix.zarr (every gene of every
                       level once), the level ids in column order, which statistics are present
   matrix.zarr/<stat>  float32 (genes, levels) per statistic (effect, padj, p, pct_in, pct_out, rank), NaN where
-                      a level's table has no row for the gene; the panel's matrix is one fetch per statistic
+                      a level's table has no row for the gene; Blosc (zstd), chunked by 4096 genes, so the
+                      panel's matrix is one fetch per statistic for most tables
   levels/<level>/     one folder per level: "all" for a comparison without a facet, else one per cluster or
                       cell type (the level's label made file-safe)
     results.json      {genes, effect, p, padj, mean, pct_in, pct_out, score, unmeasured}: column arrays in one
                       order, rows sorted by padj then p then |effect| (a ranked list without statistics keeps
                       its file order); arrays the table lacks are null; unmeasured lists the row indices of
                       genes no sample measures
-    pseudobulk.zarr   float32 (nGenes, nReplicates) in results order, zstd, chunked by 1024 genes; only when
+    pseudobulk.zarr   float32 (nGenes, nReplicates) in results order, Blosc (zstd), chunked by 1024 genes; only when
                       a pseudobulk table was given for the level
   build.json          fingerprint of the tables and settings (the incremental rule)
 ```
@@ -191,4 +202,4 @@ Each sample may carry `suggestedGene`, its most variable gene; `build` uses the 
 
 ## Next to the bundle
 
-`spatialscape build` writes `bundles/<id>` by default and keeps two things beside it that are not part of the bundle: `bundles/.cache/<id>/<key>/` holds R objects converted into AnnData files (one folder per conversion key, with an `index.json` describing the source), and nothing else. Upload `bundles/<id>` alone; `find_bundles` and `site build` ignore the cache because it has no `manifest.json`.
+`spatialscape build` writes `bundles/<id>` by default and keeps one thing beside it that is not part of the bundle: `bundles/.cache/<id>/<key>/` holds R objects converted into AnnData files (one folder per conversion key, with an `index.json` describing the source). Upload `bundles/<id>` alone; `find_bundles` and `site build` ignore the cache because it has no `manifest.json`.

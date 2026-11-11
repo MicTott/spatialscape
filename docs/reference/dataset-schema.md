@@ -10,8 +10,9 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `name` | string | required | |
 | `description` | string | | |
 | `default_gene` | string | | must exist in the gene union |
-| `default_color` | `{gene}` or `{field}` | first categorical field | |
+| `default_color` | `{gene}` or `{field}` | `default_gene` when set, else the first categorical field declared under `fields:`, else a variable gene | |
 | `palette` | path | | `{vocabulary: {label: "#hex"}}` JSON |
+| `colormaps` | list | the built-in eight | the colormaps the viewer offers: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `greys`, `rdbu` |
 | `layout` | `{mode, order, gutter_fraction, columns}` | `grid`, build order, `0.1`, fitted | `columns` fixes the grid width, e.g. `3` for a 3 × 3 of species by cell class |
 | `thumbnail_sample` | sample id | first spatial sample | |
 | `shard_genes` | int | `512` | genes per shard (capped to ~128 MB) |
@@ -36,16 +37,17 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `aliases` | `{source: canonical}` | merge labels at build time |
 | `palette_key` | string | key(s) in the palette file, comma-separated fallbacks |
 | `colormap`, `range` | | continuous fields only |
+| `description` | string | a sentence about the field, kept in the manifest |
 
 ## Sample entry
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `glob` | pattern | | expands to one sample per match; `{name}`, `{stem}`, `{dir}`, `{i}` templates |
+| `glob` | pattern | | expands to one sample per match; `{name}`, `{stem}`, `{dir}`, `{path}`, `{i}` templates |
 | `overrides` | `{<sample>: {keys}}` | | with `glob` or an R object: settings for single samples, keyed by `{name}` (`{stem}` in flat layouts, or the rendered id); dicts merge, lists and scalars replace; an unknown sample name is an error. `{ Br9902_1: { images: [] } }` |
 | `path` ending in `.rds` / `.rda` | path | | an R object: converted by `build` into `bundles/.cache/<id>/` and expanded into one sample per `sample_col` value, or one embedding sample; `{name}` is the sample id. See [R objects as samples](../guide/dataset-yaml#r-objects-as-samples) |
 | `assay`, `sample_col`, `embedding`, `object` | string | `logcounts`, `sample_id`, UMAP, | R objects only: the assay drawn (for a Seurat object a layer of its gene assay, `data` or `counts`; its other assays become `peak: ` / `activity: ` / `motif: ` features), the column that splits samples, the reducedDims entry or Seurat reduction for objects without spatialCoords, the object to take from an `.rda` |
-| `id` | string | sanitized `{name}` | unique |
+| `id` | string | sanitized `{name}` (`{stem}` in flat layouts) | unique |
 | `name` | string | `id` | |
 | `platform` | `visium`, `visium_hd`, `xenium`, `merfish`, `codex`, `snrnaseq`, `other` | required | `codex` covers PhenoCycler, MICS and IMC: pixel coordinates, `microns:` required |
 | `kind` | `spatial` or `embedding` | `spatial` | |
@@ -64,7 +66,7 @@ Validated by pydantic models in `python/src/spatialscape/config.py`. Unknown key
 | `images` | list of image specs or `auto` | `auto` | |
 | `molecules` | `{path, feature_column, x_column, y_column, qv_column, min_qv, cell_column, nucleus_column, affine}` | | individual molecules from a long table, Parquet, CSV or TSV (10x `transcripts.parquet` names are the defaults; `min_qv` 20); vertices share the raw frame of `polygons`, whose `affine` is inherited |
 | `segmentations` | list of `{id, name, path, id_column, x_column, y_column, max_vertices, affine}` or `auto` | `auto` | other boundary sets of the section, drawn over the cells for comparison; `auto` takes a Xenium `nucleus_boundaries.parquet` next to the polygons' `cell_boundaries.parquet`; `affine` defaults to the polygons' |
-| `polygons` | `{path \| obsm, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (a long table: Parquet, CSV or TSV, one row per vertex) or `obsm` (n, v, 2); `affine` maps vertices into the coordinate frame |
+| `polygons` | `{path \| obsm \| labels, id_column, x_column, y_column, max_vertices, affine}` | auto from `obsm` | one of `path` (a long table: Parquet, CSV or TSV, one row per vertex), `obsm` (n, v, 2) or `labels` (a label mask as a Zarr array, TIFF or PNG, one integer per cell, traced into shapes); `affine` maps vertices into the coordinate frame |
 | `subset` | `{column, values}` | all rows | keep only observations whose obs column takes one of the values; one file can then appear as several samples (one panel per cell class, per condition, ...) |
 | `tracks` | `{fragments \| bigwigs, by, genome, bin, normalize, tss_window, chrom_sizes, sample_column, barcode_column, units, genes, links}` | | genome tracks for ATAC samples: `fragments` (a bgzipped fragment file, or `{run: file}` with `sample_column` naming each observation's run when the object pools several runs; a file may be `ssh://host/path`, streamed and never stored) or `bigwigs` (`{by: {field: "dir/{label}.bw" \| {label: path}}, all}` exported by another tool), `by` (categorical field ids, one bigWig per category), `genome` (`hg38`, `mm10` or `mm39` carry built-in chromosome sizes), `bin` (`25` bp for fragments; read from bigWigs), `normalize` (`nfrags` per million insertions, `tss` per million insertions within `tss_window` bp of a TSS, `cells` per nucleus), optional `chrom_sizes`, `barcode_column`, `units` (the panel's scale label), `genes` (a GTF, genePred or BED file, `refseq` to download UCSC's table once, `none`) and `links` BEDPE. See [Genome tracks](../guide/tracks) |
 | `extent` | number | `5000` | embeddings: world size of the longest side |

@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://mictott.github.io/spatialscape/docs/"><b>Documentation</b></a>
   &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/docs/guide/getting-started">Getting started</a>
-  &nbsp;·&nbsp; <a href="https://mictott.github.io/spatialscape/?d=examples/synthetic">Live demo</a>
+  &nbsp;·&nbsp; <a href="https://d2lbhik7smmaaj.cloudfront.net">Live examples</a>
   &nbsp;·&nbsp; <a href="CHANGELOG.md">Changelog</a>
 </p>
 
@@ -100,7 +100,7 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
   <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/gallery.png" width="49%" alt="The landing gallery with thumbnails rendered at build time">
   <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/bla-umaps.png" width="49%" alt="snRNA-seq UMAPs of three species sharing one cell type legend">
 </p>
-<p align="center"><sub>Left: the gallery that <code>site build</code> writes, thumbnails rendered at build time. Right: basolateral amygdala nuclei from three species, one UMAP each, one shared cell type legend.</sub></p>
+<p align="center"><sub>Left: the gallery that <code>site build</code> writes, thumbnails rendered at build time. Right: basolateral amygdala nuclei from three species, one UMAP per species and cell class, one shared cell type legend.</sub></p>
 
 ## What you get
 

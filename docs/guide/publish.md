@@ -112,7 +112,7 @@ spatialscape validate https://data.example.org/dlpfc
 ```
 
 Then add `data_url: https://data.example.org` to `site.yaml` and run `site build` again: the site carries
-only the viewer and the registry (about 5 MB) and the data streams from the bucket.
+only the viewer and the gallery's `datasets.json` (about 5 MB) and the data streams from the bucket.
 [Hosting](./hosting) has the CORS policy each host needs, a copy-and-paste S3 + CloudFront setup, and what
 `validate` checks.
 

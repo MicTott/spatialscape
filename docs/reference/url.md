@@ -4,11 +4,11 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 
 | Key | Meaning | Example |
 |---|---|---|
-| `d` | dataset: registry id, or a bundle URL | `d=amygdala`, `d=https://host/bundle` |
+| `d` | dataset: its id in the gallery, or a bundle URL | `d=amygdala`, `d=https://host/bundle` |
 | `s` | focused sample id | `s=vis_Br8325` |
 | `c` | color: `g:<gene>`, `f:<field>`, or `b:<scheme>:<genesA>\|<genesB>` | `c=b:yb:GAD1,GAD2\|SLC17A7` |
 | `cm` | colormap | `cm=magma` |
-| `vr` | value range as fractions of the max | `vr=0.100,0.800` |
+| `vr` | value range as fractions of the gene's or field's range | `vr=0.100,0.800` |
 | `z` | hide zeros | `z=1` |
 | `fl` | filter: `g:<gene>:<lo>,<hi>`, `f:<field>:<lo>,<hi>`, or `c:<field>:<codes>` | `fl=c:domain:2.5` |
 | `h` | hidden categories per field | `h=domain:1.3;celltype:0` |
@@ -19,6 +19,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `mc` | `all`: every gene's molecules in its own colour | `mc=all` |
 | `cs` | how cells draw once zoomed in: `filled`, `outlined` or `dots` (default: filled, or outlined over an image). Older links' `poly=0` means `dots` and `cs=edges` means `outlined` | `cs=outlined` |
 | `cl` | `0` hides the cluster names on the embedding | `cl=0` |
+| `ov` | the second segmentation drawn over the cells, by id | `ov=nucleus` |
 | `img` | image opacity, `0` hides images | `img=0.6` |
 | `imgs` | `0` switches images off | `imgs=0` |
 | `cells` | `0` switches the cells (dots and shapes) off | `cells=0` |
@@ -30,7 +31,7 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `rot` | sections turned on screen, `id:degrees` clockwise (90, 180 or 270), comma-separated | `rot=mouse_20um:90` |
 | `ps` | point size multiplier, spatial view | `ps=1.5` |
 | `pse` | point size multiplier, embedding view | `pse=0.5` |
-| `psg` | point size multipliers of the group panes in pane order, empty where a pane follows `ps` | `psg=,1.50` |
+| `psg` | point size multipliers of the group panes, or of the two pinned windows, in pane order; empty where a pane follows `ps` | `psg=,1.50` |
 | `sps` | `1`: scale gene colors per sample instead of the one shared scale (`0` or absent) | `sps=1` |
 | `debug` | `1`: show timing and frame-rate readouts in the status bar | `debug=1` |
 | `sv` | embedding split: `0` off, or `l:<fraction>` / `r:<fraction>` | `sv=r:0.4` |
@@ -42,7 +43,9 @@ The viewer mirrors its state into the query string with `history.replaceState`, 
 | `pl` | the two pinned windows linked at one scale (off by default) | `pl=1` |
 | `sf` | width shares of the group panes after a handle was dragged | `sf=0.400,0.600` |
 | `ms` | `0`: panes do not share one scale (match scale off) | `ms=0` |
-| `pv` | cameras of the group panes, `x,y,zoom` each, `;`-separated in pane order | `pv=5379,2723,-4.7;5390,2090,-4.7` |
-| `cmp` | the comparison shown under the maps | `cmp=stress_vs_control` |
+| `pv` | cameras of the group panes, or of the two pinned windows, `x,y,zoom` each, `;`-separated in pane order | `pv=5379,2723,-4.7;5390,2090,-4.7` |
+| `cmp` | the comparison shown under the maps, as `<id>` or `<id>:<level>` for the focused level; a test run in the viewer is not written | `cmp=stress_vs_control` |
+| `gl` | the genome panel's locus, `<chrom>:<start>-<end>` | `gl=chr11:60405808-60512181` |
+| `gb` | `0` hides the genome panel | `gb=0` |
 
 Gene-set scheme codes (`c=b:<scheme>:<set A>|<set B>`): `yb` yellow/blue → green, `cm` cyan/magenta → white, `rg` red/green → yellow. Gene lists use commas; a `+` would decode as a space.

@@ -29,7 +29,7 @@ to be microns. Three usual answers:
 
 ## Gene search does not find a gene
 
-The gene is not in `genes.json`, which holds the union across samples minus any feature groups. Check `spatialscape inspect` for the var names, and whether a `feature_groups.pattern` captured it.
+The gene is not in `genes.json`, which holds the union across samples minus any feature groups. Check the object's var names (or the `gene_column` you set), and whether a `feature_groups.pattern` captured it.
 
 ## A sample is grey
 
@@ -37,7 +37,7 @@ The selected feature is not measured on that sample (a gene missing from a Xeniu
 
 ## The build is slow
 
-Expression is written in one pass over the stored values: a Visium donor with 36k genes and 30k spots takes 3–6 s, a 15k-nucleus snRNA-seq object about 4 s, and `--no-shard` is not faster. A slow build is almost always the input: a large `.h5ad` on a network drive, an R object converted on first use (into `bundles/.cache`, once), or a full-resolution image without pyramid levels (it is decoded in full even when `max_size` keeps a small copy; a pyramidal OME-TIFF or OME-Zarr is read only at the level `max_size` asks for). Peak memory is about the matrix of the largest sample, twice that for files that store it row-wise (CSR is transposed once), plus one 128 MB shard. After the first build only the samples whose inputs or settings changed are rebuilt, so edits to names, colors and defaults take seconds; `spatialscape build <yaml> --dry-run` shows what a run would do before it starts.
+Expression is written in one pass over the stored values: a Visium donor with 36k genes and 30k spots takes 3–6 s, a 15k-nucleus snRNA-seq object about 4 s, and `--no-shard` is not faster. A slow build is almost always the input: a large `.h5ad` on a network drive, an R object converted on first use (into `bundles/.cache`, once), or a full-resolution image with no `max_size` (with one, a pyramidal OME-TIFF or OME-Zarr is read at the level it asks for and any other file is reduced while it is read). Peak memory is about the matrix of the largest sample, twice that for a tissue section whose file stores it column-wise or dense (the row store reads it row-wise, one more copy), plus one 128 MB shard. After the first build only the samples whose inputs or settings changed are rebuilt, so edits to names, colors and defaults take seconds; `spatialscape build <yaml> --dry-run` shows what a run would do before it starts.
 
 ## "needs N GB of memory" or "JPEG 2000 compressed" when building an image
 

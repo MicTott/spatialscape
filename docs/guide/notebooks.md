@@ -102,7 +102,6 @@ saveRDS(spe, f <- tempfile(fileext = ".rds"))
 s <- ss$show(f, open_browser = TRUE)        # or rstudioapi::viewer(s$url)
 cells <- s$selection()                       # colnames(spe) inside the lasso
 spe[, cells]
-keep <- s$selection(as_mask = TRUE)          # or a logical vector over the columns
 s$add_comparison("Stress vs control", results_df, pseudobulk_df, groups = list("control", "stress"))   # data frames convert through reticulate
 ```
 

@@ -25,7 +25,7 @@ Exactly one of `config`, `bundle` or `id` per card.
 | `id` | string | a placeholder card; needs `name` |
 | `name` | string | card title; default: the dataset's name |
 | `description` | string | card text; default: the dataset's description |
-| `platforms` | list | placeholders only (`visium`, `visium_hd`, `xenium`, `merfish`, `snrnaseq`) |
+| `platforms` | list | placeholders only (`visium`, `visium_hd`, `xenium`, `merfish`, `codex`, `snrnaseq`, `other`) |
 | `status` | `live`, `local`, `coming soon` | badge; default `live`, placeholders `coming soon` |
 | `paper` | `{title, url}` | |
 | `tags` | list of strings | |

@@ -18,7 +18,6 @@ page for your data:
 | Cell or spot shapes | optional (HD bins, spots) | usual | – | a boundary table or an `obsm` array | about 44 B per cell |
 | Molecules (transcripts) | – | optional | – | the platform's transcript table | 3.5 B per molecule; 170–400 MB per Xenium section |
 | A second segmentation (nuclei) | – | optional | – | a second boundary table | like shapes |
-| Annotation boundaries | automatic | automatic | – | traced from a categorical annotation at build time | small |
 | Embedding (UMAP) | – | – | always | an `obsm` key or a `reducedDim` | like a section |
 | Genome tracks | – | – | optional (ATAC) | fragment files or bigWigs | 0.1–2 GB per dataset |
 
@@ -34,8 +33,8 @@ a channel list. All of it is in [Using the viewer](../viewer).
 
 ## Platforms the CLI names
 
-`platform:` on a sample is one of `visium`, `visium_hd`, `xenium`, `merfish`, `snrnaseq` or `other`. It sets the
+`platform:` on a sample is one of `visium`, `visium_hd`, `xenium`, `merfish`, `codex`, `snrnaseq` or `other`. It sets the
 default point size (a 55 µm Visium spot, half the bin pitch for HD, 5 µm cells otherwise), the coordinate
-assumption (pixels for Visium and HD, microns for the rest unless `microns:` says otherwise) and the label in the
-viewer's platform bar. A platform the list does not name is `other` with `microns:` and `point_radius` set by hand;
+assumption (pixels with SpaceRanger's scale factors for Visium and HD, microns for `xenium` and `merfish`; `codex`
+and `other` need `microns:`) and the label in the viewer's platform bar. A platform the list does not name is `other` with `microns:` and `point_radius` set by hand;
 the examples on the family pages show the values.

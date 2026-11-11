@@ -86,8 +86,8 @@ No image, beads or DNBs in their own pixel units, and often a single file for th
     images: []
 ```
 
-`platform: other` draws cells at 5 µm unless `point_radius` says otherwise and takes coordinates as microns unless
-`microns:` says otherwise; the platform bar labels the sample by its name.
+`platform: other` draws cells at 5 µm unless `point_radius` says otherwise and needs `microns:` (`{ already_microns:
+true }` when the coordinates are microns; the build stops and says so without it); the platform bar labels the sample by its name.
 
 ## Next
 

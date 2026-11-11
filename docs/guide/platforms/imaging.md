@@ -9,7 +9,7 @@ dots, then as their shapes, with the image underneath and the molecules on top o
 An object with cells × genes and coordinates in microns is enough:
 
 ```bash
-spatialscape init xenium/*/adata.h5ad --id xen        # one sample per folder
+spatialscape init "xenium/*/adata.h5ad" --id xen      # quoted: one glob entry, one sample per folder
 spatialscape build xen.yaml && spatialscape serve bundles --open
 ```
 

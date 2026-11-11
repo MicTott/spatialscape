@@ -89,7 +89,7 @@ Globus Connect Server v5 collections can expose files over HTTPS. A guest collec
 
 ## Deploying the viewer
 
-You do not need Node. `spatialscape site build` writes a folder with the viewer, a registry and your bundles
+You do not need Node. `spatialscape site build` writes a folder with the viewer, the gallery and your bundles
 (or references to bundles on object storage); upload it as-is. The full walkthrough is in
 [Publish your own site](./publish). Developers who change the app build it with `npm run build` and deploy
-`app/dist`; the repository's Pages workflow does this for the demo and the docs.
+`app/dist`; the repository's Pages workflow does this for the hosted viewer and the docs.

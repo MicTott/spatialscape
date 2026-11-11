@@ -1,21 +1,22 @@
 # Reproduce the examples
 
-The public example apps are built from <https://github.com/MicTott/spatialscape-examples>: one folder per dataset
+The nine public example apps are live in the [examples gallery](https://d2lbhik7smmaaj.cloudfront.net). They are built from
+<https://github.com/MicTott/spatialscape-examples>: one folder per dataset
 with the script that fetches the published files, the script (when one is needed) that turns them into an AnnData,
 the `dataset.yaml` that describes the app, and a README with the source, the licence and what each step costs.
 Nothing in an app is edited by hand; every one rebuilds from those files, on a laptop or on a cluster.
 
-| Folder | Technology | Scale | Source |
-|---|---|---|---|
-| `visium-human-dlpfc` | Visium, H&E, manual layer labels | 12 sections, 47,681 spots | spatialLIBD (Maynard et al. 2021) |
-| `visium-cytassist-mouse-brain` | Visium CytAssist, H&E | 1 section, 2,310 spots | 10x Genomics |
-| `visium-hd-mouse-brain` | Visium HD, 8 µm bins, H&E | 1 section, 394k bins | 10x Genomics |
-| `xenium-mouse-brain` | Xenium Prime 5K: image, shapes, nuclei, transcripts | 1 section, 63k cells | 10x Genomics |
-| `atera` | Atera whole-transcriptome in situ: morphology, shapes, transcripts | 2 sections, 888k cells, 1.66 billion transcripts | 10x Genomics previews |
-| `merscope-mouse-brain` | MERSCOPE: boundaries, transcripts, mosaics | 3 slices, 233k cells | Vizgen |
-| `cosmx-nsclc` | CosMx SMI: cell types and niches, boundaries, transcripts, composites | 8 sections, 800k cells | NanoString (He et al. 2022) |
-| `spatial-atac-rna-mouse-brain` | spatial ATAC + RNA: RNA on 20 µm pixels, ATAC tracks per cluster | 3 sections, 14k pixels | GEO GSE205055 |
-| `abc-atlas` | whole mouse brain: 59 MERFISH sections and all 10x nuclei on Allen's UMAP | 4.0 M cells + 4.0 M nuclei | Allen Brain Cell Atlas |
+| Folder | Technology | Scale | Source | Live app |
+|---|---|---|---|---|
+| `visium-human-dlpfc` | Visium, H&E, manual layer labels | 12 sections, 47,681 spots | spatialLIBD (Maynard et al. 2021) | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=visium-human-dlpfc) |
+| `visium-cytassist-mouse-brain` | Visium CytAssist, H&E | 1 section, 2,310 spots | 10x Genomics | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=visium-cytassist-mouse-brain) |
+| `visium-hd-mouse-brain` | Visium HD, 8 µm bins, H&E | 1 section, 394k bins | 10x Genomics | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=visium-hd-mouse-brain) |
+| `xenium-mouse-brain` | Xenium Prime 5K: image, shapes, nuclei, transcripts | 1 section, 63k cells | 10x Genomics | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=xenium-mouse-brain) |
+| `atera` | Atera whole-transcriptome in situ: morphology, shapes, transcripts | 2 sections, 888k cells, 1.66 billion transcripts | 10x Genomics previews | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=atera) |
+| `merscope-mouse-brain` | MERSCOPE: boundaries, transcripts, mosaics | 3 slices, 233k cells | Vizgen | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=merscope-mouse-brain) |
+| `cosmx-nsclc` | CosMx SMI: cell types and niches, boundaries, transcripts, composites | 8 sections, 800k cells | NanoString (He et al. 2022) | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=cosmx-nsclc) |
+| `spatial-atac-rna-mouse-brain` | spatial ATAC + RNA: RNA on 20 µm pixels, ATAC tracks per cluster | 3 sections, 14k pixels | GEO GSE205055 | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=spatial-atac-rna-mouse-brain) |
+| `abc-atlas` | whole mouse brain: 59 MERFISH sections and all 10x nuclei on Allen's UMAP | 4.0 M cells + 4.0 M nuclei | Allen Brain Cell Atlas | [open](https://d2lbhik7smmaaj.cloudfront.net/?d=abc-atlas) |
 
 ## Start with an R object
 

@@ -164,7 +164,7 @@ A `glob:` entry expands to one sample per matching path, sorted. Inside that ent
 | `{dir}` | the containing folder's full path |
 | `{i}` | the match index, from 0 |
 
-If `id` is omitted it defaults to a sanitized `{name}`.
+If `id` is omitted it defaults to a sanitized `{name}` (`{stem}` when the matched files share one folder).
 
 One sample of a glob (or of an R object) can differ from the rest through `overrides:`, a map from the
 sample's `{name}` (its `{stem}` in flat layouts, or its rendered id) to the keys that change. Dictionaries
@@ -196,7 +196,7 @@ Declare a field explicitly when you want a display name, a palette key, aliases 
 
 Two samples that map different obs columns to the **same field id** share one vocabulary: a label gets one code and one color everywhere. That is how a Visium domain column and a Xenium domain column both become "Spatial domain" with consistent colors. Labels only ever append to a vocabulary, so rebuilding one sample never changes the codes of the others.
 
-Colors come from the palette file (`{vocabulary: {label: "#hex"}}`, with `palette_key` naming which block to use, comma-separated for fallbacks), then a fixed qualitative palette, then generated hues.
+Colors come from the palette file (`{vocabulary: {label: "#hex"}}`, with `palette_key` naming which block to use, comma-separated for fallbacks), then the colors the object carries for the column (`uns["<column>_colors"]`), then a fixed qualitative palette, then generated hues.
 
 ## Beyond the basics
 

@@ -12,10 +12,10 @@ sample that did not change takes none.
 ## What happens per sample
 
 1. **Read** the AnnData / SpatialData table (R objects were converted first, see below): only the expression layer the sample uses, `obs`, `var` and the `obsm` keys it needs are loaded, not every layer and pairwise matrix in the file. Resolve `fields: auto` and `images: auto`, declare any undeclared fields. An optional layer whose file is not there (an image, `polygons.path`, a segmentation, `molecules.path`) is left out with a note, not an error: the sample builds from its object alone and gains the layer on the next `build` once the file exists. The expression file itself is never optional.
-2. **Expression**: detect counts vs log-normalized, drop all-zero genes, compute each gene's range, quantize to 8 bits (`round(255 · x / max)`, with any non-zero value kept ≥ 1), and write a gene-major Zarr v3 array sharded into ~128 MB files. Only the stored values are quantized (one pass over the non-zeros, scattered straight into the shards in the shuffled row order); the matrix is never densified. Optionally keep a float16 copy (`keep_f16`). Tissue sections also get `rows.zarr`, the same codes stored one cell at a time along a Morton curve, so a test on a lasso fetches only its cells (`expression.rows`; off for embeddings unless asked).
+2. **Expression**: detect counts vs log-normalized, drop all-zero genes, compute each gene's range, quantize to 8 bits (`round(255 · x / max)` for a non-negative gene, symmetric around zero for a signed feature, with any non-zero value kept ≥ 1), and write a gene-major Zarr v3 array sharded into ~128 MB files. Only the stored values are quantized (one pass over the non-zeros, scattered straight into the shards in the shuffled row order); the matrix is never densified. Optionally keep a float16 copy (`keep_f16`). Tissue sections also get `rows.zarr`, the same codes stored one cell at a time along a Morton curve, so a test on a lasso fetches only its cells (`expression.rows`; off for embeddings unless asked).
 3. **Geometry**: convert coordinates to microns, apply `transform`, shift the origin to the bounding box corner, record the bounding box and a default point radius per platform.
 4. **Observations**: shuffle rows once with a fixed seed (the viewer draws a prefix of the shuffled rows at low zoom), write positions, categorical codes against the dataset vocabularies, numeric columns, and the cell ids in blocks.
-5. **Polygons** (if configured): match `cell_id` to the object, pack vertices as centroid deltas.
+5. **Cell shapes, segmentations and molecules** (when the sample has them: `polygons` or an `obsm` array of boundaries, `segmentations`, `molecules`): match `cell_id` to the object and cut the shapes and the transcripts into spatial tiles.
 6. **Images**: convert to an OME-Zarr pyramid with the same flip/rotation as the points, record pixel size and offset in microns. A pyramidal source (OME-Zarr, pyramidal or OME-TIFF) is read at the level `max_size` asks for and downsampled in strips, so a full-resolution scan is never decoded whole.
 7. **Fingerprint**: write `build.json` into the sample folder (what the next build compares against).
 
@@ -34,6 +34,8 @@ recomputes the fingerprint from the yaml and the files and decides per sample:
 | an input file changed (re-exported h5ad, new image next to it, edited parquet) | build | `source changed` |
 | its settings changed (fields mapping, coords, microns, transform, images, polygons, expression, ...) | build | `settings changed` |
 | a field it maps was given a different `type`, `vocabulary`, `categories` or `aliases` | build | `field declarations changed` |
+| `sharded` or `shard_genes` changed (also `--no-shard` on or off) | build | `sharding changed`, `shard size changed` |
+| built before the row store existed, and the sample wants one | build | `row store added` |
 | the bundle format or build recipe changed with a new spatialscape version | build | `format changed` |
 | none of the above | skip | `unchanged` |
 

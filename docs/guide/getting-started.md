@@ -28,7 +28,7 @@ npm ci && npm run build && python python/scripts/bundle_app.py   # builds the vi
 pip install ./python                                            # or `pip install -e python` to hack on it
 ```
 
-Without that step `serve` and `site build` stop with "this install has no packaged viewer".
+Without that step `site build` stops with "this install has no packaged viewer" and `serve` serves the bundles without one.
 :::
 
 ## Goal 1: just look at an object
