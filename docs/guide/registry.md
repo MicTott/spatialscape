@@ -5,6 +5,8 @@ and their cards, an optional navigation bar, and where the bundles are hosted. `
 site.yaml` turns it into `datasets.json` next to the viewer's `index.html`, which is what the gallery reads.
 You edit the yaml; the JSON is a build output.
 
+![The gallery that site build writes: one card per dataset, thumbnails rendered at build time](/screenshots/gallery.png)
+
 ```yaml
 title: Our lab's spatial data
 intro: Published spatial transcriptomics and snRNA-seq datasets, viewable in the browser.

@@ -41,9 +41,28 @@ features:
 
 ## See it on real data
 
-[![Twelve Visium sections of human dorsolateral prefrontal cortex on one canvas, H&E under the manual layer annotation](/screenshots/dlpfc-layers.jpg)](https://d2lbhik7smmaaj.cloudfront.net/?d=visium-human-dlpfc)
+[![The Allen whole mouse brain atlas: the UMAP of 4.0 million nuclei beside 59 MERFISH sections, colored by subclass](/screenshots/abc-atlas.jpg)](https://d2lbhik7smmaaj.cloudfront.net/?d=abc-atlas&ps=0.25&pse=0.25&cl=0)
 
-Twelve Visium sections of human cortex on one canvas, the H&E under the layer annotation; the picture opens the app. It is one of nine in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, and the Allen whole mouse brain, 8 million cells and nuclei. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
+**Scale.** The Allen Brain Cell Atlas of the whole mouse brain in one app: 4.0 million nuclei on their UMAP beside 59 MERFISH sections holding another 4.0 million cells, one legend for both. The picture opens the app.
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; margin-top: 24px;">
+<div>
+
+[![10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1](/screenshots/pbmc-multiome.jpg)](/guide/tracks)
+
+**Breadth.** A 10x multiome: the RNA and ATAC UMAPs of the same nuclei with one cell type legend, over accessibility tracks per cell type at MS4A1.
+
+</div>
+<div>
+
+[![Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines](/screenshots/atera-transcripts.jpg)](https://d2lbhik7smmaaj.cloudfront.net/?d=atera&v=5039,4729,2.8&c=g:EPCAM&mol=1&mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&cs=outlined&msz=2.00)
+
+**New technology.** A whole-transcriptome Atera section of breast cancer, zoomed until single transcripts draw over the morphology image and the cell outlines.
+
+</div>
+</div>
+
+The Allen atlas and Atera are two of nine in the **[examples gallery](https://d2lbhik7smmaaj.cloudfront.net)**, one public dataset per technology: Visium, Visium CytAssist, Visium HD, Xenium, MERSCOPE, CosMx, Atera, spatial ATAC + RNA, and the Allen whole mouse brain. Nothing to install, and each rebuilds from the published files with the scripts in [Reproduce the examples](/guide/examples).
 
 ## In three commands
 

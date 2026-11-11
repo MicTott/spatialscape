@@ -92,15 +92,15 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 ## What it looks like
 
 <p align="center">
-  <a href="https://mictott.github.io/spatialscape/docs/"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/dlpfc-layers.jpg" width="840" alt="Twelve Visium sections of human dorsolateral prefrontal cortex on one canvas, H&E under the manual layer annotation"></a>
+  <a href="https://d2lbhik7smmaaj.cloudfront.net/?d=abc-atlas&amp;ps=0.25&amp;pse=0.25&amp;cl=0"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/abc-atlas.jpg" width="840" alt="The Allen whole mouse brain atlas: the UMAP of 4.0 million nuclei beside 59 MERFISH sections, colored by subclass"></a>
 </p>
-<p align="center"><sub>Twelve Visium sections of human dorsolateral prefrontal cortex on one canvas: H&amp;E under the manual layer annotation, one legend for all of them.</sub></p>
+<p align="center"><sub>Scale: the Allen Brain Cell Atlas of the whole mouse brain, 4.0 million nuclei on their UMAP beside 59 MERFISH sections with another 4.0 million cells.</sub></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/gallery.png" width="49%" alt="The landing gallery with thumbnails rendered at build time">
-  <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/xenium-cells.jpg" width="49%" alt="Xenium mouse brain zoomed to single cells: the morphology image under cell outlines colored by cluster">
+  <img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/pbmc-multiome.jpg" width="49%" alt="10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1">
+  <a href="https://d2lbhik7smmaaj.cloudfront.net/?d=atera&amp;v=5039,4729,2.8&amp;c=g:EPCAM&amp;mol=1&amp;mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&amp;cs=outlined&amp;msz=2.00"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/atera-transcripts.jpg" width="49%" alt="Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines"></a>
 </p>
-<p align="center"><sub>Left: the gallery that <code>site build</code> writes, thumbnails rendered at build time. Right: a Xenium mouse brain section zoomed to single cells, the morphology image under cell outlines colored by cluster.</sub></p>
+<p align="center"><sub>Left, breadth: a 10x multiome, RNA and ATAC UMAPs of the same nuclei over accessibility tracks per cell type. Right, new technology: a whole-transcriptome Atera section of breast cancer, single transcripts over the morphology image and the cell outlines.</sub></p>
 
 ## What you get
 
