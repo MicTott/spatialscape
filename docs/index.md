@@ -3,8 +3,8 @@ layout: home
 title: spatialscape
 hero:
   name: spatialscape
-  text: Spatial and single-cell data visualization
-  tagline: Spatialscape displays transcriptomics, chromatin accessibility, proteomics and tissue images across samples in a browser. The Python package builds datasets for local use or static web hosting.
+  text: One fast, integrated map for every study.
+  tagline: A static, reactive browser for spatial and single-cell visualization. One pip install turns your data object into an interactive app you can open locally or publish online.
   image:
     src: /hero.png
     alt: A mouse brain Visium HD section colored by cluster
