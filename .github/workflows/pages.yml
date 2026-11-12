@@ -24,8 +24,10 @@ jobs:
       - run: npm run build
       - run: npm run docs:build && mkdir -p /tmp/site/docs && cp -r docs/.vitepress/dist/* /tmp/site/docs/
       - run: cp -r app/dist/* /tmp/site/
-      - name: The examples gallery at /examples/ (the same viewer and card list; the synthetic bundle sits beside it)
+      - name: The examples gallery at /examples/ (the viewer with its card list; the synthetic bundle sits beside it)
         run: cp -r app/dist/* /tmp/site/examples/
+      - name: The site root is the hosted viewer alone (no cards, so it shows the open-any-bundle box)
+        run: cp .github/pages-root.json /tmp/site/datasets.json
       - uses: actions/upload-pages-artifact@v3
         with: { path: /tmp/site }
   deploy:

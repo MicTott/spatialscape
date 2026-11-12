@@ -12,11 +12,12 @@ reader's own choice still win.
 `spatialscape-examples`, built by one `build.sh` from the public 10x files, and the tenth app of the examples gallery.
 
 **Gallery groups.** A card in `site.yaml` may name a `group:`; the gallery then draws each group as a section under
-its heading, in the order the groups first appear, with ungrouped cards last. A group of up to three cards fills the
-row, so lead examples draw larger. Cards show their `tags` as pills after the platforms (the platform `other` is no
+its heading, in the order the groups first appear, with ungrouped cards last. When the first group has up to six cards it
+leads: its cards draw larger, three to a row, and a last row of one or two sits in the middle. Cards show their `tags` as pills after the platforms (the platform `other` is no
 longer shown as a pill), titles keep their own capitals ("8 µm" was drawn as "8 MM"), and one sample is "1 sample".
 The "open any bundle" box is drawn only on a page that lists no datasets, where it is the way in; a gallery with
-cards no longer shows it (`?d=<url>` opens any bundle as before).
+cards no longer shows it (`?d=<url>` opens any bundle as before). A card whose dataset is protein imaging
+(`platform: codex`) counts proteins, not genes.
 
 **A layer whose file is missing is left out, not fatal.** An image, `polygons.path`, a segmentation or
 `molecules.path` that is not on disk no longer stops `build`: the sample is built without it, with a note saying

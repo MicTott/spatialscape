@@ -12,6 +12,7 @@ export function TopNav() {
   if (!reg?.site) return null;
   const site = reg.site;
   const base = new URL(".", document.baseURI).toString();
+  const listed = reg.datasets.length > 0; // a page that lists no datasets (the bare hosted viewer) has no gallery to go back to
   const current = reg.datasets.find((d) => d.id === datasetRef || d.url === datasetRef)?.id ?? "";
   return (
     <nav className="topnav">
@@ -22,8 +23,12 @@ export function TopNav() {
       <span className="crumb">
         {manifest ? (
           <>
-            <a href={base}>Datasets</a>
-            <span className="sep">/</span>
+            {listed && (
+              <>
+                <a href={base}>Datasets</a>
+                <span className="sep">/</span>
+              </>
+            )}
             <select
               value={current}
               onChange={(e) => {
@@ -41,11 +46,11 @@ export function TopNav() {
                 ))}
             </select>
           </>
-        ) : (
+        ) : listed ? (
           <a href={base} className="on">
             Datasets
           </a>
-        )}
+        ) : null}
       </span>
       <span className="grow" />
       {(site.links ?? []).map((l) => (

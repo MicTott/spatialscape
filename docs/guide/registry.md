@@ -53,8 +53,8 @@ description, platforms, sample and cell counts, gene count, thumbnail); these ke
 ### Groups
 
 A gallery of many datasets can be split under headings. Give cards a `group:` and each group becomes a section,
-in the order the groups first appear in `site.yaml`; cards without one follow, under no heading. A group of up
-to three cards fills the row, so a few lead examples draw larger than the rest:
+in the order the groups first appear in `site.yaml`; cards without one follow, under no heading. When the
+first group has up to six cards it leads: its cards draw larger than the rest, three to a row, a short last row centred:
 
 ```yaml
 datasets:

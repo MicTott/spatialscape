@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardGroups, cardPills, wantsOpenBox, type RegistryEntry } from "../ui/registry";
+import { cardGroups, cardPills, featureNoun, wantsOpenBox, type RegistryEntry } from "../ui/registry";
 
 const card = (id: string, extra: Partial<RegistryEntry> = {}): RegistryEntry => ({ id, name: id, url: id, ...extra });
 
@@ -40,5 +40,14 @@ describe("the open-any-bundle box", () => {
   it("is left out of a gallery with cards, and while the list is loading", () => {
     expect(wantsOpenBox({ datasets: [card("a")] })).toBe(false);
     expect(wantsOpenBox(undefined)).toBe(false);
+  });
+});
+
+describe("a card's feature count", () => {
+  it("counts proteins for a protein-imaging dataset and genes for everything else", () => {
+    expect(featureNoun(card("a", { platforms: ["codex"] }))).toBe("protein");
+    expect(featureNoun(card("a", { platforms: ["visium"] }))).toBe("gene");
+    expect(featureNoun(card("a", { platforms: ["codex", "visium"] }))).toBe("gene");
+    expect(featureNoun(card("a"))).toBe("gene");
   });
 });

@@ -1,6 +1,6 @@
 {
   "title": "spatialscape examples",
-  "intro": "Public spatial transcriptomics and single-cell datasets, one app per technology, each built from the scripts in the spatialscape-examples repository.",
+  "intro": "Public spatial omics and single-cell datasets, one app per technology, each built from the scripts in the spatialscape-examples repository.",
   "site": {
     "title": "spatialscape",
     "logo": "favicon.svg",

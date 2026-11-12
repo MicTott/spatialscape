@@ -39,6 +39,15 @@ export function cardGroups(datasets: RegistryEntry[]): { name: string | null; it
   return out;
 }
 
+/** The first group, when it is named and has up to this many cards, is the lead group: larger cards, three to a row. */
+export const LEAD_GROUP_MAX = 6;
+
+/** What a card's feature count counts: proteins when every platform of the dataset is multiplexed protein imaging
+ *  (`codex`), genes otherwise. */
+export function featureNoun(d: RegistryEntry): string {
+  return d.platforms?.length && d.platforms.every((p) => p === "codex") ? "protein" : "gene";
+}
+
 /** A card's pills: its platforms by name (`other` says nothing, so it is left out), then its tags, without repeats. */
 export function cardPills(d: RegistryEntry, label: (platform: string) => string): string[] {
   const out: string[] = [];

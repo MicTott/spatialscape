@@ -1,0 +1,14 @@
+{
+  "title": "spatialscape",
+  "intro": "The hosted viewer: paste the address of any spatialscape bundle to open it. The public examples have a gallery of their own.",
+  "site": {
+    "title": "spatialscape",
+    "logo": "favicon.svg",
+    "links": [
+      { "label": "Examples", "url": "https://mictott.github.io/spatialscape/examples/" },
+      { "label": "Docs", "url": "https://mictott.github.io/spatialscape/docs/" },
+      { "label": "GitHub", "url": "https://github.com/MicTott/spatialscape" }
+    ]
+  },
+  "datasets": []
+}

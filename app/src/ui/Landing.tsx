@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { platformLabel } from "../data/manifest";
 import { store } from "../store/store";
-import { cardGroups, cardPills, thumbnailUrl, useRegistry, wantsOpenBox, type RegistryEntry } from "./registry";
+import { LEAD_GROUP_MAX, cardGroups, cardPills, featureNoun, thumbnailUrl, useRegistry, wantsOpenBox, type RegistryEntry } from "./registry";
 export { resolveDataset } from "./registry";
 
 
@@ -32,11 +32,12 @@ export function Landing() {
         )}
       </header>
       {reg &&
-        cardGroups(reg.datasets).map((g) => (
+        reg.datasets.length > 0 &&
+        cardGroups(reg.datasets).map((g, i) => (
           <div key={g.name ?? ""} className="card-group">
             {g.name && <h2 className="card-group-title">{g.name}</h2>}
-            {/* a named group of up to three cards fills the row, so a few lead examples draw larger */}
-            <section className={`cards${g.name && g.items.length <= 3 ? " few" : ""}`}>
+            {/* the first group, when it is named and has up to LEAD_GROUP_MAX cards, leads: larger cards, three to a row */}
+            <section className={`cards${i === 0 && g.name && g.items.length <= LEAD_GROUP_MAX ? " few" : ""}`}>
               {g.items.map((d) => (
                 <Card key={d.id} d={d} open={go} />
               ))}
@@ -79,7 +80,7 @@ function Card({ d, open }: { d: RegistryEntry; open: (url: string) => void }) {
         <div className="nums">
           {count(d.samples ?? 0, "sample")}
           {count(d.cells ?? 0, "cell")}
-          {d.genes != null && count(d.genes, "gene")}
+          {d.genes != null && count(d.genes, featureNoun(d))}
         </div>
         {d.paper?.title && (
           <div className="paper">
