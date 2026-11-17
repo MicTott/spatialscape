@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**A dense section is complete once you zoom in, on any window.** The number of points a sample draws grew with its
+size on screen but stopped at 0.9 points per pixel of its pane, so a section with more points than that (800,000
+Visium HD bins in a laptop-sized window, say) kept holes however close you looked. The ceiling is now two million
+points per sample, or what a very large pane could show when that is more: every sample up to that size draws all
+its points once zoomed in, and the overview is sampled as before. A 4 million nucleus UMAP draws two million when
+zoomed in, where it drew about 300,000; panning it stays at the display's frame rate.
+
 **`default_channels`.** A dataset with a many-channel image opened on the panel's first six channels, whatever they
 were. `default_channels: [DAPI, CD20, CD3]` in `dataset.yaml` names the channels drawn on open (at most six, in that
 order; `build` refuses a name no image has). The manifest carries them as `defaultChannels`; a link's `ch=` and the

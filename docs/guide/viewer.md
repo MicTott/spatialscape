@@ -108,6 +108,13 @@ Gene colors share one scale across all samples on screen, so the same color mean
 
 The slider at the bottom left of each pane multiplies the point radius, from a quarter to four times the platform's default (Visium spots at their true 55 µm, cells at 5 µm). The tissue canvas and the embedding each have their own value. When the canvas is split by a group, every pane has its own slider too: a dense section and a sparse one can be read side by side at different sizes, and a double-click on a group pane's slider makes it follow the shared value again; on the other sliders it resets the size. The values travel in the URL (`ps`, `pse`, `psg`).
 
+## How many cells are drawn
+
+Zoomed out, a section holds more cells than it has pixels, so the viewer draws a random sample of each: about 0.6
+points per screen pixel of the section, the same cells every time. Zooming in adds cells until every one is drawn,
+for any section or embedding of up to two million points; a larger one stays a sample of two million. The legend's
+counts, the filters and the tests always use every cell, and hover finds the cells that are drawn.
+
 ## Regions: your own annotation
 
 The Regions panel turns the lasso into an annotation tool. Add a group, then lasso as many areas as you like, in

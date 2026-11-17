@@ -35,7 +35,7 @@ switch, so they count toward the switch that caused them.
 window spans 1000 µm across the short side of the pane, centred on that section, where cell polygons replace dots
 once a section's visible shape tiles are loaded; the molecules state halves that window until the viewer draws
 transcripts (it refuses when more than about a million would be visible, and says so). Dots drawn is the LOD prefix
-summed over the visible samples: the viewer draws about 0.6 points per screen pixel of each sample's footprint.
+summed over the visible samples: the viewer draws about 0.6 points per screen pixel of each sample's footprint, up to two million per sample.
 Frame times are per `requestAnimationFrame` tick, so on a 120 Hz display 8.3 ms is a frame at the display's rate;
 "over 16.7 ms" counts frames that would have stuttered at 60 Hz.
 

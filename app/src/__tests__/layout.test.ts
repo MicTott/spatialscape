@@ -76,6 +76,23 @@ describe("fitBbox / drawCount", () => {
     expect(small).toBeLessThan(full);
     expect(small).toBeGreaterThanOrEqual(3000);
   });
+  it("draws every point of a dense section once zoomed in, whatever the window", () => {
+    // 800,000 bins in a laptop-sized pane: the old ceiling of 0.9 points per pane pixel stopped at 445,068
+    const pane: [number, number] = [780, 634];
+    const fitted = drawCount(800_000, [0, 0, 6500, 6500], Math.log2(634 / 6500), pane);
+    expect(fitted).toBe(Math.ceil(634 * 634 * 0.6)); // the fitted view is a sample, as before
+    expect(drawCount(800_000, [0, 0, 6500, 6500], Math.log2(634 / 6500) + 2, pane)).toBe(800_000);
+  });
+  it("stops at two million points for a larger sample", () => {
+    expect(drawCount(4_042_976, [0, 0, 100, 100], 8, [426, 794])).toBe(2_000_000);
+    expect(drawCount(1_999_999, [0, 0, 100, 100], 8, [426, 794])).toBe(1_999_999);
+  });
+  it("still draws more than that in a pane large enough to show it", () => {
+    expect(drawCount(4_042_976, [0, 0, 100, 100], 8, [3000, 2000])).toBe(4_042_976); // 0.9 x 6,000,000 pane pixels
+  });
+  it("keeps the floor for a sample with no extent", () => {
+    expect(drawCount(50_000, [5, 5, 5, 5], 0, [1000, 1000])).toBe(3000);
+  });
 });
 
 describe("image footprints", () => {
