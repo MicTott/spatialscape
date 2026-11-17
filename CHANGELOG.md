@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Selected genes draws only the selected genes.** With transcripts on and an annotation colouring the cells, every
+transcript was drawn in grey and a pinned gene was only coloured among them, so it could not be seen on its own. Now
+*selected genes* draws the gene on screen, a blend's two gene sets and the pinned genes, and nothing else; with none
+of those the map shows no transcripts and the status line says to pick a gene. *All genes* is the view of every
+transcript, each gene in its own colour, under an annotation as under a gene.
+
 **A dense section is complete once you zoom in, on any window.** The number of points a sample draws grew with its
 size on screen but stopped at 0.9 points per pixel of its pane, so a section with more points than that (800,000
 Visium HD bins in a laptop-sized window, say) kept holes however close you looked. The ceiling is now two million

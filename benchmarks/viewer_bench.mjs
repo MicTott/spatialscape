@@ -201,7 +201,7 @@ if (section) {
   result.states.window1mm = { windowMm: 1, ...(await state("spatial")) };
   if (sec?.molecules) {
     newBucket();
-    await page.evaluate(() => window.__sscape.store.getState().set({ molecules: true }));
+    await page.evaluate(() => window.__sscape.store.getState().set({ molecules: true, moleculeColors: "all" })); // every gene: with "selected genes" and an annotation on screen nothing draws
     let mm = 1;
     for (let i = 0; i < 5; i++) {
       await settle(); await page.waitForTimeout(2000); await settle();

@@ -5,8 +5,10 @@
  * The gate is screen density, not zoom: molecules draw when the molecules that would be visible come to at most
  * MOLECULE_DENSITY per screen pixel of the pane (estimated from the index: a gene's share of the sample times the
  * molecules of the tiles in view) and at most MOLECULE_CAP across every pane; otherwise the status line says to zoom
- * in. Colour: the gene on screen draws in the colormap's top colour, a blend's two gene sets in the blend's colours,
- * and with an annotation (or nothing) on screen every molecule draws in grey, the view for judging a segmentation.
+ * in. Which molecules: with "selected genes", only the gene on screen (in the colormap's top colour), a blend's two
+ * gene sets (in the blend's colours) and the pinned genes (each in its pin colour); no other molecule is drawn, so
+ * with an annotation on screen and nothing pinned there is nothing to draw and the status line says so. With "all
+ * genes", every gene in its own hue, the selected ones keeping their colours on top.
  */
 import type { Layer } from "@deck.gl/core";
 import type { Matrix4 } from "@math.gl/core";
@@ -25,8 +27,7 @@ import type { ViewerController } from "./ViewerController";
 export const MOLECULE_DENSITY = 1.0; // visible molecules per CSS pixel of the pane (a 1440 x 900 window: about 1 M)
 export const MOLECULE_CAP = 1_500_000; // molecules held for drawing across every pane
 export const MOLECULE_TILE_CAP = 512; // 128 um tiles of a dense section hold about 3-5k molecules each
-const GREY: [number, number, number] = [205, 208, 214];
-/** Colours of pinned genes, in pin order: six apart from each other, from grey and from the colormaps' top colours,
+/** Colours of pinned genes, in pin order: six apart from each other and from the colormaps' top colours,
  *  then hues spaced by the golden angle, which stay as different from each other as a long list allows. */
 export const PIN_COLORS = ["#ff4fd8", "#3fe0e0", "#ff6b4f", "#3fd14a", "#4c8dff", "#f0f0f0"];
 export const pinColor = (i: number) => (i < PIN_COLORS.length ? PIN_COLORS[i] : hslHex((i * 137.508 + 40) % 360, 0.8, 0.62));
@@ -53,10 +54,11 @@ interface MoleculeCached extends Cached<MoleculeTile> {
   data?: { length: number; attributes: Record<string, { value: Float32Array | Uint8Array | Uint16Array; size: number }> };
 }
 
-/** Which genes draw, and in what colour, for the colour state on screen: the gene on screen in the colormap's top
- *  colour (a blend's sets in its colours), every pinned gene in its pin colour, and under an annotation every other
- *  gene in grey. `shares` gives the fraction of a sample's molecules that would draw, for the density gate. */
-export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "selected" | "all"; moleculePinColors?: Record<string, string> }): { colors: Uint8Array; shares: (counts: number[]) => number } {
+/** Which genes draw, and in what colour: the gene on screen in the colormap's top colour (a blend's sets in its
+ *  colours) and every pinned gene in its pin colour, and nothing else; with "all genes", every other gene in its own
+ *  hue under them. `shares` gives the fraction of a sample's molecules that would draw, for the density gate, and
+ *  `empty` says that no gene of this sample is selected, so there is nothing to fetch or draw. */
+export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colormap" | "geneMin" | "moleculeGenes"> & { moleculeColors?: "selected" | "all"; moleculePinColors?: Record<string, string> }): { colors: Uint8Array; shares: (counts: number[]) => number; empty: boolean } {
   const n = genes.length;
   const out = new Uint8Array(Math.max(1, n) * 4);
   const picked = new Set<number>();
@@ -85,17 +87,14 @@ export function geneColors(genes: string[], s: Pick<ViewerState, "color" | "colo
       const inB = b.has(g);
       if (inA || inB) paint(i, hexToRGB(inA && inB ? scheme.both : inA ? scheme.a : scheme.b));
     });
-  } else if (!all) {
-    all = true;
-    for (let i = 0; i < n; i++) paint(i, GREY);
   }
   (s.moleculeGenes ?? []).forEach((g, k) => {
     const i = genes.indexOf(g);
     if (i >= 0) paint(i, hexToRGB(s.moleculePinColors?.[g] ?? pinColor(k)));
   });
-  if (all) return { colors: out, shares: () => 1 };
+  if (all) return { colors: out, shares: () => 1, empty: n === 0 };
   const idx = [...picked];
-  return { colors: out, shares: (counts) => idx.reduce((acc, i) => acc + counts[i], 0) / Math.max(1, counts.reduce((x, y) => x + y, 0)) };
+  return { colors: out, shares: (counts) => idx.reduce((acc, i) => acc + counts[i], 0) / Math.max(1, counts.reduce((x, y) => x + y, 0)), empty: idx.length === 0 };
 }
 
 export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
@@ -136,6 +135,7 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
     const wants: Want[] = [];
     let visible = 0;
     let held = 0;
+    let unselected = false; // a sample in view has molecules, and none of its genes is selected
     for (const [id, p] of L.placements) {
       const smp = c.samplesById.get(id)!;
       if (!smp.molecules || !intersects(p.worldBbox, vb) || !c.cache.samples.get(id)) continue;
@@ -145,13 +145,20 @@ export class MoleculeManager extends TileManager<MoleculeIndex, MoleculeTile> {
       const tiles = this.tilesFor(ix, p.modelMatrix, vb) as MoleculeTileEntry[];
       if (!tiles.length) continue;
       const colors = this.colorsFor(ix.index.genes, s);
+      if (colors.empty) {
+        unselected = true; // nothing would draw: no tiles are fetched for it
+        continue;
+      }
       // what the pane would show: each tile's molecules by the share of the tile inside the view
       const inView = tiles.reduce((n, t) => n + t[4] * this.overlap(ix.index, t, rect), 0);
       held += tiles.reduce((n, t) => n + t[4], 0);
       visible += inView * colors.shares(ix.index.counts);
       wants.push({ id, matrix: p.modelMatrix, tiles, index: ix.index, colors });
     }
-    if (!wants.length) return out;
+    if (!wants.length) {
+      if (unselected) this.nextHint = "pick a gene to draw its transcripts";
+      return out;
+    }
     const ntiles = wants.reduce((n, w) => n + w.tiles.length, 0);
     if (visible > MOLECULE_DENSITY * vw * vh || this.heldThisBuild + held > MOLECULE_CAP || this.tilesThisBuild + ntiles > this.tileCap) {
       this.nextHint = "zoom in for molecules";

@@ -32,7 +32,7 @@ describe("molecule tiles written by the Python build", () => {
     expect(t.runStarts[t.runs.length]).toBe(t.n);
   });
 
-  it("colours molecules like the view: the gene on screen, a blend's sets, or grey", () => {
+  it("draws only the selected genes: the gene on screen, a blend's sets and the pins", () => {
     const genes = ["A", "B", "C"];
     const counts = [10, 30, 60];
     const g = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0, moleculeGenes: [] });
@@ -46,8 +46,10 @@ describe("molecule tiles written by the Python build", () => {
     expect(b.colors[11]).toBe(0);
     expect(b.shares(counts)).toBeCloseTo(0.4);
     const f = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0, moleculeGenes: [] });
-    expect([...f.colors].filter((_, i) => i % 4 === 3)).toEqual([255, 255, 255]);
-    expect(f.shares(counts)).toBe(1);
+    expect([...f.colors].filter((_, i) => i % 4 === 3)).toEqual([0, 0, 0]); // an annotation on screen, nothing pinned: nothing draws
+    expect(f.shares(counts)).toBe(0);
+    expect(f.empty).toBe(true);
+    expect(g.empty).toBe(false);
     // pinned genes draw in their pin colours next to the gene on screen, and count towards the gate
     const p = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0, moleculeGenes: ["C", "A"] });
     expect([...p.colors.subarray(8, 11)]).toEqual(hexToRGB(pinColor(0)));
@@ -55,7 +57,10 @@ describe("molecule tiles written by the Python build", () => {
     expect(p.shares(counts)).toBeCloseTo(1);
     const pf = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0, moleculeGenes: ["C"] });
     expect([...pf.colors.subarray(8, 11)]).toEqual(hexToRGB(pinColor(0)));
-    expect([...pf.colors.subarray(0, 3)]).toEqual([205, 208, 214]);
+    expect([...pf.colors.subarray(0, 4)]).toEqual([0, 0, 0, 0]); // the other genes are not drawn, in grey or otherwise
+    expect(pf.colors[7]).toBe(0);
+    expect(pf.shares(counts)).toBeCloseTo(0.6);
+    expect(pf.empty).toBe(false);
     // all genes: every gene its own colour, pins and the gene on screen still on top; the seventh pin gets a colour too
     const al = geneColors(genes, { color: { kind: "gene", gene: "B" }, colormap: "viridis", geneMin: 0, moleculeGenes: [], moleculeColors: "all" });
     expect(al.colors[3]).toBe(255);
@@ -68,6 +73,12 @@ describe("molecule tiles written by the Python build", () => {
     const chosen = geneColors(["A", "B", "C"], { color: null, colormap: "viridis", geneMin: 0, moleculeGenes: ["B", "C"], moleculePinColors: { C: "#102030" } } as any);
     expect(Array.from(chosen.colors.subarray(8, 11))).toEqual([0x10, 0x20, 0x30]);
     expect(Array.from(chosen.colors.subarray(4, 7))).toEqual(hexToRGB(pinColor(0)));
+    expect(chosen.colors[3]).toBe(0); // nothing on screen: only the two pins draw
+    // all genes with an annotation on screen: every gene in its own colour
+    const allField = geneColors(genes, { color: { kind: "field", field: "cluster" }, colormap: "viridis", geneMin: 0, moleculeGenes: [], moleculeColors: "all" });
+    expect([...allField.colors].filter((_, i) => i % 4 === 3)).toEqual([255, 255, 255]);
+    expect(new Set([0, 4, 8].map((o) => [...allField.colors.subarray(o, o + 3)].join())).size).toBe(3);
+    expect(allField.empty).toBe(false);
   });
 });
 

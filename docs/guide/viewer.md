@@ -262,14 +262,15 @@ When a bundle carries molecules (Xenium transcripts, from `molecules:` in the ya
 once a view holds at most about one per screen pixel, counted from the tiles in view (about a million in a large
 window, which keeps a laptop near 60 frames per second; every molecule of a view is drawn, none are sampled). Until
 then the status line says *zoom in for molecules*. A size slider in the group scales the points (double-click to
-reset; `msz` in the URL). **Selected genes** colours the genes you have chosen: the gene you are looking at draws
-in the colormap's top colour, the two gene sets in their colours, and under an annotation every molecule
-draws in grey, which is the view for judging a segmentation.
+reset; `msz` in the URL). **Selected genes** draws only the genes you have chosen: the gene you are looking at in
+the colormap's top colour, the two gene sets in their colours, and the genes you pin, each in its own colour. No
+other transcript is drawn, so with an annotation on screen and nothing pinned the map shows none and the status line
+says *pick a gene to draw its transcripts*.
 
 Zoomed out, a cell can show one gene; zoomed in, the molecules can show several. The Transcripts group lists the gene on
 screen and lets you **pin** more, each in a fixed colour, with a search box; a pin stays while you step through other
-genes, so a few anchors remain visible, and click × to unpin. **All genes** colours every gene by its own hue at once,
-the view for seeing where transcripts of different kinds gather; pins and the gene on screen keep their colours on
+genes, so a few anchors remain visible, and click × to unpin. **All genes** draws every transcript, each gene in its own hue,
+the view for seeing where transcripts of different kinds gather and for judging a segmentation; pins and the gene on screen keep their colours on
 top of it (`mc=all` in the URL). Molecules not assigned to a cell draw
 dimmer, and the cell dots fade under them. Only the tiles in view are fetched, once the camera stops; pinning and
 unpinning download nothing. Click a pinned gene's colour square to choose another colour for it. The switch, the pins and

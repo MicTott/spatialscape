@@ -3,7 +3,7 @@ import { GeneSearch } from "./GeneSearch";
 import { onScreenColor, pinColor } from "../views/molecules";
 
 /** The molecule row's body: the gene on screen (or the blend's sets) in its colour, the pinned genes in theirs with
- * a way to unpin, and a search box to pin one more. Under an annotation every other molecule draws in grey. */
+ * a way to unpin, and a search box to pin one more. Only these genes draw, unless "all genes" is chosen. */
 export function MoleculeGenes({ genes }: { genes: string[] }) {
   const color = useViewer((s) => s.color);
   const colormap = useViewer((s) => s.colormap);
@@ -19,7 +19,7 @@ export function MoleculeGenes({ genes }: { genes: string[] }) {
   };
   return (
     <div className="molecule-genes">
-      <div className="tabs" title="selected genes: the gene or gene sets on screen and the pinned genes, other molecules grey under an annotation. all genes: every gene in its own colour">
+      <div className="tabs" title="selected genes: only the gene or gene sets on screen and the pinned genes. all genes: every gene in its own colour">
         <button className={mode === "selected" ? "on" : ""} onClick={() => set({ moleculeColors: "selected" })}>
           selected genes
         </button>
@@ -79,7 +79,7 @@ export function MoleculeGenes({ genes }: { genes: string[] }) {
         }}
         placeholder={pins.length ? "pin another gene…" : "pin a gene… (Enter pins any name)"}
       />
-      {mode === "all" ? <div className="muted small">every other gene in its own colour</div> : !color || color.kind === "field" ? <div className="muted small">other genes draw in grey</div> : null}
+      {mode === "all" ? <div className="muted small">every other gene in its own colour</div> : (!color || color.kind === "field") && !pins.length ? <div className="muted small">no gene selected: pin one, or choose all genes</div> : null}
       <label title="double-click to reset">
         size <small>×{size.toFixed(2)}</small>
         <input type="range" min={0.25} max={4} step={0.05} value={size} onChange={(e) => set({ moleculeSize: +e.target.value })} onDoubleClick={() => set({ moleculeSize: 1 })} />
