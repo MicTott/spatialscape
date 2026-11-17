@@ -27,7 +27,7 @@
 
 ## Why
 
-Browsing a spatial transcriptomics dataset should feel seamless: every section of a study in view at once, a new gene in milliseconds, linked views between multiple data modalities (spatial, snRNA-seq, multiome, proteomics, etc), and nothing to run but a static web host. spatialscape is a viewer built to do exactly this.
+Browsing a spatial transcriptomics dataset should feel seamless: every section of a study should be viewable in the same space, genes should load in milliseconds, linked views should be available between multiple data modalities (spatial, snRNA-seq, multiome, proteomics, etc), and there should be nothing to run but a static web host to keep costs low. spatialscape is a viewer built to do exactly this.
 
 - **Every sample on one canvas.** All sections of a study sit side by side under identical settings. Double-click to focus, step through donors with the arrow keys, switch platforms with one click.
 - **Instant.** Expression is stored one byte per cell per gene in sharded Zarr, so a gene is one HTTP range request and a cached switch is a GPU upload. Panning and zooming run at the display's refresh rate because the viewer draws a uniform subsample of the cells at overview zoom and every cell once zoomed in, so what is on screen, not what is in the dataset, sets the frame time; the scripts in `benchmarks/` measure this on any bundle.
