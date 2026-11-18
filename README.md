@@ -143,4 +143,4 @@ python/.venv/bin/python -m pytest python/tests && npm test && npm run e2e
 
 Developed at the Lieber Institute for Brain Development, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints.
 
-MIT license. Cite with [CITATION.cff](CITATION.cff).
+MIT license. To cite spatialscape, use "Cite this repository" on GitHub, which reads [CITATION.cff](CITATION.cff); releases from 1.0.0 are archived on Zenodo with a DOI.

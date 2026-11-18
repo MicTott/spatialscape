@@ -12,7 +12,7 @@ license = "MIT"
 authors = [{ name = "Michael Totty", email = "mictott@gmail.com" }]
 keywords = ["spatial-transcriptomics", "visium", "xenium", "single-cell", "visualization", "zarr", "deck.gl"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",

@@ -1,12 +1,25 @@
 cff-version: 1.2.0
 message: "If you use spatialscape, please cite it as below."
 title: "spatialscape: a static, reactive browser for spatial transcriptomics and snRNA-seq"
+abstract: "One Python package: a command-line tool that turns AnnData, SpatialData, SpatialExperiment or Seurat objects into bundles of static files, and the web viewer that streams them. Every section of a study on one canvas, from an overview of an atlas down to single transcripts, with no server."
 type: software
 authors:
   - family-names: Totty
     given-names: Michael
     email: mictott@gmail.com
-repository-code: "https://github.com/mictott/spatialscape"
+    affiliation: "Lieber Institute for Brain Development"
+repository-code: "https://github.com/MicTott/spatialscape"
+repository-artifact: "https://pypi.org/project/spatialscape/"
+url: "https://mictott.github.io/spatialscape/docs/"
+keywords:
+  - spatial transcriptomics
+  - single-cell
+  - visualization
+  - Visium
+  - Xenium
+  - MERFISH
+  - AnnData
+  - SpatialExperiment
 license: MIT
-version: 0.6.0
-date-released: 2026-11-03
+version: 1.0.0
+date-released: 2026-11-18

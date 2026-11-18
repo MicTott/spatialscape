@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (2026-11-18)
+
+The first stable release. Bundle format 1 is final: changes within it only add optional files, and `validate` is
+its conformance check. The documentation is finished, eleven public datasets are live and rebuild from their
+scripts, and each release from this one on is archived with a DOI (see `RELEASING.md`). What changed since 0.6.0:
 
 **Selected genes draws only the selected genes.** With transcripts on and an annotation colouring the cells, every
 transcript was drawn in grey and a pinned gene was only coloured among them, so it could not be seen on its own. Now
