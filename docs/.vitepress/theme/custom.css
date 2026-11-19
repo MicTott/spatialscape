@@ -6,3 +6,122 @@
 .vp-doc table td:last-child {
   min-width: 18em;
 }
+
+/* Home page, first screen: the hero text over the whole mouse brain, playing full screen.
+   The video is dark in both colour schemes, so the hero and the bar over it use light text. */
+.VPHome .VPHero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #0b0d10;
+  color: #f4f4ef;
+  --vp-c-text-2: #c8c9d1;
+  --vp-home-hero-name-color: #a8b1ff;
+}
+.VPHome .VPHero .container {
+  width: 100%;
+}
+.VPHome .VPHero .text,
+.VPHome .VPHero .tagline {
+  text-shadow: 0 1px 16px rgba(11, 13, 16, 0.75);
+}
+/* the backdrop fills the hero, so nothing between them may be a positioning parent */
+.VPHome .VPHero .main {
+  position: static;
+}
+.VPHome .VPHero .main > :not(.hero-backdrop):not(.hero-below) {
+  position: relative;
+  z-index: 1;
+}
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-backdrop video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+/* darker where the text sits, clear where the sections play */
+.hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(11, 13, 16, 0.8) 0%, rgba(11, 13, 16, 0.64) 36%, rgba(11, 13, 16, 0.14) 70%, rgba(11, 13, 16, 0) 100%),
+    linear-gradient(180deg, rgba(11, 13, 16, 0.6) 0%, rgba(11, 13, 16, 0) 16%, rgba(11, 13, 16, 0) 84%, rgba(11, 13, 16, 0.55) 100%);
+}
+.dark .hero-backdrop::after {
+  background:
+    linear-gradient(90deg, rgba(11, 13, 16, 0.8) 0%, rgba(11, 13, 16, 0.64) 36%, rgba(11, 13, 16, 0.14) 70%, rgba(11, 13, 16, 0) 100%),
+    linear-gradient(180deg, rgba(11, 13, 16, 0.6) 0%, rgba(11, 13, 16, 0) 16%, rgba(27, 27, 31, 0) 80%, var(--vp-c-bg) 100%);
+}
+@media (max-width: 767px) {
+  /* a phone shows a third of the frame: the UMAP, under an even shade */
+  .hero-backdrop video {
+    object-position: 17% center;
+  }
+  .hero-backdrop::after,
+  .dark .hero-backdrop::after {
+    background: linear-gradient(180deg, rgba(11, 13, 16, 0.78) 0%, rgba(11, 13, 16, 0.66) 100%);
+  }
+}
+.hero-below {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  border-radius: 50%;
+  color: rgba(244, 244, 239, 0.75);
+  transition: color 0.2s, background-color 0.2s;
+}
+.hero-below:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.VPHome .VPHomeFeatures {
+  margin-top: 56px;
+}
+/* the bar over the video: clear at the top of the page from 960px, and always below that width.
+   The page's script marks the bar as home once it runs; until then the second selector keeps the bar
+   from showing its own background over the video. */
+.VPNavBar.home.top:not(.screen-open),
+.Layout:has(.VPContent.is-home) .VPNavBar:not(.home):not(.screen-open) {
+  --vp-c-text-1: #f4f4ef;
+  --vp-c-text-2: #c8c9d1;
+  --vp-c-brand-1: #a8b1ff;
+}
+.Layout:has(.VPContent.is-home) .VPNavBar:not(.home):not(.screen-open),
+.Layout:has(.VPContent.is-home) .VPNavBar:not(.home):not(.screen-open) .content-body,
+.Layout:has(.VPContent.is-home) .VPNavBar:not(.home):not(.screen-open) .divider-line {
+  background-color: transparent;
+}
+@media (min-width: 768px) {
+  /* the search box, where it is a box and not just the icon */
+  .VPNavBar.home.top:not(.screen-open) .DocSearch-Button,
+  .Layout:has(.VPContent.is-home) .VPNavBar:not(.home):not(.screen-open) .DocSearch-Button {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+  .VPNavBar.home.top:not(.screen-open) .DocSearch-Button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+}
+@media (max-width: 959px) {
+  .VPNavBar.home:not(.screen-open) {
+    --vp-c-text-1: #f4f4ef;
+    --vp-c-text-2: #c8c9d1;
+    --vp-c-brand-1: #a8b1ff;
+  }
+}

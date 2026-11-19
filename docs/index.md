@@ -5,9 +5,6 @@ hero:
   name: spatialscape
   text: One fast, integrated map for every study.
   tagline: A static, reactive browser for spatial and single-cell visualization. One pip install turns your data object into an interactive app you can open locally or publish online.
-  image:
-    src: /hero.png
-    alt: A mouse brain Visium HD section colored by cluster
   actions:
     - theme: brand
       text: Getting started
