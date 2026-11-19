@@ -31,13 +31,14 @@ Zenodo reads `.zenodo.json` for the record's title, authors, licence and links. 
 7. The release workflow may wait for approval of its `pypi` environment on GitHub. Approve it.
 8. Confirm: the version on <https://pypi.org/project/spatialscape/>, the GitHub Release, and the new record on Zenodo.
 
-## After the first DOI exists
+## The DOI
 
-Zenodo gives two DOIs: one for the version, and a concept DOI that always points at the latest. Cite the concept DOI
-unless the exact version matters.
+Zenodo gives two DOIs: one for each version, and a concept DOI that always points at the latest. The concept DOI is
+[10.5281/zenodo.24376035](https://doi.org/10.5281/zenodo.24376035); the first archived version is 1.0.0. `CITATION.cff`, the badge and
+citation line in `README.md`, and the citing section of `docs/index.md` carry the concept DOI, so they need no change
+at a release. Cite a version's own DOI only when the exact version matters; Zenodo lists them on the record's page.
 
-1. `CITATION.cff`: add `doi: <concept DOI>`.
-2. `README.md` and `docs/index.md`: add the Zenodo badge and the DOI to the citation line.
-3. `spatialscape-examples`: raise the pinned version in `requirements.txt`.
+Zenodo archives a release only if the repository was switched on there before the GitHub Release was published. If a
+release is missed, delete that Release on GitHub (keep the tag) and publish a new one from the same tag.
 
-These changes go out with the next release; the DOI of the release just made cannot be written into that release.
+After a release, in `spatialscape-examples`: raise the pinned version in `requirements.txt`.

@@ -23,6 +23,7 @@
   <a href="https://mictott.github.io/spatialscape/docs/"><img src="https://github.com/MicTott/spatialscape/actions/workflows/pages.yml/badge.svg" alt="docs"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-3776ab" alt="Python 3.11+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <a href="https://doi.org/10.5281/zenodo.24376035"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.24376035.svg" alt="DOI 10.5281/zenodo.24376035"></a>
 </p>
 
 ## Why
@@ -143,4 +144,4 @@ python/.venv/bin/python -m pytest python/tests && npm test && npm run e2e
 
 Developed at the Lieber Institute for Brain Development, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints.
 
-MIT license. To cite spatialscape, use "Cite this repository" on GitHub, which reads [CITATION.cff](CITATION.cff); releases from 1.0.0 are archived on Zenodo with a DOI.
+MIT license. To cite spatialscape, use its Zenodo DOI, [10.5281/zenodo.24376035](https://doi.org/10.5281/zenodo.24376035), which always resolves to the latest release, or "Cite this repository" on GitHub, which reads [CITATION.cff](CITATION.cff). Each release from 1.0.0 on is archived on Zenodo with a DOI of its own.

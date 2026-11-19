@@ -87,3 +87,8 @@ Visium HD, Xenium, MERSCOPE, CosMx, PhenoCycler and spatial ATAC + RNA datasets.
 - [Using the viewer](/guide/viewer): navigate, filter, compare and export data.
 - [Publishing and hosting](/guide/publish): build a gallery and put it online.
 - [CLI reference](/reference/cli/): command arguments, options and examples.
+
+## Citing spatialscape
+
+If you use spatialscape, please cite its Zenodo archive: [doi:10.5281/zenodo.24376035](https://doi.org/10.5281/zenodo.24376035).
+This DOI always resolves to the latest release, and each release from 1.0.0 on has a DOI of its own on the same page.
