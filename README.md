@@ -97,10 +97,10 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 <p align="center"><sub>Scale: the Allen Brain Cell Atlas of the whole mouse brain, 4.0 million nuclei on their UMAP beside 59 MERFISH sections with another 4.0 million cells.</sub></p>
 
 <p align="center">
-  <a href="https://mictott.github.io/spatialscape/examples/?d=pbmc-multiome"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/pbmc-multiome.jpg" width="49%" alt="10x PBMC multiome: the RNA and ATAC UMAPs of the same nuclei over the accessibility tracks at MS4A1"></a>
-  <a href="https://mictott.github.io/spatialscape/examples/?d=atera&amp;v=5039,4729,2.8&amp;c=g:EPCAM&amp;mol=1&amp;mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&amp;cs=outlined&amp;msz=2.00"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/screenshots/atera-transcripts.jpg" width="49%" alt="Atera breast cancer section zoomed to single cells: transcripts of five genes over the morphology image and the cell outlines"></a>
+  <a href="https://mictott.github.io/spatialscape/examples/?d=pbmc-multiome"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/clips/pbmc-multiome.gif" width="49%" alt="10x PBMC multiome, recorded in real time: genes typed in turn recolor the RNA and ATAC UMAPs and move the accessibility tracks to each gene"></a>
+  <a href="https://mictott.github.io/spatialscape/examples/?d=atera&amp;v=5039,4729,2.8&amp;c=g:EPCAM&amp;mol=1&amp;mg=PTPRC%7CCOL1A1%7CACTA2%7CKRT8&amp;cs=outlined&amp;msz=2.00"><img src="https://raw.githubusercontent.com/MicTott/spatialscape/main/docs/public/clips/atera.gif" width="49%" alt="Atera breast cancer section, recorded in real time: a zoom from the whole section to single transcripts, genes typed in turn, then every gene at once"></a>
 </p>
-<p align="center"><sub>Left, breadth: a 10x multiome, RNA and ATAC UMAPs of the same nuclei over accessibility tracks per cell type. Right, new technology: a whole-transcriptome Atera section of breast cancer, single transcripts over the morphology image and the cell outlines.</sub></p>
+<p align="center"><sub>Left, breadth: a 10x multiome, RNA and ATAC UMAPs of the same nuclei over accessibility tracks per cell type. Right, new technology: a whole-transcriptome Atera section of breast cancer, single transcripts over the morphology image and the cell outlines. Both are real-time recordings of the public examples.</sub></p>
 
 ## What you get
 
