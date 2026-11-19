@@ -33,7 +33,6 @@ Browsing a spatial transcriptomics dataset should feel seamless: every section o
 - **Every sample on one canvas.** All sections of a study sit side by side under identical settings. Double-click to focus, step through donors with the arrow keys, switch platforms with one click.
 - **Instant.** Expression is stored one byte per cell per gene in sharded Zarr, so a gene is one HTTP range request and a cached switch is a GPU upload. Panning and zooming run at the display's refresh rate because the viewer draws a uniform subsample of the cells at overview zoom and every cell once zoomed in, so what is on screen, not what is in the dataset, sets the frame time; the scripts in `benchmarks/` measure this on any bundle.
 - **Linked snRNA-seq and ATAC.** Paired references render as embeddings beside the tissue with one shared cell type vocabulary, including genomic ranges to visualize chromatin accessibility.
-- **Nothing to run.** The viewer is files and the data is files. Host them on GitHub Pages, S3, Cloudflare R2 or a lab server; every view state lives in the URL.
 
 ## Quick start
 
@@ -103,45 +102,26 @@ From R, `reticulate::py_require("spatialscape")`, one `saveRDS`, and `ss$show("s
 </p>
 <p align="center"><sub>Left, breadth: a 10x multiome, RNA and ATAC UMAPs of the same nuclei over accessibility tracks per cell type. Right, new technology: a whole-transcriptome Atera section of breast cancer, single transcripts over the morphology image and the cell outlines. Both are real-time recordings of the public examples.</sub></p>
 
-## What you get
-
-| In the viewer | In the pipeline |
-|---|---|
-| Color by gene, by two blended gene sets, by any annotation or by cell type weights | Visium, Visium HD, Xenium, MERFISH and snRNA-seq in one dataset, laid out in microns |
-| Filter independently of color: a gene threshold, a QC range, a category | H&E and fluorescence images as OME-Zarr pyramids under the points |
-| Hover for every annotation; lasso a region for composition, gene statistics and a CSV of cell ids | Cell boundaries, nucleus boundaries and every transcript at high zoom |
-| A dot plot of the current gene by annotation that doubles as a filter | Dataset-level vocabularies: one label, one code, one color across samples and platforms |
-| A split view with the snRNA-seq embedding, resizable, left or right | Validation of every bundle, locally and over HTTP (CORS and Range checks) |
-| Copy a link to the exact view; export a PNG with legend and scale bar | Incremental builds with a per-sample fingerprint; a conversion cache for R objects |
-
 ## How it works
 
 `spatialscape build` writes a *bundle*: a folder of static files holding `manifest.json`, the gene lists and, per sample, a gene-major uint8 expression array (sharded Zarr v3), positions in microns, categorical codes, images, outlines and polygons. The viewer (React 19, deck.gl 9, Viv, zarrita) draws every sample in one WebGL context, decodes in a worker and recolors by uploading one byte per cell. The format is versioned (`formatVersion: 1`) and stable: changes within version 1 only add optional files, `spatialscape validate` is its conformance check, and any Zarr reader can open a bundle without spatialscape. Details: [bundle format](https://mictott.github.io/spatialscape/docs/reference/format), [architecture](https://mictott.github.io/spatialscape/docs/reference/architecture).
 
-## Repository
+## License and citation
 
+Spatialscape was developed at the Lieber Institute for Brain Development by Michael Totty, and meant for any one who wants to easily and openly view their (or others) datasets. As such, it freely available under the MIT license.
+
+Please cite this package if you use it to share your data. To cite spatialscape, use its Zenodo DOI [10.5281/zenodo.24376035](https://doi.org/10.5281/zenodo.24376035) as shown below: 
+
+**Totty, M. (2026). spatialscape: a static, reactive browser for spatial transcriptomics. Zenodo. https://doi.org/10.5281/zenodo.24376035**
+
+### BibTex
 ```
-app/       the viewer: Vite + React 19 + TypeScript (deck.gl 9, Viv, zarrita, Zustand)
-python/    the spatialscape CLI (anndata, zarr v3, pydantic); the built viewer ships inside the wheel
-docs/      the documentation site (VitePress); the CLI pages are generated from the help text
-examples/  the synthetic demo; the public example datasets have their own repository
+@software{totty_spatialscape_2026,
+  author    = {Totty, Michael},
+  title     = {spatialscape: a static, reactive browser for spatial transcriptomics},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.24376035},
+  url       = {https://doi.org/10.5281/zenodo.24376035}
+}
 ```
-
-## Development
-
-```bash
-git clone https://github.com/MicTott/spatialscape && cd spatialscape
-python3 -m venv python/.venv && python/.venv/bin/pip install -e "python[dev]"
-npm install
-npm run dev                                                   # viewer at http://127.0.0.1:5173
-python/.venv/bin/spatialscape serve examples --port 8787      # data; the dev server proxies /examples to it
-python/.venv/bin/python -m pytest python/tests && npm test && npm run e2e
-```
-
-`npm run build && python/.venv/bin/python python/scripts/bundle_app.py` refreshes the viewer copy inside the package. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Status
-
-Developed at the Lieber Institute for Brain Development, and meant for any lab that wants to put a dataset online next to a paper. Planned: multi-frame compare, named waypoints.
-
-MIT license. To cite spatialscape, use its Zenodo DOI, [10.5281/zenodo.24376035](https://doi.org/10.5281/zenodo.24376035), which always resolves to the latest release, or "Cite this repository" on GitHub, which reads [CITATION.cff](CITATION.cff). Each release from 1.0.0 on is archived on Zenodo with a DOI of its own.
